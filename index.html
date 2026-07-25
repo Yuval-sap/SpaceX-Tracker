@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX • Mission Control</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#09090b">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght=300;400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Space Grotesk', system_ui, sans-serif; 
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            z-index: 50;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            opacity: 0.35;
+            transition: opacity 0.5s ease;
+        }
+
+        .font-space { font-family: 'Space Grotesk', system_ui, sans-serif; font-weight: 600; }
+
+        /* אנימציית פעימה רגועה ואיטית יותר */
+        @keyframes pulse-calm {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.65; }
+        }
+        .animate-pulse-calm {
+            animation: pulse-calm 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .mission-card { 
+            transition: transform 1.6s cubic-bezier(0.25, 1, 0.5, 1), 
+                        box-shadow 1.6s cubic-bezier(0.25, 1, 0.5, 1), 
+                        border-color 1.6s cubic-bezier(0.25, 1, 0.5, 1);
+            opacity: 0;
+            transform: translateY(20px) scale(1);
+            animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            z-index: 60;
+            will-change: transform, box-shadow, border-color;
+            overflow: visible;
+        }
+        
+        .mission-card:hover, .mission-card:active { 
+            transform: translateY(-6px) scale(1.015) !important;
+            box-shadow: 0 20px 40px -15px rgba(16, 185, 129, 0.3), 0 0 25px 3px rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.5) !important;
+        }
+        
+        @media (max-width: 640px) {
+            .mission-card:hover { transform: none !important; }
+        }
+        
+        @keyframes cardAppear {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .countdown-small { font-family: 'Space Grotesk', monospace; font-feature-settings: "tnum"; }
+        .modal-content { max-height: 90vh; overflow-y: auto; }
+        
+        .hide-scrollbar::-webkit-scrollbar { height: 6px; }
+        .hide-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        .hide-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        .stars-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+            background: radial-gradient(ellipse at bottom, #09090b 0%, #020204 100%);
+            transition: background 0.5s ease;
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: twinkle var(--duration, 4s) infinite ease-in-out;
+            transition: background 0.5s ease, opacity 0.5s ease;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.1; transform: scale(0.8); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+        }
+
+        .hero-fade-image {
+            mask-image: linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%);
+        }
+
+        /* --- Custom Google Translate Widget Styling --- */
+        .goog-te-gadget { font-family: 'Space Grotesk', monospace !important; font-size: 0px !important; color: transparent !important; display: flex; align-items: center; }
+        .goog-te-gadget .goog-te-combo { background-color: #18181b !important; color: #10b981 !important; border: 1px solid #27272a !important; border-radius: 1rem !important; padding: 4px 8px !important; font-size: 0.75rem !important; font-weight: 600 !important; outline: none !important; cursor: pointer !important; margin: 0 !important; letter-spacing: 0.05em !important; transition: border-color 0.3s ease; }
+        .goog-te-gadget .goog-te-combo:hover { border-color: #10b981 !important; }
+        .goog-logo-link { display: none !important; }
+        .goog-te-gadget img { display: none !important; }
+        .goog-te-banner-frame, .goog-te-banner-frame.skiptranslate, iframe.goog-te-banner-frame, .skiptranslate iframe { display: none !important; visibility: hidden !important; height: 0 !important; opacity: 0 !important; }
+        html, body { top: 0px !important; position: relative !important; }
+        .VIpgJd-ZVi9od-l4eHX-hSRGPd { display: none !important; } 
+        #goog-gt-tt { display: none !important; visibility: hidden !important; }
+        .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+
+        /* ==================================================
+           LIGHT THEME OVERRIDES (מצב יום)
+           ================================================== */
+        body.light-theme { background-color: #f8fafc !important; color: #0f172a !important; }
+        body.light-theme::before { opacity: 0.1; }
+        body.light-theme .stars-container { background: radial-gradient(ellipse at bottom, #e2e8f0 0%, #ffffff 100%); }
+        body.light-theme .star { background: #94a3b8; opacity: 0.4; }
+        
+        body.light-theme .bg-zinc-950 { background-color: #f1f5f9 !important; }
+        body.light-theme .bg-zinc-950\/70 { background-color: rgba(248, 250, 252, 0.8) !important; }
+        body.light-theme .bg-zinc-950\/80 { background-color: rgba(241, 245, 249, 0.8) !important; }
+        body.light-theme .bg-zinc-950\/40 { background-color: rgba(241, 245, 249, 0.5) !important; }
+        body.light-theme .bg-zinc-950\/60 { background-color: rgba(241, 245, 249, 0.7) !important; }
+        
+        body.light-theme .bg-zinc-900 { background-color: #ffffff !important; }
+        body.light-theme .bg-zinc-900\/50 { background-color: rgba(255, 255, 255, 0.6) !important; }
+        
+        body.light-theme .bg-zinc-850 { background-color: #f8fafc !important; }
+        body.light-theme .bg-zinc-800 { background-color: #f1f5f9 !important; }
+        body.light-theme .bg-zinc-800\/80 { background-color: rgba(241, 245, 249, 0.8) !important; }
+        
+        body.light-theme .bg-black { background-color: #e2e8f0 !important; }
+        body.light-theme .bg-black\/90 { background-color: rgba(248, 250, 252, 0.85) !important; }
+        body.light-theme .bg-black\/95 { background-color: rgba(248, 250, 252, 0.95) !important; }
+        body.light-theme .bg-black\/60 { background-color: rgba(226, 232, 240, 0.6) !important; }
+        
+        body.light-theme .border-zinc-900 { border-color: #e2e8f0 !important; }
+        body.light-theme .border-zinc-850 { border-color: #e2e8f0 !important; }
+        body.light-theme .border-zinc-800 { border-color: #e2e8f0 !important; }
+        body.light-theme .border-zinc-800\/80 { border-color: rgba(226, 232, 240, 0.8) !important; }
+        body.light-theme .border-zinc-800\/60 { border-color: rgba(226, 232, 240, 0.6) !important; }
+        body.light-theme .border-zinc-800\/50 { border-color: rgba(226, 232, 240, 0.5) !important; }
+        body.light-theme .border-zinc-700 { border-color: #cbd5e1 !important; }
+        
+        body.light-theme .text-white { color: #0f172a !important; }
+        body.light-theme .text-zinc-200 { color: #1e293b !important; }
+        body.light-theme .text-zinc-300 { color: #334155 !important; }
+        body.light-theme .text-zinc-400 { color: #475569 !important; }
+        body.light-theme .text-zinc-500 { color: #64748b !important; }
+        body.light-theme .text-zinc-600 { color: #94a3b8 !important; }
+        
+        body.light-theme button.bg-white { background-color: #0f172a !important; color: #ffffff !important; }
+        body.light-theme .hover\:text-white:hover { color: #000000 !important; }
+        
+        body.light-theme .shadow-\[0_20px_50px_rgba\(0\,0\,0\,0\.8\)\] { box-shadow: 0 20px 50px rgba(0,0,0,0.1) !important; }
+        body.light-theme .shadow-\[inset_0_0_20px_rgba\(0\,0\,0\,0\.8\)\] { box-shadow: inset 0 0 20px rgba(0,0,0,0.05) !important; }
+        
+        body.light-theme .from-zinc-900 { --tw-gradient-from: #ffffff !important; }
+        body.light-theme .via-black { --tw-gradient-via: #f8fafc !important; }
+        body.light-theme .to-zinc-950 { --tw-gradient-to: #f1f5f9 !important; }
+        
+        body.light-theme .from-white { --tw-gradient-from: #0f172a !important; }
+        body.light-theme .via-zinc-200 { --tw-gradient-via: #475569 !important; }
+        body.light-theme .to-zinc-500 { --tw-gradient-to: #94a3b8 !important; }
+        
+        body.light-theme input { background-color: #f1f5f9 !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+        body.light-theme .goog-te-combo { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+        body.light-theme nav { background-color: rgba(255,255,255,0.85) !important; border-color: #e2e8f0 !important; }
+        body.light-theme svg.fill-zinc-800 { fill: #e2e8f0 !important; stroke: #94a3b8 !important; }
+        
+        body.light-theme .hide-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+        body.light-theme .hide-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Timeline Fixes for Light Theme */
+        body.light-theme .timeline-track { background-color: #cbd5e1 !important; }
+        body.light-theme .node-empty { background-color: #ffffff !important; border-color: #94a3b8 !important; }
+        body.light-theme .timeline-label { color: #0f172a !important; font-weight: 700; }
+        body.light-theme .milestones-title { color: #475569 !important; font-weight: 800; }
+
+        /* Starlink Widget Cyan Light Mode Fixes */
+        body.light-theme .text-cyan-500 { color: #0284c7 !important; }
+        body.light-theme .text-cyan-400 { color: #0284c7 !important; }
+        body.light-theme .from-cyan-400 { --tw-gradient-from: #0ea5e9 !important; }
+
+        /* Transitions for Fact Box */
+        #fact-text { transition: opacity 0.25s ease-in-out; }
+    </style>
+    
+    <script>
+        if (localStorage.getItem('spacex-theme') === 'light') {
+            document.documentElement.classList.add('light-theme');
+            document.body.classList.add('light-theme');
+        }
+    </script>
+</head>
+<body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
+    <div class="stars-container" id="stars-background"></div>
+
+    <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between relative z-50">
+            <div class="flex items-center gap-x-4">
+                <div class="flex items-center">
+                    <span class="font-space text-xl sm:text-[26px] font-bold tracking-[2px] sm:tracking-[4px] text-white hover:text-emerald-400 transition-colors cursor-default">SPACEX TRACKER</span>
+                </div>
+                <span class="hidden md:block px-3 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse">LIVE TELEMETRY</span>
+            </div>
+            <div class="flex items-center gap-x-3 sm:gap-x-4">
+                
+                <button id="theme-toggle-btn" onclick="toggleTheme()" class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-zinc-900 border border-zinc-850 rounded-full text-zinc-400 hover:text-emerald-400 transition-colors shadow-sm">
+                    <i class="fa-solid fa-sun" id="theme-icon"></i>
+                </button>
+
+                <div id="google_translate_element" class="hidden sm:block notranslate" translate="no"></div>
+
+                <div class="flex items-center gap-x-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-2xl text-xs sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate" translate="no">
+                    <i class="fa-solid fa-clock text-zinc-400"></i>
+                    <span id="live-clock" class="font-mono text-emerald-400 font-bold">--:--:--</span>
+                    <span id="live-timezone" class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide">LOCAL</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
+        
+        <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
+            <div>
+                <h1 class="font-space text-3xl sm:text-5xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500 transition-colors duration-500">Mission Control</h1>
+                <p class="text-base sm:text-xl text-zinc-400 mt-1 font-light transition-colors duration-500">Real-time SpaceX launch tracking & system diagnostic (Fan Project)</p>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl px-4 py-3 sm:px-6 sm:py-4 flex lg:flex-col items-center justify-between lg:justify-center gap-x-4 lg:gap-x-0 transition-colors duration-500">
+                <div class="text-[10px] text-zinc-500 tracking-widest font-bold lg:mb-1 uppercase">Upcoming Launches</div>
+                <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate" id="upcoming-count" translate="no">0</div>
+            </div>
+        </div>
+
+        <!-- HERO BANNER -->
+        <div id="hero-banner" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 hidden transition-all duration-300 relative overflow-hidden shadow-xl">
+            <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-3xl">
+                <img id="hero-image" src="" alt="" class="w-full h-full object-cover opacity-30 hero-fade-image">
+            </div>
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
+                <div class="space-y-3 flex-1 w-full min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs sm:text-[13px] font-bold tracking-[0.2em] rounded-full flex items-center">
+                            NEXT LAUNCH
+                        </span>
+                        <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-full flex items-center gap-1.5">
+                            <i class="fa-solid fa-check-double"></i>
+                            SYSTEMS GO
+                        </span>
+                    </div>
+                    <h2 id="hero-name" class="font-space text-2xl sm:text-4xl md:text-5xl font-semibold tracking-tighter text-white">Loading...</h2>
+                    
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                        <p id="hero-details" class="text-zinc-400 text-xs sm:text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-zinc-600"></i> <span id="hero-details-text">--</span>
+                        </p>
+                        <span id="hero-weather" class="px-2.5 py-1 bg-zinc-950 border border-zinc-800 text-emerald-400 text-[11px] font-semibold tracking-wider rounded-full flex items-center gap-1.5 cursor-default select-none">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Syncing Weather...
+                        </span>
+                    </div>
+
+                    <!-- Timeline Milestones -->
+                    <div class="w-full mt-7 mb-3 hidden sm:block pr-4 lg:pr-12">
+                        <div class="text-[9px] text-zinc-500 font-bold tracking-[2px] uppercase mb-4 opacity-80 milestones-title transition-colors duration-500">MILESTONES</div>
+                        <div class="relative flex items-center justify-between w-full px-2">
+                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-800 timeline-track transition-colors duration-500"></div>
+                            <div id="timeline-progress" class="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-emerald-500 transition-all duration-1000 ease-out" style="width: 0%;"></div>
+                            
+                            <div class="relative z-10 flex flex-col items-center">
+                                <div id="node-24h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-24h</span>
+                            </div>
+                            <div class="relative z-10 flex flex-col items-center">
+                                <div id="node-6h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-6h</span>
+                            </div>
+                            <div class="relative z-10 flex flex-col items-center">
+                                <div id="node-1h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-1h</span>
+                            </div>
+                            <div class="relative z-10 flex flex-col items-center">
+                                <div id="node-0" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-6">
+                        <div id="hero-live-container" class="hidden">
+                            <a id="hero-live-link" href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                                <i class="fa-solid fa-play text-[10px] animate-pulse"></i> WATCH LIVE
+                            </a>
+                        </div>
+
+                        <button id="hero-details-btn" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black border border-emerald-500 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                            <i class="fa-solid fa-circle-info"></i> View Brief
+                        </button>
+                    </div>
+                </div>
+
+                <!-- COUNTDOWN BOX WITH LAUNCH WINDOW -->
+                <div class="bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0 transition-colors duration-500">
+                    <div class="text-[10px] uppercase tracking-[3px] text-zinc-500 font-bold mb-2 text-center w-full">LOCAL COUNTDOWN</div>
+                    <div id="hero-countdown" class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center" translate="no">
+                        <!-- Populated by JS -->
+                    </div>
+                    
+                    <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
+                    
+                    <div class="text-[9px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5">LAUNCH WINDOW</div>
+                    <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500">--:-- - --:--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-end mb-6">
+            <div class="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
+                <div class="relative w-full sm:w-64 md:w-72">
+                    <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-500"></i>
+                    <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions()"
+                           class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
+                </div>
+                <div class="flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 text-xs sm:text-sm w-full sm:w-auto overflow-x-auto hide-scrollbar transition-colors duration-500">
+                    <button onclick="filterByCategory('all')" id="filter-all" class="px-4 py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
+                    <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
+                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starship</button>
+                    <button onclick="filterByCategory('starlink')" id="filter-starlink" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starlink</button>
+                    <button onclick="filterByCategory('dragon')" id="filter-dragon" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Dragon/Crew</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <div class="flex justify-between items-center mb-3">
+                <div>
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
+                        <i class="fa-solid fa-rocket text-emerald-400 text-base"></i> Scheduled Deployments
+                    </h3>
+                    <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Next scheduled upcoming missions</p>
+                </div>
+            </div>
+            <div id="missions-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-2 sm:pt-6">
+                <!-- Skeleton Loader -->
+                <div class="bg-zinc-900/50 border border-zinc-800/60 rounded-3xl p-5 space-y-4 animate-pulse">
+                    <div class="h-40 bg-zinc-800/60 rounded-2xl"></div>
+                    <div class="h-6 bg-zinc-800/60 rounded w-2/3"></div>
+                    <div class="h-4 bg-zinc-800/40 rounded w-full"></div>
+                    <div class="h-10 bg-zinc-800/60 rounded-xl mt-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-14 pt-10 border-t border-zinc-900">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
+                        <i class="fa-solid fa-history text-zinc-400 text-base"></i> Past Year Launches
+                    </h3>
+                    <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing all SpaceX missions from the past 12 months</p>
+                </div>
+                <span class="text-xs text-zinc-500 inline-flex items-center gap-1">
+                    Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
+                </span>
+            </div>
+            
+            <div class="relative">
+                <div id="past-launches-grid" class="flex gap-5 overflow-x-auto pt-2 pb-4 px-1 -mt-2 hide-scrollbar snap-x snap-mandatory">
+                    <div class="py-10 text-center text-zinc-500 w-full">
+                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-emerald-400"></i>
+                        <p>Compiling past year flight logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Official Documentary Section -->
+        <div class="mt-14 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-2">
+                <div>
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                        <i class="fa-solid fa-film text-red-400"></i>
+                        Starship
+                    </h3>
+                    <p class="text-sm text-zinc-400 transition-colors duration-500">Starship documentary series</p>
+                </div>
+                <div class="flex items-center gap-x-4 self-start">
+                    <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
+                        Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
+                    </span>
+                    <a href="https://www.youtube.com/@SpaceX" target="_blank" class="text-xs sm:text-sm flex items-center gap-x-2 text-zinc-400 hover:text-emerald-400 transition-colors">
+                        Watch on YouTube <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="relative -mx-4 px-4 md:mx-0 md:px-0">
+                <div class="flex md:grid md:grid-cols-3 gap-4 md:gap-5 overflow-x-auto pb-4 md:pb-0 hide-scrollbar snap-x snap-mandatory md:overflow-visible">
+                    
+                    <!-- Episode 1 -->
+                    <a href="https://www.youtube.com/watch?v=-a0ecQMq-rM" target="_blank" class="w-[78vw] max-w-[300px] sm:w-[300px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
+                        <img src="https://img.youtube.com/vi/-a0ecQMq-rM/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/-a0ecQMq-rM/hqdefault.jpg'" class="w-full h-40 sm:h-44 object-cover border-b border-zinc-800/80" alt="Episode 1 Cover">
+                        <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-start bg-transparent">
+                            <div class="flex items-center gap-x-2 mb-2.5">
+                                <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE 1 • RELEASED</span>
+                            </div>
+                            <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">Critical Path</h4>
+                            <p class="text-xs text-zinc-400 line-clamp-4">The path to launch is filled with obstacles and success is only possible through the tireless efforts of many working together towards a common goal. “Critical Path” continues the ongoing Starship series, following SpaceX engineers through the final days before launch of the first Starship V3 and the challenges that come with development of the world’s most powerful and fully reusable rocket.</p>
+                        </div>
+                    </a>
+
+                    <!-- Episode 2 -->
+                    <a href="https://www.youtube.com/watch?v=ANe_HW4X8oc" target="_blank" class="w-[78vw] max-w-[300px] sm:w-[300px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
+                        <img src="https://img.youtube.com/vi/ANe_HW4X8oc/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/ANe_HW4X8oc/hqdefault.jpg'" class="w-full h-40 sm:h-44 object-cover border-b border-zinc-800/80" alt="Episode 2 Cover">
+                        <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-start bg-transparent">
+                            <div class="flex items-center gap-x-2 mb-2.5">
+                                <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE 2 • RELEASED</span>
+                            </div>
+                            <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">Test Like You Fly</h4>
+                            <p class="text-xs text-zinc-400 line-clamp-4">Three years since the first flight of Starship, the next generation is here. New ship. New booster. New engines. New pad and new test site. SpaceX engineers are working to solve one of the most difficult engineering challenges in history: developing a fully, rapidly reusable rocket. “Test Like You Fly” launches a series that takes you inside the factories and onto the launch pads where humanity's future in space is unfolding.</p>
+                        </div>
+                    </a>
+
+                    <!-- Episode 3 -->
+                    <div class="w-[78vw] max-w-[300px] sm:w-[300px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-default">
+                        <div class="relative w-full h-40 sm:h-44 border-b border-zinc-800/80">
+                            <img src="https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096" class="w-full h-full object-cover filter grayscale opacity-40" alt="Episode 3 Cover">
+                            <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                <i class="fa-solid fa-lock text-zinc-500 text-2xl animate-pulse"></i>
+                            </div>
+                        </div>
+                        <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-between bg-transparent">
+                            <div>
+                                <div class="flex items-center gap-x-2 mb-2.5">
+                                    <span class="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE 3 • COMING SOON</span>
+                                </div>
+                                <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">Fifth Flight Test</h4>
+                                <p class="text-xs text-zinc-400 mb-3 line-clamp-4">The highly anticipated fifth flight test, targeting the first-ever catch of the Super Heavy booster by the launch tower.</p>
+                            </div>
+                            <div class="text-xs text-zinc-500 font-medium mt-2">Expected late 2026</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID: DID YOU KNOW & STARLINK TRACKER -->
+        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                
+                <!-- Expanded Did You Know Banner -->
+                <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between gap-4 transition-colors duration-500 h-full">
+                    <div class="flex items-start gap-4 sm:gap-5">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                            <i class="fa-solid fa-lightbulb text-2xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0 pt-1">
+                            <div class="text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">Did You Know</div>
+                            <div id="fact-text" class="text-base sm:text-lg text-zinc-200 leading-relaxed font-medium transition-colors duration-500 min-h-[60px]">
+                                Loading interesting fact...
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-2">
+                        <button onclick="showNextFact(true)" class="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-zinc-300 transition-all flex items-center gap-2">
+                            Next Fact <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Starlink Constellation Tracker -->
+                <div class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 transition-colors duration-500 flex flex-col justify-between h-full">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-globe text-cyan-500"></i>
+                        <span class="text-[10px] sm:text-[11px] font-bold tracking-widest text-cyan-500 uppercase">Starlink Constellation</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-end mb-4">
+                        <div>
+                            <div class="text-3xl sm:text-4xl font-bold font-space text-white transition-colors duration-500">~<span id="starlink-count">10,750</span></div>
+                            <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">Active satellites (approx)</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-base sm:text-lg font-mono font-semibold text-emerald-400" id="starlink-rate-text">+60 / week</div>
+                            <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">Deployment rate</div>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden mb-2 transition-colors duration-500">
+                        <div id="starlink-progress" class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-1000 w-[90%]"></div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center text-[10px] sm:text-[11px] text-zinc-500 font-medium">
+                        <span>Gen2 shells</span>
+                        <span id="starlink-percentage">~90% of planned</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- X (TWITTER) TIMELINE -->
+        <div class="mt-10 pt-10 border-t border-zinc-900 flex flex-col items-center notranslate transition-colors duration-500" translate="no">
+            <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 self-start mb-6 text-white transition-colors duration-500">
+                <i class="fa-brands fa-x-twitter"></i>
+                SpaceX Official X Timeline
+            </h3>
+            <div id="x-feed-container" class="hidden md:block w-full max-w-6xl mx-auto bg-zinc-900 border border-zinc-800 p-2 sm:p-4 rounded-3xl min-h-[600px] transition-colors duration-500">
+                <!-- X Feed will load here dynamically -->
+            </div>
+            <div class="md:hidden w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center transition-colors duration-500">
+                <i class="fa-brands fa-x-twitter text-3xl text-zinc-500 mb-3"></i>
+                <p class="text-sm text-zinc-400 mb-4">The full X timeline works best on desktop.<br>On mobile, open SpaceX directly.</p>
+                <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-xl text-sm font-semibold text-zinc-200 transition-all">
+                    Open @SpaceX on X <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="mt-auto py-6 border-t border-zinc-900/60 bg-zinc-950/40 text-center text-xs text-zinc-500 relative z-10 font-space tracking-wide space-y-2 px-4 transition-colors duration-500">
+        <div>© 2026 SpaceX Tracker. All Rights Reserved.</div>
+        <div class="text-[10px] text-zinc-600 max-w-3xl mx-auto italic font-sans">
+            Disclaimer: This website is not affiliated with, authorized, or endorsed by SpaceX (Space Exploration Technologies Corp). All trademarks belong to their respective owners.
+        </div>
+    </footer>
+
+    <!-- Mission Modal -->
+    <div id="mission-modal" onclick="if (event.target.id === 'mission-modal') closeModal()" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto z-[100]">
+        <div id="mission-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div id="modal-name" class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight"></div>
+                    <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
+                </div>
+                <button onclick="closeModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+            </div>
+            
+            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg">
+                    <div id="modal-image"></div>
+                    <div id="modal-live-container" class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 hidden z-30">
+                        <a id="modal-live-link" href="https://x.com/SpaceX" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all shadow-lg animate-pulse">
+                            <i class="fa-solid fa-play text-[9px]"></i> WATCH LIVE
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="flex flex-row gap-3">
+                    <button id="modal-share-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                        <i class="fa-solid fa-share-nodes"></i> Share Mission
+                    </button>
+                    <button id="modal-calendar-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                        <i class="fa-solid fa-calendar-plus"></i> Save to Calendar
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
+                    <div class="cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="const v = document.getElementById('modal-vehicle').innerText; openRocketSpecs(v.toLowerCase().includes('starship')?'starship':(v.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Vehicle Type <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
+                        <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                    <div class="cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Launch Site <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
+                        <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 truncate mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Mission Status</div>
+                        <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Orbit Destination</div>
+                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">LEO (Low Earth Orbit)</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 hover:border-zinc-700 transition-colors duration-500" id="radar-box-click">
+                        <div>
+                            <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
+                                <i class="fa-solid fa-map-location-dot"></i> Telemetry Coordinates
+                            </h5>
+                            <p class="text-[11px] sm:text-xs text-zinc-500" id="modal-pad-coordinate-label">Targeting Base Station</p>
+                        </div>
+                        <div class="relative w-full h-40 bg-zinc-900 border border-zinc-800/60 rounded-xl mt-3 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] transition-colors duration-500">
+                            <svg class="absolute inset-0 w-full h-full p-2 opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800 transition-colors duration-500" viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M132,154 L154,142 L198,154 L244,120 L300,125 L350,105 L450,110 L520,132 L580,120 L680,140 L720,115 L820,140 L880,120 L910,160 L860,240 L840,290 L810,300 L810,340 L830,370 L800,430 L760,430 L750,470 L680,480 L620,440 L530,470 L480,470 L470,510 L440,510 L410,480 L380,480 L360,450 L340,410 L290,410 L250,380 L190,380 L150,340 L110,330 L80,280 L90,240 L110,210 Z" />
+                                <path d="M760,430 L800,430 L830,470 L840,520 L820,550 L800,510 L780,470 Z" />
+                                <path d="M360,450 L380,480 L410,480 L440,510 L470,510 L460,540 L430,560 L410,530 L380,490 Z" />
+                            </svg>
+                            <div id="radar-ping" class="absolute w-4 h-4 -ml-2 -mt-2 transition-all duration-1000 ease-in-out">
+                                <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                                <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border border-white/50 shadow-[0_0_10px_#10b981]"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
+                        <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
+                            <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
+                        </h5>
+                        <div class="flex items-end justify-around h-36 font-mono text-[10px]">
+                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer hover:scale-110 active:scale-95" id="scale-box-falcon" onclick="openRocketSpecs('falcon')">
+                                <svg viewBox="0 0 20 100" class="w-5 h-[70px] transition-all" id="scale-bar-falcon">
+                                    <rect x="7" y="15" width="6" height="75" rx="1" fill="#e4e4e7" stroke="#71717a" stroke-width="0.5"/>
+                                    <path d="M 7 15 C 7 5, 13 5, 13 15 Z" fill="#ffffff" stroke="#71717a" stroke-width="0.5" />
+                                    <rect x="7" y="25" width="6" height="5" fill="#18181b" />
+                                    <line x1="5" y1="28" x2="15" y2="28" stroke="#3f3f46" stroke-width="1" />
+                                    <rect x="9.5" y="45" width="1" height="15" fill="#18181b" opacity="0.4" />
+                                    <path d="M 7 88 L 4 95 M 13 88 L 16 95" stroke="#27272a" stroke-width="1.5" stroke-linecap="round" />
+                                    <rect x="8" y="90" width="4" height="3" fill="#3f3f46" />
+                                </svg>
+                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">Falcon 9</div>
+                                <div class="text-zinc-500 text-[9px]">70m</div>
+                            </div>
+                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer hover:scale-110 active:scale-95" id="scale-box-starship" onclick="openRocketSpecs('starship')">
+                                <svg viewBox="0 0 30 130" class="w-8 h-[120px] transition-all" id="scale-bar-starship">
+                                    <rect x="9" y="65" width="12" height="55" fill="#a1a1aa" stroke="#52525b" stroke-width="0.5"/>
+                                    <rect x="9" y="60" width="12" height="5" fill="#27272a" />
+                                    <rect x="9" y="25" width="12" height="35" fill="#d4d4d8" stroke="#71717a" stroke-width="0.5" />
+                                    <path d="M 9 25 C 9 10, 21 10, 21 25 Z" fill="#d4d4d8" stroke="#71717a" stroke-width="0.5" />
+                                    <path d="M 15 13 C 18 13, 21 20, 21 25 L 21 60 L 15 60 Z" fill="#18181b" opacity="0.8" />
+                                    <path d="M 9 25 L 5 28 L 9 32 Z" fill="#27272a" />
+                                    <path d="M 21 25 L 25 28 L 21 32 Z" fill="#27272a" />
+                                    <path d="M 9 52 L 4 58 L 9 60 Z" fill="#27272a" />
+                                    <path d="M 21 52 L 26 58 L 21 60 Z" fill="#27272a" />
+                                    <rect x="11" y="120" width="8" height="4" fill="#3f3f46" />
+                                </svg>
+                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">Starship</div>
+                                <div class="text-zinc-500 text-[9px]">121m</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KEY FLIGHT MILESTONES & PAYLOAD DATA -->
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                        <h4 class="font-space text-sm sm:text-base font-semibold text-zinc-300 flex items-center gap-x-2">
+                            <i class="fa-solid fa-gears text-sm text-zinc-500"></i>
+                            Key Flight Milestones & Payload Data
+                        </h4>
+                        <button id="modal-trajectory-btn" class="hidden items-center justify-center gap-2 px-4 py-2 bg-zinc-800/80 hover:bg-emerald-500 hover:text-black border border-zinc-700 hover:border-emerald-500 rounded-xl text-xs font-semibold tracking-wide text-zinc-200 transition-all duration-300 shadow-sm">
+                            <i class="fa-solid fa-route"></i> View 3D Trajectory
+                        </button>
+                    </div>
+                    <div id="modal-includes" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm bg-zinc-950 p-4 border border-zinc-800/50 rounded-2xl transition-colors duration-500"></div>
+                </div>
+
+                <!-- MISSION OBJECTIVES & SIGNIFICANCE -->
+                <div class="space-y-4">
+                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
+                        <i class="fa-solid fa-crosshairs text-sm"></i>
+                        Mission Objectives & Strategic Significance
+                    </h4>
+                    <p id="modal-description-detailed" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500"></p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Rocket Modal -->
+    <div id="rocket-modal" onclick="if (event.target.id === 'rocket-modal') closeRocketModal()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
+        <div id="rocket-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.15)] my-auto transition-colors duration-500">
+            <div class="px-6 py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div id="rocket-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE SPECIFICATION</div>
+                </div>
+                <button onclick="closeRocketModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
+                    <img id="rocket-modal-img" src="" class="w-full h-full object-cover" alt="Vehicle">
+                    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none"></div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Height</div>
+                        <div id="rocket-modal-height" class="text-xs sm:base font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Thrust</div>
+                        <div id="rocket-modal-thrust" class="text-xs sm:base font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Payload LEO</div>
+                        <div id="rocket-modal-payload" class="text-xs sm:base font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
+                    <p id="rocket-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Site Modal -->
+    <div id="site-modal" onclick="if (event.target.id === 'site-modal') closeLaunchSiteModal()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
+        <div id="site-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div id="site-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">SPACEPORT FACILITY DOSSIER</div>
+                </div>
+                <button onclick="closeLaunchSiteModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
+                    <img id="site-modal-img" src="" class="w-full h-full object-cover" alt="Launch Facility">
+                    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none"></div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Global Coordinates</div>
+                        <div id="site-modal-coords" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Primary Fleet</div>
+                        <div id="site-modal-fleet" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Operational Profile</h4>
+                    <p id="site-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userTimezone = 'Asia/Jerusalem';
+        try {
+            userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jerusalem';
+        } catch (e) {}
+
+        console.warn = function() {};
+
+        function toggleTheme() {
+            const body = document.body;
+            const doc = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            
+            body.classList.toggle('light-theme');
+            doc.classList.toggle('light-theme');
+            
+            if (body.classList.contains('light-theme')) {
+                if(icon) {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+                localStorage.setItem('spacex-theme', 'light');
+            } else {
+                if(icon) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                }
+                localStorage.setItem('spacex-theme', 'dark');
+            }
+            
+            refreshXTwitterFeed();
+        }
+
+        function initThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            if (document.body.classList.contains('light-theme')) {
+                if(icon) {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            }
+        }
+
+        function generateProceduralStars() {
+            const container = document.getElementById('stars-background');
+            if (!container) return;
+            const starCount = 60;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 2 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
+                container.appendChild(star);
+            }
+        }
+
+        function updateClock() {
+            const el = document.getElementById('live-clock');
+            const tzEl = document.getElementById('live-timezone');
+            try {
+                const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(new Date());
+                const shortTz = parts.find(p => p.type === 'timeZoneName')?.value || 'LOCAL';
+                tzEl.innerHTML = shortTz;
+                tzEl.title = `Your local time (${userTimezone})`;
+            } catch (e) { 
+                tzEl.innerHTML = "LOCAL"; 
+                tzEl.title = "Your local time";
+            }
+
+            const tick = () => {
+                try {
+                    el.innerHTML = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: userTimezone });
+                } catch(e) {
+                    el.innerHTML = new Date().toLocaleTimeString('en-US');
+                }
+            };
+            setInterval(tick, 1000);
+            tick();
+        }
+
+        function registerMissionNotification(id, name, dateStr) {
+            if (!("Notification" in window)) return;
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    const launchTime = new Date(dateStr).getTime();
+                    const notifyTime = launchTime - (10 * 60 * 1000);
+                    const delay = notifyTime - Date.now();
+                    if (delay <= 0) return;
+                    setTimeout(() => {
+                        new Notification("SpaceX Tracker • Launch Warning", {
+                            body: `${name} is lifting off in 10 minutes!`,
+                            icon: "https://www.spacex.com/static/images/share.jpg"
+                        });
+                    }, delay);
+                }
+            });
+        }
+
+        const FALLBACK_IMAGES = {
+            starship: "https://cdn.mos.cms.futurecdn.net/rJfDYZCkZHCgsNTJQ3cjs5-1200-80.jpg", 
+            starlink: "https://everydayastronaut.com/wp-content/uploads/2019/11/starlink2.jpg",
+            falcon: "https://wp.technologyreview.com/wp-content/uploads/2024/07/AP24191572534430.jpg?w=3000",
+            falcon_heavy: "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg",
+            dragon: "https://s.w-x.co/nasas-spacex-crew-12-rocket_0.webp?format=auto&optimize=medium&width=1600&quality=60",
+            vandenberg: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiaqeG_lyxoLQjmQKwPVJyerJwpKr-Ngj-5Di6yihsBR45pKUcJwkpqvaG&s=10"
+        };
+
+        const masterFacts = [
+            "SpaceX has landed Falcon 9 boosters more than 300 times. Reusability is no longer experimental — it is the standard.",
+            "The Falcon rocket family is named after the 'Millennium Falcon' from Star Wars.",
+            "SpaceX manufactures approximately 80% of its rocket components entirely in-house.",
+            "The recovery ships ('Just Read the Instructions', 'Of Course I Still Love You') are named after sentient starships in Iain M. Banks' 'Culture' sci-fi novels.",
+            "In September 2008, Falcon 1 became the first privately developed liquid-propellant rocket to reach Earth orbit.",
+            "The Merlin 1D engine has one of the highest thrust-to-weight ratios of any rocket engine ever made, exceeding 150:1.",
+            "Starship is constructed from 30X-series stainless steel, chosen because it maintains strength at cryogenic temperatures and survives atmospheric reentry.",
+            "Starlink currently represents over 50% of all active satellites in low Earth orbit.",
+            "The Super Heavy booster is powered by 33 Raptor engines, generating more than twice the thrust of the Saturn V rocket.",
+            "In March 2017, SpaceX successfully launched and landed a Falcon 9 booster that had already flown to space before—a historic first.",
+            "SpaceX's IVA spacesuits are custom-made and plug directly into the Crew Dragon seats to provide communications, cooling, and pressurization.",
+            "Unlike Falcon 9's kerosene, Starship's Raptor engines burn liquid methane and liquid oxygen, chosen because methane can be synthesized on Mars.",
+            "SpaceX used to try catching falling payload fairings with giant nets mounted on ships before switching to simpler water recovery.",
+            "The nine Merlin engines on a Falcon 9 are arranged in an 'Octaweb' pattern for better stress distribution and survivability.",
+            "In 2012, Dragon became the first commercial spacecraft to deliver cargo to the International Space Station.",
+            "Before it was known as 'Starbase', the development facility in South Texas was a quiet, remote village called Boca Chica.",
+            "Before landing orbital rockets, SpaceX tested propulsive landings with a prototype called 'Grasshopper', which hopped up to 744 meters.",
+            "On May 30, 2020, SpaceX became the first private company to launch humans into orbit, ending a 9-year drought for US human spaceflight.",
+            "When Falcon Heavy debuted in 2018, it was the most powerful operational rocket in the world by a factor of two.",
+            "The dummy payload for Falcon Heavy's maiden flight was Elon Musk's personal Tesla Roadster, driven by a mannequin named 'Starman'.",
+            "The hypersonic titanium grid fins on Falcon 9 boosters are used to steer the rocket during its descent back through the Earth's atmosphere.",
+            "SpaceX holds the record for the fastest turnaround time of an orbital class rocket booster, landing and relaunching the same booster in just 21 days.",
+            "Newer generation Starlink satellites use optical space lasers to route data between each other without needing to bounce signals off ground stations.",
+            "The Raptor engine is the first full-flow staged combustion cycle engine ever to fly.",
+            "To increase payload capacity, Starship uses 'Hot-Staging'—igniting the upper stage engines while still attached to the Super Heavy booster.",
+            "SpaceX operates from historic Launch Complex 39A at Kennedy Space Center, the exact same pad used for the Apollo Moon missions.",
+            "Elon Musk founded SpaceX in 2002 with the ultimate goal of reducing space transportation costs and enabling the colonization of Mars.",
+            "The Crew Dragon's heat shield is made of PICA-X, capable of withstanding lunar return velocities.",
+            "SpaceX occasionally launches rockets from Vandenberg Space Force Base because it allows for direct trajectories into polar orbits.",
+            "Launches from Vandenberg are famously often obscured by dense coastal marine layer fog.",
+            "Unlike Falcon 9 which lands on legs, the Starship Super Heavy booster is designed to be caught mid-air by the launch tower's 'Chopstick' arms.",
+            "Early Falcon 9 grid fins were made of aluminum but kept catching fire during reentry, prompting the switch to cast titanium.",
+            "The first three flights of Falcon 1 failed. The fourth and final funded attempt succeeded, saving the company from bankruptcy.",
+            "The Falcon Heavy rocket can perform a synchronized double landing of its two side boosters.",
+            "The Sabatier reaction can theoretically combine Martian atmospheric CO2 with subsurface water ice to create rocket fuel on Mars.",
+            "Many fan trackers use 3D visualization tools like Flight Club to plot SpaceX telemetry and predict landing trajectories.",
+            "Despite the name 'Mini', Starlink V2 Mini satellites are actually much larger and heavier than Gen 1 satellites.",
+            "SpaceX's 'Smallsat Rideshare' program groups dozens of tiny satellites from different companies onto a single Falcon 9.",
+            "The Dragon spacecraft was named after 'Puff, the Magic Dragon', initially a nod to critics who thought SpaceX's goals were impossible.",
+            "A Falcon 9 first stage booster is roughly the height of a 15-story building.",
+            "SpaceX was the first private company to successfully launch, orbit, and recover a spacecraft.",
+            "The Falcon 9 uses TEA-TEB (Triethylaluminum-Triethylborane) to ignite its engines, which produces a distinctive green flash at liftoff.",
+            "SpaceX’s drone ships maintain their position in the ocean using a series of azimuthing thrusters, without needing to drop an anchor.",
+            "Crew Dragon's touchscreen displays can be operated even while astronauts are wearing their pressurized spacesuit gloves.",
+            "To prevent acoustic shockwaves from destroying the rocket, SpaceX floods the launch pad with massive amounts of water during liftoff.",
+            "The fairing halves of a Falcon rocket have their own cold gas thrusters to orient themselves as they fall back to Earth.",
+            "SpaceX's Raptor engine chamber pressure is so high it routinely breaks the records set by the legendary Russian RD-180 engine.",
+            "Crew Dragon has a toilet onboard, located near the top of the capsule with a privacy curtain.",
+            "The 'boostback burn' is only performed when the booster needs to return to the launch site; otherwise, it relies on an ocean drone ship.",
+            "SpaceX paints the interstage of the Falcon 9 black to hide the soot that accumulates there during reentry and engine firing.",
+            "The Starship program is based heavily on rapid iterative prototyping—building and testing vehicles until they fail to learn limits.",
+            "SpaceX has completely eliminated the need for explosive bolts in payload separation, using pneumatic pushers instead to reduce debris.",
+            "The first privately funded spacecraft to dock with the ISS was a SpaceX Dragon in May 2012.",
+            "Falcon Heavy’s side boosters are often heavily modified Falcon 9 first stages that have flown previously.",
+            "SpaceX spacesuits are technically classified as 'pressure suits' rather than extravehicular mobility units (EMUs), as they are meant for inside the capsule.",
+            "Starship's heat shield tiles are mechanically attached rather than glued, allowing for easier replacement and maintenance.",
+            "Starlink internet relies on phased array antennas in the user terminals, meaning they steer the signal electronically without moving parts.",
+            "SpaceX achieved over 90 successful launches in a single calendar year (2023), averaging a launch every four days.",
+            "The Dragon capsule uses Draco thrusters for attitude control and orbital maneuvering.",
+            "A fully fueled Starship stack weighs approximately 11 million pounds at liftoff.",
+            "SpaceX originally planned a propulsive landing system for Dragon 2 using landing legs that would deploy through the heat shield.",
+            "The Falcon 1 rocket was completely designed and built from scratch by SpaceX, bypassing legacy aerospace contractors.",
+            "The 'SpaceX Launch Control' audio countdown is famously voiced by multiple engineers, rather than a single dedicated public relations officer.",
+            "The Merlin engine is so efficient that its design has remained largely unchanged fundamentally since the Block 5 upgrade.",
+            "Starship uses a 'skydive' reentry method to scrub off speed aerodynamically without needing a massive parachute system.",
+            "Before every launch, a static fire test is conducted where the engines are ignited while the rocket is held firmly to the pad.",
+            "Starlink satellites are designed to completely burn up in the Earth's atmosphere upon retirement, leaving zero space debris.",
+            "SpaceX’s Hawthorne factory used to be a Boeing 747 fuselage manufacturing plant before Elon Musk bought it.",
+            "The Cargo Dragon is the only cargo spacecraft capable of bringing delicate scientific experiments back from the ISS intact.",
+            "Super Heavy boosters use electric thrust vector control instead of traditional hydraulic systems to steer the engines.",
+            "SpaceX has launched classified payloads for the National Reconnaissance Office (NRO) and the US Space Force.",
+            "The term 'Max-Q' heard during every launch broadcast refers to the moment of maximum dynamic pressure on the rocket's structure.",
+            "Falcon 9’s second stage cannot be reused; it either stays in orbit or is directed to burn up in the atmosphere.",
+            "SpaceX engineers use a specialized welding technique called friction stir welding to seamlessly join the aluminum-lithium tanks of Falcon 9.",
+            "The Starship upper stage features forward and aft 'flaps', which act more like limbs for aerodynamic control rather than traditional airplane wings.",
+            "Every Starlink satellite contains an automated collision avoidance system that uses Department of Defense tracking data.",
+            "SpaceX occasionally streams live views from onboard cameras located inside the liquid oxygen tanks.",
+            "The launch tower at Starbase is affectionately known by fans and staff as 'Mechazilla'.",
+            "SpaceX's spacesuits are famously designed by a Hollywood costume designer to ensure they look modern and heroic.",
+            "The very first launch of Falcon Heavy required all 27 engines to ignite in a perfectly staggered sequence to avoid tearing the rocket apart."
+        ];
+
+        let weeklyFacts = [];
+        let currentFactIndex = 0;
+        let factIntervalId = null;
+
+        function initDidYouKnow() {
+            const currentWeek = Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7));
+            const factsPerWeek = 40; 
+            const totalChunks = Math.floor(masterFacts.length / factsPerWeek);
+            const chunkIndex = currentWeek % totalChunks;
+            
+            const startIndex = chunkIndex * factsPerWeek;
+            const endIndex = startIndex + factsPerWeek;
+            
+            weeklyFacts = masterFacts.slice(startIndex, endIndex);
+            if(weeklyFacts.length === 0) weeklyFacts = masterFacts.slice(0, factsPerWeek);
+
+            currentFactIndex = 0;
+            renderCurrentFact();
+
+            if (factIntervalId) clearInterval(factIntervalId);
+            factIntervalId = setInterval(() => {
+                showNextFact(false); 
+            }, 15 * 60 * 1000);
+        }
+
+        function showNextFact(isManual = false) {
+            currentFactIndex = (currentFactIndex + 1) % weeklyFacts.length;
+            renderCurrentFact();
+            
+            if (isManual && factIntervalId) {
+                clearInterval(factIntervalId);
+                factIntervalId = setInterval(() => {
+                    showNextFact(false);
+                }, 15 * 60 * 1000);
+            }
+        }
+
+        function renderCurrentFact() {
+            const factEl = document.getElementById('fact-text');
+            if(factEl && weeklyFacts.length > 0) {
+                factEl.style.opacity = 0;
+                setTimeout(() => {
+                    factEl.innerText = weeklyFacts[currentFactIndex];
+                    factEl.style.opacity = 1;
+                }, 250); 
+            }
+        }
+
+        function updateStarlinkStats() {
+            const baseDate = new Date('2026-07-01T00:00:00Z').getTime();
+            const baseCount = 10759; 
+            
+            let starlinkLaunches30Days = 0;
+            const now = Date.now();
+            const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+            
+            rawPastMissions.forEach(m => {
+                if (m.category === 'starlink' && new Date(m.date).getTime() > thirtyDaysAgo) {
+                    starlinkLaunches30Days++;
+                }
+            });
+
+            if (starlinkLaunches30Days === 0) starlinkLaunches30Days = 4; 
+
+            const satsPerMonth = starlinkLaunches30Days * 22;
+            const deploymentRatePerWeek = Math.round(satsPerMonth / 4.33);
+            
+            const dailyRate = deploymentRatePerWeek / 7;
+            const daysSinceBase = Math.max(0, (now - baseDate) / (1000 * 60 * 60 * 24));
+            
+            const currentEstimatedCount = Math.floor(baseCount + (daysSinceBase * dailyRate));
+            
+            const targetGen2 = 12000;
+            const percentage = Math.min(100, (currentEstimatedCount / targetGen2) * 100).toFixed(1);
+
+            const countEl = document.getElementById('starlink-count');
+            const rateEl = document.getElementById('starlink-rate-text');
+            const progEl = document.getElementById('starlink-progress');
+            const percEl = document.getElementById('starlink-percentage');
+
+            if(countEl) countEl.innerText = currentEstimatedCount.toLocaleString();
+            if(rateEl) rateEl.innerText = `+${deploymentRatePerWeek} / week`;
+            if(progEl) progEl.style.width = `${percentage}%`;
+            if(percEl) percEl.innerText = `~${Math.round(percentage)}% of planned`;
+        }
+
+        let dbMissions = [];
+        let rawPastMissions = [];
+        let upcomingForGrid = [];
+        let currentFilter = 'all';
+        let countdownIntervals = [];
+        let refreshIntervalId = null;
+
+        function refreshXTwitterFeed() {
+            const container = document.getElementById('x-feed-container');
+            if (!container) return;
+            
+            const isLight = document.body.classList.contains('light-theme');
+            const themeStr = isLight ? 'light' : 'dark';
+            
+            container.innerHTML = ''; 
+            
+            const a = document.createElement('a');
+            a.className = "twitter-timeline notranslate";
+            a.setAttribute("translate", "no");
+            a.setAttribute("data-theme", themeStr);
+            a.setAttribute("data-width", "100%");
+            a.setAttribute("data-height", "600");
+            a.setAttribute("data-chrome", "noheader nofooter noborders transparent");
+            a.href = "https://twitter.com/SpaceX?ref_src=twsrc%5Etfw";
+            a.innerText = "Tweets by SpaceX";
+            container.appendChild(a);
+            
+            if (window.twttr && window.twttr.widgets) {
+                window.twttr.widgets.load(container);
+            } else if (!document.getElementById('twitter-wjs')) {
+                const s = document.createElement('script');
+                s.id = 'twitter-wjs';
+                s.async = true;
+                s.src = "https://platform.twitter.com/widgets.js";
+                s.charset = "utf-8";
+                document.body.appendChild(s);
+            }
+        }
+
+        async function fetchLiveLaunches() {
+            try {
+                const fetchUpcomingWithFallback = async () => {
+                    try {
+                        const res = await fetch('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15');
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.results && data.results.length > 0) return data.results;
+                        }
+                    } catch (e) {}
+                    
+                    try {
+                        const fbRes = await fetch('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60');
+                        if (fbRes.ok) {
+                            const fbData = await fbRes.json();
+                            if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
+                        }
+                    } catch (e) {}
+
+                    try {
+                        const fb2Res = await fetch('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15');
+                        if (fb2Res.ok) {
+                            const fb2Data = await fb2Res.json();
+                            return fb2Data.results || [];
+                        }
+                    } catch (e) {}
+                    
+                    return []; 
+                };
+
+                const fetchPreviousWithFallback = async () => {
+                    try {
+                        const res = await fetch(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.results && data.results.length > 0) return data.results;
+                        }
+                    } catch (e) {}
+
+                    try {
+                        const fbRes = await fetch(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100`);
+                        if (fbRes.ok) {
+                            const fbData = await fbRes.json();
+                            if (fbData.results && fbData.results.length > 0) return fbData.results;
+                        }
+                    } catch (e) {}
+                    
+                    return [];
+                };
+
+                let [upcomingRaw, previousRaw] = await Promise.all([
+                    fetchUpcomingWithFallback(),
+                    fetchPreviousWithFallback()
+                ]);
+
+                processLaunchData([...(upcomingRaw || []), ...(previousRaw || [])]);
+                
+            } catch (error) {
+                processLaunchData([]);
+            }
+        }
+
+        function updateRefreshSchedule() {
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+                refreshIntervalId = null;
+            }
+
+            let intervalMs = 5 * 60 * 1000; 
+
+            if (dbMissions.length > 0) {
+                const next = dbMissions[0];
+                const launchTime = new Date(next.date).getTime();
+                const now = Date.now();
+                const diffMs = launchTime - now;
+
+                if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
+                    intervalMs = 2 * 60 * 1000; 
+                }
+            }
+
+            refreshIntervalId = setInterval(() => {
+                fetchLiveLaunches();
+            }, intervalMs);
+        }
+
+        function processLaunchData(combinedRawData) {
+            let combinedRawMissions = [];
+            let seenIds = new Set(); 
+
+            if (combinedRawData && combinedRawData.length > 0) {
+                combinedRawData.forEach((launch, index) => {
+                    if (launch && launch.id && !seenIds.has(launch.id)) {
+                        seenIds.add(launch.id);
+                        let mapped = mapLaunchToSchema(launch, index);
+                        combinedRawMissions.push(mapped);
+                    }
+                });
+            }
+
+            dbMissions = [];
+            rawPastMissions = [];
+
+            combinedRawMissions = combinedRawMissions.filter(m => {
+                const nameLower = m.name.toLowerCase();
+                const vehicleLower = m.vehicle.toLowerCase();
+                const descLower = m.description.toLowerCase();
+                const siteLower = m.site.toLowerCase();
+                
+                return nameLower.includes("spacex") || nameLower.includes("starlink") || nameLower.includes("starship") || nameLower.includes("falcon") || nameLower.includes("dragon") || nameLower.includes("crew") || nameLower.includes("mrv-mep") ||
+                       vehicleLower.includes("spacex") || vehicleLower.includes("starship") || vehicleLower.includes("falcon") || vehicleLower.includes("dragon") || vehicleLower.includes("crew") ||
+                       descLower.includes("spacex") || siteLower.includes("starbase");
+            });
+
+            combinedRawMissions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const now = new Date();
+            const flightWindowMs = 90 * 60 * 1000; 
+
+            for (let i = 0; i < combinedRawMissions.length; i++) {
+                let m = combinedRawMissions[i];
+                const launchTime = new Date(m.date).getTime();
+                const diff = now.getTime() - launchTime; 
+                const statusLower = m.status.toLowerCase();
+                
+                let isPast = false;
+
+                if (diff > flightWindowMs) {
+                    isPast = true; 
+                } else if (diff >= 0 && diff <= flightWindowMs) {
+                    let hasCollision = false;
+                    for (let j = 0; j < combinedRawMissions.length; j++) {
+                        if (m.id === combinedRawMissions[j].id) continue;
+                        let nextTime = new Date(combinedRawMissions[j].date).getTime();
+                        let otherStatus = combinedRawMissions[j].status.toLowerCase();
+                        
+                        if (nextTime > launchTime + (5 * 60 * 1000) && nextTime <= launchTime + flightWindowMs) {
+                            if (!otherStatus.includes('tbd') && !otherStatus.includes('tbc') && !otherStatus.includes('hold')) {
+                                hasCollision = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (hasCollision) {
+                        isPast = true; 
+                    } else {
+                        isPast = false; 
+                    }
+                } else {
+                    isPast = false; 
+                }
+
+                if (diff > 24 * 60 * 60 * 1000 && (statusLower.includes("tbd") || statusLower.includes("tbc") || statusLower.includes("hold"))) {
+                    isPast = true;
+                }
+
+                if (isPast) {
+                    if (statusLower.includes("hold") || statusLower.includes("review") || statusLower.includes("delay")) {
+                        m.status = "Delayed / Under Review";
+                    } else {
+                        m.status = "Completed";
+                    }
+                    rawPastMissions.push(m);
+                } else {
+                    if (diff >= 0 && diff <= flightWindowMs && !statusLower.includes("hold") && !statusLower.includes("review") && !statusLower.includes("delay")) {
+                        m.status = "In Progress";
+                    } else if (statusLower.includes("hold") || statusLower.includes("review") || statusLower.includes("delay") || statusLower.includes("tbd") || statusLower.includes("tbc")) {
+                        m.status = "Delayed / Under Review";
+                    }
+                    dbMissions.push(m);
+                }
+            }
+
+            dbMissions.sort((a, b) => new Date(a.date) - new Date(b.date));
+            rawPastMissions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            dbMissions = dbMissions.slice(0, 7);
+            
+            document.getElementById('upcoming-count').innerText = dbMissions.length;
+
+            setupHeroBanner();
+            
+            upcomingForGrid = dbMissions.slice(1, 7);
+            renderMissions(upcomingForGrid);
+            
+            renderPastMissions(rawPastMissions);
+
+            updateRefreshSchedule();
+            updateStarlinkStats();
+        }
+
+        function generateDetailedMissionPurpose(name, category, description, vehicle) {
+            const isStarlink = category === 'starlink';
+            const isStarship = category === 'starship';
+            const isDragon = category === 'dragon';
+            
+            let detailedAnalysis = "";
+            let coreObjectives = [];
+
+            if (isStarship) {
+                detailedAnalysis = `This flight marks a pivotal evolution in deep space exploration, deploying the newly optimized **Starship V3 platform**. Standing taller and featuring enhanced propellant capacity, this configuration expands our capabilities exponentially. Every successful checkpoint brings humanity closer to Mars Architecture.`;
+                coreObjectives = ["Validate upgraded Raptor v3 engine thrust vectors","Conduct Hot-Staging rings separation thermal stress tests","Execute precision launchpad booster recovery sequence","Verify payload dispenser mechanics in vacuum","Gather crucial heat shield tile ablation data during re-entry"];
+            } else if (isStarlink) {
+                detailedAnalysis = `A key deployment targeting global communications infrastructure. By expanding the **Starlink constellation**, this mission focuses on filling orbital shell gaps, lowering regional network latency, and expanding coverage capabilities globally.`;
+                coreObjectives = ["Deploy Starlink V2 Mini high-capacity satellites","Establish active laser cross-links between orbital nodes","Execute precise first-stage recovery on autonomous drone ship","Boost global high-speed Internet constellation bandwidth"];
+            } else if (isDragon) {
+                detailedAnalysis = `Crew or cargo transport mission to the International Space Station using the **Crew Dragon** or **Cargo Dragon** spacecraft.`;
+                coreObjectives = ["Rendezvous and docking with ISS","Crew/cargo transfer operations","Safe re-entry and splashdown/recovery"];
+            } else {
+                detailedAnalysis = `An essential orbital logistics mission using the battle-tested **Falcon 9 workhorse**. This profile delivers commercial, scientific, or institutional hardware directly to designated orbits.`;
+                coreObjectives = ["Satisfy precision orbital insertion parameters for active payload","Execute controlled retroburn of the Falcon 9 second stage","Conduct automated autonomous landing sequence for recovery","Provide low-cost, ultra-reliable access to orbit"];
+            }
+
+            if (description && description.length > 30) {
+                detailedAnalysis += `\n\n**Payload Info:** ${description}`;
+            }
+
+            return { analysis: detailedAnalysis, objectives: coreObjectives };
+        }
+
+        function mapLaunchToSchema(launch, id) {
+            const vehicleName = typeof launch.rocket === 'string' ? launch.rocket : (launch.rocket?.configuration?.full_name || "SpaceX Rocket");
+            
+            let padNameRaw = "SpaceX Launch Pad";
+            let locNameRaw = "";
+            
+            if (typeof launch.pad === 'string') {
+                padNameRaw = launch.pad;
+            } else if (launch.pad) {
+                padNameRaw = launch.pad.name || "SpaceX Launch Pad";
+                locNameRaw = launch.pad.location?.name || "";
+            }
+
+            let displaySite = padNameRaw;
+            if (locNameRaw) {
+                let shortLoc = locNameRaw.split(',')[0].trim();
+                let shortPad = padNameRaw.replace('Space Launch Complex ', 'SLC-').replace('Launch Complex ', 'LC-');
+                displaySite = `${shortPad}, ${shortLoc}`;
+            }
+            
+            const siteLower = displaySite.toLowerCase();
+            const nameLower = String(launch.name || "").toLowerCase();
+            const missionDesc = launch.mission_description || launch.mission?.description || "SpaceX operational launch deployment mission.";
+            const descLower = missionDesc.toLowerCase();
+            
+            let category = 'falcon';
+            let vLower = vehicleName.toLowerCase();
+            let nLower = nameLower;
+            
+            if (vLower.includes('starship') || nLower.includes('starship flight') || nLower.includes('ift-')) {
+                category = 'starship';
+            } else if (vLower.includes('heavy') || nLower.includes('falcon heavy')) {
+                category = 'falcon_heavy';
+            } else if (vLower.includes('dragon') || nLower.includes('dragon') || nLower.includes('crew') || nLower.includes('polaris')) {
+                category = 'dragon';
+            } else if (nLower.includes('starlink') || nLower.includes('starshield') || nLower.includes('starfall')) {
+                category = 'starlink';
+            } else {
+                category = 'falcon';
+            }
+
+            // פה הוסר הדריסה (override) השגויה ששמה את תמונת וונדנברג בתמונה הראשית
+            let launchImage = FALLBACK_IMAGES[category] || FALLBACK_IMAGES.falcon;
+
+            let computedStatus = typeof launch.status === 'string' ? launch.status : (launch.status?.name || "Go for Launch");
+
+            let tzCode = "Local Time";
+            try {
+                const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(new Date());
+                tzCode = parts.find(p => p.type === 'timeZoneName')?.value || "Local Time";
+            } catch(e) {}
+
+            let windowStr = "Targeted Timeline";
+            let windowStartStr = "--:--";
+            let windowEndStr = "--:--";
+            
+            if (launch.window_start && launch.window_end) {
+                try {
+                    const fullOpts = { hour: '2-digit', minute: '2-digit', timeZone: userTimezone, hour12: false };
+                    const timeStart = new Date(launch.window_start).toLocaleTimeString('en-US', fullOpts);
+                    const timeEnd = new Date(launch.window_end).toLocaleTimeString('en-US', fullOpts);
+                    
+                    windowStartStr = timeStart;
+                    windowEndStr = timeEnd;
+                    
+                    if (timeStart !== timeEnd) {
+                        windowStr = `${timeStart} - ${timeEnd} (${tzCode})`;
+                    } else {
+                        windowStr = `${timeStart} (${tzCode})`;
+                    }
+                } catch(e) {}
+            }
+
+            let liveStreamUrl = "";
+            if (typeof launch.webcast_url === 'string' && launch.webcast_url.trim() !== '') {
+                liveStreamUrl = launch.webcast_url;
+            } else if (Array.isArray(launch.webcast_url) && launch.webcast_url.length > 0) {
+                liveStreamUrl = launch.webcast_url[0];
+            } else if (launch.vid_urls && launch.vid_urls.length > 0) {
+                liveStreamUrl = launch.vid_urls[0].url;
+            } else if (launch.vidurls && launch.vidurls.length > 0) {
+                liveStreamUrl = launch.vidurls[0].url;
+            }
+
+            const details = generateDetailedMissionPurpose(launch.name || "SpaceX Mission", category, missionDesc, vehicleName);
+
+            return {
+                id: launch.id || id,
+                name: launch.name || "SpaceX Mission",
+                date: launch.net || new Date().toISOString(),
+                window: windowStr,
+                windowStart: windowStartStr,
+                windowEnd: windowEndStr,
+                site: displaySite,
+                siteLower: siteLower,
+                vehicle: vehicleName,
+                status: computedStatus,
+                category: category,
+                description: missionDesc,
+                detailedAnalysis: details.analysis,
+                objectives: details.objectives,
+                image: launchImage,
+                liveUrl: liveStreamUrl
+            };
+        }
+
+        function setupHeroBanner() {
+            const heroBanner = document.getElementById('hero-banner');
+            if (dbMissions.length > 0) {
+                const nextLaunch = dbMissions[0];
+                document.getElementById('hero-name').innerText = nextLaunch.name;
+                
+                let dateStr = 'TBD';
+                try {
+                    dateStr = new Date(nextLaunch.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                } catch(e) {}
+                
+                document.getElementById('hero-details-text').innerText = `${dateStr} • ${nextLaunch.site}`;
+                fetchLiveWeather(nextLaunch.siteLower);
+
+                let winText = `${nextLaunch.windowStart} - ${nextLaunch.windowEnd}`;
+                if (nextLaunch.windowStart === nextLaunch.windowEnd) winText = `${nextLaunch.windowStart} (Instant)`;
+                document.getElementById('hero-window').innerText = winText;
+
+                const liveBox = document.getElementById('hero-live-container');
+                const liveLink = document.getElementById('hero-live-link');
+                
+                if (liveBox && liveLink) {
+                    const now = new Date();
+                    const launchDate = new Date(nextLaunch.date);
+                    const hoursUntilLaunch = (launchDate - now) / (1000 * 60 * 60);
+
+                    liveLink.href = "https://x.com/SpaceX";
+                    
+                    if (hoursUntilLaunch <= 24 && hoursUntilLaunch >= -2) {
+                        liveBox.classList.remove('hidden');
+                    } else {
+                        liveBox.classList.add('hidden');
+                    }
+                }
+
+                const heroImg = document.getElementById('hero-image');
+                if (heroImg) {
+                    heroImg.src = nextLaunch.image;
+                    heroImg.onerror = function() {
+                        this.src = FALLBACK_IMAGES[nextLaunch.category] || FALLBACK_IMAGES.falcon;
+                    };
+                }
+
+                const detailsBtn = document.getElementById('hero-details-btn');
+                if (detailsBtn) {
+                    detailsBtn.onclick = () => openMissionModal(nextLaunch);
+                }
+
+                heroBanner.classList.remove('hidden');
+                updateHeroCountdown(nextLaunch.date, nextLaunch.status);
+            } else {
+                heroBanner.classList.add('hidden');
+            }
+        }
+
+        async function fetchLiveWeather(siteLower) {
+            const weatherEl = document.getElementById('hero-weather');
+            if (!weatherEl) return;
+            
+            let lat = 28.5623, lon = -80.5773; 
+            if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('pad 2')) {
+                lat = 25.9973; lon = -97.1556; 
+            } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4') || siteLower.includes('california') || siteLower.includes('pacific')) {
+                lat = 34.6321; lon = -120.6106; 
+            } else if (siteLower.includes('kennedy') || siteLower.includes('lc-39a') || siteLower.includes('ksc')) { 
+                lat = 28.6083; lon = -80.6041; 
+            }
+            
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`);
+                const data = await res.json();
+                if (data && data.current) {
+                    const tempC = data.current.temperature_2m;
+                    const tempF = Math.round((tempC * 9/5) + 32);
+                    const code = data.current.weather_code;
+                    
+                    let icon = 'fa-cloud-sun';
+                    let desc = 'Partly Cloudy';
+                    
+                    if (code === 0) { icon = 'fa-sun'; desc = 'Clear'; }
+                    else if (code >= 1 && code <= 3) { icon = 'fa-cloud-sun'; desc = 'Partly Cloudy'; }
+                    else if (code >= 45 && code <= 48) { icon = 'fa-smog'; desc = 'Fog'; }
+                    else if (code >= 51 && code <= 67) { icon = 'fa-cloud-showers-heavy'; desc = 'Rain'; }
+                    else if (code >= 95) { icon = 'fa-cloud-bolt'; desc = 'Storm'; }
+                    
+                    weatherEl.innerHTML = `<i class="fa-solid ${icon} text-emerald-400"></i> ${desc} • ${tempF}°F`;
+                }
+            } catch (err) {
+                let defaultTemp = "78°F";
+                let defaultIcon = "fa-cloud-sun";
+                let defaultDesc = "Partly Cloudy";
+
+                if (siteLower.includes('starbase') || siteLower.includes('texas')) {
+                    defaultTemp = "84°F";
+                    defaultIcon = "fa-sun";
+                    defaultDesc = "Clear";
+                } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4')) {
+                    defaultTemp = "62°F";
+                    defaultIcon = "fa-smog";
+                    defaultDesc = "Fog";
+                }
+                weatherEl.innerHTML = `<i class="fa-solid ${defaultIcon} text-emerald-400"></i> ${defaultDesc} • ${defaultTemp}`;
+            }
+        }
+
+        function renderMissions(filteredMissions) {
+            const grid = document.getElementById('missions-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            countdownIntervals.forEach(clearInterval);
+            countdownIntervals = [];
+
+            if (filteredMissions.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500">No matching upcoming launches found.</div>`;
+                return;
+            }
+            
+            filteredMissions.forEach((m, idx) => {
+                let dateStr = 'Upcoming';
+                try {
+                    dateStr = new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: userTimezone });
+                } catch(e) {}
+                
+                let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+                let mStat = m.status.toLowerCase();
+                
+                if (mStat.includes("tbd") || mStat.includes("tbc") || mStat.includes("determined")) {
+                    statusColor = "bg-zinc-800 text-zinc-400 border-zinc-700/50";
+                } else if (mStat.includes("hold") || mStat.includes("review") || mStat.includes("delay")) {
+                    statusColor = "bg-amber-500/10 text-amber-400 border-amber-500/30";
+                }
+                
+                const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20">${m.status}</div>`;
+                
+                const card = document.createElement('div');
+                card.className = `mission-card bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col hover:border-zinc-700`;
+                card.style = `animation-delay: ${idx * 100}ms;`;
+                card.innerHTML = `
+                    <div class="relative h-40 overflow-hidden z-20">
+                        <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover" alt="${m.name}">
+                        ${statusBadge}
+                    </div>
+                    <div class="p-5 flex-1 flex flex-col justify-between relative z-20 bg-zinc-900">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-1.5">
+                                <div class="font-semibold text-lg line-clamp-1 text-white flex-1">${m.name}</div>
+                                <button onclick="event.stopPropagation(); registerMissionNotification('${m.id}', '${m.name}', '${m.date}')" class="p-2 bg-zinc-800 hover:bg-zinc-700/80 text-zinc-400 hover:text-emerald-400 rounded-xl border border-zinc-700 transition-colors text-xs" title="Remind Me">
+                                    <i class="fa-solid fa-bell"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
+                            <div class="text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
+                        </div>
+                        <div class="pt-3 border-t border-zinc-800/60">
+                            <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1">LOCAL COUNTDOWN</div>
+                            <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no">--d --h --m</div>
+                        </div>
+                    </div>
+                `;
+                card.onclick = () => openMissionModal(m);
+                grid.appendChild(card);
+            });
+            
+            startCountdowns(filteredMissions);
+        }
+
+        function renderPastMissions(filteredPast) {
+            const pastGrid = document.getElementById('past-launches-grid');
+            if (!pastGrid) return;
+            pastGrid.innerHTML = '';
+
+            if (filteredPast.length === 0) {
+                pastGrid.innerHTML = `<div class="py-10 text-zinc-500 text-center w-full">No recent past launches found in the database.</div>`;
+                return;
+            }
+
+            filteredPast.forEach((m, idx) => {
+                let dateStr = 'Recent';
+                try {
+                    dateStr = new Date(m.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                } catch(e) {}
+                
+                const card = document.createElement('div');
+                card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 transition-all z-20 mission-card`;
+                card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
+                card.innerHTML = `
+                    <div class="relative h-40 overflow-hidden z-20">
+                        <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover" alt="${m.name}">
+                    </div>
+                    <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
+                        <div>
+                            <div class="font-semibold text-lg mb-1 line-clamp-1 text-white">${m.name}</div>
+                            <div class="text-xs text-zinc-500 mb-3">${dateStr} • ${m.site}</div>
+                        </div>
+                        <button class="text-sm text-left text-emerald-400 hover:underline mt-2 self-start font-medium">View Deep Dive →</button>
+                    </div>
+                `;
+                
+                card.onclick = () => openMissionModal(m);
+                pastGrid.appendChild(card);
+            });
+        }
+
+        function startCountdowns(missionList) {
+            missionList.forEach(m => {
+                const el = document.getElementById(`countdown-${m.id}`);
+                if (!el) return;
+                
+                const target = new Date(m.date);
+                
+                const update = () => {
+                    const diff = target - new Date();
+                    const sLower = m.status.toLowerCase();
+                    
+                    if (diff <= 0) { 
+                        if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
+                            el.innerHTML = 'HOLD / DELAYED';
+                            el.className = "countdown-small text-lg font-bold tabular-nums text-amber-500 animate-pulse";
+                        } else {
+                            el.innerHTML = 'IN PROGRESS'; 
+                            el.className = "countdown-small text-lg font-bold tabular-nums text-emerald-400 animate-pulse-calm";
+                        }
+                        return; 
+                    }
+                    const d = Math.floor(diff / 86400000);
+                    const h = Math.floor((diff % 86400000) / 3600000);
+                    const min = Math.floor((diff % 3600000) / 60000);
+                    el.innerHTML = `${d}d ${h}h ${min}m`;
+                };
+                
+                update();
+                const interval = setInterval(update, 30000);
+                countdownIntervals.push(interval);
+            });
+        }
+
+        function filterMissions() {
+            let rawTerm = document.getElementById('search-input').value.toLowerCase();
+            let term = rawTerm;
+            
+            if (term.includes('סטארשיפ') || term.includes('סטרשיפ')) term = 'starship';
+            if (term.includes('פלקון')) term = 'falcon';
+            if (term.includes('דרגון') || term.includes('צוות') || term.includes('דראגון')) term = 'dragon';
+            if (term.includes('סטארלינק') || term.includes('סטרלינק') || term.includes('סטארפול') || term.includes('סטארפאל')) term = 'starlink';
+
+            let filteredUpcoming = upcomingForGrid;
+            if (currentFilter !== 'all') {
+                filteredUpcoming = filteredUpcoming.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
+            }
+            if (term) filteredUpcoming = filteredUpcoming.filter(m => m.name.toLowerCase().includes(term) || m.description.toLowerCase().includes(term) || m.vehicle.toLowerCase().includes(term));
+            renderMissions(filteredUpcoming);
+
+            let filteredPast = rawPastMissions;
+            if (currentFilter !== 'all') {
+                filteredPast = filteredPast.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
+            }
+            if (term) filteredPast = filteredPast.filter(m => m.name.toLowerCase().includes(term) || m.description.toLowerCase().includes(term) || m.vehicle.toLowerCase().includes(term));
+            renderPastMissions(filteredPast);
+        }
+
+        function filterByCategory(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('[id^="filter-"]').forEach(b => b.classList.remove('bg-white', 'text-black'));
+            (document.getElementById(`filter-${cat}`) || document.getElementById('filter-all')).classList.add('bg-white', 'text-black');
+            filterMissions();
+        }
+
+        function openMissionModal(m) {
+            document.getElementById('modal-name').innerText = m.name;
+            
+            let dateStr = '';
+            try {
+                dateStr = `${new Date(m.date).toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', timeZone: userTimezone})} • ${m.window}`;
+            } catch(e) { dateStr = m.window; }
+            
+            document.getElementById('modal-date').innerText = dateStr;
+            document.getElementById('modal-site').innerText = m.site;
+            document.getElementById('modal-vehicle').innerText = m.vehicle;
+            
+            const statusEl = document.getElementById('modal-status');
+            statusEl.innerText = m.status;
+            
+            const mStat = m.status.toLowerCase();
+            if (mStat.includes("tbd") || mStat.includes("tbc") || mStat.includes("determined")) {
+                statusEl.className = "text-sm font-semibold text-zinc-400";
+            } else if (mStat.includes("hold") || mStat.includes("review") || mStat.includes("delay")) {
+                statusEl.className = "text-sm font-semibold text-amber-400";
+            } else {
+                statusEl.className = "text-sm font-semibold text-emerald-400";
+            }
+
+            document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full aspect-video object-cover relative z-50" alt="">`;
+            
+            document.getElementById('modal-description-detailed').innerHTML = m.detailedAnalysis.replace(/\n/g, '<br>');
+            document.getElementById('modal-includes').innerHTML = m.objectives.map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${i}</span></div>`).join('');
+            
+            const mStreamBox = document.getElementById('modal-live-container');
+            const mStreamLink = document.getElementById('modal-live-link');
+            
+            if (mStreamBox && mStreamLink) {
+                const now = new Date();
+                const launchDate = new Date(m.date);
+                const hoursUntilLaunch = (launchDate - now) / (1000 * 60 * 60);
+
+                mStreamLink.href = "https://x.com/SpaceX";
+                
+                if (hoursUntilLaunch <= 24 && hoursUntilLaunch >= -2) {
+                    mStreamBox.classList.remove('hidden');
+                } else {
+                    mStreamBox.classList.add('hidden');
+                }
+            }
+
+            document.getElementById('modal-share-btn').onclick = () => shareMission(m);
+            document.getElementById('modal-calendar-btn').onclick = () => saveToCalendar(m);
+            
+            document.getElementById('modal-trajectory-btn').onclick = () => {
+                window.open('https://flightclub.io/', '_blank');
+            };
+
+            const siteLower = m.siteLower;
+            const nameLower = m.name.toLowerCase();
+            const vehicleLower = m.vehicle.toLowerCase();
+            
+            let targetSiteKey = 'cape';
+            if (m.category === 'starship' || siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('pad 2') || nameLower.includes('starship')) {
+                targetSiteKey = 'starbase';
+            } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4') || siteLower.includes('california')) {
+                targetSiteKey = 'vandenberg';
+            }
+
+            document.getElementById('modal-site-click-target').onclick = function() {
+                openLaunchSiteSpecs(targetSiteKey);
+            };
+
+            document.getElementById('radar-box-click').onclick = function() {
+                openLaunchSiteSpecs(targetSiteKey);
+            };
+
+            const trajBtn = document.getElementById('modal-trajectory-btn');
+            if (trajBtn) {
+                if (dbMissions.length > 0 && m.id === dbMissions[0].id) {
+                    trajBtn.classList.remove('hidden');
+                    trajBtn.classList.add('inline-flex');
+                } else {
+                    trajBtn.classList.add('hidden');
+                    trajBtn.classList.remove('inline-flex');
+                }
+            }
+
+            handleModalFeatures(m);
+
+            const modalEl = document.getElementById('mission-modal');
+            if (modalEl) {
+                modalEl.scrollTop = 0;
+            }
+
+            document.getElementById('mission-modal').classList.remove('hidden');
+            document.getElementById('mission-modal').style.display = 'flex';
+        }
+
+        function handleModalFeatures(m) {
+            const radar = document.getElementById('radar-ping');
+            const label = document.getElementById('modal-pad-coordinate-label');
+            
+            const siteLower = m.siteLower;
+            const nameLower = m.name.toLowerCase();
+            const vehicleLower = m.vehicle.toLowerCase();
+            
+            if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('orbital launch mount') || vehicleLower.includes('starship') || nameLower.includes('starship')) {
+                radar.style.top = '82%'; 
+                radar.style.left = '43%'; 
+                label.innerText = "Coordinates: 25.99° N, 97.15° W • Boca Chica, TX";
+            } 
+            else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4') || siteLower.includes('california') || siteLower.includes('pacific')) {
+                radar.style.top = '48%'; 
+                radar.style.left = '28%'; 
+                label.innerText = "Coordinates: 34.63° N, 120.61° W • Vandenberg SFB, CA";
+            } 
+            else {
+                radar.style.top = '65%'; 
+                radar.style.left = '68%'; 
+                label.innerText = "Coordinates: 28.56° N, 80.57° W • Cape Canaveral, FL";
+            }
+
+            const bFalcon = document.getElementById('scale-bar-falcon');
+            const bStarship = document.getElementById('scale-bar-starship');
+            const boxFalcon = document.getElementById('scale-box-falcon');
+            const boxStarship = document.getElementById('scale-box-starship');
+
+            bFalcon.style.filter = "grayscale(100%) opacity(30%)";
+            bStarship.style.filter = "grayscale(100%) opacity(30%)";
+            boxFalcon.style.opacity = "0.5";
+            boxStarship.style.opacity = "1";
+
+            if (m.category === 'starship' || vehicleLower.includes('starship')) {
+                bStarship.style.filter = "drop-shadow(0 0 8px rgba(16,185,129,0.5))";
+                boxStarship.style.opacity = "1";
+            } else {
+                bFalcon.style.filter = "drop-shadow(0 0 8px rgba(16,185,129,0.5))";
+                boxFalcon.style.opacity = "1";
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('mission-modal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        function shareMission(m) {
+            const shareTitle = `SpaceX • ${m.name}`;
+            const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!`;
+            const shareUrl = window.location.href;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: shareTitle,
+                    text: shareText,
+                    url: shareUrl
+                });
+            } else {
+                const fullText = `${shareTitle}\n${shareText}\nLink: ${shareUrl}`;
+                navigator.clipboard.writeText(fullText).then(() => {
+                    alert('Share link and text copied to clipboard!');
+                });
+            }
+        }
+
+        function saveToCalendar(m) {
+            const dateObj = new Date(m.date);
+            const startStr = dateObj.toISOString().replace(/-|:|\.\d+/g, "");
+            
+            const endObj = new Date(dateObj.getTime() + 90 * 60 * 1000); 
+            const endStr = endObj.toISOString().replace(/-|:|\.\d+/g, "");
+
+            const title = encodeURIComponent(`SpaceX Launch • ${m.name}`);
+            const location = encodeURIComponent(m.site);
+            const description = encodeURIComponent(`${m.description}\n\nVehicle: ${m.vehicle}\nWatch Stream: ${m.liveUrl}`);
+            const dates = `${startStr}/${endStr}`;
+
+            const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${description}&location=${location}&sf=true&output=xml`;
+            
+            window.open(calendarUrl, '_blank');
+        }
+
+        const ROCKET_DATABASE = {
+            falcon: {
+                name: "Falcon 9 Block 5",
+                image: "https://spaceexplored.com/wp-content/uploads/sites/10/2025/09/SpaceX-Falcon-9-Cygnus-XL-launch.jpeg?quality=82&strip=all", 
+                alignmentClass: "object-[center_30%]",
+                height: "70 meters (229.6 ft)",
+                thrust: "7,607 kN (Sea Level)",
+                payload: "22,800 kg (50,265 lb)",
+                desc: "Falcon 9 Block 5 is the ultimate iteration of SpaceX's workhorse rocket. Designed for maximum reusability, it features upgraded Merlin 1D engines, a thermal protection shield, and titanium grid fins.\n\nHistorically, Falcon 9 has rewritten spaceflight economics by achieving over 300 successful first-stage landings, returning autonomously to drone ships or landing zones. It is the only commercial vehicle certified to carry astronauts to the International Space Station (ISS) via the Crew Dragon capsule and is the foundation for deploying the global Starlink satellite constellation."
+            },
+            falcon_heavy: {
+                name: "Falcon Heavy",
+                image: "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg", 
+                alignmentClass: "object-center",
+                height: "70 meters (229.6 ft)",
+                thrust: "22,819 kN (Sea Level)",
+                payload: "63,800 kg (140,660 lb)",
+                desc: "Falcon Heavy is composed of three reusable Falcon 9 nine-engine cores whose 27 Merlin engines together generate more than 5 million pounds of thrust at liftoff.\n\nAs one of the most powerful operational rockets in the world today, Falcon Heavy can lift nearly 64 metric tons (141,000 lbs) to orbit. Its maiden flight dramatically launched Elon Musk’s personal Tesla Roadster into an elliptical orbit around the Sun, and it is now routinely used for massive commercial payloads, classified national security missions, and deep space exploration probes like NASA's Europa Clipper and Psyche."
+            },
+            starship: {
+                name: "Starship Super Heavy (V3)",
+                image: "https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096", 
+                alignmentClass: "object-center",
+                height: "121 meters (397 ft)",
+                thrust: "74,000 kN (Total System)",
+                payload: "100,000+ kg (Fully Reusable)",
+                desc: "Starship represents the next generation of space transportation: a fully and rapidly reusable system. The vehicle stands as the tallest and most powerful rocket ever constructed, generating more than double the thrust of the legendary Saturn V.\n\nPowered by innovative Raptor V3 engines fueled by sub-cooled liquid methane and liquid oxygen, the architecture consists of the Super Heavy booster and the Starship upper stage. Chosen by NASA for the Artemis program to return humans to the lunar surface, Starship's final objective is to create a multi-planetary pipeline capable of transporting over 100 tons of cargo and crew directly to Mars."
+            }
+        };
+
+        const SITE_DATABASE = {
+            starbase: {
+                name: "SpaceX Starbase • Boca Chica, TX",
+                image: "https://pbs.twimg.com/media/Gy51cDhWgAAPPRK.jpg", 
+                coords: "25.997° N, 97.155° W",
+                fleet: "Starship System Profile Only",
+                desc: "Starbase is SpaceX's private spaceport, production facility, and launch site located in Chica, Texas. Established as a dedicated development hub for the Starship program, it features advanced manufacturing tents, vertical assembly buildings (VAB), and the massive Orbital Launch Mount.\n\nKnown colloquially as the 'Gateway to Mars', Starbase is where full-scale structural testing, Raptor engine installations, and suborbital/orbital test flights occur. It serves as a continuous production ecosystem designed for rapid prototyping."
+            },
+            cape: {
+                name: "Cape Canaveral Space Force Station • FL",
+                image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQiKxN-KSxMy7LomCirahA1DSgv2f6_bH7Oa24-pnRQw&s=10", 
+                coords: "28.562° N, 80.577° W",
+                fleet: "Falcon 9, Falcon Heavy, Dragon",
+                desc: "Cape Canaveral (specifically SLC-40 and LC-39A) is the legendary heartbeat of American space exploration. SpaceX leases these historic pads to operate its high-cadence commercial, institutional, and crewed missions.\n\nWhile SLC-40 handles heavy communications satellite payloads and Starlink deployments, Pad 39A (the historical Apollo and Space Shuttle complex) is utilized for Falcon Heavy launches and crewed missions to the ISS. It represents the pinnacle of operational safety and commercial launch frequency."
+            },
+            vandenberg: {
+                name: "Vandenberg Space Force Base • CA",
+                image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiaqeG_lyxoLQjmQKwPVJyerJwpKr-Ngj-5Di6yihsBR45pKUcJwkpqvaG&s=10", 
+                coords: "34.632° N, 120.610° W",
+                fleet: "Falcon 9 Profile (Polar/Retrograde Orbits)",
+                desc: "Vandenberg Space Force Base (specifically Space Launch Complex 4 East - SLC-4E) handles SpaceX's high-inclination trajectories, sending payloads into polar and Sun-synchronous orbits.\n\nPositioned strategically on the California coastline, this military facility allows rockets to fly south directly over the Pacific Ocean safely without crossing populated areas. It serves as a fundamental cornerstone for deploying specific architectural nodes of the Starlink constellation, imaging assets, and defense telemetry satellites."
+            }
+        };
+
+        function openRocketSpecs(type) {
+            const data = ROCKET_DATABASE[type];
+            if (!data) return;
+
+            document.getElementById('rocket-modal-name').innerText = data.name;
+            
+            const imgEl = document.getElementById('rocket-modal-img');
+            imgEl.src = data.image;
+            imgEl.className = `w-full h-full object-cover ${data.alignmentClass}`;
+
+            document.getElementById('rocket-modal-height').innerText = data.height;
+            document.getElementById('rocket-modal-thrust').innerText = data.thrust;
+            document.getElementById('rocket-modal-payload').innerText = data.payload;
+            document.getElementById('rocket-modal-desc').innerText = data.desc;
+
+            const modalEl = document.getElementById('rocket-modal');
+            if (modalEl) {
+                modalEl.scrollTop = 0;
+            }
+
+            modalEl.classList.remove('hidden');
+            modalEl.style.display = 'flex';
+        }
+
+        function closeRocketModal() {
+            const modal = document.getElementById('rocket-modal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        function openLaunchSiteSpecs(type) {
+            const data = SITE_DATABASE[type];
+            if (!data) return;
+
+            document.getElementById('site-modal-name').innerText = data.name;
+            document.getElementById('site-modal-img').src = data.image;
+            document.getElementById('site-modal-coords').innerText = data.coords;
+            document.getElementById('site-modal-fleet').innerText = data.fleet;
+            document.getElementById('site-modal-desc').innerText = data.desc;
+
+            const modalEl = document.getElementById('site-modal');
+            if (modalEl) {
+                modalEl.scrollTop = 0;
+            }
+
+            modalEl.classList.remove('hidden');
+            modalEl.style.display = 'flex';
+        }
+
+        function closeLaunchSiteModal() {
+            const modal = document.getElementById('site-modal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        let heroInterval;
+        function updateHeroCountdown(targetDate, currentStatus) {
+            if (heroInterval) clearInterval(heroInterval);
+            const el = document.getElementById('hero-countdown');
+            
+            const tlProgress = document.getElementById('timeline-progress');
+            const n24 = document.getElementById('node-24h');
+            const n6 = document.getElementById('node-6h');
+            const n1 = document.getElementById('node-1h');
+            const n0 = document.getElementById('node-0');
+
+            if (!el) return;
+            const target = new Date(targetDate);
+
+            const update = () => {
+                const now = new Date();
+                const diff = target - now;
+                const sLower = currentStatus.toLowerCase();
+                
+                const diffHours = diff / (1000 * 60 * 60);
+                let tlProgVal = 0;
+                
+                [n24, n6, n1, n0].forEach(n => {
+                    if(n) n.className = "w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty";
+                });
+                
+                const activeClass = "w-3 h-3 rounded-full bg-emerald-500 border-2 border-emerald-200 mb-2 shadow-[0_0_8px_#10b981] relative z-10 animate-pulse";
+                const passedClass = "w-3 h-3 rounded-full bg-emerald-600 border-2 border-emerald-500 mb-2 relative z-10";
+
+                if (diff <= 0) {
+                    tlProgVal = 100;
+                    if(n24) n24.className = passedClass;
+                    if(n6) n6.className = passedClass;
+                    if(n1) n1.className = passedClass;
+                    if(n0) n0.className = activeClass;
+                } else if (diffHours <= 1) {
+                    tlProgVal = 66.6 + ((1 - diffHours) / 1) * 33.4;
+                    if(n24) n24.className = passedClass;
+                    if(n6) n6.className = passedClass;
+                    if(n1) n1.className = activeClass;
+                } else if (diffHours <= 6) {
+                    tlProgVal = 33.3 + ((6 - diffHours) / 5) * 33.3;
+                    if(n24) n24.className = passedClass;
+                    if(n6) n6.className = activeClass;
+                } else if (diffHours <= 24) {
+                    tlProgVal = ((24 - diffHours) / 18) * 33.3;
+                    if(n24) n24.className = activeClass;
+                } else {
+                    tlProgVal = 0;
+                }
+                
+                if(tlProgress) tlProgress.style.width = `${tlProgVal}%`;
+
+                if (diff <= 0) { 
+                    if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
+                        el.innerHTML = 'HOLD / DELAYED';
+                        el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2";
+                    } else {
+                        el.innerHTML = 'MISSION IN PROGRESS'; 
+                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2";
+                    }
+                    return; 
+                }
+                
+                const d = Math.floor(diff / 86400000);
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                
+                let timeColor = "text-emerald-400";
+                if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
+                    timeColor = "text-amber-500";
+                } else if (d === 0 && h >= 1) {
+                    timeColor = "text-amber-500"; 
+                } else if (d === 0 && h === 0) {
+                    if (m >= 5) {
+                        timeColor = "text-red-500"; 
+                    } else {
+                        timeColor = "text-red-500 animate-pulse-calm"; 
+                    }
+                }
+                
+                el.innerHTML = `
+                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal opacity-50 ml-1 mr-2 text-zinc-400">d</span>
+                    <span class="${timeColor}">${h.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 ml-1 mr-2 text-zinc-400">h</span>
+                    <span class="${timeColor}">${m.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 ml-1 mr-2 text-zinc-400">m</span>
+                    <span class="${timeColor}">${s.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 ml-1 text-zinc-400">s</span>
+                `;
+            };
+
+            update();
+            heroInterval = setInterval(update, 1000);
+        }
+
+        function init() {
+            initThemeIcon();
+            generateProceduralStars();
+            updateClock();
+            initDidYouKnow(); 
+            fetchLiveLaunches();
+            refreshXTwitterFeed();
+            
+            const searchIn = document.getElementById('search-input');
+            if (searchIn) {
+                searchIn.addEventListener('input', filterMissions);
+            }
+            
+            const filterAll = document.getElementById('filter-all');
+            if (filterAll) {
+                filterAll.classList.add('bg-white', 'text-black');
+            }
+        }
+        
+        window.onload = init;
+    </script>
+    
+    <!-- Google Translate Script -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt'
+            }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
+</body>
+</html>
