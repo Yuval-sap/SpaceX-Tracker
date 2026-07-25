@@ -32,7 +32,6 @@
 
         .font-space { font-family: 'Space Grotesk', system_ui, sans-serif; font-weight: 600; }
 
-        /* אנימציית פעימה רגועה ואיטית יותר */
         @keyframes pulse-calm {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.65; }
@@ -104,7 +103,7 @@
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%);
         }
 
-        /* --- Custom Google Translate Widget Styling --- */
+        /* Custom Google Translate Widget Styling */
         .goog-te-gadget { font-family: 'Space Grotesk', monospace !important; font-size: 0px !important; color: transparent !important; display: flex; align-items: center; }
         .goog-te-gadget .goog-te-combo { background-color: #18181b !important; color: #10b981 !important; border: 1px solid #27272a !important; border-radius: 1rem !important; padding: 4px 8px !important; font-size: 0.75rem !important; font-weight: 600 !important; outline: none !important; cursor: pointer !important; margin: 0 !important; letter-spacing: 0.05em !important; transition: border-color 0.3s ease; }
         .goog-te-gadget .goog-te-combo:hover { border-color: #10b981 !important; }
@@ -115,6 +114,11 @@
         .VIpgJd-ZVi9od-l4eHX-hSRGPd { display: none !important; } 
         #goog-gt-tt { display: none !important; visibility: hidden !important; }
         .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+
+        /* התאמות שפה למובייל (קומפקטי) */
+        @media (max-width: 640px) {
+            .goog-te-gadget .goog-te-combo { max-width: 120px !important; padding: 2px 6px !important; font-size: 11px !important; }
+        }
 
         /* ==================================================
            LIGHT THEME OVERRIDES (מצב יום)
@@ -179,18 +183,15 @@
         body.light-theme .hide-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
         body.light-theme .hide-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* Timeline Fixes for Light Theme */
         body.light-theme .timeline-track { background-color: #cbd5e1 !important; }
         body.light-theme .node-empty { background-color: #ffffff !important; border-color: #94a3b8 !important; }
         body.light-theme .timeline-label { color: #0f172a !important; font-weight: 700; }
         body.light-theme .milestones-title { color: #475569 !important; font-weight: 800; }
 
-        /* Starlink Widget Cyan Light Mode Fixes */
         body.light-theme .text-cyan-500 { color: #0284c7 !important; }
         body.light-theme .text-cyan-400 { color: #0284c7 !important; }
         body.light-theme .from-cyan-400 { --tw-gradient-from: #0ea5e9 !important; }
 
-        /* Transitions for Fact Box */
         #fact-text { transition: opacity 0.25s ease-in-out; }
     </style>
     
@@ -205,25 +206,27 @@
     <div class="stars-container" id="stars-background"></div>
 
     <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
-        <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between relative z-50">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
             <div class="flex items-center gap-x-4">
                 <div class="flex items-center">
-                    <span class="font-space text-xl sm:text-[26px] font-bold tracking-[2px] sm:tracking-[4px] text-white hover:text-emerald-400 transition-colors cursor-default">SPACEX TRACKER</span>
+                    <span class="font-space text-lg sm:text-[26px] font-bold tracking-[2px] sm:tracking-[4px] text-white hover:text-emerald-400 transition-colors cursor-default">SPACEX TRACKER</span>
                 </div>
                 <span class="hidden md:block px-3 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse">LIVE TELEMETRY</span>
             </div>
-            <div class="flex items-center gap-x-3 sm:gap-x-4">
+            <div class="flex items-center gap-x-2 sm:gap-x-4">
                 
-                <button id="theme-toggle-btn" onclick="toggleTheme()" class="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-zinc-900 border border-zinc-850 rounded-full text-zinc-400 hover:text-emerald-400 transition-colors shadow-sm">
-                    <i class="fa-solid fa-sun" id="theme-icon"></i>
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle-btn" onclick="toggleTheme()" class="flex shrink-0 items-center justify-center w-7 h-7 sm:w-9 sm:h-9 bg-zinc-900 border border-zinc-850 rounded-full text-zinc-400 hover:text-emerald-400 transition-colors shadow-sm">
+                    <i class="fa-solid fa-sun text-[11px] sm:text-base" id="theme-icon"></i>
                 </button>
 
-                <div id="google_translate_element" class="hidden sm:block notranslate" translate="no"></div>
+                <!-- Google Translate Dropdown -->
+                <div id="google_translate_element" class="notranslate flex shrink-0 items-center" translate="no"></div>
 
-                <div class="flex items-center gap-x-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-2xl text-xs sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate" translate="no">
+                <div class="flex shrink-0 items-center gap-x-1.5 px-2 py-1 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-lg sm:rounded-2xl text-[10px] sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate" translate="no">
                     <i class="fa-solid fa-clock text-zinc-400"></i>
                     <span id="live-clock" class="font-mono text-emerald-400 font-bold">--:--:--</span>
-                    <span id="live-timezone" class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wide">LOCAL</span>
+                    <span id="live-timezone" class="hidden sm:inline text-[10px] text-zinc-500 font-semibold uppercase tracking-wide">LOCAL</span>
                 </div>
             </div>
         </div>
@@ -231,14 +234,15 @@
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
         
-        <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
-            <div>
-                <h1 class="font-space text-3xl sm:text-5xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500 transition-colors duration-500">Mission Control</h1>
-                <p class="text-base sm:text-xl text-zinc-400 mt-1 font-light transition-colors duration-500">Real-time SpaceX launch tracking & system diagnostic (Fan Project)</p>
+        <!-- כותרת ראשית ומונה השיגורים - אחד ליד השני בנייד -->
+        <div class="flex flex-row items-center justify-between mb-5 md:mb-6 gap-3">
+            <div class="flex-1 min-w-0">
+                <h1 class="font-space text-[26px] leading-none sm:text-5xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500 transition-colors duration-500">Mission Control</h1>
+                <p class="text-[11px] sm:text-xl text-zinc-400 mt-1 sm:mt-2 font-light transition-colors duration-500 truncate sm:whitespace-normal">Real-time SpaceX launch tracking & system diagnostic</p>
             </div>
-            <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl px-4 py-3 sm:px-6 sm:py-4 flex lg:flex-col items-center justify-between lg:justify-center gap-x-4 lg:gap-x-0 transition-colors duration-500">
-                <div class="text-[10px] text-zinc-500 tracking-widest font-bold lg:mb-1 uppercase">Upcoming Launches</div>
-                <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate" id="upcoming-count" translate="no">0</div>
+            <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
+                <div class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap">Upcoming Launches</div>
+                <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate leading-none" id="upcoming-count" translate="no">0</div>
             </div>
         </div>
 
@@ -330,12 +334,13 @@
                     <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions()"
                            class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
                 </div>
-                <div class="flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 text-xs sm:text-sm w-full sm:w-auto overflow-x-auto hide-scrollbar transition-colors duration-500">
-                    <button onclick="filterByCategory('all')" id="filter-all" class="px-4 py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
-                    <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
-                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starship</button>
-                    <button onclick="filterByCategory('starlink')" id="filter-starlink" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starlink</button>
-                    <button onclick="filterByCategory('dragon')" id="filter-dragon" class="px-4 py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Dragon/Crew</button>
+                <!-- שורת הסינון מותאמת לגלילה ולהצגה מושלמת במובייל ללא חיתוך -->
+                <div class="flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 text-[11px] sm:text-sm w-full sm:w-auto overflow-x-auto hide-scrollbar transition-colors duration-500">
+                    <button onclick="filterByCategory('all')" id="filter-all" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
+                    <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
+                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starship</button>
+                    <button onclick="filterByCategory('starlink')" id="filter-starlink" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starlink</button>
+                    <button onclick="filterByCategory('dragon')" id="filter-dragon" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Dragon/Crew</button>
                 </div>
             </div>
         </div>
@@ -349,9 +354,11 @@
                     <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Next scheduled upcoming missions</p>
                 </div>
             </div>
-            <div id="missions-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-2 sm:pt-6">
+            
+            <!-- רשימת שיגורים עתידיים - עם גלילה רוחבית (Carousel) במסכי מובייל כמו שביקשת -->
+            <div id="missions-grid" class="flex md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto md:overflow-visible hide-scrollbar snap-x snap-mandatory md:snap-none pb-4 md:pb-0 pt-2 sm:pt-6 -mx-4 px-4 md:mx-0 md:px-0">
                 <!-- Skeleton Loader -->
-                <div class="bg-zinc-900/50 border border-zinc-800/60 rounded-3xl p-5 space-y-4 animate-pulse">
+                <div class="w-[85vw] max-w-[320px] md:w-auto shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-3xl p-5 space-y-4 animate-pulse">
                     <div class="h-40 bg-zinc-800/60 rounded-2xl"></div>
                     <div class="h-6 bg-zinc-800/60 rounded w-2/3"></div>
                     <div class="h-4 bg-zinc-800/40 rounded w-full"></div>
@@ -360,7 +367,7 @@
             </div>
         </div>
 
-        <div class="mt-14 pt-10 border-t border-zinc-900">
+        <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900">
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
@@ -368,13 +375,14 @@
                     </h3>
                     <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing all SpaceX missions from the past 12 months</p>
                 </div>
-                <span class="text-xs text-zinc-500 inline-flex items-center gap-1">
+                <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
                     Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
                 </span>
             </div>
             
             <div class="relative">
-                <div id="past-launches-grid" class="flex gap-5 overflow-x-auto pt-2 pb-4 px-1 -mt-2 hide-scrollbar snap-x snap-mandatory">
+                <!-- רשימת שיגורי עבר - מותאמת לגלילה מושלמת מקצה לקצה בנייד -->
+                <div id="past-launches-grid" class="flex gap-4 sm:gap-5 overflow-x-auto pt-2 pb-4 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar snap-x snap-mandatory">
                     <div class="py-10 text-center text-zinc-500 w-full">
                         <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-emerald-400"></i>
                         <p>Compiling past year flight logs...</p>
@@ -384,7 +392,7 @@
         </div>
 
         <!-- Official Documentary Section -->
-        <div class="mt-14 pt-10 border-t border-zinc-900 transition-colors duration-500">
+        <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900 transition-colors duration-500">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-2">
                 <div>
                     <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
@@ -407,7 +415,7 @@
                 <div class="flex md:grid md:grid-cols-3 gap-4 md:gap-5 overflow-x-auto pb-4 md:pb-0 hide-scrollbar snap-x snap-mandatory md:overflow-visible">
                     
                     <!-- Episode 1 -->
-                    <a href="https://www.youtube.com/watch?v=-a0ecQMq-rM" target="_blank" class="w-[78vw] max-w-[300px] sm:w-[300px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
+                    <a href="https://www.youtube.com/watch?v=-a0ecQMq-rM" target="_blank" class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
                         <img src="https://img.youtube.com/vi/-a0ecQMq-rM/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/-a0ecQMq-rM/hqdefault.jpg'" class="w-full h-40 sm:h-44 object-cover border-b border-zinc-800/80" alt="Episode 1 Cover">
                         <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-start bg-transparent">
                             <div class="flex items-center gap-x-2 mb-2.5">
@@ -419,7 +427,7 @@
                     </a>
 
                     <!-- Episode 2 -->
-                    <a href="https://www.youtube.com/watch?v=ANe_HW4X8oc" target="_blank" class="w-[78vw] max-w-[300px] sm:w-[300px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
+                    <a href="https://www.youtube.com/watch?v=ANe_HW4X8oc" target="_blank" class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
                         <img src="https://img.youtube.com/vi/ANe_HW4X8oc/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/ANe_HW4X8oc/hqdefault.jpg'" class="w-full h-40 sm:h-44 object-cover border-b border-zinc-800/80" alt="Episode 2 Cover">
                         <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-start bg-transparent">
                             <div class="flex items-center gap-x-2 mb-2.5">
@@ -431,7 +439,7 @@
                     </a>
 
                     <!-- Episode 3 -->
-                    <div class="w-[78vw] max-w-[300px] sm:w-[300px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-default">
+                    <div class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-default">
                         <div class="relative w-full h-40 sm:h-44 border-b border-zinc-800/80">
                             <img src="https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096" class="w-full h-full object-cover filter grayscale opacity-40" alt="Episode 3 Cover">
                             <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -1325,7 +1333,6 @@
                 category = 'falcon';
             }
 
-            // פה הוסר הדריסה (override) השגויה ששמה את תמונת וונדנברג בתמונה הראשית
             let launchImage = FALLBACK_IMAGES[category] || FALLBACK_IMAGES.falcon;
 
             let computedStatus = typeof launch.status === 'string' ? launch.status : (launch.status?.name || "Go for Launch");
@@ -1486,7 +1493,7 @@
                     defaultTemp = "84°F";
                     defaultIcon = "fa-sun";
                     defaultDesc = "Clear";
-                } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4')) {
+                } else if (siteLower.includes('vandenberg') || sLower.includes('slc-4')) {
                     defaultTemp = "62°F";
                     defaultIcon = "fa-smog";
                     defaultDesc = "Fog";
@@ -1526,7 +1533,7 @@
                 const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20">${m.status}</div>`;
                 
                 const card = document.createElement('div');
-                card.className = `mission-card bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col hover:border-zinc-700`;
+                card.className = `mission-card w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col snap-start shrink-0 hover:border-zinc-700`;
                 card.style = `animation-delay: ${idx * 100}ms;`;
                 card.innerHTML = `
                     <div class="relative h-40 overflow-hidden z-20">
