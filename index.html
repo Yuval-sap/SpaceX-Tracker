@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <!-- Google tag (gtag.js) -->
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-R08T8Y5J7E"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -10,7 +10,7 @@
 
   gtag('config', 'G-R08T8Y5J7E');
 </script>
-   <meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpaceX Fans Tracker • Mission Control</title>
     <link rel="manifest" href="manifest.json">
@@ -219,7 +219,7 @@
 
     <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
-            <!-- Left Side: Title (עם גלילה חלקה למעלה ורענון נתונים בלחיצה) -->
+            <!-- Left Side: Title (הוחזר ל-11px במובייל בהתאם לבקשתך) -->
             <div class="flex items-center shrink min-w-0 pr-2">
                 <span onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>location.reload(), 400);" class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white hover:text-emerald-400 transition-colors cursor-pointer uppercase whitespace-nowrap" title="Refresh Tracker">SPACEX FANS TRACKER</span>
                 <span class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE TELEMETRY</span>
@@ -282,7 +282,7 @@
                         </span>
                     </div>
 
-                    <!-- Timeline Milestones (מתוקן למובייל) -->
+                    <!-- Timeline Milestones -->
                     <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block">
                         <div class="text-[9px] text-zinc-500 font-bold tracking-[2px] uppercase mb-4 opacity-80 milestones-title transition-colors duration-500">MILESTONES</div>
                         <div class="relative flex items-center justify-between w-full px-2">
@@ -308,7 +308,7 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-3 pt-6">
+                    <div class="flex flex-wrap items-center gap-3 pt-6">
                         <div id="hero-live-container" class="hidden">
                             <a id="hero-live-link" href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]">
                                 <i class="fa-solid fa-play text-[10px] animate-pulse"></i> WATCH LIVE
@@ -317,6 +317,10 @@
 
                         <button id="hero-details-btn" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black border border-emerald-500 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
                             <i class="fa-solid fa-circle-info"></i> View Brief
+                        </button>
+
+                        <button id="hero-remind-btn" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm">
+                            <i class="fa-solid fa-bell"></i> Remind Me
                         </button>
                     </div>
                 </div>
@@ -343,6 +347,7 @@
                     <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions()"
                            class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
                 </div>
+                <!-- שורת הסינון -->
                 <div class="flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 text-[11px] sm:text-sm w-full sm:w-auto overflow-x-auto hide-scrollbar transition-colors duration-500">
                     <button onclick="filterByCategory('all')" id="filter-all" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
                     <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
@@ -1504,6 +1509,11 @@
                 const detailsBtn = document.getElementById('hero-details-btn');
                 if (detailsBtn) {
                     detailsBtn.onclick = () => openMissionModal(nextLaunch);
+                }
+
+                const remindBtn = document.getElementById('hero-remind-btn');
+                if (remindBtn) {
+                    remindBtn.onclick = () => registerMissionNotification(nextLaunch.id, nextLaunch.name, nextLaunch.date);
                 }
 
                 heroBanner.classList.remove('hidden');
