@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>    
-    <!-- Google tag (gtag.js) -->
+<head>
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-R08T8Y5J7E"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -204,6 +204,11 @@
     </style>
     
     <script>
+        // כפייה שהדפדפן תמיד יגלול למעלה ברענון של העמוד
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
         if (localStorage.getItem('spacex-theme') === 'light') {
             document.documentElement.classList.add('light-theme');
             document.body.classList.add('light-theme');
@@ -215,9 +220,9 @@
 
     <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
-            <!-- Left Side: Title -->
+            <!-- Left Side: Title (עם גלילה חלקה למעלה ורענון נתונים בלחיצה) -->
             <div class="flex items-center shrink min-w-0 pr-2">
-                <span class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white hover:text-emerald-400 transition-colors cursor-default uppercase whitespace-nowrap">SPACEX FANS TRACKER</span>
+                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>location.reload(), 400);" class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white hover:text-emerald-400 transition-colors cursor-pointer uppercase whitespace-nowrap" title="Refresh Tracker">SPACEX FANS TRACKER</span>
                 <span class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE TELEMETRY</span>
             </div>
             
@@ -339,7 +344,6 @@
                     <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions()"
                            class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
                 </div>
-                <!-- שורת הסינון מותאמת לגלילה ולהצגה מושלמת במובייל ללא חיתוך -->
                 <div class="flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 text-[11px] sm:text-sm w-full sm:w-auto overflow-x-auto hide-scrollbar transition-colors duration-500">
                     <button onclick="filterByCategory('all')" id="filter-all" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
                     <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
@@ -360,7 +364,6 @@
                 </div>
             </div>
             
-            <!-- רשימת שיגורים עתידיים - עם גלילה רוחבית (Carousel) במסכי מובייל כמו שביקשת -->
             <div id="missions-grid" class="flex md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto md:overflow-visible hide-scrollbar snap-x snap-mandatory md:snap-none pb-4 md:pb-0 pt-2 sm:pt-6 -mx-4 px-4 md:mx-0 md:px-0">
                 <!-- Skeleton Loader -->
                 <div class="w-[85vw] max-w-[320px] md:w-auto shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-3xl p-5 space-y-4 animate-pulse">
@@ -386,7 +389,6 @@
             </div>
             
             <div class="relative">
-                <!-- רשימת שיגורי עבר - מותאמת לגלילה מושלמת מקצה לקצה בנייד -->
                 <div id="past-launches-grid" class="flex gap-4 sm:gap-5 overflow-x-auto pt-2 pb-4 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar snap-x snap-mandatory">
                     <div class="py-10 text-center text-zinc-500 w-full">
                         <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-emerald-400"></i>
@@ -1810,12 +1812,9 @@
             handleModalFeatures(m);
 
             const modalEl = document.getElementById('mission-modal');
-            if (modalEl) {
-                modalEl.scrollTop = 0;
-            }
-
-            document.getElementById('mission-modal').classList.remove('hidden');
-            document.getElementById('mission-modal').style.display = 'flex';
+            modalEl.classList.remove('hidden');
+            modalEl.style.display = 'flex';
+            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
         }
 
         function handleModalFeatures(m) {
@@ -1973,12 +1972,9 @@
             document.getElementById('rocket-modal-desc').innerText = data.desc;
 
             const modalEl = document.getElementById('rocket-modal');
-            if (modalEl) {
-                modalEl.scrollTop = 0;
-            }
-
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
         }
 
         function closeRocketModal() {
@@ -1998,12 +1994,9 @@
             document.getElementById('site-modal-desc').innerText = data.desc;
 
             const modalEl = document.getElementById('site-modal');
-            if (modalEl) {
-                modalEl.scrollTop = 0;
-            }
-
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
         }
 
         function closeLaunchSiteModal() {
@@ -2107,6 +2100,7 @@
         }
 
         function init() {
+            window.scrollTo(0, 0);
             initThemeIcon();
             generateProceduralStars();
             updateClock();
