@@ -219,9 +219,9 @@
 
     <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
-            <!-- Left Side: Title (עם notranslate ובלי הלחיצה) -->
+            <!-- Left Side: Title -->
             <div class="flex items-center shrink min-w-0 pr-2">
-                <span class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-default uppercase whitespace-nowrap notranslate" translate="no">SPACEX FANS TRACKER</span>
+                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>location.reload(), 400);" class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate" translate="no" title="Refresh Tracker">SPACEX FANS TRACKER</span>
                 <span class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE TELEMETRY</span>
             </div>
             
@@ -600,13 +600,13 @@
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Launch Site <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
                         <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 truncate mt-0.5"></div>
                     </div>
-                    <div>
+                    <div class="cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Orbit Destination <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
+                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">LEO (Low Earth Orbit)</div>
+                    </div>
+                    <div class="p-1">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Mission Status</div>
                         <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-0.5"></div>
-                    </div>
-                    <div>
-                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Orbit Destination</div>
-                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">LEO (Low Earth Orbit)</div>
                     </div>
                 </div>
 
@@ -765,6 +765,92 @@
                 <div class="space-y-2">
                     <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Operational Profile</h4>
                     <p id="site-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orbit Modal (NEW) -->
+    <div id="orbit-modal" onclick="if (event.target.id === 'orbit-modal') closeOrbitSpecs()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
+        <div id="orbit-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">LEO (Low Earth Orbit)</div>
+                    <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBITAL MECHANICS DOSSIER</div>
+                </div>
+                <button onclick="closeOrbitSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+            </div>
+            
+            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
+                <!-- SVG Animation Box -->
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center transition-colors duration-500 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
+                    <svg viewBox="0 0 400 300" class="w-full h-full max-w-full max-h-full">
+                        <!-- Earth -->
+                        <circle cx="200" cy="150" r="25" fill="#0ea5e9" opacity="0.9" />
+                        <text x="200" y="153" text-anchor="middle" fill="#fff" font-size="10" font-family="monospace" font-weight="bold">EARTH</text>
+
+                        <!-- LEO Ring (Highlighted) -->
+                        <circle cx="200" cy="150" r="55" fill="none" stroke="#10b981" stroke-width="2" opacity="0.8" stroke-dasharray="4 3"/>
+                        <circle cx="200" cy="95" r="4" fill="#10b981" filter="drop-shadow(0 0 4px #10b981)">
+                            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="4s" repeatCount="indefinite" />
+                        </circle>
+                        <text x="200" y="85" text-anchor="middle" fill="#10b981" font-size="10" font-weight="bold" letter-spacing="1">LEO</text>
+
+                        <!-- MEO Ring (Dimmed) -->
+                        <circle cx="200" cy="150" r="95" fill="none" stroke="#52525b" stroke-width="1.5" opacity="0.5" />
+                        <circle cx="200" cy="55" r="3" fill="#71717a">
+                            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="10s" repeatCount="indefinite" />
+                        </circle>
+                        <text x="200" y="47" text-anchor="middle" fill="#71717a" font-size="9" letter-spacing="1">MEO</text>
+
+                        <!-- GEO Ring (Dimmed) -->
+                        <circle cx="200" cy="150" r="140" fill="none" stroke="#3f3f46" stroke-width="1" opacity="0.4" />
+                        <circle cx="200" cy="10" r="2.5" fill="#52525b">
+                            <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="20s" repeatCount="indefinite" />
+                        </circle>
+                        <text x="200" y="22" text-anchor="middle" fill="#52525b" font-size="8" letter-spacing="1">GEO</text>
+                    </svg>
+                </div>
+                
+                <!-- LEO Specs Grid -->
+                <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Altitude</div>
+                        <div class="text-xs sm:base font-semibold text-emerald-400 mt-0.5">160 - 2,000 km</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Velocity</div>
+                        <div class="text-xs sm:base font-semibold text-emerald-400 mt-0.5">~27,000 km/h</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Orbital Period</div>
+                        <div class="text-xs sm:base font-semibold text-emerald-400 mt-0.5">~90 Mins</div>
+                    </div>
+                </div>
+
+                <!-- Descriptions -->
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2"><i class="fa-solid fa-satellite"></i> Low Earth Orbit (LEO)</h4>
+                        <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl transition-colors duration-500">
+                            The primary operational domain for SpaceX. Operating near Earth allows for the cheapest access to space, heavy payloads, and ultra-low communication latency (vital for Starlink, deployed at approximately 530-550 km). Objects here experience slight atmospheric drag, meaning defunct satellites eventually burn up harmlessly in the atmosphere, keeping the orbit clean. The ISS, Crew Dragon, and Starlink all operate here.
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
+                            <h4 class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">Medium Earth Orbit (MEO)</h4>
+                            <p class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed">
+                                Located above LEO but below GEO (2,000 - 35,786 km). It is the sweet spot for global navigation satellite systems (like GPS and Galileo). Satellites here take 2 to 24 hours to circle the Earth.
+                            </p>
+                        </div>
+                        <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
+                            <h4 class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">Geosynchronous Orbit (GEO)</h4>
+                            <p class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed">
+                                At precisely 35,786 km, satellites match Earth's rotation perfectly, appearing "parked" over a single spot on the equator. Used for traditional TV and weather satellites, but suffers from high ping (latency).
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2012,6 +2098,23 @@
             const modal = document.getElementById('site-modal');
             modal.style.display = 'none';
             modal.classList.add('hidden');
+        }
+
+        function openOrbitSpecs() {
+            const modalEl = document.getElementById('orbit-modal');
+            if (modalEl) {
+                modalEl.classList.remove('hidden');
+                modalEl.style.display = 'flex';
+                setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+            }
+        }
+
+        function closeOrbitSpecs() {
+            const modal = document.getElementById('orbit-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+            }
         }
 
         let heroInterval;
