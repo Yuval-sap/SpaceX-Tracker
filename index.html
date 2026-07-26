@@ -1312,7 +1312,7 @@
         }
 
         async function fetchWithTimeout(resource, options = {}) {
-            const { timeout = 5000 } = options;
+            const { timeout = 8000 } = options;
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
             const response = await fetch(resource, {
@@ -1329,7 +1329,7 @@
             try {
                 const fetchUpcomingWithFallback = async () => {
                     try {
-                        const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 5000});
+                        const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 8000});
                         if (res.ok) {
                             const data = await res.json();
                             if (data.results && data.results.length > 0) return data.results;
@@ -1337,7 +1337,7 @@
                     } catch (e) {}
                     
                     try {
-                        const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', {timeout: 5000});
+                        const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', {timeout: 8000});
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
@@ -1345,7 +1345,7 @@
                     } catch (e) {}
 
                     try {
-                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 5000});
+                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 8000});
                         if (fb2Res.ok) {
                             const fb2Data = await fb2Res.json();
                             return fb2Data.results || [];
@@ -1357,7 +1357,7 @@
 
                 const fetchPreviousWithFallback = async () => {
                     try {
-                        const res = await fetchWithTimeout(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 5000});
+                        const res = await fetchWithTimeout(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 8000});
                         if (res.ok) {
                             const data = await res.json();
                             if (data.results && data.results.length > 0) return data.results;
@@ -1365,7 +1365,7 @@
                     } catch (e) {}
 
                     try {
-                        const fbRes = await fetchWithTimeout(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 5000});
+                        const fbRes = await fetchWithTimeout(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 8000});
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.results && fbData.results.length > 0) return fbData.results;
