@@ -10,6 +10,15 @@
 
   gtag('config', 'G-R08T8Y5J7E');
 </script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-R08T8Y5J7E"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-R08T8Y5J7E');
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpaceX Fans Tracker • Mission Control</title>
@@ -1161,22 +1170,37 @@
             const rateEl = document.getElementById('starlink-rate-text');
             if(rateEl) rateEl.innerText = `+60 / week`;
 
-            fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://satellitemap.space/constellation/starlink'))
-            .then(res => res.json())
+            const CACHE_KEY = 'spacex_starlink_stats';
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://satellitemap.space/constellation/starlink'), { signal: controller.signal })
+            .then(res => {
+                if (!res.ok) throw new Error("API Error");
+                return res.json();
+            })
             .then(data => {
+                clearTimeout(timeoutId);
                 const match = data.contents.match(/Active Satellites[^\d]*([\d,]+)/i);
                 if (match && match[1]) {
                     const count = parseInt(match[1].replace(/,/g, ''));
                     if (!isNaN(count) && count > 5000) {
+                        localStorage.setItem(CACHE_KEY, count.toString());
                         applyStarlinkCount(count, true);
                         return;
                     }
                 }
-                fallbackStarlinkStats();
+                throw new Error("Invalid count");
             })
             .catch(e => {
-                console.warn("Could not scrape live Starlink count, using fallback.");
-                fallbackStarlinkStats();
+                clearTimeout(timeoutId);
+                const cachedCount = localStorage.getItem(CACHE_KEY);
+                if (cachedCount) {
+                    applyStarlinkCount(parseInt(cachedCount), false);
+                } else {
+                    fallbackStarlinkStats();
+                }
             });
         }
 
@@ -1287,11 +1311,25 @@
             }
         }
 
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 5000 } = options;
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            const response = await fetch(resource, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return response;
+        }
+
         async function fetchLiveLaunches() {
+            const CACHE_KEY = 'spacex_launches_cache';
+            
             try {
                 const fetchUpcomingWithFallback = async () => {
                     try {
-                        const res = await fetch('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed');
+                        const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 5000});
                         if (res.ok) {
                             const data = await res.json();
                             if (data.results && data.results.length > 0) return data.results;
@@ -1299,7 +1337,7 @@
                     } catch (e) {}
                     
                     try {
-                        const fbRes = await fetch('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60');
+                        const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', {timeout: 5000});
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
@@ -1307,20 +1345,19 @@
                     } catch (e) {}
 
                     try {
-                        const fb2Res = await fetch('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed');
+                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 5000});
                         if (fb2Res.ok) {
                             const fb2Data = await fb2Res.json();
                             return fb2Data.results || [];
                         }
                     } catch (e) {}
                     
-                    return []; 
+                    return null; 
                 };
 
                 const fetchPreviousWithFallback = async () => {
                     try {
-                        // העלינו חזרה ל-100 כדי לתפוס שיגורי צוות (כמו צוות 12) שהיו לפני מספר חודשים
-                        const res = await fetch(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`);
+                        const res = await fetchWithTimeout(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 5000});
                         if (res.ok) {
                             const data = await res.json();
                             if (data.results && data.results.length > 0) return data.results;
@@ -1328,14 +1365,14 @@
                     } catch (e) {}
 
                     try {
-                        const fbRes = await fetch(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`);
+                        const fbRes = await fetchWithTimeout(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 5000});
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.results && fbData.results.length > 0) return fbData.results;
                         }
                     } catch (e) {}
                     
-                    return [];
+                    return null;
                 };
 
                 let [upcomingRaw, previousRaw] = await Promise.all([
@@ -1343,10 +1380,30 @@
                     fetchPreviousWithFallback()
                 ]);
 
-                processLaunchData([...(upcomingRaw || []), ...(previousRaw || [])]);
+                if (upcomingRaw === null && previousRaw === null) {
+                    throw new Error("All APIs failed or timed out.");
+                }
+
+                const combinedData = [...(upcomingRaw || []), ...(previousRaw || [])];
+                
+                if (combinedData.length > 0) {
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
+                    processLaunchData(combinedData);
+                } else {
+                    throw new Error("No data returned from APIs");
+                }
                 
             } catch (error) {
-                processLaunchData([]);
+                const cachedData = localStorage.getItem(CACHE_KEY);
+                if (cachedData) {
+                    try {
+                        processLaunchData(JSON.parse(cachedData));
+                    } catch (e) {
+                        processLaunchData([]);
+                    }
+                } else {
+                    processLaunchData([]);
+                }
             }
         }
 
@@ -1783,42 +1840,64 @@
                 lat = 28.6083; lon = -80.6041; 
             }
             
+            const CACHE_KEY = `spacex_weather_${lat}_${lon}`;
+            let weatherData = null;
+
             try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`);
-                const data = await res.json();
-                if (data && data.current) {
-                    const tempC = data.current.temperature_2m;
-                    const tempF = Math.round((tempC * 9/5) + 32);
-                    const code = data.current.weather_code;
-                    const windKmh = data.current.wind_speed_10m;
-                    const windMph = Math.round(windKmh * 0.621371);
-                    
-                    let icon = 'fa-cloud-sun';
-                    let desc = 'Partly Cloudy';
-                    
-                    if (code === 0) { icon = 'fa-sun'; desc = 'Clear'; }
-                    else if (code >= 1 && code <= 3) { icon = 'fa-cloud-sun'; desc = 'Partly Cloudy'; }
-                    else if (code >= 45 && code <= 48) { icon = 'fa-smog'; desc = 'Fog'; }
-                    else if (code >= 51 && code <= 67) { icon = 'fa-cloud-showers-heavy'; desc = 'Rain'; }
-                    else if (code >= 95) { icon = 'fa-cloud-bolt'; desc = 'Storm'; }
-                    
-                    let probGO = "TBD";
-                    if (probability !== null && probability !== undefined) {
-                        probGO = `${probability}% Favorable`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    weatherData = await res.json();
+                    if (weatherData && weatherData.current) {
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(weatherData));
                     } else {
-                        if (code === 0 && windMph < 15) probGO = "95% Favorable";
-                        else if (code >= 1 && code <= 3 && windMph < 20) probGO = "85% Favorable";
-                        else if (code >= 45 && code <= 48) probGO = "70% Favorable";
-                        else if (code >= 51 && code <= 67) probGO = "40% Favorable";
-                        else if (code >= 95 || windMph >= 25) probGO = "10% NO-GO";
-                        else probGO = "TBD";
+                        throw new Error("Invalid response structure");
                     }
-                    
-                    let probColor = probGO.includes("NO-GO") || probGO.includes("40%") ? "text-red-400" : "text-emerald-400";
-                    
-                    weatherEl.innerHTML = `<i class="fa-solid ${icon} text-emerald-400"></i> ${desc} • ${tempF}°F <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> ${windMph} mph <span class="mx-1 opacity-50">|</span> <span class="${probColor} font-bold">${probGO}</span>`;
+                } else {
+                    throw new Error("API Error");
                 }
             } catch (err) {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    try { weatherData = JSON.parse(cached); } catch(e) {}
+                }
+            }
+
+            if (weatherData && weatherData.current) {
+                const tempC = weatherData.current.temperature_2m;
+                const tempF = Math.round((tempC * 9/5) + 32);
+                const code = weatherData.current.weather_code;
+                const windKmh = weatherData.current.wind_speed_10m;
+                const windMph = Math.round(windKmh * 0.621371);
+                
+                let icon = 'fa-cloud-sun';
+                let desc = 'Partly Cloudy';
+                
+                if (code === 0) { icon = 'fa-sun'; desc = 'Clear'; }
+                else if (code >= 1 && code <= 3) { icon = 'fa-cloud-sun'; desc = 'Partly Cloudy'; }
+                else if (code >= 45 && code <= 48) { icon = 'fa-smog'; desc = 'Fog'; }
+                else if (code >= 51 && code <= 67) { icon = 'fa-cloud-showers-heavy'; desc = 'Rain'; }
+                else if (code >= 95) { icon = 'fa-cloud-bolt'; desc = 'Storm'; }
+                
+                let probGO = "TBD";
+                if (probability !== null && probability !== undefined) {
+                    probGO = `${probability}% Favorable`;
+                } else {
+                    if (code === 0 && windMph < 15) probGO = "95% Favorable";
+                    else if (code >= 1 && code <= 3 && windMph < 20) probGO = "85% Favorable";
+                    else if (code >= 45 && code <= 48) probGO = "70% Favorable";
+                    else if (code >= 51 && code <= 67) probGO = "40% Favorable";
+                    else if (code >= 95 || windMph >= 25) probGO = "10% NO-GO";
+                    else probGO = "TBD";
+                }
+                
+                let probColor = probGO.includes("NO-GO") || probGO.includes("40%") ? "text-red-400" : "text-emerald-400";
+                
+                weatherEl.innerHTML = `<i class="fa-solid ${icon} text-emerald-400"></i> ${desc} • ${tempF}°F <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> ${windMph} mph <span class="mx-1 opacity-50">|</span> <span class="${probColor} font-bold">${probGO}</span>`;
+            } else {
                 let defaultTemp = "78°F";
                 let defaultIcon = "fa-cloud-sun";
                 let defaultDesc = "Partly Cloudy";
