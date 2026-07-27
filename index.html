@@ -216,6 +216,16 @@
         body.light-theme .from-cyan-400 { --tw-gradient-from: #0ea5e9 !important; }
 
         #fact-text { transition: opacity 0.25s ease-in-out; }
+
+        /* RTL Strict Overrides to Fix Tailwind classes during translation */
+        html[dir="rtl"] body { text-align: right; }
+        html[dir="rtl"] .text-left { text-align: right !important; }
+        html[dir="rtl"] .text-right { text-align: left !important; }
+        html[dir="rtl"] .ml-4 { margin-right: 1rem !important; margin-left: 0 !important; }
+        html[dir="rtl"] .mr-2 { margin-left: 0.5rem !important; margin-right: 0 !important; }
+        html[dir="rtl"] .pr-2 { padding-left: 0.5rem !important; padding-right: 0 !important; }
+        html[dir="rtl"] .pl-11 { padding-right: 2.75rem !important; padding-left: 1rem !important; }
+        html[dir="rtl"] .left-4 { right: 1rem !important; left: auto !important; }
     </style>
     
     <script>
@@ -226,6 +236,20 @@
         if (localStorage.getItem('spacex-theme') === 'light') {
             document.documentElement.classList.add('light-theme');
             document.body.classList.add('light-theme');
+        }
+
+        // Cache Buster - Forces browser to dump old PWA files
+        if ('serviceWorker' in navigator) {
+            caches.keys().then(names => {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
         }
 
         window.currentUnitSystem = 'imperial'; 
@@ -945,7 +969,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="landing-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="landing-modal-agency" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY ZONE INFORMATION</div>
+                    <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY ZONE INFORMATION</div>
                 </div>
                 <button onclick="closeLandingSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -980,7 +1004,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="astro-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="astro-modal-agency" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ASTRONAUT DOSSIER</div>
+                    <div id="astro-modal-agency" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ASTRONAUT PROFILE</div>
                 </div>
                 <button onclick="closeAstronautModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
