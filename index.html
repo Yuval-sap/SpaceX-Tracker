@@ -27,6 +27,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght=300;400;500;600;700&display=swap');
         
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:focus {
+            outline: none !important;
+        }
+
         body { 
             font-family: 'Space Grotesk', system_ui, sans-serif; 
             position: relative;
@@ -322,7 +330,7 @@
                             <i class="fa-solid fa-circle-info"></i> View Brief
                         </button>
 
-                        <button id="hero-remind-btn" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm">
+                        <button id="hero-remind-btn" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm">
                             <i class="fa-solid fa-bell"></i> Remind Me
                         </button>
                     </div>
@@ -349,12 +357,14 @@
                     <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions()"
                            class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
                 </div>
-                <div class="flex bg-zinc-900 border border-zinc-800 rounded-2xl p-1 text-[11px] sm:text-sm w-full sm:w-auto overflow-x-auto hide-scrollbar transition-colors duration-500">
-                    <button onclick="filterByCategory('all')" id="filter-all" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
-                    <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
-                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starship</button>
-                    <button onclick="filterByCategory('starlink')" id="filter-starlink" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starlink</button>
-                    <button onclick="filterByCategory('dragon')" id="filter-dragon" class="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-[14px] hover:bg-zinc-800/50 transition-all whitespace-nowrap">Dragon/Crew</button>
+                <div class="flex flex-wrap justify-center sm:justify-start bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 text-[11px] sm:text-sm w-full md:w-auto transition-colors duration-500 gap-1">
+                    <button onclick="filterByCategory('all')" id="filter-all" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
+                    <!-- Watchlist Button Here -->
+                    <button onclick="filterByCategory('favorites')" id="filter-favorites" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap flex items-center gap-1.5 text-amber-400 md:hover:text-amber-300"><i class="fa-solid fa-star"></i> Watchlist</button>
+                    <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
+                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starship</button>
+                    <button onclick="filterByCategory('starlink')" id="filter-starlink" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starlink</button>
+                    <button onclick="filterByCategory('dragon')" id="filter-dragon" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Dragon/Crew</button>
                 </div>
             </div>
         </div>
@@ -383,9 +393,9 @@
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
-                        <i class="fa-solid fa-history text-zinc-400 text-base"></i> Past Year Launches
+                        <i class="fa-solid fa-history text-zinc-400 text-base"></i> Recent Past Launches
                     </h3>
-                    <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing all SpaceX missions from the past 12 months</p>
+                    <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing the most recent completed SpaceX missions</p>
                 </div>
                 <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
                     Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
@@ -483,7 +493,7 @@
                         </div>
                     </div>
                     <div class="flex justify-end mt-2">
-                        <button onclick="showNextFact(true)" class="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-zinc-300 transition-all flex items-center gap-2">
+                        <button onclick="showNextFact(true)" class="px-5 py-2.5 bg-zinc-800 md:hover:bg-zinc-700 border border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-zinc-300 transition-all flex items-center gap-2">
                             Next Fact <i class="fa-solid fa-arrow-right"></i>
                         </button>
                     </div>
@@ -495,7 +505,7 @@
                             <i class="fa-solid fa-globe text-cyan-500"></i>
                             <span class="text-[10px] sm:text-[11px] font-bold tracking-widest text-cyan-500 uppercase">Starlink Constellation</span>
                         </div>
-                        <a href="https://satellitemap.space/constellation/starlink?utm_source=chatgpt.com" target="_blank" class="px-2.5 py-1.5 bg-zinc-800/80 hover:bg-cyan-500 hover:text-black border border-zinc-700 hover:border-cyan-500 text-[9px] sm:text-[10px] font-bold tracking-wider rounded-xl transition-all flex items-center gap-1.5 shadow-sm text-zinc-300 whitespace-nowrap">
+                        <a href="https://satellitemap.space/constellation/starlink?utm_source=chatgpt.com" target="_blank" class="px-2.5 py-1.5 bg-zinc-800/80 md:hover:bg-cyan-500 md:hover:text-black border border-zinc-700 md:hover:border-cyan-500 text-[9px] sm:text-[10px] font-bold tracking-wider rounded-xl transition-all flex items-center gap-1.5 shadow-sm text-zinc-300 whitespace-nowrap">
                             LIVE MAP <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
                     </div>
@@ -535,7 +545,7 @@
             <div class="md:hidden w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center transition-colors duration-500">
                 <i class="fa-brands fa-x-twitter text-3xl text-zinc-500 mb-3"></i>
                 <p class="text-sm text-zinc-400 mb-4">The full X timeline works best on desktop.<br>On mobile, open SpaceX directly.</p>
-                <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-xl text-sm font-semibold text-zinc-200 transition-all">
+                <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-xl text-sm font-semibold text-zinc-200 transition-all">
                     Open @SpaceX on X <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
                 </a>
             </div>
@@ -558,38 +568,38 @@
                     <div id="modal-name" class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight"></div>
                     <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
                 </div>
-                <button onclick="closeModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+                <button onclick="closeModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <div class="relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg">
                     <div id="modal-image"></div>
                     <div id="modal-live-container" class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 hidden z-30">
-                        <a id="modal-live-link" href="https://x.com/SpaceX" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all shadow-lg animate-pulse">
+                        <a id="modal-live-link" href="https://x.com/SpaceX" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 md:hover:bg-red-700 text-white text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all shadow-lg animate-pulse">
                             <i class="fa-solid fa-play text-[9px]"></i> WATCH LIVE
                         </a>
                     </div>
                 </div>
                 
                 <div class="flex flex-row gap-3">
-                    <button id="modal-share-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                    <button id="modal-share-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-share-nodes"></i> Share Mission
                     </button>
-                    <button id="modal-calendar-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                    <button id="modal-calendar-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-calendar-plus"></i> Save to Calendar
                     </button>
                 </div>
 
                 <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
-                    <div class="cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="const v = document.getElementById('modal-vehicle').innerText; openRocketSpecs(v.toLowerCase().includes('starship')?'starship':(v.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
+                    <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="const v = document.getElementById('modal-vehicle').innerText; openRocketSpecs(v.toLowerCase().includes('starship')?'starship':(v.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Vehicle Type <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
                         <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
-                    <div class="cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
+                    <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Launch Site <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
                         <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 truncate mt-0.5"></div>
                     </div>
-                    <div class="cursor-pointer hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
+                    <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Orbit Destination <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
                         <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">LEO (Low Earth Orbit)</div>
                     </div>
@@ -605,7 +615,7 @@
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1"><i class="fa-solid fa-rocket text-[10px]"></i> First Stage Booster</div>
                         <div id="modal-booster" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
-                    <div class="p-1 cursor-pointer hover:bg-zinc-900/50 rounded-xl transition-colors" id="modal-landing-click-target" onclick="openLandingSpecs()">
+                    <div class="p-1 cursor-pointer md:hover:bg-zinc-900/50 rounded-xl transition-colors" id="modal-landing-click-target" onclick="openLandingSpecs()">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1"><i class="fa-solid fa-ship text-[10px]"></i> Recovery Vessel / Zone <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
                         <div id="modal-landing" class="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5"></div>
                     </div>
@@ -621,7 +631,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 hover:border-zinc-700 transition-colors duration-500" id="radar-box-click">
+                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 md:hover:border-zinc-700 transition-colors duration-500" id="radar-box-click">
                         <div>
                             <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
                                 <i class="fa-solid fa-map-location-dot"></i> Telemetry Coordinates
@@ -629,7 +639,7 @@
                             <p class="text-[11px] sm:text-xs text-zinc-500" id="modal-pad-coordinate-label">Targeting Base Station</p>
                         </div>
                         <div class="relative w-full h-40 bg-zinc-900 border border-zinc-800/60 rounded-xl mt-3 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] transition-colors duration-500">
-                            <svg class="absolute inset-0 w-full h-full p-2 opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800 transition-colors duration-500" viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg">
+                            <svg class="absolute inset-0 w-full h-full opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800 transition-colors duration-500" viewBox="0 0 960 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M132,154 L154,142 L198,154 L244,120 L300,125 L350,105 L450,110 L520,132 L580,120 L680,140 L720,115 L820,140 L880,120 L910,160 L860,240 L840,290 L810,300 L810,340 L830,370 L800,430 L760,430 L750,470 L680,480 L620,440 L530,470 L480,470 L470,510 L440,510 L410,480 L380,480 L360,450 L340,410 L290,410 L250,380 L190,380 L150,340 L110,330 L80,280 L90,240 L110,210 Z" />
                                 <path d="M760,430 L800,430 L830,470 L840,520 L820,550 L800,510 L780,470 Z" />
                                 <path d="M360,450 L380,480 L410,480 L440,510 L470,510 L460,540 L430,560 L410,530 L380,490 Z" />
@@ -646,7 +656,7 @@
                             <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
                         </h5>
                         <div class="flex items-end justify-around h-36 font-mono text-[10px]">
-                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer hover:scale-110 active:scale-95" id="scale-box-falcon" onclick="openRocketSpecs('falcon')">
+                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95" id="scale-box-falcon" onclick="openRocketSpecs('falcon')">
                                 <svg viewBox="0 0 20 100" class="w-5 h-[70px] transition-all" id="scale-bar-falcon">
                                     <rect x="7" y="15" width="6" height="75" rx="1" fill="#e4e4e7" stroke="#71717a" stroke-width="0.5"/>
                                     <path d="M 7 15 C 7 5, 13 5, 13 15 Z" fill="#ffffff" stroke="#71717a" stroke-width="0.5" />
@@ -656,10 +666,10 @@
                                     <path d="M 7 88 L 4 95 M 13 88 L 16 95" stroke="#27272a" stroke-width="1.5" stroke-linecap="round" />
                                     <rect x="8" y="90" width="4" height="3" fill="#3f3f46" />
                                 </svg>
-                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">Falcon 9</div>
+                                <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Falcon 9</div>
                                 <div class="text-zinc-500 text-[9px]">70m</div>
                             </div>
-                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer hover:scale-110 active:scale-95" id="scale-box-starship" onclick="openRocketSpecs('starship')">
+                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95" id="scale-box-starship" onclick="openRocketSpecs('starship')">
                                 <svg viewBox="0 0 30 130" class="w-8 h-[120px] transition-all" id="scale-bar-starship">
                                     <rect x="9" y="65" width="12" height="55" fill="#a1a1aa" stroke="#52525b" stroke-width="0.5"/>
                                     <rect x="9" y="60" width="12" height="5" fill="#27272a" />
@@ -672,7 +682,7 @@
                                     <path d="M 21 52 L 26 58 L 21 60 Z" fill="#27272a" />
                                     <rect x="11" y="120" width="8" height="4" fill="#3f3f46" />
                                 </svg>
-                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">Starship</div>
+                                <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Starship</div>
                                 <div class="text-zinc-500 text-[9px]">121m</div>
                             </div>
                         </div>
@@ -685,7 +695,7 @@
                             <i class="fa-solid fa-gears text-sm text-zinc-500"></i>
                             Key Flight Milestones & Payload Data
                         </h4>
-                        <button id="modal-trajectory-btn" class="hidden items-center justify-center gap-2 px-4 py-2 bg-zinc-800/80 hover:bg-emerald-500 hover:text-black border border-zinc-700 hover:border-emerald-500 rounded-xl text-xs font-semibold tracking-wide text-zinc-200 transition-all duration-300 shadow-sm">
+                        <button id="modal-trajectory-btn" class="hidden items-center justify-center gap-2 px-4 py-2 bg-zinc-800/80 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-xl text-xs font-semibold tracking-wide text-zinc-200 transition-all duration-300 shadow-sm">
                             <i class="fa-solid fa-route"></i> View 3D Trajectory
                         </button>
                     </div>
@@ -711,7 +721,7 @@
                     <div id="rocket-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE SPECIFICATION</div>
                 </div>
-                <button onclick="closeRocketModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+                <button onclick="closeRocketModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
@@ -750,7 +760,7 @@
                     <div id="site-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">SPACEPORT FACILITY DOSSIER</div>
                 </div>
-                <button onclick="closeLaunchSiteModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+                <button onclick="closeLaunchSiteModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
@@ -785,7 +795,7 @@
                     <div class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">LEO (Low Earth Orbit)</div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBITAL MECHANICS DOSSIER</div>
                 </div>
-                <button onclick="closeOrbitSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+                <button onclick="closeOrbitSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
@@ -871,7 +881,7 @@
                     <div id="landing-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY FACILITY DOSSIER</div>
                 </div>
-                <button onclick="closeLandingSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+                <button onclick="closeLandingSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
@@ -906,7 +916,7 @@
                     <div id="astro-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div id="astro-modal-agency" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ASTRONAUT DOSSIER</div>
                 </div>
-                <button onclick="closeAstronautModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 hover:text-white transition-colors">&times;</button>
+                <button onclick="closeAstronautModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             <div class="p-5 sm:p-6 space-y-5">
                 <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center">
@@ -943,6 +953,14 @@
                 });
             });
         }
+
+        let dbMissions = [];
+        let rawPastMissions = [];
+        let upcomingForGrid = [];
+        let currentFilter = 'all';
+        let countdownIntervals = [];
+        let refreshIntervalId = null;
+        let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
 
         function toggleTheme() {
             const body = document.body;
@@ -1036,6 +1054,34 @@
                     }, delay);
                 }
             });
+        }
+
+        function toggleFavorite(id, event) {
+            event.stopPropagation();
+            const index = favoriteMissions.indexOf(id);
+            const btn = event.currentTarget;
+            const icon = btn.querySelector('i');
+
+            if (index === -1) {
+                favoriteMissions.push(id);
+                if(icon) icon.className = 'fa-solid fa-star text-amber-400';
+            } else {
+                favoriteMissions.splice(index, 1);
+                if(icon) icon.className = 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
+                
+                if (currentFilter === 'favorites') {
+                    const card = btn.closest('.mission-card');
+                    if (card) {
+                        card.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+                        card.style.opacity = "0";
+                        card.style.transform = "scale(0.95)";
+                        setTimeout(() => filterMissions(), 300);
+                    } else {
+                        filterMissions();
+                    }
+                }
+            }
+            localStorage.setItem('spacex_favorites', JSON.stringify(favoriteMissions));
         }
 
         const FALLBACK_IMAGES = {
@@ -1279,13 +1325,6 @@
             if(percEl) percEl.innerText = `~${Math.round(percentage)}% of planned`;
         }
 
-        let dbMissions = [];
-        let rawPastMissions = [];
-        let upcomingForGrid = [];
-        let currentFilter = 'all';
-        let countdownIntervals = [];
-        let refreshIntervalId = null;
-
         function refreshXTwitterFeed() {
             const container = document.getElementById('x-feed-container');
             if (!container) return;
@@ -1319,7 +1358,7 @@
         }
 
         async function fetchWithTimeout(resource, options = {}) {
-            const { timeout = 8000 } = options;
+            const { timeout = 12000 } = options;
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
             const response = await fetch(resource, {
@@ -1336,7 +1375,7 @@
             try {
                 const fetchUpcomingWithFallback = async () => {
                     try {
-                        const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 8000});
+                        const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 12000});
                         if (res.ok) {
                             const data = await res.json();
                             if (data.results && data.results.length > 0) return data.results;
@@ -1344,7 +1383,7 @@
                     } catch (e) {}
                     
                     try {
-                        const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', {timeout: 8000});
+                        const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', {timeout: 12000});
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
@@ -1352,7 +1391,7 @@
                     } catch (e) {}
 
                     try {
-                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 8000});
+                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', {timeout: 12000});
                         if (fb2Res.ok) {
                             const fb2Data = await fb2Res.json();
                             return fb2Data.results || [];
@@ -1364,7 +1403,7 @@
 
                 const fetchPreviousWithFallback = async () => {
                     try {
-                        const res = await fetchWithTimeout(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 8000});
+                        const res = await fetchWithTimeout(`https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=50&mode=detailed`, {timeout: 12000});
                         if (res.ok) {
                             const data = await res.json();
                             if (data.results && data.results.length > 0) return data.results;
@@ -1372,7 +1411,7 @@
                     } catch (e) {}
 
                     try {
-                        const fbRes = await fetchWithTimeout(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=100&mode=detailed`, {timeout: 8000});
+                        const fbRes = await fetchWithTimeout(`https://lldev.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=50&mode=detailed`, {timeout: 12000});
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.results && fbData.results.length > 0) return fbData.results;
@@ -1535,9 +1574,7 @@
             setupHeroBanner();
             
             upcomingForGrid = dbMissions.slice(1, 7);
-            renderMissions(upcomingForGrid);
-            
-            renderPastMissions(rawPastMissions);
+            filterMissions();
 
             updateRefreshSchedule();
             updateStarlinkStats();
@@ -1931,7 +1968,11 @@
             countdownIntervals = [];
 
             if (filteredMissions.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500">No matching upcoming launches found.</div>`;
+                if (currentFilter === 'favorites') {
+                    grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500 flex flex-col items-center justify-center w-full"><i class="fa-regular fa-star text-3xl mb-3 text-zinc-600"></i><p>Your watchlist is empty.<br>Click the star icon on any mission to save it here.</p></div>`;
+                } else {
+                    grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500">No matching upcoming launches found.</div>`;
+                }
                 return;
             }
             
@@ -1952,6 +1993,9 @@
                 
                 const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20">${m.status}</div>`;
                 
+                const isFav = favoriteMissions.includes(m.id);
+                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
+
                 const card = document.createElement('div');
                 card.className = `mission-card w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col snap-start shrink-0 hover:border-zinc-700`;
                 card.style = `animation-delay: ${idx * 100}ms;`;
@@ -1962,18 +2006,23 @@
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between relative z-20 bg-zinc-900">
                         <div>
-                            <div class="flex items-center justify-between gap-2 mb-1.5">
-                                <div class="font-semibold text-lg line-clamp-1 text-white flex-1">${m.name}</div>
-                                <button onclick="event.stopPropagation(); registerMissionNotification('${m.id}', '${m.name}', '${m.date}')" class="p-2 bg-zinc-800 hover:bg-zinc-700/80 text-zinc-400 hover:text-emerald-400 rounded-xl border border-zinc-700 transition-colors text-xs" title="Remind Me">
-                                    <i class="fa-solid fa-bell"></i>
-                                </button>
-                            </div>
+                            <div class="font-semibold text-lg line-clamp-1 text-white mb-1.5" title="${m.name}">${m.name}</div>
                             <div class="text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
                             <div class="text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
                         </div>
-                        <div class="pt-3 border-t border-zinc-800/60">
-                            <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1">LOCAL COUNTDOWN</div>
-                            <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no">--d --h --m</div>
+                        <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
+                            <div>
+                                <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1">LOCAL COUNTDOWN</div>
+                                <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no">--d --h --m</div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
+                                    <i class="${starClass}"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); registerMissionNotification('${m.id}', '${m.name}', '${m.date}')" class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 text-zinc-400 md:hover:text-emerald-400 rounded-xl border border-zinc-700 transition-colors" title="Remind Me">
+                                    <i class="fa-solid fa-bell"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1990,7 +2039,11 @@
             pastGrid.innerHTML = '';
 
             if (filteredPast.length === 0) {
-                pastGrid.innerHTML = `<div class="py-10 text-zinc-500 text-center w-full">No recent past launches found in the database.</div>`;
+                if (currentFilter === 'favorites') {
+                    pastGrid.innerHTML = `<div class="py-10 text-center text-zinc-500 w-full flex flex-col items-center justify-center"><i class="fa-regular fa-star text-3xl mb-3 text-zinc-600"></i><p>No past missions in your watchlist.</p></div>`;
+                } else {
+                    pastGrid.innerHTML = `<div class="py-10 text-zinc-500 text-center w-full">No recent past launches found in the database.</div>`;
+                }
                 return;
             }
 
@@ -2000,6 +2053,9 @@
                     dateStr = new Date(m.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
                 } catch(e) {}
                 
+                const isFav = favoriteMissions.includes(m.id);
+                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
+
                 const card = document.createElement('div');
                 card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 transition-all z-20 mission-card`;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
@@ -2009,10 +2065,20 @@
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
                         <div>
-                            <div class="font-semibold text-lg mb-1 line-clamp-1 text-white">${m.name}</div>
+                            <div class="font-semibold text-lg mb-1 line-clamp-1 text-white" title="${m.name}">${m.name}</div>
                             <div class="text-xs text-zinc-500 mb-3">${dateStr} • ${m.site}</div>
                         </div>
-                        <button class="text-sm text-left text-emerald-400 hover:underline mt-2 self-start font-medium">View Deep Dive →</button>
+                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
+                            <button class="text-sm text-left text-emerald-400 hover:underline font-medium">View Deep Dive →</button>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
+                                    <i class="${starClass}"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); registerMissionNotification('${m.id}', '${m.name}', '${m.date}')" class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 text-zinc-400 md:hover:text-emerald-400 rounded-xl border border-zinc-700 transition-colors" title="Remind Me">
+                                    <i class="fa-solid fa-bell"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `;
                 
@@ -2068,10 +2134,15 @@
             // נרמול חיפוש - החלפת מקפים ברווחים כדי ש"crew 12" ימצא "Crew-12"
             let cleanSearchTerm = term.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 
-            let filteredUpcoming = upcomingForGrid;
-            if (currentFilter !== 'all') {
-                filteredUpcoming = filteredUpcoming.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
+            let filteredUpcoming;
+            if (currentFilter === 'favorites') {
+                filteredUpcoming = dbMissions.filter(m => favoriteMissions.includes(m.id));
+            } else if (currentFilter === 'all') {
+                filteredUpcoming = upcomingForGrid;
+            } else {
+                filteredUpcoming = upcomingForGrid.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
             }
+            
             if (cleanSearchTerm) {
                 filteredUpcoming = filteredUpcoming.filter(m => {
                     let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
@@ -2081,9 +2152,12 @@
             renderMissions(filteredUpcoming);
 
             let filteredPast = rawPastMissions;
-            if (currentFilter !== 'all') {
+            if (currentFilter === 'favorites') {
+                filteredPast = rawPastMissions.filter(m => favoriteMissions.includes(m.id));
+            } else if (currentFilter !== 'all') {
                 filteredPast = filteredPast.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
             }
+            
             if (cleanSearchTerm) {
                 filteredPast = filteredPast.filter(m => {
                     let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
@@ -2091,6 +2165,8 @@
                 });
             }
             renderPastMissions(filteredPast);
+
+            document.activeElement.blur();
         }
 
         function filterByCategory(cat) {
@@ -2233,18 +2309,18 @@
             const vehicleLower = m.vehicle.toLowerCase();
             
             if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('orbital launch mount') || vehicleLower.includes('starship') || nameLower.includes('starship')) {
-                radar.style.top = '82%'; 
-                radar.style.left = '43%'; 
+                radar.style.top = '87%'; 
+                radar.style.left = '47%'; 
                 label.innerText = "Coordinates: 25.99° N, 97.15° W • Boca Chica, TX";
             } 
             else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4') || siteLower.includes('california') || siteLower.includes('pacific')) {
-                radar.style.top = '48%'; 
-                radar.style.left = '28%'; 
+                radar.style.top = '50%'; 
+                radar.style.left = '10%'; 
                 label.innerText = "Coordinates: 34.63° N, 120.61° W • Vandenberg SFB, CA";
             } 
             else {
-                radar.style.top = '65%'; 
-                radar.style.left = '68%'; 
+                radar.style.top = '78%'; 
+                radar.style.left = '86%'; 
                 label.innerText = "Coordinates: 28.56° N, 80.57° W • Cape Canaveral, FL";
             }
 
