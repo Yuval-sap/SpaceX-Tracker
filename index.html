@@ -961,6 +961,7 @@
         let countdownIntervals = [];
         let refreshIntervalId = null;
         let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
+        let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
 
         function toggleTheme() {
             const body = document.body;
@@ -1038,22 +1039,62 @@
             tick();
         }
 
-        function registerMissionNotification(id, name, dateStr) {
-            if (!("Notification" in window)) return;
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    const launchTime = new Date(dateStr).getTime();
-                    const notifyTime = launchTime - (10 * 60 * 1000);
-                    const delay = notifyTime - Date.now();
-                    if (delay <= 0) return;
-                    setTimeout(() => {
-                        new Notification("SpaceX Tracker • Launch Warning", {
-                            body: `${name} is lifting off in 10 minutes!`,
-                            icon: "https://www.spacex.com/static/images/share.jpg"
-                        });
-                    }, delay);
+        function toggleReminder(id, name, dateStr, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+
+            const index = remindedMissions.indexOf(id);
+            if (index === -1) {
+                if (!("Notification" in window)) {
+                    alert("המכשיר או הדפדפן שלך לא תומכים בהתראות דפדפן.");
+                    return;
                 }
-            });
+
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        remindedMissions.push(id);
+                        localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
+                        
+                        const launchTime = new Date(dateStr).getTime();
+                        const notifyTime = launchTime - (10 * 60 * 1000);
+                        const delay = notifyTime - Date.now();
+                        
+                        if (delay > 0) {
+                            setTimeout(() => {
+                                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                                    navigator.serviceWorker.ready.then(registration => {
+                                        registration.showNotification("SpaceX Tracker • Launch Warning", {
+                                            body: `${name} is lifting off in 10 minutes!`,
+                                            icon: "https://www.spacex.com/static/images/share.jpg",
+                                            vibrate: [200, 100, 200]
+                                        });
+                                    });
+                                } else {
+                                    new Notification("SpaceX Tracker • Launch Warning", {
+                                        body: `${name} is lifting off in 10 minutes!`,
+                                        icon: "https://www.spacex.com/static/images/share.jpg"
+                                    });
+                                }
+                            }, delay);
+                            alert(`✅ תזכורת הוגדרה בהצלחה עבור:\n${name}\n\nהתראה תקפוץ 10 דקות לפני השיגור.`);
+                        } else {
+                            alert("השיגור קרוב מדי או שכבר עבר, התזכורת נשמרה אך לא תוקפץ מראש.");
+                        }
+                        
+                        filterMissions();
+                        setupHeroBanner();
+                    } else if (permission === "denied") {
+                        alert("❌ התראות נחסמו. אנא אשר התראות בהגדרות הדפדפן כדי לקבל תזכורות.");
+                    }
+                });
+            } else {
+                remindedMissions.splice(index, 1);
+                localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
+                alert(`❌ התזכורת עבור ${name} בוטלה.`);
+                filterMissions();
+                setupHeroBanner();
+            }
         }
 
         function toggleFavorite(id, event) {
@@ -1761,29 +1802,41 @@
                 landingStr = "Ocean Splashdown • Gulf of America";
             }
 
-            // חילוץ יציב של צוות האסטרונאוטים בלי לקרוס 
+            // חילוץ יציב של צוות האסטרונאוטים עם מנגנון קאש חכם
             let crewArr = [];
             let isCrewMission = nameLower.includes("crew") || nameLower.includes("polaris") || nameLower.includes("ax-") || nameLower.includes("fram2");
             
             if (launch.rocket && launch.rocket.spacecraft_stage && launch.rocket.spacecraft_stage.launch_crew && launch.rocket.spacecraft_stage.launch_crew.length > 0) {
                 crewArr = launch.rocket.spacecraft_stage.launch_crew.map(c => {
                     let cRole = c.role ? (typeof c.role === 'object' ? c.role.role : c.role) : "Flight Crew Member";
-                    return {
-                        name: c.astronaut ? c.astronaut.name : "SpaceX Astronaut",
-                        role: cRole,
-                        agency: (c.astronaut && c.astronaut.agency) ? c.astronaut.agency.name : "SpaceX / Commercial Crew",
-                        bio: (c.astronaut && c.astronaut.bio) ? c.astronaut.bio : "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.",
-                        image: (c.astronaut && (c.astronaut.profile_image || c.astronaut.profile_image_thumbnail)) ? (c.astronaut.profile_image || c.astronaut.profile_image_thumbnail) : "https://www.spacex.com/static/images/astronauts/eva_suit.jpg"
-                    };
-                });
-            } else if (category === 'dragon' && isCrewMission) {
-                crewArr = [
-                    { name: "Mission Commander", role: "Commander", agency: "Assigned Space Agency", bio: "Leads the mission and is responsible for overall flight operations and safety.", image: "https://www.spacex.com/static/images/astronauts/eva_suit.jpg" },
-                    { name: "Spacecraft Pilot", role: "Pilot", agency: "Assigned Space Agency", bio: "Assists the commander in piloting the Dragon spacecraft and monitoring systems.", image: "https://www.spacex.com/static/images/astronauts/eva_suit.jpg" },
-                    { name: "Mission Specialist 1", role: "Specialist", agency: "Assigned Space Agency", bio: "Conducts scientific experiments and station operations.", image: "https://www.spacex.com/static/images/astronauts/eva_suit.jpg" },
-                    { name: "Mission Specialist 2", role: "Specialist", agency: "Assigned Space Agency", bio: "Conducts scientific experiments and station operations.", image: "https://www.spacex.com/static/images/astronauts/eva_suit.jpg" }
-                ];
+                    let aName = c.astronaut ? c.astronaut.name : null;
+                    let cAgency = (c.astronaut && c.astronaut.agency) ? c.astronaut.agency.name : "SpaceX / Commercial Crew";
+                    let cBio = (c.astronaut && c.astronaut.bio) ? c.astronaut.bio : "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.";
+                    let cImage = (c.astronaut && c.astronaut.profile_image) ? c.astronaut.profile_image : 
+                                 (c.astronaut && c.astronaut.profile_image_thumbnail) ? c.astronaut.profile_image_thumbnail : 
+                                 "https://www.spacex.com/static/images/astronauts/eva_suit.jpg";
+                    
+                    return aName ? { name: aName, role: cRole, agency: cAgency, bio: cBio, image: cImage } : null;
+                }).filter(Boolean);
+            } 
+            
+            // מנגנון שמירה ושליפה אוטומטי (Cache Fallback)
+            let crewCache = {};
+            try {
+                crewCache = JSON.parse(localStorage.getItem('spacex_crew_cache')) || {};
+            } catch(e) { crewCache = {}; }
+
+            if (crewArr.length > 0) {
+                // אם קיבלנו נתונים תקינים מה-API, נשמור אותם בזיכרון המקומי לפי ה-ID של המשימה
+                crewCache[launch.id] = crewArr;
+                localStorage.setItem('spacex_crew_cache', JSON.stringify(crewCache));
+            } else if (isCrewMission) {
+                // אם ה-API חזר ריק, נבדוק אם אי פעם בעבר שמרנו את הצוות הזה
+                if (crewCache[launch.id] && crewCache[launch.id].length > 0) {
+                    crewArr = crewCache[launch.id];
+                }
             }
+            // אם עדיין crewArr ריק (כלומר ה-API ריק ומעולם לא שמרנו אותו) - המקטע פשוט לא ירונדר ב-HTML.
 
             let prob = launch.probability;
 
@@ -1861,7 +1914,15 @@
 
                 const remindBtn = document.getElementById('hero-remind-btn');
                 if (remindBtn) {
-                    remindBtn.onclick = () => registerMissionNotification(nextLaunch.id, nextLaunch.name, nextLaunch.date);
+                    const isReminded = remindedMissions.includes(nextLaunch.id);
+                    if (isReminded) {
+                        remindBtn.className = "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-emerald-500 text-black border border-emerald-500 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm";
+                        remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i> Reminder Set`;
+                    } else {
+                        remindBtn.className = "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm";
+                        remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i> Remind Me`;
+                    }
+                    remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, escapeHTML(nextLaunch.name), nextLaunch.date, event);
                 }
 
                 heroBanner.classList.remove('hidden');
@@ -1996,6 +2057,13 @@
                 const isFav = favoriteMissions.includes(m.id);
                 const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
 
+                const isReminded = remindedMissions.includes(m.id);
+                const bellClass = isReminded 
+                    ? "flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-emerald-500 text-black rounded-xl border border-emerald-500 transition-colors"
+                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors";
+                
+                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
+
                 const card = document.createElement('div');
                 card.className = `mission-card w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col snap-start shrink-0 hover:border-zinc-700`;
                 card.style = `animation-delay: ${idx * 100}ms;`;
@@ -2019,8 +2087,8 @@
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
-                                <button onclick="event.stopPropagation(); registerMissionNotification('${m.id}', '${m.name}', '${m.date}')" class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 text-zinc-400 md:hover:text-emerald-400 rounded-xl border border-zinc-700 transition-colors" title="Remind Me">
-                                    <i class="fa-solid fa-bell"></i>
+                                <button onclick="toggleReminder('${m.id}', '${escapeHTML(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
+                                    <i class="${bellIconClass}"></i>
                                 </button>
                             </div>
                         </div>
@@ -2056,6 +2124,13 @@
                 const isFav = favoriteMissions.includes(m.id);
                 const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
 
+                const isReminded = remindedMissions.includes(m.id);
+                const bellClass = isReminded 
+                    ? "flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-emerald-500 text-black rounded-xl border border-emerald-500 transition-colors"
+                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors";
+                
+                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
+
                 const card = document.createElement('div');
                 card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 transition-all z-20 mission-card`;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
@@ -2074,8 +2149,8 @@
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
-                                <button onclick="event.stopPropagation(); registerMissionNotification('${m.id}', '${m.name}', '${m.date}')" class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 text-zinc-400 md:hover:text-emerald-400 rounded-xl border border-zinc-700 transition-colors" title="Remind Me">
-                                    <i class="fa-solid fa-bell"></i>
+                                <button onclick="toggleReminder('${m.id}', '${escapeHTML(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
+                                    <i class="${bellIconClass}"></i>
                                 </button>
                             </div>
                         </div>
@@ -2205,7 +2280,7 @@
                 window.currentMissionCrew = m.crew;
                 
                 crewContainer.innerHTML = m.crew.map((c, i) => `
-                    <div onclick="openAstronautModal(${i})" class="flex flex-col items-center group w-20 cursor-pointer hover:scale-105 transition-transform duration-200">
+                    <div onclick="openAstronautModal(${i})" class="flex flex-col items-center group w-20 cursor-pointer md:hover:scale-105 transition-transform duration-200">
                         <div class="w-12 h-12 rounded-full overflow-hidden border border-zinc-700 group-hover:border-emerald-400 transition-colors duration-300 mb-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
                             <img src="${c.image}" alt="Astronaut" class="w-full h-full object-cover">
                         </div>
