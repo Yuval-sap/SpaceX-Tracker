@@ -261,21 +261,30 @@
         }
 
         const htmlObserver = new MutationObserver(() => {
-            const currentLang = document.documentElement.lang.toLowerCase();
+            const htmlEl = document.documentElement;
+            const currentLang = htmlEl.lang.toLowerCase();
+            const isRtl = htmlEl.classList.contains('translated-rtl') || 
+                          currentLang.startsWith('he') || 
+                          currentLang.startsWith('iw') || 
+                          currentLang.startsWith('ar') ||
+                          currentLang.startsWith('fa') ||
+                          currentLang.startsWith('ur');
             
-            if (currentLang.startsWith('he') || currentLang.startsWith('iw') || currentLang.startsWith('ar') || currentLang.startsWith('fa') || currentLang.startsWith('ur')) {
-                document.documentElement.setAttribute('dir', 'rtl');
+            if (isRtl) {
+                htmlEl.setAttribute('dir', 'rtl');
             } else {
-                document.documentElement.setAttribute('dir', 'ltr');
+                htmlEl.setAttribute('dir', 'ltr');
             }
             
-            const newUnitSystem = currentLang.startsWith('en') ? 'imperial' : 'metric';
+            const isEnglish = currentLang.startsWith('en') && !htmlEl.classList.contains('translated-ltr') && !htmlEl.classList.contains('translated-rtl');
+            const newUnitSystem = isEnglish ? 'imperial' : 'metric';
+            
             if (newUnitSystem !== window.currentUnitSystem) {
                 window.currentUnitSystem = newUnitSystem;
                 updateUnitsDisplay();
             }
         });
-        htmlObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        htmlObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'class'] });
     </script>
 </head>
 <body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
