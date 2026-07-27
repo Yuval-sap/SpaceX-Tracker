@@ -227,6 +227,55 @@
             document.documentElement.classList.add('light-theme');
             document.body.classList.add('light-theme');
         }
+
+        window.currentUnitSystem = 'imperial'; 
+        window.currentActiveVehicleStr = 'falcon 9';
+        window.currentActiveLandingStr = "Autonomous Spaceport Drone Ships (ASDS)";
+
+        function updateUnitsDisplay() {
+            if (window.latestWeather) {
+                renderWeatherHTML();
+            }
+            
+            const sf = document.getElementById('scale-text-falcon');
+            if(sf) sf.innerText = window.currentUnitSystem === 'metric' ? '70m' : '229ft';
+            
+            const ss = document.getElementById('scale-text-starship');
+            if(ss) ss.innerText = window.currentUnitSystem === 'metric' ? '124m' : '407ft';
+
+            const oa = document.getElementById('orbit-alt');
+            if(oa) oa.innerText = window.currentUnitSystem === 'metric' ? '160 - 2,000 km' : '100 - 1,200 mi';
+
+            const ov = document.getElementById('orbit-vel');
+            if(ov) ov.innerText = window.currentUnitSystem === 'metric' ? '~27,000 km/h' : '~17,000 mph';
+
+            if (!document.getElementById('rocket-modal').classList.contains('hidden')) {
+                let type = 'falcon';
+                if (window.currentActiveVehicleStr.toLowerCase().includes('starship')) type = 'starship';
+                else if (window.currentActiveVehicleStr.toLowerCase().includes('heavy')) type = 'falcon_heavy';
+                
+                if(!document.getElementById('rocket-modal').classList.contains('hidden')){
+                    openRocketSpecs(type);
+                }
+            }
+        }
+
+        const htmlObserver = new MutationObserver(() => {
+            const currentLang = document.documentElement.lang.toLowerCase();
+            
+            if (currentLang.startsWith('he') || currentLang.startsWith('iw') || currentLang.startsWith('ar') || currentLang.startsWith('fa') || currentLang.startsWith('ur')) {
+                document.documentElement.setAttribute('dir', 'rtl');
+            } else {
+                document.documentElement.setAttribute('dir', 'ltr');
+            }
+            
+            const newUnitSystem = currentLang.startsWith('en') ? 'imperial' : 'metric';
+            if (newUnitSystem !== window.currentUnitSystem) {
+                window.currentUnitSystem = newUnitSystem;
+                updateUnitsDisplay();
+            }
+        });
+        htmlObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
     </script>
 </head>
 <body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
@@ -246,7 +295,7 @@
 
                 <div id="google_translate_element" class="notranslate flex shrink-0 items-center" translate="no"></div>
 
-                <div class="flex shrink-0 items-center gap-x-1 px-1.5 py-1 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-md sm:rounded-2xl text-[9px] sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate" translate="no">
+                <div class="flex shrink-0 items-center gap-x-1 px-1.5 py-1 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-md sm:rounded-2xl text-[9px] sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate" translate="no" dir="ltr">
                     <i class="fa-solid fa-clock text-zinc-400"></i>
                     <span id="live-clock" class="font-mono text-emerald-400 font-bold leading-none">--:--:--</span>
                     <span id="live-timezone" class="hidden sm:inline text-[10px] text-zinc-500 font-semibold uppercase tracking-wide leading-none">LOCAL</span>
@@ -294,7 +343,7 @@
                         </span>
                     </div>
 
-                    <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block">
+                    <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block" dir="ltr">
                         <div class="text-[9px] text-zinc-500 font-bold tracking-[2px] uppercase mb-4 opacity-80 milestones-title transition-colors duration-500">MILESTONES</div>
                         <div class="relative flex items-center justify-between w-full px-2">
                             <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-800 timeline-track transition-colors duration-500"></div>
@@ -338,14 +387,14 @@
 
                 <div class="bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0 transition-colors duration-500">
                     <div class="text-[10px] uppercase tracking-[3px] text-zinc-500 font-bold mb-2 text-center w-full">LOCAL COUNTDOWN</div>
-                    <div id="hero-countdown" class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center" translate="no">
+                    <div id="hero-countdown" dir="ltr" class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center w-full" translate="no">
                         <!-- Populated by JS -->
                     </div>
                     
                     <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
                     
                     <div class="text-[9px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5">LAUNCH WINDOW</div>
-                    <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500">--:-- - --:--</div>
+                    <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500 notranslate" dir="ltr" translate="no">--:-- - --:--</div>
                 </div>
             </div>
         </div>
@@ -598,22 +647,22 @@
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
-                    <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="const v = document.getElementById('modal-vehicle').innerText; openRocketSpecs(v.toLowerCase().includes('starship')?'starship':(v.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
+                <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500 items-start">
+                    <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openRocketSpecs(window.currentActiveVehicleStr.toLowerCase().includes('starship')?'starship':(window.currentActiveVehicleStr.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Vehicle Type <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
-                        <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                        <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
-                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Launch Site <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
-                        <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 truncate mt-0.5"></div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">LAUNCH SITE INFORMATION</div>
+                        <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
-                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1">Orbit Destination <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
-                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">LEO (Low Earth Orbit)</div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBITAL FLIGHT INFORMATION</div>
+                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate leading-tight" dir="ltr" translate="no">LEO (Low Earth Orbit)</div>
                     </div>
                     <div class="p-1">
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Mission Status</div>
-                        <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-0.5"></div>
+                        <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-0.5 leading-tight"></div>
                     </div>
                 </div>
 
@@ -624,7 +673,7 @@
                         <div id="modal-booster" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
                     <div class="p-1 cursor-pointer md:hover:bg-zinc-900/50 rounded-xl transition-colors" id="modal-landing-click-target" onclick="openLandingSpecs()">
-                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold flex items-center gap-1"><i class="fa-solid fa-ship text-[10px]"></i> Recovery Vessel / Zone <i class="fa-solid fa-circle-info text-[9px] text-emerald-400/70"></i></div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY ZONE INFORMATION</div>
                         <div id="modal-landing" class="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5"></div>
                     </div>
                 </div>
@@ -644,7 +693,7 @@
                             <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
                                 <i class="fa-solid fa-map-location-dot"></i> Telemetry Coordinates
                             </h5>
-                            <p class="text-[11px] sm:text-xs text-zinc-500" id="modal-pad-coordinate-label">Targeting Base Station</p>
+                            <p class="text-[11px] sm:text-xs text-zinc-500 notranslate" id="modal-pad-coordinate-label" dir="ltr" translate="no">Targeting Base Station</p>
                         </div>
                         <div class="relative w-full h-40 bg-zinc-900 border border-zinc-800/60 rounded-xl mt-3 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] transition-colors duration-500">
                             <svg class="absolute inset-0 w-full h-full opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800 transition-colors duration-500" viewBox="0 0 960 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -675,7 +724,7 @@
                                     <rect x="8" y="90" width="4" height="3" fill="#3f3f46" />
                                 </svg>
                                 <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Falcon 9</div>
-                                <div class="text-zinc-500 text-[9px]">70m</div>
+                                <div class="text-zinc-500 text-[9px] notranslate" id="scale-text-falcon" dir="ltr" translate="no"></div>
                             </div>
                             <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95" id="scale-box-starship" onclick="openRocketSpecs('starship')">
                                 <svg viewBox="0 0 30 130" class="w-8 h-[120px] transition-all" id="scale-bar-starship">
@@ -691,7 +740,7 @@
                                     <rect x="11" y="120" width="8" height="4" fill="#3f3f46" />
                                 </svg>
                                 <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Starship</div>
-                                <div class="text-zinc-500 text-[9px]">121m</div>
+                                <div class="text-zinc-500 text-[9px] notranslate" id="scale-text-starship" dir="ltr" translate="no"></div>
                             </div>
                         </div>
                     </div>
@@ -740,15 +789,15 @@
                 <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Height</div>
-                        <div id="rocket-modal-height" class="text-xs sm:base font-semibold text-zinc-200 mt-0.5"></div>
+                        <div id="rocket-modal-height" class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr" translate="no"></div>
                     </div>
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Thrust</div>
-                        <div id="rocket-modal-thrust" class="text-xs sm:base font-semibold text-zinc-200 mt-0.5"></div>
+                        <div id="rocket-modal-thrust" class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr" translate="no"></div>
                     </div>
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Payload LEO</div>
-                        <div id="rocket-modal-payload" class="text-xs sm:base font-semibold text-zinc-200 mt-0.5"></div>
+                        <div id="rocket-modal-payload" class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr" translate="no"></div>
                     </div>
                 </div>
 
@@ -779,7 +828,7 @@
                 <div class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Global Coordinates</div>
-                        <div id="site-modal-coords" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                        <div id="site-modal-coords" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr" translate="no"></div>
                     </div>
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Primary Fleet</div>
@@ -841,15 +890,15 @@
                 <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Altitude</div>
-                        <div class="text-xs sm:base font-semibold text-emerald-400 mt-0.5">160 - 2,000 km</div>
+                        <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate" id="orbit-alt" dir="ltr" translate="no"></div>
                     </div>
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Velocity</div>
-                        <div class="text-xs sm:base font-semibold text-emerald-400 mt-0.5">~27,000 km/h</div>
+                        <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate" id="orbit-vel" dir="ltr" translate="no"></div>
                     </div>
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Orbital Period</div>
-                        <div class="text-xs sm:base font-semibold text-emerald-400 mt-0.5">~90 Mins</div>
+                        <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate" translate="no">~90 Mins</div>
                     </div>
                 </div>
 
@@ -887,7 +936,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="landing-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY FACILITY DOSSIER</div>
+                    <div id="landing-modal-agency" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY ZONE INFORMATION</div>
                 </div>
                 <button onclick="closeLandingSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -1789,9 +1838,9 @@
             if (!landingStr) {
                 if (vLower.includes('starship') || nLower.includes('starship')) {
                     if (descLower.includes('splashdown') || descLower.includes('ocean') || descLower.includes('indian')) {
-                        landingStr = "Ocean Splashdown • Indian Ocean";
+                        landingStr = "Ocean Water Landing • Indian Ocean";
                     } else if (descLower.includes('gulf')) {
-                        landingStr = "Ocean Splashdown • Gulf of America";
+                        landingStr = "Ocean Water Landing • Gulf of America";
                     } else {
                         landingStr = "Tower Catch • Starbase Mechazilla";
                     }
@@ -1807,7 +1856,7 @@
             // עדכון למפרץ אמריקה כמו שביקשת
             landingStr = landingStr.replace(/Gulf of Mexico/ig, "Gulf of America");
             if (descLower.includes('gulf of mexico') || nLower.includes('gulf of mexico') || descLower.includes('gulf of america')) {
-                landingStr = "Ocean Splashdown • Gulf of America";
+                landingStr = "Ocean Water Landing • Gulf of America";
             }
 
             // חילוץ יציב של צוות האסטרונאוטים עם מנגנון קאש חכם
@@ -1870,6 +1919,38 @@
                 crew: crewArr,
                 probability: prob
             };
+        }
+
+        window.latestWeather = null;
+        
+        function renderWeatherHTML() {
+            const weatherEl = document.getElementById('hero-weather');
+            if(!weatherEl) return;
+
+            if (!window.latestWeather || window.latestWeather.isFallback) {
+                let defaultTempC = 26; let defaultTempF = 78;
+                let defaultIcon = "fa-cloud-sun";
+                let defaultDesc = "Partly Cloudy";
+                
+                if (window.latestWeather && window.latestWeather.siteInfo) {
+                    const siteLower = window.latestWeather.siteInfo;
+                    if (siteLower.includes('starbase') || siteLower.includes('texas')) {
+                        defaultTempC = 29; defaultTempF = 84; defaultIcon = "fa-sun"; defaultDesc = "Clear";
+                    } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4')) {
+                        defaultTempC = 17; defaultTempF = 62; defaultIcon = "fa-smog"; defaultDesc = "Fog";
+                    }
+                }
+
+                let tStr = window.currentUnitSystem === 'metric' ? `${defaultTempC}°C` : `${defaultTempF}°F`;
+                weatherEl.innerHTML = `<i class="fa-solid ${defaultIcon} text-emerald-400"></i> ${defaultDesc} • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span>`;
+                return;
+            }
+
+            const w = window.latestWeather;
+            let tStr = window.currentUnitSystem === 'metric' ? `${w.tempC}°C` : `${w.tempF}°F`;
+            let wStr = window.currentUnitSystem === 'metric' ? `${Math.round(w.windKmh)} km/h` : `${w.windMph} mph`;
+            
+            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> ${w.desc} • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate inline-block" dir="ltr" translate="no">${wStr}</span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold">${w.probGO}</span>`;
         }
 
         function setupHeroBanner() {
@@ -1941,9 +2022,6 @@
         }
 
         async function fetchLiveWeather(siteLower, probability) {
-            const weatherEl = document.getElementById('hero-weather');
-            if (!weatherEl) return;
-            
             let lat = 28.5623, lon = -80.5773; 
             if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('pad 2')) {
                 lat = 25.9973; lon = -97.1556; 
@@ -1980,7 +2058,7 @@
             }
 
             if (weatherData && weatherData.current) {
-                const tempC = weatherData.current.temperature_2m;
+                const tempC = Math.round(weatherData.current.temperature_2m);
                 const tempF = Math.round((tempC * 9/5) + 32);
                 const code = weatherData.current.weather_code;
                 const windKmh = weatherData.current.wind_speed_10m;
@@ -2009,23 +2087,17 @@
                 
                 let probColor = probGO.includes("NO-GO") || probGO.includes("40%") ? "text-red-400" : "text-emerald-400";
                 
-                weatherEl.innerHTML = `<i class="fa-solid ${icon} text-emerald-400"></i> ${desc} • ${tempF}°F <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> ${windMph} mph <span class="mx-1 opacity-50">|</span> <span class="${probColor} font-bold">${probGO}</span>`;
+                window.latestWeather = {
+                    isFallback: false,
+                    tempC, tempF, windKmh, windMph, icon, desc, probGO, probColor
+                };
             } else {
-                let defaultTemp = "78°F";
-                let defaultIcon = "fa-cloud-sun";
-                let defaultDesc = "Partly Cloudy";
-
-                if (siteLower.includes('starbase') || siteLower.includes('texas')) {
-                    defaultTemp = "84°F";
-                    defaultIcon = "fa-sun";
-                    defaultDesc = "Clear";
-                } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4')) {
-                    defaultTemp = "62°F";
-                    defaultIcon = "fa-smog";
-                    defaultDesc = "Fog";
-                }
-                weatherEl.innerHTML = `<i class="fa-solid ${defaultIcon} text-emerald-400"></i> ${defaultDesc} • ${defaultTemp}`;
+                window.latestWeather = {
+                    isFallback: true,
+                    siteInfo: siteLower
+                };
             }
+            renderWeatherHTML();
         }
 
         function renderMissions(filteredMissions) {
@@ -2089,7 +2161,7 @@
                         <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
                             <div>
                                 <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1">LOCAL COUNTDOWN</div>
-                                <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no">--d --h --m</div>
+                                <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
@@ -2152,7 +2224,7 @@
                             <div class="text-xs text-zinc-500 mb-3">${dateStr} • ${m.site}</div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
-                            <button class="text-sm text-left text-emerald-400 hover:underline font-medium">View Deep Dive →</button>
+                            <button class="text-sm text-left text-emerald-400 hover:underline font-medium">View Mission Details →</button>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
@@ -2259,8 +2331,6 @@
             filterMissions();
         }
 
-        let currentActiveLandingStr = "Autonomous Spaceport Drone Ships (ASDS)";
-
         function escapeHTML(str) {
             if (!str) return '';
             return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
@@ -2277,10 +2347,11 @@
             document.getElementById('modal-date').innerText = dateStr;
             document.getElementById('modal-site').innerText = m.site;
             document.getElementById('modal-vehicle').innerText = m.vehicle;
+            window.currentActiveVehicleStr = m.vehicle || "falcon 9";
             
             document.getElementById('modal-booster').innerText = m.booster || "Falcon 9 Core";
-            currentActiveLandingStr = m.landing || "Autonomous Spaceport Drone Ships (ASDS)";
-            document.getElementById('modal-landing').innerText = currentActiveLandingStr;
+            window.currentActiveLandingStr = m.landing || "Autonomous Spaceport Drone Ships (ASDS)";
+            document.getElementById('modal-landing').innerText = window.currentActiveLandingStr;
             
             const crewSection = document.getElementById('modal-crew-section');
             const crewContainer = document.getElementById('modal-crew-container');
@@ -2309,11 +2380,11 @@
             
             const mStat = m.status.toLowerCase();
             if (mStat.includes("tbd") || mStat.includes("tbc") || mStat.includes("determined")) {
-                statusEl.className = "text-sm font-semibold text-zinc-400 mt-0.5";
+                statusEl.className = "text-sm font-semibold text-zinc-400 mt-0.5 leading-tight";
             } else if (mStat.includes("hold") || mStat.includes("review") || mStat.includes("delay")) {
-                statusEl.className = "text-sm font-semibold text-amber-400 mt-0.5";
+                statusEl.className = "text-sm font-semibold text-amber-400 mt-0.5 leading-tight";
             } else {
-                statusEl.className = "text-sm font-semibold text-emerald-400 mt-0.5";
+                statusEl.className = "text-sm font-semibold text-emerald-400 mt-0.5 leading-tight";
             }
 
             document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full aspect-video object-cover relative z-50" alt="">`;
@@ -2473,27 +2544,27 @@
                 name: "Falcon 9 Block 5",
                 image: "https://spaceexplored.com/wp-content/uploads/sites/10/2025/09/SpaceX-Falcon-9-Cygnus-XL-launch.jpeg?quality=82&strip=all", 
                 alignmentClass: "object-[center_30%]",
-                height: "70 meters (229.6 ft)",
-                thrust: "7,607 kN (Sea Level)",
-                payload: "22,800 kg (50,265 lb)",
+                height: { imperial: "229 ft", metric: "70 m" },
+                thrust: { imperial: "1.7M lbf (Sea Level)", metric: "7,607 kN (Sea Level)" },
+                payload: { imperial: "50,265 lbs", metric: "22,800 kg" },
                 desc: "Falcon 9 Block 5 is the ultimate iteration of SpaceX's workhorse rocket. Designed for maximum reusability, it features upgraded Merlin 1D engines, a thermal protection shield, and titanium grid fins.\n\nHistorically, Falcon 9 has rewritten spaceflight economics by achieving over 300 successful first-stage landings, returning autonomously to drone ships or landing zones. It is the only commercial vehicle certified to carry astronauts to the International Space Station (ISS) via the Crew Dragon capsule and is the foundation for deploying the global Starlink satellite constellation."
             },
             falcon_heavy: {
                 name: "Falcon Heavy",
                 image: "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg", 
                 alignmentClass: "object-center",
-                height: "70 meters (229.6 ft)",
-                thrust: "22,819 kN (Sea Level)",
-                payload: "63,800 kg (140,660 lb)",
+                height: { imperial: "229 ft", metric: "70 m" },
+                thrust: { imperial: "5.1M lbf (Sea Level)", metric: "22,819 kN (Sea Level)" },
+                payload: { imperial: "140,660 lbs", metric: "63,800 kg" },
                 desc: "Falcon Heavy is composed of three reusable Falcon 9 nine-engine cores whose 27 Merlin engines together generate more than 5 million pounds of thrust at liftoff.\n\nAs one of the most powerful operational rockets in the world today, Falcon Heavy can lift nearly 64 metric tons (141,000 lbs) to orbit. Its maiden flight dramatically launched Elon Musk’s personal Tesla Roadster into an elliptical orbit around the Sun, and it is now routinely used for massive commercial payloads, classified national security missions, and deep space exploration probes like NASA's Europa Clipper and Psyche."
             },
             starship: {
                 name: "Starship Super Heavy (V3)",
                 image: "https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096", 
                 alignmentClass: "object-center",
-                height: "121 meters (397 ft)",
-                thrust: "74,000 kN (Total System)",
-                payload: "100,000+ kg (Fully Reusable)",
+                height: { imperial: "407 ft", metric: "124 m" },
+                thrust: { imperial: "16.6M lbf (Total System)", metric: "74,000 kN (Total System)" },
+                payload: { imperial: "220,000+ lbs (Reusable)", metric: "100,000+ kg (Reusable)" },
                 desc: "Starship represents the next generation of space transportation: a fully and rapidly reusable system. The vehicle stands as the tallest and most powerful rocket ever constructed, generating more than double the thrust of the legendary Saturn V.\n\nPowered by innovative Raptor V3 engines fueled by sub-cooled liquid methane and liquid oxygen, the architecture consists of the Super Heavy booster and the Starship upper stage. Chosen by NASA for the Artemis program to return humans to the lunar surface, Starship's final objective is to create a multi-planetary pipeline capable of transporting over 100 tons of cargo and crew directly to Mars."
             }
         };
@@ -2532,9 +2603,9 @@
             imgEl.src = data.image;
             imgEl.className = `w-full h-full object-cover ${data.alignmentClass}`;
 
-            document.getElementById('rocket-modal-height').innerText = data.height;
-            document.getElementById('rocket-modal-thrust').innerText = data.thrust;
-            document.getElementById('rocket-modal-payload').innerText = data.payload;
+            document.getElementById('rocket-modal-height').innerText = data.height[window.currentUnitSystem];
+            document.getElementById('rocket-modal-thrust').innerText = data.thrust[window.currentUnitSystem];
+            document.getElementById('rocket-modal-payload').innerText = data.payload[window.currentUnitSystem];
             document.getElementById('rocket-modal-desc').innerText = data.desc;
 
             const modalEl = document.getElementById('rocket-modal');
@@ -2589,7 +2660,7 @@
         }
 
         function openLandingSpecs() {
-            const str = currentActiveLandingStr.toLowerCase();
+            const str = (window.currentActiveLandingStr || "Autonomous Spaceport Drone Ships (ASDS)").toLowerCase();
             
             const nameEl = document.getElementById('landing-modal-name');
             const imgEl = document.getElementById('landing-modal-img');
@@ -2600,21 +2671,21 @@
             const fixedGroundImg = "https://space4peace.org/wp-content/uploads/2025/09/flacon_heavy_landing_zones.jpg";
             const fixedDroneShipImg = "https://www.spacelaunchschedule.com/wp-content/uploads/2026/02/Starlink-4-19-F9-B1060-ASOG-port-return-062122-Richard-Angle-5-edit-crop-c-1024x603.jpg";
             const starshipGulfImg = "https://live-production.wcms.abc-cdn.net.au/0a8126ff40f13ff8f1a748b9e9533b9c.jpg?src";
-            const falconGulfImg = "https://www.teslarati.com/wp-content/uploads/2018/12/CRS-16-B1050-landing-water-1c-SpaceX-1024x500.jpg";
+            const falconGulfImg = "https://pbs.twimg.com/media/E_U4K8HWEAQt1gV.jpg"; // Updated reliable image
 
-            const v = document.getElementById('modal-vehicle').innerText.toLowerCase();
+            const v = (window.currentActiveVehicleStr || "").toLowerCase();
 
-            if (str.includes('gulf of america') || str.includes('ocean splashdown') || str.includes('water')) {
-                nameEl.innerText = "Ocean Splashdown Recovery";
+            if (str.includes('gulf of america') || str.includes('ocean splashdown') || str.includes('water') || str.includes('ocean water landing')) {
+                nameEl.innerText = "Ocean Water Landing";
                 typeEl.innerText = "Water Landing";
                 fleetEl.innerText = "Gulf of America / Ocean";
                 
                 if (v.includes('starship')) {
                     imgEl.src = starshipGulfImg;
-                    descEl.innerText = "Starship executed a controlled propulsive splashdown in the ocean/gulf. This profile is used to validate reentry and landing capabilities safely before attempting a Mechazilla tower catch.";
+                    descEl.innerText = "Starship completed a safe vertical water landing in the ocean. This flight profile is used to test the heat shield and landing systems before attempting a catch at the launch tower.";
                 } else {
                     imgEl.src = falconGulfImg;
-                    descEl.innerText = "The Falcon booster executed a soft splashdown in the ocean. This occurs when returning to a landing zone or drone ship is aborted, or intentionally for disposal/testing purposes.";
+                    descEl.innerText = "The spacecraft or booster executed a soft water landing in the ocean. This occurs during nominal Crew or Cargo Dragon returns, or when a booster recovery is aborted.";
                 }
             }
             else if (str.includes('lz-') || str.includes('landing zone') || str.includes('rtls') || str.includes('40')) {
@@ -2786,6 +2857,10 @@
             initDidYouKnow(); 
             fetchLiveLaunches();
             refreshXTwitterFeed();
+            
+            const currentLang = document.documentElement.lang.toLowerCase() || 'en';
+            window.currentUnitSystem = currentLang.startsWith('en') ? 'imperial' : 'metric';
+            updateUnitsDisplay();
             
             const searchIn = document.getElementById('search-input');
             if (searchIn) {
