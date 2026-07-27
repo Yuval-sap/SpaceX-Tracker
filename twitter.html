@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX Tracker • X Poster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght=300;400;500;600;700&family=Heebo:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: #09090b;
+            color: #e4e4e7;
+            overflow-x: hidden;
+        }
+        .font-space { font-family: 'Space Grotesk', sans-serif; }
+        
+        .tweet-box {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative selection:bg-emerald-500 selection:text-black">
+    <!-- Background Effects -->
+    <div class="fixed inset-0 z-0 pointer-events-none opacity-20" style="background: radial-gradient(circle at 50% 0%, #10b981 0%, transparent 50%);"></div>
+
+    <nav class="bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-800">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-brands fa-x-twitter text-2xl text-white"></i>
+                <span class="font-space font-bold text-xl tracking-wider text-white" dir="ltr">SpaceX Tracker <span class="text-emerald-400">Helper</span></span>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-zinc-400">
+                <span id="api-status"><i class="fa-solid fa-circle-notch fa-spin text-emerald-400"></i> טוען מהזיכרון...</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full relative z-10 flex flex-col lg:flex-row gap-8">
+        
+        <!-- חלונית בקרה (שליטה) -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-lg">
+                <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-white">
+                    <i class="fa-solid fa-layer-group text-emerald-400"></i> בחר סקטור
+                </h2>
+                
+                <div class="flex flex-col gap-2">
+                    <button onclick="selectSector('upcoming')" id="btn-upcoming" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-3 active-sector">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0"><i class="fa-solid fa-clock"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-white">התרעות שיגור קרוב</div>
+                            <div class="text-xs text-zinc-400">T-Minus והייפ</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectSector('past')" id="btn-past" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0"><i class="fa-solid fa-check-double"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-white">שיגורי עבר (הצלחות)</div>
+                            <div class="text-xs text-zinc-400">חגיגת השיגור האחרון</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectSector('starlink')" id="btn-starlink" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0"><i class="fa-solid fa-globe"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-white">רשת Starlink</div>
+                            <div class="text-xs text-zinc-400">עדכוני פריסה וקצב</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectSector('recovery')" id="btn-recovery" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0"><i class="fa-solid fa-ship"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-white">נחיתות (Recovery)</div>
+                            <div class="text-xs text-zinc-400">בוסטרים אוטונומיים ומנחתים</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectSector('lore')" id="btn-lore" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0"><i class="fa-solid fa-lightbulb"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-white">הידעת? / Lore</div>
+                            <div class="text-xs text-zinc-400">עובדות טכניות ואסטרופיזיקה</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-lg">
+                <h2 class="text-sm font-bold text-zinc-400 mb-3 uppercase tracking-wider">נתוני הליבה (Live Context)</h2>
+                <div id="context-data" class="space-y-3">
+                    <div class="animate-pulse flex space-x-4 space-x-reverse">
+                        <div class="flex-1 space-y-2 py-1">
+                            <div class="h-2 bg-zinc-700 rounded w-3/4"></div>
+                            <div class="h-2 bg-zinc-700 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- תצוגת הציוץ -->
+        <div class="w-full lg:w-2/3 flex flex-col gap-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-lg flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold flex items-center gap-2 text-white">
+                        <i class="fa-solid fa-pen-nib text-emerald-400"></i> מחולל הציוצים
+                    </h2>
+                    <button onclick="generateTweets()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-xl text-sm font-bold border border-zinc-700 transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-rotate"></i> רענן אפשרויות
+                    </button>
+                </div>
+
+                <!-- Options Container -->
+                <div class="flex flex-col gap-6">
+                    <!-- Option 1 -->
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-emerald-400 font-bold text-sm">אופציה 1</h3>
+                        </div>
+                        <div class="bg-black border border-zinc-800 rounded-xl p-5 relative tweet-box w-full" dir="ltr">
+                            <div class="flex items-start gap-3 mb-2">
+                                <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
+                                    <i class="fa-solid fa-user-astronaut text-zinc-500"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-1">
+                                        <span class="font-bold text-white text-[15px]">SpaceX Tracker</span>
+                                        <i class="fa-solid fa-circle-check text-blue-400 text-xs"></i>
+                                    </div>
+                                    <div class="text-zinc-500 text-[15px] -mt-1 mb-1">@SpaceXFansTrack</div>
+                                    <div id="tweet-output-1" class="text-white text-[15px] leading-normal whitespace-pre-wrap">
+                                        Loading AI intelligence...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <a id="post-btn-1" href="#" target="_blank" class="w-full bg-white hover:bg-zinc-200 text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] text-base cursor-not-allowed opacity-50">
+                            <i class="fa-brands fa-x-twitter"></i> פרסם אופציה 1
+                        </a>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="h-px w-full bg-zinc-800 my-2"></div>
+
+                    <!-- Option 2 -->
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-emerald-400 font-bold text-sm">אופציה 2</h3>
+                        </div>
+                        <div class="bg-black border border-zinc-800 rounded-xl p-5 relative tweet-box w-full" dir="ltr">
+                            <div class="flex items-start gap-3 mb-2">
+                                <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
+                                    <i class="fa-solid fa-user-astronaut text-zinc-500"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-1">
+                                        <span class="font-bold text-white text-[15px]">SpaceX Tracker</span>
+                                        <i class="fa-solid fa-circle-check text-blue-400 text-xs"></i>
+                                    </div>
+                                    <div class="text-zinc-500 text-[15px] -mt-1 mb-1">@SpaceXFansTrack</div>
+                                    <div id="tweet-output-2" class="text-white text-[15px] leading-normal whitespace-pre-wrap">
+                                        Loading AI intelligence...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <a id="post-btn-2" href="#" target="_blank" class="w-full bg-white hover:bg-zinc-200 text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] text-base cursor-not-allowed opacity-50">
+                            <i class="fa-brands fa-x-twitter"></i> פרסם אופציה 2
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-emerald-400 text-sm flex items-start gap-3 mt-2">
+                <i class="fa-solid fa-circle-info mt-0.5"></i>
+                <p>המערכת שואבת נתונים <b>ישירות מהזיכרון המקומי (Cache)</b> של האתר הראשי. אם חסרים נתונים, פשוט פתח את האתר הראשי בלשונית מקבילה כדי שיעדכן את הזיכרון!</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // SpaceX Tracker master facts database
+        const masterFacts = [
+            "SpaceX has landed Falcon 9 boosters more than 300 times. Reusability is no longer experimental — it is the standard.",
+            "The Falcon rocket family is named after the 'Millennium Falcon' from Star Wars.",
+            "SpaceX manufactures approximately 80% of its rocket components entirely in-house.",
+            "The recovery ships ('Just Read the Instructions', 'Of Course I Still Love You') are named after sentient starships in Iain M. Banks' 'Culture' sci-fi novels.",
+            "The Merlin 1D engine has one of the highest thrust-to-weight ratios of any rocket engine ever made, exceeding 150:1.",
+            "Starship is constructed from 30X-series stainless steel, chosen because it maintains strength at cryogenic temperatures and survives atmospheric reentry.",
+            "Starlink currently represents over 50% of all active satellites in low Earth orbit.",
+            "The Super Heavy booster is powered by 33 Raptor engines, generating more than twice the thrust of the Saturn V rocket.",
+            "SpaceX's IVA spacesuits are custom-made and plug directly into the Crew Dragon seats to provide communications, cooling, and pressurization.",
+            "Unlike Falcon 9's kerosene, Starship's Raptor engines burn liquid methane and liquid oxygen, chosen because methane can be synthesized on Mars.",
+            "The nine Merlin engines on a Falcon 9 are arranged in an 'Octaweb' pattern for better stress distribution and survivability.",
+            "Before landing orbital rockets, SpaceX tested propulsive landings with a prototype called 'Grasshopper', which hopped up to 744 meters.",
+            "When Falcon Heavy debuted in 2018, it was the most powerful operational rocket in the world by a factor of two.",
+            "The hypersonic titanium grid fins on Falcon 9 boosters are used to steer the rocket during its descent back through the Earth's atmosphere.",
+            "Newer generation Starlink satellites use optical space lasers to route data between each other without needing to bounce signals off ground stations.",
+            "The Raptor engine is the first full-flow staged combustion cycle engine ever to fly.",
+            "To increase payload capacity, Starship uses 'Hot-Staging'—igniting the upper stage engines while still attached to the Super Heavy booster.",
+            "SpaceX operates from historic Launch Complex 39A at Kennedy Space Center, the exact same pad used for the Apollo Moon missions.",
+            "Unlike Falcon 9 which lands on legs, the Starship Super Heavy booster is designed to be caught mid-air by the launch tower's 'Chopstick' arms.",
+            "The Falcon Heavy rocket can perform a synchronized double landing of its two side boosters."
+        ];
+
+        let liveUpcomingLaunches = [];
+        let latestPastLaunch = null;
+        let currentSector = 'upcoming';
+
+        const templates = {
+            upcoming: [
+                "Just analyzed the latest telemetry for {name}. 🚀 We are T-minus {time_diff} away from liftoff at {pad}! The autonomous systems on the Falcon 9 never cease to amaze me. Who's watching the stream? 👀 #SpaceX #Launch",
+                "Liftoff incoming! 💥 {name} is scheduled to launch from {pad} in roughly {time_diff}. Weather looks {weather_adj}, and the rocket is ready. Let's go! 🚀🛰️ #SpaceX",
+                "Spaceflight never gets old. We're tracking {name} targeting a launch from {pad}. 🚀 The engineering required to make this routine is just mind-blowing. T-minus {time_diff}. #Falcon9 #SpaceX",
+                "Targeting {pad} for the launch of {name}. The autonomous Falcon 9 is ready for another flawless ascent and recovery. 🚀 T-minus {time_diff}! #Spaceflight",
+                "Can't wait for {name}! Watching the countdown clock tick down from {time_diff}. Let's light this candle at {pad}! 🔥 #SpaceX"
+            ],
+            past: [
+                "Huge congratulations to the SpaceX team on the successful launch of {name}! 🎉 Liftoff from {pad} was flawless. Making access to space routine is no small feat. 🚀✨ #SpaceX #Success",
+                "Another one for the history books! 📖 The recent {name} mission out of {pad} was a complete success. The engineering consistency is just spectacular. 🌌🚀 #Spaceflight",
+                "Still buzzing from the {name} launch! 💥 Seeing the rocket clear the pad at {pad} and execute its mission perfectly is why we love aerospace engineering. On to the next one! 🚀👏 #SpaceX",
+                "Data is looking good! ✅ {name} officially marked another successful mission from {pad}. The cadence SpaceX is maintaining right now is unprecedented. 🛰️🌍 #RocketScience"
+            ],
+            starlink: [
+                "Another batch of Starlink satellites heading to orbit! 🛰️ The pace SpaceX is keeping up is insane—averaging around 60 deployments a week. Global, low-latency connectivity is scaling faster than ever. 🌍⚡ #Starlink #SpaceX",
+                "Tracking the next Starlink deployment ({name}). 🛰️ It's wild to think about the autonomous routing algorithms these satellites use in orbit. Building the future of internet infrastructure, one launch at a time. 🌌 #Starlink",
+                "More Starlink nodes joining the constellation! 🚀 The cadence from {pad} is relentless. This isn't just rockets, it's a massive distributed network floating in low Earth orbit. 🤯 #SpaceXTracker #Starlink",
+                "Expanding the grid! 🛰️ {name} is gearing up to deliver more high-speed internet globally. Launching from {pad} in {time_diff}! #Connectivity",
+                "Every {name} mission brings us closer to uninterrupted global coverage. The deployment cadence is just incredible! 🌍✨ #SpaceX"
+            ],
+            recovery: [
+                "The fact that we can launch an orbital class rocket and then autonomously land the booster on a drone ship in the middle of the ocean will never be normal to me. 🤯🛳️ Pure engineering magic. #SpaceX #Falcon9",
+                "Rocket recovery is the key to the solar system. 🚀 Watching a Falcon 9 execute a perfect entry burn and stick the landing autonomously is a masterclass in control theory and AI. #SpaceX #Landing",
+                "Booster recovery isn't just cool, it's essential. Every time a Falcon 9 lands on an Autonomous Spaceport Drone Ship, it drastically cuts the cost of access to space. 🌊🔥 #ReusableRockets #SpaceX",
+                "RTLS or Drone Ship? Either way, watching a Falcon 9 stick the autonomous landing never gets old. 🎯 #SpaceX",
+                "Another flight-proven booster getting ready to do its job. Reusability is the only way to make humanity multi-planetary! 🌌🚀 #Falcon9"
+            ],
+            lore: [
+                "💡 Space Fact: {fact} 🚀 It's amazing how fast aerospace engineering is evolving. #SpaceX #DidYouKnow",
+                "Here's a piece of SpaceX lore for you today: {fact} 🤯 The details behind this program are incredible! 🌌 #RocketScience",
+                "Fun fact from the tracker: {fact} 🔥 Never gets old learning about the engineering behind these machines. #SpaceX #SpaceFacts",
+                "Daily deep dive: {fact} 🛰️ Every component tells a story of iterative design and crazy ambition. #Engineering #SpaceX"
+            ]
+        };
+
+        // Extract pad name safely
+        function getSafePadName(launch) {
+            try {
+                if (launch.pad && launch.pad.location && launch.pad.location.name) {
+                    return launch.pad.location.name.split(',')[0];
+                } else if (launch.pad && launch.pad.name) {
+                    return launch.pad.name;
+                }
+            } catch(e) {}
+            return "SpaceX Launch Pad";
+        }
+
+        // Load data directly from LocalStorage (created by index.html)
+        function loadSpaceXDataFromCache() {
+            try {
+                const cachedData = localStorage.getItem('spacex_launches_cache');
+                
+                if (cachedData) {
+                    const allLaunches = JSON.parse(cachedData);
+                    const now = new Date().getTime();
+                    
+                    let upcoming = [];
+                    let past = [];
+                    
+                    allLaunches.forEach(launch => {
+                        // Protect against missing dates
+                        if (!launch.net) return;
+                        
+                        const launchTime = new Date(launch.net).getTime();
+                        if (launchTime > now) {
+                            upcoming.push(launch);
+                        } else {
+                            past.push(launch);
+                        }
+                    });
+                    
+                    // Sort upcoming: closest first
+                    upcoming.sort((a, b) => new Date(a.net) - new Date(b.net));
+                    // Sort past: most recent first
+                    past.sort((a, b) => new Date(b.net) - new Date(a.net));
+                    
+                    liveUpcomingLaunches = upcoming;
+                    if (past.length > 0) {
+                        latestPastLaunch = past[0];
+                    }
+                    
+                    document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-link text-emerald-400"></i> מחובר לנתוני האתר';
+                    
+                    updateContextUI();
+                    generateTweets();
+                } else {
+                    document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> אין נתונים בזיכרון (פתח את האתר הראשי)';
+                }
+            } catch (error) {
+                console.error("Error reading cache:", error);
+                document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-400"></i> שגיאת קריאה מהזיכרון';
+            }
+        }
+
+        function updateContextUI() {
+            let contextHtml = '';
+            
+            if (currentSector !== 'past' && currentSector !== 'lore') {
+                for(let i=0; i < Math.min(2, liveUpcomingLaunches.length); i++) {
+                    const launch = liveUpcomingLaunches[i];
+                    const dateObj = new Date(launch.net);
+                    const padName = getSafePadName(launch);
+                    
+                    contextHtml += `
+                        <div class="bg-zinc-800/50 p-3 rounded-xl border border-zinc-700/50" dir="ltr">
+                            <div class="text-emerald-400 text-[10px] font-bold tracking-wider mb-1">UPCOMING LAUNCH ${i+1}</div>
+                            <div class="text-white text-sm font-bold truncate">${launch.name}</div>
+                            <div class="text-zinc-400 text-xs mt-1"><i class="fa-regular fa-clock"></i> ${dateObj.toLocaleString()}</div>
+                            <div class="text-zinc-400 text-xs mt-1 truncate"><i class="fa-solid fa-location-dot"></i> ${padName}</div>
+                        </div>
+                    `;
+                }
+                if (liveUpcomingLaunches.length === 0) {
+                     contextHtml = `<div class="text-zinc-500 text-sm">לא נמצאו נתונים.</div>`;
+                }
+            } else if (currentSector === 'past' && latestPastLaunch) {
+                const dateObj = new Date(latestPastLaunch.net);
+                const padName = getSafePadName(latestPastLaunch);
+                
+                contextHtml = `
+                    <div class="bg-zinc-800/50 p-3 rounded-xl border border-purple-500/30" dir="ltr">
+                        <div class="text-purple-400 text-[10px] font-bold tracking-wider mb-1">LATEST SUCCESSFUL LAUNCH</div>
+                        <div class="text-white text-sm font-bold truncate">${latestPastLaunch.name}</div>
+                        <div class="text-zinc-400 text-xs mt-1"><i class="fa-regular fa-clock"></i> ${dateObj.toLocaleString()}</div>
+                        <div class="text-zinc-400 text-xs mt-1 truncate"><i class="fa-solid fa-location-dot"></i> ${padName}</div>
+                    </div>
+                `;
+            } else if (currentSector === 'lore') {
+                contextHtml = `
+                    <div class="bg-zinc-800/50 p-3 rounded-xl border border-emerald-500/30 text-center text-zinc-400 text-sm" dir="rtl">
+                        <i class="fa-solid fa-database text-emerald-400 text-lg mb-2 block"></i>
+                        מחובר למסד הנתונים masterFacts מתוך האתר.
+                    </div>
+                `;
+            }
+            
+            if(contextHtml) document.getElementById('context-data').innerHTML = contextHtml;
+        }
+
+        function selectSector(sector) {
+            currentSector = sector;
+            
+            document.querySelectorAll('.sector-btn').forEach(btn => {
+                btn.classList.remove('border-emerald-500', 'bg-zinc-800');
+                btn.classList.add('border-zinc-800', 'bg-zinc-900/50');
+            });
+            const activeBtn = document.getElementById(`btn-${sector}`);
+            activeBtn.classList.remove('border-zinc-800', 'bg-zinc-900/50');
+            activeBtn.classList.add('border-emerald-500', 'bg-zinc-800');
+            
+            updateContextUI();
+            generateTweets();
+        }
+
+        function getTimeDiffString(dateString) {
+            const now = new Date();
+            const target = new Date(dateString);
+            const diffMs = target - now;
+            
+            if (diffMs <= 0) return "moments";
+            
+            const diffDays = Math.floor(diffMs / 86400000);
+            const diffHours = Math.floor((diffMs % 86400000) / 3600000);
+            
+            if (diffDays > 0) return `${diffDays} days and ${diffHours} hours`;
+            return `${diffHours} hours`;
+        }
+
+        function generateTweets() {
+            const outEl1 = document.getElementById('tweet-output-1');
+            const outEl2 = document.getElementById('tweet-output-2');
+            const postBtn1 = document.getElementById('post-btn-1');
+            const postBtn2 = document.getElementById('post-btn-2');
+            
+            outEl1.style.opacity = '0.5';
+            outEl2.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                let pool = templates[currentSector];
+                let shuffled = [...pool].sort(() => 0.5 - Math.random());
+                let template1 = shuffled[0];
+                let template2 = shuffled[1];
+                
+                let text1 = "";
+                let text2 = "";
+
+                if (currentSector === 'lore') {
+                    let shuffledFacts = [...masterFacts].sort(() => 0.5 - Math.random());
+                    text1 = template1.replace(/{fact}/g, shuffledFacts[0]);
+                    text2 = template2.replace(/{fact}/g, shuffledFacts[1]);
+                } 
+                else if (currentSector === 'past') {
+                    function formatPastTemplate(template, launch) {
+                        if (launch) {
+                            let tName = launch.name.replace('SpaceX ', '');
+                            let tPad = getSafePadName(launch);
+                            return template.replace(/{name}/g, tName).replace(/{pad}/g, tPad);
+                        }
+                        return template.replace(/{name}/g, "a recent mission").replace(/{pad}/g, "the Cape");
+                    }
+                    text1 = formatPastTemplate(template1, latestPastLaunch);
+                    text2 = formatPastTemplate(template2, latestPastLaunch);
+                }
+                else {
+                    let launch1 = liveUpcomingLaunches.length > 0 ? liveUpcomingLaunches[0] : null;
+                    let launch2 = liveUpcomingLaunches.length > 1 ? liveUpcomingLaunches[1] : launch1;
+                    
+                    if (currentSector === 'starlink' && liveUpcomingLaunches.length > 0) {
+                        let starlinks = liveUpcomingLaunches.filter(l => l.name.toLowerCase().includes('starlink'));
+                        if (starlinks.length >= 2) {
+                            launch1 = starlinks[0];
+                            launch2 = starlinks[1];
+                        } else if (starlinks.length === 1) {
+                            launch1 = starlinks[0];
+                            launch2 = starlinks[0];
+                        }
+                    }
+
+                    function formatTemplate(template, launch) {
+                        if (launch) {
+                            let tName = launch.name.replace('SpaceX ', '');
+                            let tPad = getSafePadName(launch);
+                            let tDiff = getTimeDiffString(launch.net);
+                            const weathers = ["optimal", "favorable", "steady", "promising"];
+                            let tWeather = weathers[Math.floor(Math.random() * weathers.length)];
+                            
+                            return template.replace(/{name}/g, tName)
+                                           .replace(/{pad}/g, tPad)
+                                           .replace(/{time_diff}/g, tDiff)
+                                           .replace(/{weather_adj}/g, tWeather);
+                        } else {
+                            return template.replace(/{name}/g, "the next SpaceX mission")
+                                           .replace(/{pad}/g, "the Cape")
+                                           .replace(/{time_diff}/g, "a few days")
+                                           .replace(/{weather_adj}/g, "optimal");
+                        }
+                    }
+                    
+                    text1 = formatTemplate(template1, launch1);
+                    text2 = formatTemplate(template2, launch2);
+                }
+                
+                // Render Option 1
+                outEl1.innerText = text1;
+                outEl1.style.opacity = '1';
+                postBtn1.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text1)}`;
+                postBtn1.classList.remove('cursor-not-allowed', 'opacity-50');
+                
+                // Render Option 2
+                outEl2.innerText = text2;
+                outEl2.style.opacity = '1';
+                postBtn2.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text2)}`;
+                postBtn2.classList.remove('cursor-not-allowed', 'opacity-50');
+                
+            }, 300);
+        }
+
+        // Initialize by loading from cache
+        loadSpaceXDataFromCache();
+        
+        // Listen to storage events so if you leave this tab open, it updates when the main site fetches new data!
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'spacex_launches_cache') {
+                console.log("Main site updated cache, reloading data...");
+                loadSpaceXDataFromCache();
+            }
+        });
+    </script>
+</body>
+</html>
