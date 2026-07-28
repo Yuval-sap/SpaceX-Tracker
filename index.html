@@ -351,6 +351,52 @@
             }
         }
 
+        // Manual translations for the handful of key UI labels that use the word "launch" —
+        // Google Translate's automatic word choice for this term in Hebrew ("השקה", meaning
+        // "product launch") isn't the correct spaceflight term ("שיגור"). These 4 labels are
+        // marked translate="no" in the HTML so Google leaves them alone entirely, and we set
+        // the correct wording ourselves for every language in the translate widget's
+        // includedLanguages list ('en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr').
+        const LAUNCH_LABEL_I18N = {
+            en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Upcoming Launches", launchWindow: "LAUNCH WINDOW", launchSite: "LAUNCH SITE" },
+            he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים קרובים", launchWindow: "חלון שיגור", launchSite: "אתר השיגור" },
+            iw: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים קרובים", launchWindow: "חלון שיגור", launchSite: "אתר השיגור" },
+            es: { nextLaunch: "PRÓXIMO LANZAMIENTO", upcomingLaunches: "Próximos Lanzamientos", launchWindow: "VENTANA DE LANZAMIENTO", launchSite: "SITIO DE LANZAMIENTO" },
+            fr: { nextLaunch: "PROCHAIN LANCEMENT", upcomingLaunches: "Lancements à venir", launchWindow: "FENÊTRE DE LANCEMENT", launchSite: "SITE DE LANCEMENT" },
+            de: { nextLaunch: "NÄCHSTER START", upcomingLaunches: "Bevorstehende Starts", launchWindow: "STARTFENSTER", launchSite: "STARTPLATZ" },
+            ru: { nextLaunch: "СЛЕДУЮЩИЙ ЗАПУСК", upcomingLaunches: "Предстоящие запуски", launchWindow: "ОКНО ЗАПУСКА", launchSite: "МЕСТО ЗАПУСКА" },
+            zh: { nextLaunch: "下一次发射", upcomingLaunches: "即将进行的发射", launchWindow: "发射窗口", launchSite: "发射场" },
+            it: { nextLaunch: "PROSSIMO LANCIO", upcomingLaunches: "Lanci in Programma", launchWindow: "FINESTRA DI LANCIO", launchSite: "SITO DI LANCIO" },
+            cs: { nextLaunch: "PŘÍŠTÍ START", upcomingLaunches: "Nadcházející starty", launchWindow: "STARTOVACÍ OKNO", launchSite: "MÍSTO STARTU" },
+            sv: { nextLaunch: "NÄSTA UPPSKJUTNING", upcomingLaunches: "Kommande uppskjutningar", launchWindow: "UPPSKJUTNINGSFÖNSTER", launchSite: "UPPSKJUTNINGSPLATS" },
+            nl: { nextLaunch: "VOLGENDE LANCERING", upcomingLaunches: "Aankomende Lanceringen", launchWindow: "LANCEERVENSTER", launchSite: "LANCEERPLAATS" },
+            da: { nextLaunch: "NÆSTE OPSENDELSE", upcomingLaunches: "Kommende Opsendelser", launchWindow: "OPSENDELSESVINDUE", launchSite: "OPSENDELSESSTED" },
+            pt: { nextLaunch: "PRÓXIMO LANÇAMENTO", upcomingLaunches: "Próximos Lançamentos", launchWindow: "JANELA DE LANÇAMENTO", launchSite: "LOCAL DE LANÇAMENTO" },
+            pl: { nextLaunch: "NASTĘPNY START", upcomingLaunches: "Nadchodzące starty", launchWindow: "OKNO STARTOWE", launchSite: "MIEJSCE STARTU" },
+            hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "आगामी प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल" },
+            ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق القادمة", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق" },
+            tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Yaklaşan Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI" },
+        };
+        let lastAppliedLaunchLabelLang = null;
+        function applyLaunchLabelTranslations(currentLang) {
+            let key = currentLang.split('-')[0];
+            if (key === 'zh') key = 'zh'; // zh-cn, zh-tw, etc. all fall back to the same entry
+            const dict = LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en;
+            if (lastAppliedLaunchLabelLang === key) return; // avoid redundant DOM writes every tick
+            lastAppliedLaunchLabelLang = key;
+
+            const map = {
+                'i18n-next-launch': dict.nextLaunch,
+                'i18n-upcoming-launches': dict.upcomingLaunches,
+                'i18n-launch-window': dict.launchWindow,
+                'i18n-launch-site': dict.launchSite,
+            };
+            Object.keys(map).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = map[id];
+            });
+        }
+
         // Bulletproof Timer for Google Translate RTL
         setInterval(() => {
             const htmlEl = document.documentElement;
@@ -364,6 +410,8 @@
             } else {
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
             }
+
+            applyLaunchLabelTranslations(currentLang);
             
             // Unit system follows the resolved language only. Google Translate's
             // translated-ltr/translated-rtl classes are internal bookkeeping (it adds
@@ -419,7 +467,7 @@
                 <p class="text-[11px] sm:text-xl text-zinc-400 mt-1 sm:mt-2 font-light transition-colors duration-500 truncate sm:whitespace-normal">Real-time SpaceX launch tracking & system diagnostic</p>
             </div>
             <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
-                <div class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap">Upcoming Launches</div>
+                <div id="i18n-upcoming-launches" class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap notranslate" translate="no" lang="en">Upcoming Launches</div>
                 <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate leading-none" id="upcoming-count" translate="no">0</div>
             </div>
         </div>
@@ -432,7 +480,7 @@
                 <div class="space-y-3 flex-1 w-full min-w-0">
                     <div class="flex flex-wrap items-center gap-2 mb-1">
                         <span class="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs sm:text-[13px] font-bold tracking-[0.2em] rounded-full flex items-center">
-                            NEXT LAUNCH
+                            <span id="i18n-next-launch" class="notranslate" translate="no" lang="en">NEXT LAUNCH</span>
                         </span>
                         <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-full flex items-center gap-1.5">
                             <i class="fa-solid fa-check-double"></i>
@@ -500,7 +548,7 @@
                     
                     <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
                     
-                    <div class="text-[9px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5">LAUNCH WINDOW</div>
+                    <div id="i18n-launch-window" class="text-[9px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5 notranslate" translate="no" lang="en">LAUNCH WINDOW</div>
                     <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500 notranslate" dir="ltr" translate="no">--:-- - --:--</div>
                 </div>
             </div>
@@ -760,7 +808,7 @@
                         <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
-                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">LAUNCH SITE</div>
+                        <div id="i18n-launch-site" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">LAUNCH SITE</div>
                         <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
