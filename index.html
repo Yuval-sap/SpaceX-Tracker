@@ -51,6 +51,7 @@
             background-size: 100% 4px, 6px 100%;
             pointer-events: none;
             opacity: 0.35;
+            transition: opacity 0.5s ease;
         }
 
         .font-space { font-family: 'Space Grotesk', system_ui, sans-serif; font-weight: 600; }
@@ -106,6 +107,7 @@
             z-index: 0;
             overflow: hidden;
             background: radial-gradient(ellipse at bottom, #09090b 0%, #020204 100%);
+            transition: background 0.5s ease;
         }
         .star {
             position: absolute;
@@ -113,6 +115,7 @@
             border-radius: 50%;
             opacity: 0.3;
             animation: twinkle var(--duration, 4s) infinite ease-in-out;
+            transition: background 0.5s ease, opacity 0.5s ease;
         }
         @keyframes twinkle {
             0%, 100% { opacity: 0.1; transform: scale(0.8); }
@@ -131,6 +134,15 @@
         .goog-logo-link { display: none !important; }
         .goog-te-gadget img { display: none !important; }
         .goog-te-banner-frame, .goog-te-banner-frame.skiptranslate, iframe.goog-te-banner-frame, .skiptranslate iframe { display: none !important; visibility: hidden !important; height: 0 !important; opacity: 0 !important; }
+        /* NOTE: the broad ".skiptranslate iframe" rule above is what hides Google's translate
+           banner reliably, but Google Translate also auto-tags elements marked translate="no"
+           (like our X widget container) as "skiptranslate" — which would otherwise hide the
+           X/Twitter iframe too. The ID-selector overrides below have higher CSS specificity than
+           the class-based rule above, so they win regardless of source order and keep the X
+           widget's iframe visible while the Google banner stays hidden. */
+        #x-feed-container.skiptranslate,
+        #x-feed-container .skiptranslate { display: block !important; visibility: visible !important; height: auto !important; opacity: 1 !important; }
+        #x-feed-container iframe { display: block !important; visibility: visible !important; opacity: 1 !important; height: 600px !important; }
         html, body { top: 0px !important; position: relative !important; }
         .VIpgJd-ZVi9od-l4eHX-hSRGPd { display: none !important; } 
         #goog-gt-tt { display: none !important; visibility: hidden !important; }
@@ -138,6 +150,18 @@
 
         @media (max-width: 640px) {
             .goog-te-gadget .goog-te-combo { max-width: 95px !important; padding: 1px 4px !important; font-size: 10px !important; height: 24px !important; border-radius: 0.5rem !important;}
+        }
+
+        /* ==================================================
+           INSTANT THEME SWITCH
+           While .theme-switching is on <html>, every transition is skipped so
+           the day/night change applies in one frame instead of a staggered
+           fade across dozens of elements. Removed again right after the
+           switch so normal hover/etc. animations keep working everywhere else.
+           ================================================== */
+        .theme-switching, .theme-switching * {
+            transition: none !important;
+            animation-duration: 0s !important;
         }
 
         /* ==================================================
@@ -212,21 +236,27 @@
         body.light-theme .text-cyan-400 { color: #0284c7 !important; }
         body.light-theme .from-cyan-400 { --tw-gradient-from: #0ea5e9 !important; }
 
-        /* RTL Strict Overrides to Fix Tailwind classes during translation */
-        html[dir="rtl"] body, html.translated-rtl body { text-align: right; direction: rtl; }
-        html[dir="rtl"] .text-left, html.translated-rtl .text-left { text-align: right !important; }
-        html[dir="rtl"] .text-right, html.translated-rtl .text-right { text-align: left !important; }
-        html[dir="rtl"] .ml-4, html.translated-rtl .ml-4 { margin-right: 1rem !important; margin-left: 0 !important; }
-        html[dir="rtl"] .mr-2, html.translated-rtl .mr-2 { margin-left: 0.5rem !important; margin-right: 0 !important; }
-        html[dir="rtl"] .pr-2, html.translated-rtl .pr-2 { padding-left: 0.5rem !important; padding-right: 0 !important; }
-        html[dir="rtl"] .pl-11, html.translated-rtl .pl-11 { padding-right: 2.75rem !important; padding-left: 1rem !important; }
-        html[dir="rtl"] .left-4, html.translated-rtl .left-4 { right: 1rem !important; left: auto !important; }
+        #fact-text { transition: opacity 0.25s ease-in-out; }
 
-        /* Force Hover visibility in light mode for action buttons */
-        body.light-theme .mission-card button.group\/fav:hover { background-color: #fbbf24 !important; border-color: #fbbf24 !important; color: #000000 !important; }
-        body.light-theme .mission-card button.group\/fav:hover i { color: #000000 !important; }
-        body.light-theme .mission-card button.group\/remind:hover { background-color: #10b981 !important; border-color: #10b981 !important; color: #000000 !important; }
-        body.light-theme .mission-card button.group\/remind:hover i { color: #000000 !important; }
+        /* Text-only badges that are locked to English (translate="no") sit inside
+           otherwise-RTL layouts. Google Translate sometimes forces its own
+           direction on elements marked translate="no", which can flip their
+           text-align away from the rest of the RTL page. This restores the
+           correct alignment/direction for just these elements while still
+           leaving the text itself untranslated. */
+        html[dir="rtl"] .lang-en-lock { direction: rtl !important; text-align: right !important; }
+
+        /* RTL Strict Overrides to Fix Tailwind classes during translation */
+        html[dir="rtl"] body { text-align: right; }
+        html[dir="rtl"] .text-left { text-align: right !important; }
+        html[dir="rtl"] .text-right { text-align: left !important; }
+        html[dir="rtl"] .ml-4 { margin-right: 1rem !important; margin-left: 0 !important; }
+        html[dir="rtl"] .mr-2 { margin-left: 0.5rem !important; margin-right: 0 !important; }
+        html[dir="rtl"] .pr-2 { padding-left: 0.5rem !important; padding-right: 0 !important; }
+        html[dir="rtl"] .pl-11 { padding-right: 2.75rem !important; padding-left: 1rem !important; }
+        html[dir="rtl"] .left-4 { right: 1rem !important; left: auto !important; }
+        html[dir="rtl"] .ml-1\.5 { margin-right: 0.375rem !important; margin-left: 0 !important; }
+        html[dir="rtl"] .mx-1\.5 { margin-left: 0.375rem !important; margin-right: 0.375rem !important; }
     </style>
     
     <script>
@@ -239,8 +269,8 @@
             document.body.classList.add('light-theme');
         }
 
-        // Extremely aggressive Cache Buster for PWA - forces GitHub Pages to drop old cache
-        if (!localStorage.getItem('sw_cleared_v5')) {
+        // Cache Buster - Forces browser to dump old PWA files immediately upon visit
+        if (!localStorage.getItem('sw_cleared_v3')) {
             if ('caches' in window) {
                 caches.keys().then(names => {
                     for (let name of names) caches.delete(name);
@@ -253,7 +283,7 @@
                     }
                 });
             }
-            localStorage.setItem('sw_cleared_v5', 'true');
+            localStorage.setItem('sw_cleared_v3', 'true');
             setTimeout(() => window.location.reload(true), 250);
         }
 
@@ -289,56 +319,43 @@
             }
         }
 
-        // Robust, non-interfering Observer for Google Translate
-        const observer = new MutationObserver(() => {
+        // Bulletproof Timer for Google Translate RTL
+        setInterval(() => {
             const htmlEl = document.documentElement;
+            const currentLang = htmlEl.lang.toLowerCase();
+            const isRtl = htmlEl.classList.contains('translated-rtl') || 
+                          currentLang.startsWith('he') || 
+                          currentLang.startsWith('ar');
             
-            // Check translation classes specifically added by Google Translate
-            const isTranslatedRtl = htmlEl.classList.contains('translated-rtl');
-            
-            if (isTranslatedRtl) {
+            if (isRtl) {
                 if (htmlEl.getAttribute('dir') !== 'rtl') htmlEl.setAttribute('dir', 'rtl');
             } else {
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
             }
             
-            // Accurately determine unit system directly from the translation combo box
-            let useMetric = false;
-            const combo = document.querySelector('.goog-te-combo');
-            if (combo && combo.value) {
-                // If a specific language is chosen in the dropdown and it's not English
-                useMetric = !combo.value.startsWith('en');
-            } else if (htmlEl.classList.contains('translated-ltr') || htmlEl.classList.contains('translated-rtl')) {
-                // Fallback: If translated is active but combo is somehow unreadable, assume non-English (metric)
-                useMetric = true;
-            }
-
-            const newUnitSystem = useMetric ? 'metric' : 'imperial';
+            const isEnglish = currentLang.startsWith('en') && !htmlEl.classList.contains('translated-ltr') && !htmlEl.classList.contains('translated-rtl');
+            const newUnitSystem = isEnglish ? 'imperial' : 'metric';
+            
             if (newUnitSystem !== window.currentUnitSystem) {
                 window.currentUnitSystem = newUnitSystem;
                 updateUnitsDisplay();
             }
-        });
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            // Observe the class attribute of the HTML element where Google Translate applies its flags
-            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        });
+        }, 500);
 
     </script>
 </head>
-<body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black">
+<body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
     <div class="stars-container" id="stars-background"></div>
 
-    <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 border-b border-zinc-900/80">
+    <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
             <div class="flex items-center shrink min-w-0 pr-2">
-                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>location.reload(), 400);" class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate" translate="no" title="Refresh Tracker">SPACEX FANS TRACKER</span>
+                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>location.reload(), 400);" class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate" translate="no" title="Refresh Tracker">SPACEX FANS TRACKER</span>
                 <span class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE TELEMETRY</span>
             </div>
             
             <div class="flex items-center gap-x-1.5 sm:gap-x-4 shrink-0 ml-1">
-                <button id="theme-toggle-btn" onclick="toggleTheme()" class="flex shrink-0 items-center justify-center w-6 h-6 sm:w-9 sm:h-9 bg-zinc-900 border border-zinc-850 rounded-full text-zinc-400 hover:text-emerald-400 shadow-sm">
+                <button id="theme-toggle-btn" onclick="toggleTheme()" class="flex shrink-0 items-center justify-center w-6 h-6 sm:w-9 sm:h-9 bg-zinc-900 border border-zinc-850 rounded-full text-zinc-400 hover:text-emerald-400 transition-colors shadow-sm">
                     <i class="fa-solid fa-sun text-[10px] sm:text-base" id="theme-icon"></i>
                 </button>
 
@@ -357,16 +374,16 @@
         
         <div class="flex flex-row items-center justify-between mb-5 md:mb-6 gap-3">
             <div class="flex-1 min-w-0">
-                <h1 class="font-space text-[26px] leading-none sm:text-5xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500">Mission Control</h1>
-                <p class="text-[11px] sm:text-xl text-zinc-400 mt-1 sm:mt-2 font-light truncate sm:whitespace-normal">Real-time SpaceX launch tracking & system diagnostic</p>
+                <h1 class="font-space text-[26px] leading-none sm:text-5xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500 transition-colors duration-500">Mission Control</h1>
+                <p class="text-[11px] sm:text-xl text-zinc-400 mt-1 sm:mt-2 font-light transition-colors duration-500 truncate sm:whitespace-normal">Real-time SpaceX launch tracking & system diagnostic</p>
             </div>
-            <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 min-w-[95px] sm:min-w-[100px] shadow-sm">
+            <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
                 <div class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap">Upcoming Launches</div>
                 <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate leading-none" id="upcoming-count" translate="no">0</div>
             </div>
         </div>
 
-        <div id="hero-banner" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 hidden relative overflow-hidden shadow-xl">
+        <div id="hero-banner" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 hidden transition-all duration-300 relative overflow-hidden shadow-xl">
             <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-3xl">
                 <img id="hero-image" src="" alt="" class="w-full h-full object-cover opacity-30 hero-fade-image">
             </div>
@@ -378,7 +395,7 @@
                         </span>
                         <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-full flex items-center gap-1.5">
                             <i class="fa-solid fa-check-double"></i>
-                            SYSTEMS GO
+                            <span class="notranslate" translate="no" lang="en">SYSTEMS GO</span>
                         </span>
                     </div>
                     <h2 id="hero-name" class="font-space text-2xl sm:text-4xl md:text-5xl font-semibold tracking-tighter text-white">Loading...</h2>
@@ -393,26 +410,26 @@
                     </div>
 
                     <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block" dir="ltr">
-                        <div class="text-[9px] text-zinc-500 font-bold tracking-[2px] uppercase mb-4 opacity-80 milestones-title">MILESTONES</div>
+                        <div class="text-[9px] text-zinc-500 font-bold tracking-[2px] uppercase mb-4 opacity-80 milestones-title transition-colors duration-500">MILESTONES</div>
                         <div class="relative flex items-center justify-between w-full px-2">
-                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-800 timeline-track"></div>
+                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-800 timeline-track transition-colors duration-500"></div>
                             <div id="timeline-progress" class="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-emerald-500 transition-all duration-1000 ease-out" style="width: 0%;"></div>
                             
                             <div class="relative z-10 flex flex-col items-center">
-                                <div id="node-24h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 relative z-10 node-empty"></div>
-                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label">T-24h</span>
+                                <div id="node-24h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-24h</span>
                             </div>
                             <div class="relative z-10 flex flex-col items-center">
-                                <div id="node-6h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 relative z-10 node-empty"></div>
-                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label">T-6h</span>
+                                <div id="node-6h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-6h</span>
                             </div>
                             <div class="relative z-10 flex flex-col items-center">
-                                <div id="node-1h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 relative z-10 node-empty"></div>
-                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label">T-1h</span>
+                                <div id="node-1h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-1h</span>
                             </div>
                             <div class="relative z-10 flex flex-col items-center">
-                                <div id="node-0" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 relative z-10 node-empty"></div>
-                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label">T-0</span>
+                                <div id="node-0" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
+                                <span class="text-[8px] sm:text-[10px] font-mono text-zinc-400 absolute top-5 whitespace-nowrap timeline-label transition-colors duration-500">T-0</span>
                             </div>
                         </div>
                     </div>
@@ -434,16 +451,16 @@
                     </div>
                 </div>
 
-                <div class="bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0">
+                <div class="bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0 transition-colors duration-500">
                     <div class="text-[10px] uppercase tracking-[3px] text-zinc-500 font-bold mb-2 text-center w-full">LOCAL COUNTDOWN</div>
-                    <div id="hero-countdown" dir="ltr" class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter whitespace-nowrap text-center notranslate flex items-baseline justify-center w-full" translate="no">
+                    <div id="hero-countdown" dir="ltr" class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center w-full" translate="no">
                         <!-- Populated by JS -->
                     </div>
                     
-                    <div class="w-full h-px bg-zinc-800/60 my-4"></div>
+                    <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
                     
                     <div class="text-[9px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5">LAUNCH WINDOW</div>
-                    <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider notranslate" dir="ltr" translate="no">--:-- - --:--</div>
+                    <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500 notranslate" dir="ltr" translate="no">--:-- - --:--</div>
                 </div>
             </div>
         </div>
@@ -453,9 +470,9 @@
                 <div class="relative w-full sm:w-64 md:w-72">
                     <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-500"></i>
                     <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions()"
-                           class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50">
+                           class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
                 </div>
-                <div class="flex flex-wrap justify-center sm:justify-start bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 text-[11px] sm:text-sm w-full md:w-auto gap-1">
+                <div class="flex flex-wrap justify-center sm:justify-start bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 text-[11px] sm:text-sm w-full md:w-auto transition-colors duration-500 gap-1">
                     <button onclick="filterByCategory('all')" id="filter-all" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap">All</button>
                     <!-- Watchlist Button Here -->
                     <button onclick="filterByCategory('favorites')" id="filter-favorites" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap flex items-center gap-1.5 text-amber-400 md:hover:text-amber-300"><i class="fa-solid fa-star"></i> Watchlist</button>
@@ -470,10 +487,10 @@
         <div class="mb-4">
             <div class="flex justify-between items-center mb-3">
                 <div>
-                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white">
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
                         <i class="fa-solid fa-rocket text-emerald-400 text-base"></i> Scheduled Deployments
                     </h3>
-                    <p class="text-xs text-zinc-500 mt-1">Next scheduled upcoming missions</p>
+                    <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Next scheduled upcoming missions</p>
                 </div>
             </div>
             
@@ -490,10 +507,10 @@
         <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900">
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white">
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
                         <i class="fa-solid fa-history text-zinc-400 text-base"></i> Recent Past Launches
                     </h3>
-                    <p class="text-xs text-zinc-500 mt-1">Showing the most recent completed SpaceX missions</p>
+                    <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing the most recent completed SpaceX missions</p>
                 </div>
                 <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
                     Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
@@ -511,14 +528,14 @@
         </div>
 
         <!-- Official Documentary Section -->
-        <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900">
+        <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900 transition-colors duration-500">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-2">
                 <div>
-                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white">
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                         <i class="fa-solid fa-film text-red-400"></i>
                         Starship
                     </h3>
-                    <p class="text-sm text-zinc-400">Starship documentary series</p>
+                    <p class="text-sm text-zinc-400 transition-colors duration-500">Starship documentary series</p>
                 </div>
                 <div class="flex items-center gap-x-4 self-start">
                     <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
@@ -538,7 +555,7 @@
                             <div class="flex items-center gap-x-2 mb-2.5">
                                 <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE 1 • RELEASED</span>
                             </div>
-                            <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white">Critical Path</h4>
+                            <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">Critical Path</h4>
                             <p class="text-xs text-zinc-400 line-clamp-4">The path to launch is filled with obstacles and success is only possible through the tireless efforts of many working together towards a common goal. “Critical Path” continues the ongoing Starship series, following SpaceX engineers through the final days before launch of the first Starship V3 and the challenges that come with development of the world’s most powerful and fully reusable rocket.</p>
                         </div>
                     </a>
@@ -549,7 +566,7 @@
                             <div class="flex items-center gap-x-2 mb-2.5">
                                 <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE 2 • RELEASED</span>
                             </div>
-                            <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white">Test Like You Fly</h4>
+                            <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">Test Like You Fly</h4>
                             <p class="text-xs text-zinc-400 line-clamp-4">Three years since the first flight of Starship, the next generation is here. New ship. New booster. New engines. New pad and new test site. SpaceX engineers are working to solve one of the most difficult engineering challenges in history: developing a fully, rapidly reusable rocket. “Test Like You Fly” launches a series that takes you inside the factories and onto the launch pads where humanity's future in space is unfolding.</p>
                         </div>
                     </a>
@@ -566,7 +583,7 @@
                                 <div class="flex items-center gap-x-2 mb-2.5">
                                     <span class="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE 3 • COMING SOON</span>
                                 </div>
-                                <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white">Fifth Flight Test</h4>
+                                <h4 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">Fifth Flight Test</h4>
                                 <p class="text-xs text-zinc-400 mb-3 line-clamp-4">The highly anticipated fifth flight test, targeting the first-ever catch of the Super Heavy booster by the launch tower.</p>
                             </div>
                             <div class="text-xs text-zinc-500 font-medium mt-2">Expected late 2026</div>
@@ -576,16 +593,16 @@
             </div>
         </div>
 
-        <div class="mt-10 pt-10 border-t border-zinc-900">
+        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between gap-4 h-full">
+                <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between gap-4 transition-colors duration-500 h-full">
                     <div class="flex items-start gap-4 sm:gap-5">
                         <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                             <i class="fa-solid fa-lightbulb text-2xl"></i>
                         </div>
                         <div class="flex-1 min-w-0 pt-1">
                             <div class="text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">Did You Know</div>
-                            <div id="fact-text" class="text-base sm:text-lg text-zinc-200 leading-relaxed font-medium transition-opacity duration-300 min-h-[60px]">
+                            <div id="fact-text" class="text-base sm:text-lg text-zinc-200 leading-relaxed font-medium transition-colors duration-500 min-h-[60px]">
                                 Loading interesting fact...
                             </div>
                         </div>
@@ -597,7 +614,7 @@
                     </div>
                 </div>
 
-                <div class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 flex flex-col justify-between h-full relative group">
+                <div class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 transition-colors duration-500 flex flex-col justify-between h-full relative group">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-globe text-cyan-500"></i>
@@ -610,7 +627,7 @@
                     
                     <div class="flex justify-between items-end mb-4">
                         <div>
-                            <div class="text-3xl sm:text-4xl font-bold font-space text-white flex items-baseline">
+                            <div class="text-3xl sm:text-4xl font-bold font-space text-white transition-colors duration-500 flex items-baseline">
                                 ~<span id="starlink-count">10,852</span>
                             </div>
                             <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">Active satellites (approx)</div>
@@ -621,7 +638,7 @@
                         </div>
                     </div>
                     
-                    <div class="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden mb-2">
+                    <div class="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden mb-2 transition-colors duration-500">
                         <div id="starlink-progress" class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-1000 w-[90%]"></div>
                     </div>
                     
@@ -633,14 +650,14 @@
             </div>
         </div>
 
-        <div class="mt-10 pt-10 border-t border-zinc-900 flex flex-col items-center notranslate" translate="no">
-            <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 self-start mb-6 text-white">
+        <div class="mt-10 pt-10 border-t border-zinc-900 flex flex-col items-center notranslate transition-colors duration-500" translate="no">
+            <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 self-start mb-6 text-white transition-colors duration-500">
                 <i class="fa-brands fa-x-twitter"></i>
                 SpaceX Official X Timeline
             </h3>
-            <div id="x-feed-container" class="hidden md:block w-full max-w-6xl mx-auto bg-zinc-900 border border-zinc-800 p-2 sm:p-4 rounded-3xl min-h-[600px]">
+            <div id="x-feed-container" class="hidden md:block w-full max-w-6xl mx-auto bg-zinc-900 border border-zinc-800 p-2 sm:p-4 rounded-3xl min-h-[600px] transition-colors duration-500 notranslate" translate="no" lang="en">
             </div>
-            <div class="md:hidden w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center">
+            <div class="md:hidden w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center transition-colors duration-500">
                 <i class="fa-brands fa-x-twitter text-3xl text-zinc-500 mb-3"></i>
                 <p class="text-sm text-zinc-400 mb-4">The full X timeline works best on desktop.<br>On mobile, open SpaceX directly.</p>
                 <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-xl text-sm font-semibold text-zinc-200 transition-all">
@@ -651,9 +668,9 @@
 
     </div>
 
-    <footer class="mt-auto py-8 border-t border-zinc-900/60 bg-zinc-950/40 text-center text-xs text-zinc-500 relative z-10 font-space tracking-wide space-y-4 px-4">
+    <footer class="mt-auto py-8 border-t border-zinc-900/60 bg-zinc-950/40 text-center text-xs text-zinc-500 relative z-10 font-space tracking-wide space-y-4 px-4 transition-colors duration-500">
         
-        <div class="flex items-center justify-center gap-2 text-sm font-semibold text-zinc-400">
+        <div class="flex items-center justify-center gap-2 text-sm font-semibold text-zinc-400 transition-colors duration-500">
             <span>Follow us on X</span>
             <a href="https://x.com/SpaceXFanTrack" target="_blank" class="text-[#1da1f2] md:hover:text-white transition-colors duration-300 inline-flex items-center gap-1.5 bg-[#1da1f2]/10 md:hover:bg-[#1da1f2] px-3 py-1.5 rounded-full border border-[#1da1f2]/30 notranslate" translate="no">
                 <i class="fa-brands fa-x-twitter"></i> @SpaceXFanTrack
@@ -668,8 +685,8 @@
 
     <!-- Mission Modal -->
     <div id="mission-modal" onclick="if (event.target.id === 'mission-modal') closeModal()" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto z-[100]">
-        <div id="mission-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto">
-            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80">
+        <div id="mission-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="modal-name" class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight"></div>
                     <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
@@ -696,34 +713,34 @@
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 items-start">
+                <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500 items-start">
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openRocketSpecs(window.currentActiveVehicleStr.toLowerCase().includes('starship')?'starship':(window.currentActiveVehicleStr.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
-                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE TYPE <i class="fa-solid fa-circle-info text-[9px] ml-1 opacity-70"></i></div>
-                        <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-1 leading-tight"></div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE TYPE</div>
+                        <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
-                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">LAUNCH SITE <i class="fa-solid fa-circle-info text-[9px] ml-1 opacity-70"></i></div>
-                        <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-1 leading-tight"></div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">LAUNCH SITE</div>
+                        <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
-                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBIT DESTINATION <i class="fa-solid fa-circle-info text-[9px] ml-1 opacity-70"></i></div>
-                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-1 notranslate leading-tight" dir="ltr" translate="no">LEO (Low Earth Orbit)</div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBIT DESTINATION</div>
+                        <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate leading-tight" dir="ltr" translate="no">LEO (Low Earth Orbit)</div>
                     </div>
                     <div class="p-1">
                         <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">MISSION STATUS</div>
-                        <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-1 leading-tight text-white"></div>
+                        <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-0.5 leading-tight notranslate lang-en-lock" translate="no" lang="en"></div>
                     </div>
                 </div>
 
                 <!-- Hardcore Lore Block (Booster & Landing Zone) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
                     <div class="p-1">
-                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 flex items-center gap-1"><i class="fa-solid fa-rocket text-[10px]"></i> FIRST STAGE BOOSTER</div>
-                        <div id="modal-booster" class="text-xs sm:text-sm font-semibold text-white mt-1"></div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">FIRST STAGE BOOSTER</div>
+                        <div id="modal-booster" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
                     <div class="p-1 cursor-pointer md:hover:bg-zinc-900/50 rounded-xl transition-colors" id="modal-landing-click-target" onclick="openLandingSpecs()">
-                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 flex items-center gap-1"><i class="fa-solid fa-ship text-[10px]"></i> RECOVERY ZONE <i class="fa-solid fa-circle-info text-[9px] opacity-70"></i></div>
-                        <div id="modal-landing" class="text-xs sm:text-sm font-semibold text-white mt-1"></div>
+                        <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY ZONE</div>
+                        <div id="modal-landing" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
                 </div>
 
@@ -737,15 +754,15 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 md:hover:border-zinc-700 transition-colors" id="radar-box-click">
+                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 md:hover:border-zinc-700 transition-colors duration-500" id="radar-box-click">
                         <div>
                             <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
                                 <i class="fa-solid fa-map-location-dot"></i> Telemetry Coordinates
                             </h5>
                             <p class="text-[11px] sm:text-xs text-zinc-500 notranslate" id="modal-pad-coordinate-label" dir="ltr" translate="no">Targeting Base Station</p>
                         </div>
-                        <div class="relative w-full h-40 bg-zinc-900 border border-zinc-800/60 rounded-xl mt-3 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
-                            <svg class="absolute inset-0 w-full h-full opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800" viewBox="0 0 960 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <div class="relative w-full h-40 bg-zinc-900 border border-zinc-800/60 rounded-xl mt-3 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] transition-colors duration-500">
+                            <svg class="absolute inset-0 w-full h-full opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800 transition-colors duration-500" viewBox="0 0 960 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M132,154 L154,142 L198,154 L244,120 L300,125 L350,105 L450,110 L520,132 L580,120 L680,140 L720,115 L820,140 L880,120 L910,160 L860,240 L840,290 L810,300 L810,340 L830,370 L800,430 L760,430 L750,470 L680,480 L620,440 L530,470 L480,470 L470,510 L440,510 L410,480 L380,480 L360,450 L340,410 L290,410 L250,380 L190,380 L150,340 L110,330 L80,280 L90,240 L110,210 Z" />
                                 <path d="M760,430 L800,430 L830,470 L840,520 L820,550 L800,510 L780,470 Z" />
                                 <path d="M360,450 L380,480 L410,480 L440,510 L470,510 L460,540 L430,560 L410,530 L380,490 Z" />
@@ -757,7 +774,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4">
+                    <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
                         <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
                             <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
                         </h5>
@@ -805,7 +822,7 @@
                             <i class="fa-solid fa-route"></i> View 3D Trajectory
                         </button>
                     </div>
-                    <div id="modal-includes" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm bg-zinc-950 p-4 border border-zinc-800/50 rounded-2xl"></div>
+                    <div id="modal-includes" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm bg-zinc-950 p-4 border border-zinc-800/50 rounded-2xl transition-colors duration-500"></div>
                 </div>
 
                 <div class="space-y-4">
@@ -813,7 +830,7 @@
                         <i class="fa-solid fa-crosshairs text-sm"></i>
                         Mission Objectives & Strategic Significance
                     </h4>
-                    <p id="modal-description-detailed" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl"></p>
+                    <p id="modal-description-detailed" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500"></p>
                 </div>
             </div>
         </div>
@@ -821,8 +838,8 @@
 
     <!-- Rocket Modal -->
     <div id="rocket-modal" onclick="if (event.target.id === 'rocket-modal') closeRocketModal()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
-        <div id="rocket-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.15)] my-auto">
-            <div class="px-6 py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80">
+        <div id="rocket-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.15)] my-auto transition-colors duration-500">
+            <div class="px-6 py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="rocket-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE SPECIFICATION</div>
@@ -830,12 +847,12 @@
                 <button onclick="closeRocketModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
-                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
                     <img id="rocket-modal-img" src="" class="w-full h-full object-cover" alt="Vehicle">
                     <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none"></div>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center">
+                <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Height</div>
                         <div id="rocket-modal-height" class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr" translate="no"></div>
@@ -852,7 +869,7 @@
 
                 <div class="space-y-2">
                     <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
-                    <p id="rocket-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line"></p>
+                    <p id="rocket-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500"></p>
                 </div>
             </div>
         </div>
@@ -860,8 +877,8 @@
 
     <!-- Site Modal -->
     <div id="site-modal" onclick="if (event.target.id === 'site-modal') closeLaunchSiteModal()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
-        <div id="site-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto">
-            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80">
+        <div id="site-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="site-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">SPACEPORT FACILITY DOSSIER</div>
@@ -869,12 +886,12 @@
                 <button onclick="closeLaunchSiteModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
-                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
                     <img id="site-modal-img" src="" class="w-full h-full object-cover" alt="Launch Facility">
                     <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none"></div>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center">
+                <div class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Global Coordinates</div>
                         <div id="site-modal-coords" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr" translate="no"></div>
@@ -887,7 +904,7 @@
 
                 <div class="space-y-2">
                     <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Operational Profile</h4>
-                    <p id="site-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line"></p>
+                    <p id="site-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500"></p>
                 </div>
             </div>
         </div>
@@ -895,8 +912,8 @@
 
     <!-- Orbit Modal -->
     <div id="orbit-modal" onclick="if (event.target.id === 'orbit-modal') closeOrbitSpecs()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
-        <div id="orbit-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto">
-            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80">
+        <div id="orbit-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">LEO (Low Earth Orbit)</div>
                     <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBITAL MECHANICS DOSSIER</div>
@@ -906,7 +923,7 @@
             
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <!-- SVG Animation Box -->
-                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center transition-colors duration-500 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
                     <svg viewBox="0 0 400 300" class="w-full h-full max-w-full max-h-full">
                         <!-- Earth -->
                         <circle cx="200" cy="150" r="25" fill="#0ea5e9" opacity="0.9" />
@@ -936,7 +953,7 @@
                 </div>
                 
                 <!-- LEO Specs Grid -->
-                <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center">
+                <div class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Altitude</div>
                         <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate" id="orbit-alt" dir="ltr" translate="no"></div>
@@ -955,7 +972,7 @@
                 <div class="space-y-4">
                     <div>
                         <h4 class="font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2"><i class="fa-solid fa-satellite"></i> Low Earth Orbit (LEO)</h4>
-                        <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl">
+                        <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl transition-colors duration-500">
                             The primary operational domain for SpaceX. Operating near Earth allows for the cheapest access to space, heavy payloads, and ultra-low communication latency (vital for Starlink, deployed at approximately 530-550 km). Objects here experience slight atmospheric drag, meaning defunct satellites eventually burn up harmlessly in the atmosphere, keeping the orbit clean. The ISS, Crew Dragon, and Starlink all operate here.
                         </p>
                     </div>
@@ -979,6 +996,70 @@
         </div>
     </div>
 
+    <!-- Landing Zone / Recovery Vessel Modal -->
+    <div id="landing-modal" onclick="if (event.target.id === 'landing-modal') closeLandingSpecs()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
+        <div id="landing-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div id="landing-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">RECOVERY ZONE INFORMATION</div>
+                </div>
+                <button onclick="closeLandingSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-52 sm:h-72 flex items-center justify-center transition-colors duration-500">
+                    <img id="landing-modal-img" src="" class="w-full h-full object-cover" alt="Landing Zone">
+                    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none"></div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Recovery Method</div>
+                        <div id="landing-modal-type" class="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Primary Fleet / Pad</div>
+                        <div id="landing-modal-fleet" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Recovery Profile</h4>
+                    <p id="landing-modal-desc" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Astronaut Profile Modal -->
+    <div id="astronaut-modal" onclick="if (event.target.id === 'astronaut-modal') closeAstronautModal()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[250]">
+        <div id="astronaut-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/40 w-full max-w-lg rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.25)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div id="astro-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div id="astro-modal-agency" class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ASTRONAUT DOSSIER</div>
+                </div>
+                <button onclick="closeAstronautModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
+            </div>
+            <div class="p-5 sm:p-6 space-y-5">
+                <div class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center">
+                    <img id="astro-modal-img" src="" class="w-full h-full object-cover object-top" alt="Astronaut Profile">
+                    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent pointer-events-none"></div>
+                </div>
+                
+                <div class="bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center">
+                    <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Assigned Flight Role</div>
+                    <div id="astro-modal-role" class="text-sm sm:text-base font-semibold text-emerald-400 mt-0.5"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="font-space text-sm sm:text-base font-semibold text-zinc-200">Biography & Background</h4>
+                    <p id="astro-modal-bio" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 rounded-2xl whitespace-pre-line"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let userTimezone = 'Asia/Jerusalem';
         try {
@@ -987,12 +1068,12 @@
 
         console.warn = function() {};
 
-        // Force kill old service workers explicitly to prevent caching issues.
+        // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.warn('Service Worker registration failed:', err);
+                });
             });
         }
 
@@ -1009,7 +1090,11 @@
             const body = document.body;
             const doc = document.documentElement;
             const icon = document.getElementById('theme-icon');
-            
+
+            // Suppress every color/background transition for one frame so the
+            // day/night switch itself is instant instead of a staggered fade.
+            doc.classList.add('theme-switching');
+
             body.classList.toggle('light-theme');
             doc.classList.toggle('light-theme');
             
@@ -1028,6 +1113,14 @@
             }
             
             refreshXTwitterFeed();
+
+            // Force the browser to apply the new theme with transitions off,
+            // then re-enable transitions on the next frame for normal hover/etc. animations.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    doc.classList.remove('theme-switching');
+                });
+            });
         }
 
         function initThemeIcon() {
@@ -1147,10 +1240,10 @@
 
             if (index === -1) {
                 favoriteMissions.push(id);
-                if(icon) icon.className = 'fa-solid fa-star text-amber-400 group-hover/fav:text-black transition-colors';
+                if(icon) icon.className = 'fa-solid fa-star text-amber-400';
             } else {
                 favoriteMissions.splice(index, 1);
-                if(icon) icon.className = 'fa-regular fa-star text-zinc-400 group-hover/fav:text-black transition-colors';
+                if(icon) icon.className = 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
                 
                 if (currentFilter === 'favorites') {
                     const card = btn.closest('.mission-card');
@@ -1408,36 +1501,121 @@
             if(percEl) percEl.innerText = `~${Math.round(percentage)}% of planned`;
         }
 
+        // Loads (once) and resolves with the twttr script object, regardless of how many
+        // times refreshXTwitterFeed() is called before the script has finished loading.
+        // ---------------------------------------------------------------
+        // X / Twitter feed
+        // ---------------------------------------------------------------
+        // X's free embedded-timeline widget calls X's own syndication
+        // endpoint (cdn.syndication.twimg.com) from the visitor's browser.
+        // That endpoint is aggressively rate-limited by X itself (HTTP 429),
+        // independent of any account, plan, or code on this site — there is
+        // no reliable way to force it to succeed from here.
+        //
+        // Strategy: always show a solid, reliable, English-only card with a
+        // direct link to @SpaceX on X immediately (the box is never blank).
+        // In the background, we silently attempt to build the live embed
+        // off-screen; if X actually returns a working timeline within a few
+        // seconds, we swap it in. If not, the reliable card just stays as-is
+        // — no flicker, no empty box, no broken-looking state either way.
+
+        function renderXFeedFallback(container) {
+            container.innerHTML = `
+                <div class="w-full min-h-[520px] flex flex-col items-center justify-center text-center p-6 notranslate" translate="no" lang="en">
+                    <i class="fa-brands fa-x-twitter text-4xl text-zinc-500 mb-4"></i>
+                    <p class="text-sm text-zinc-400 mb-1 max-w-sm">Live embeds from X are currently rate-limited on X's side.</p>
+                    <p class="text-xs text-zinc-600 mb-5 max-w-sm">Follow @SpaceX directly on X for the latest updates.</p>
+                    <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-xl text-sm font-semibold text-zinc-200 transition-all notranslate" translate="no" lang="en">
+                        Open @SpaceX on X <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                </div>`;
+        }
+
+        function loadTwitterWidgetsScript() {
+            if (window.twttr && window.twttr.widgets) {
+                return Promise.resolve(window.twttr);
+            }
+            if (window.__twttrLoadingPromise) {
+                return window.__twttrLoadingPromise;
+            }
+            window.__twttrLoadingPromise = new Promise((resolve, reject) => {
+                let s = document.getElementById('twitter-wjs');
+                if (!s) {
+                    s = document.createElement('script');
+                    s.id = 'twitter-wjs';
+                    s.async = true;
+                    s.src = "https://platform.twitter.com/widgets.js";
+                    s.charset = "utf-8";
+                    document.body.appendChild(s);
+                }
+                s.addEventListener('load', () => resolve(window.twttr));
+                s.addEventListener('error', reject);
+            });
+            return window.__twttrLoadingPromise;
+        }
+
         function refreshXTwitterFeed() {
             const container = document.getElementById('x-feed-container');
             if (!container) return;
-            
+
+            const requestId = (window.__xFeedRequestId = (window.__xFeedRequestId || 0) + 1);
             const isLight = document.body.classList.contains('light-theme');
             const themeStr = isLight ? 'light' : 'dark';
-            
-            container.innerHTML = ''; 
-            
+
+            container.setAttribute('translate', 'no');
+            container.classList.add('notranslate');
+            container.setAttribute('lang', 'en');
+
+            // 1) Show the reliable card immediately. The box is never empty.
+            renderXFeedFallback(container);
+
+            // 2) Try, off-screen, to build the live embed. Only touch the
+            // visible container if it actually succeeds.
+            const probe = document.createElement('div');
+            probe.style.cssText = 'position:absolute;top:-9999px;left:-9999px;width:600px;';
+            probe.setAttribute('translate', 'no');
+            probe.classList.add('notranslate');
+            document.body.appendChild(probe);
+
             const a = document.createElement('a');
             a.className = "twitter-timeline notranslate";
             a.setAttribute("translate", "no");
+            a.setAttribute("lang", "en");
+            // Forces the embed's own UI language to English regardless of
+            // the site's Google Translate state or the visitor's browser locale.
+            a.setAttribute("data-lang", "en");
             a.setAttribute("data-theme", themeStr);
             a.setAttribute("data-width", "100%");
             a.setAttribute("data-height", "600");
             a.setAttribute("data-chrome", "noheader nofooter noborders transparent");
             a.href = "https://twitter.com/SpaceX?ref_src=twsrc%5Etfw";
             a.innerText = "Tweets by SpaceX";
-            container.appendChild(a);
-            
-            if (window.twttr && window.twttr.widgets) {
-                window.twttr.widgets.load(container);
-            } else if (!document.getElementById('twitter-wjs')) {
-                const s = document.createElement('script');
-                s.id = 'twitter-wjs';
-                s.async = true;
-                s.src = "https://platform.twitter.com/widgets.js";
-                s.charset = "utf-8";
-                document.body.appendChild(s);
-            }
+            probe.appendChild(a);
+
+            const cleanupProbe = () => { if (probe.parentNode) probe.parentNode.removeChild(probe); };
+
+            loadTwitterWidgetsScript()
+                .then((twttr) => {
+                    if (requestId !== window.__xFeedRequestId) { cleanupProbe(); return; }
+                    if (!twttr || !twttr.widgets) { cleanupProbe(); return; }
+                    return twttr.widgets.load(probe);
+                })
+                .then(() => {
+                    if (requestId !== window.__xFeedRequestId) { cleanupProbe(); return; }
+                    const iframe = probe.querySelector('iframe');
+                    if (iframe && iframe.offsetHeight > 0) {
+                        // Success — swap the working embed into the visible container.
+                        container.innerHTML = '';
+                        container.appendChild(iframe);
+                    }
+                    cleanupProbe();
+                })
+                .catch(cleanupProbe);
+
+            // Safety net in case widgets.js itself never fires load/error.
+            setTimeout(() => {
+                if (requestId === window.__xFeedRequestId) cleanupProbe();
+            }, 8000);
         }
 
         async function fetchWithTimeout(resource, options = {}) {
@@ -1935,7 +2113,7 @@
             let tStr = window.currentUnitSystem === 'metric' ? `${w.tempC}°C` : `${w.tempF}°F`;
             let wStr = window.currentUnitSystem === 'metric' ? `${Math.round(w.windKmh)} km/h` : `${w.windMph} mph`;
             
-            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${w.desc}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1.5 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate inline-block" dir="ltr" translate="no">${wStr}</span> <span class="mx-1.5 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${w.probGO}</span>`;
+            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${w.desc}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate inline-block" dir="ltr" translate="no">${wStr}</span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${w.probGO}</span>`;
         }
 
         function setupHeroBanner() {
@@ -2117,17 +2295,17 @@
                     statusColor = "bg-amber-500/10 text-amber-400 border-amber-500/30";
                 }
                 
-                const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20">${m.status}</div>`;
+                const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${m.status}</div>`;
                 
                 const isFav = favoriteMissions.includes(m.id);
-                const starClass = isFav ? 'fa-solid fa-star text-amber-400 group-hover/fav:text-black transition-colors' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-black transition-colors';
+                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
 
                 const isReminded = remindedMissions.includes(m.id);
                 const bellClass = isReminded 
                     ? "flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-emerald-500 text-black rounded-xl border border-emerald-500 transition-colors"
-                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors duration-300";
+                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors";
                 
-                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:text-black";
+                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
                 const card = document.createElement('div');
                 card.className = `mission-card w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col snap-start shrink-0 hover:border-zinc-700`;
@@ -2149,7 +2327,7 @@
                                 <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
-                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-400 md:hover:border-amber-400 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors duration-300" title="Watchlist">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
                                 <button onclick="toggleReminder('${m.id}', '${escapeHTML(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
@@ -2187,14 +2365,14 @@
                 } catch(e) {}
                 
                 const isFav = favoriteMissions.includes(m.id);
-                const starClass = isFav ? 'fa-solid fa-star text-amber-400 group-hover/fav:text-black transition-colors' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-black transition-colors';
+                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
 
                 const isReminded = remindedMissions.includes(m.id);
                 const bellClass = isReminded 
                     ? "flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-emerald-500 text-black rounded-xl border border-emerald-500 transition-colors"
-                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors duration-300";
+                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors";
                 
-                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:text-black";
+                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
                 const card = document.createElement('div');
                 card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 transition-all z-20 mission-card`;
@@ -2211,7 +2389,7 @@
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
                             <button class="text-sm text-left text-emerald-400 hover:underline font-medium">View Mission Details →</button>
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-400 md:hover:border-amber-400 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors duration-300" title="Watchlist">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
                                 <button onclick="toggleReminder('${m.id}', '${escapeHTML(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
@@ -2361,15 +2539,17 @@
             }
 
             const statusEl = document.getElementById('modal-status');
+            statusEl.setAttribute('translate', 'no');
+            statusEl.setAttribute('lang', 'en');
             statusEl.innerText = m.status;
             
             const mStat = m.status.toLowerCase();
             if (mStat.includes("tbd") || mStat.includes("tbc") || mStat.includes("determined")) {
-                statusEl.className = "text-sm font-semibold text-white mt-1 leading-tight";
+                statusEl.className = "text-sm font-semibold text-zinc-400 mt-0.5 leading-tight notranslate lang-en-lock";
             } else if (mStat.includes("hold") || mStat.includes("review") || mStat.includes("delay")) {
-                statusEl.className = "text-sm font-semibold text-white mt-1 leading-tight";
+                statusEl.className = "text-sm font-semibold text-amber-400 mt-0.5 leading-tight notranslate lang-en-lock";
             } else {
-                statusEl.className = "text-sm font-semibold text-white mt-1 leading-tight";
+                statusEl.className = "text-sm font-semibold text-emerald-400 mt-0.5 leading-tight notranslate lang-en-lock";
             }
 
             document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full aspect-video object-cover relative z-50" alt="">`;
@@ -2752,6 +2932,8 @@
             const n0 = document.getElementById('node-0');
 
             if (!el) return;
+            el.setAttribute('translate', 'no');
+            el.setAttribute('lang', 'en');
             const target = new Date(targetDate);
 
             const update = () => {
@@ -2796,10 +2978,10 @@
                 if (diff <= 0) { 
                     if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
                         el.innerHTML = 'HOLD / DELAYED';
-                        el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2";
+                        el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                     } else {
                         el.innerHTML = 'MISSION IN PROGRESS'; 
-                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2";
+                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                     }
                     return; 
                 }
@@ -2823,10 +3005,10 @@
                 }
                 
                 el.innerHTML = `
-                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal opacity-50 text-zinc-400" style="margin-left: 6px; margin-right: 12px;">d</span>
-                    <span class="${timeColor}">${h.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 text-zinc-400" style="margin-left: 6px; margin-right: 12px;">h</span>
-                    <span class="${timeColor}">${m.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 text-zinc-400" style="margin-left: 6px; margin-right: 12px;">m</span>
-                    <span class="${timeColor}">${s.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 text-zinc-400" style="margin-left: 6px;">s</span>
+                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">d</span>
+                    <span class="${timeColor}">${h.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">h</span>
+                    <span class="${timeColor}">${m.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">m</span>
+                    <span class="${timeColor}">${s.toString().padStart(2,'0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 ml-1.5 text-zinc-400">s</span>
                 `;
             };
 
