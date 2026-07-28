@@ -266,26 +266,38 @@
 
         if (localStorage.getItem('spacex-theme') === 'light') {
             document.documentElement.classList.add('light-theme');
-            document.body.classList.add('light-theme');
+            // document.body doesn't exist yet at this point (this script runs in
+            // <head>, before <body> is parsed) — touching it here silently threw
+            // and skipped applying the theme to <body>, which is what almost all
+            // of the light-theme CSS actually targets. Defer it instead.
+            document.addEventListener('DOMContentLoaded', () => {
+                document.body.classList.add('light-theme');
+            });
         }
 
-        // Cache Buster - Forces browser to dump old PWA files immediately upon visit
-        if (!localStorage.getItem('sw_cleared_v3')) {
-            if ('caches' in window) {
-                caches.keys().then(names => {
-                    for (let name of names) caches.delete(name);
-                });
-            }
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) {
-                        registration.unregister();
-                    }
-                });
-            }
-            localStorage.setItem('sw_cleared_v3', 'true');
-            setTimeout(() => window.location.reload(true), 250);
-        }
+        // Google Translate stores the chosen language in a "googtrans" cookie and
+        // re-applies it automatically on the next visit — but that only works if
+        // Google's script finishes initializing before the user starts interacting.
+        // If the cookie exists but nothing got applied a couple seconds after load,
+        // do ONE clean reload (no cache/service-worker wiping) to give it a clean
+        // second run. Guarded by sessionStorage so it can only happen once per tab
+        // and never loops.
+        (function () {
+            const hasGoogTransCookie = document.cookie.split('; ').some(c => c.startsWith('googtrans='));
+            if (!hasGoogTransCookie) return;
+            if (sessionStorage.getItem('translate_reload_attempted')) return;
+
+            setTimeout(() => {
+                const htmlEl = document.documentElement;
+                const applied = htmlEl.classList.contains('translated-rtl') ||
+                                 htmlEl.classList.contains('translated-ltr') ||
+                                 !htmlEl.lang.toLowerCase().startsWith('en');
+                if (!applied) {
+                    sessionStorage.setItem('translate_reload_attempted', 'true');
+                    window.location.reload();
+                }
+            }, 2000);
+        })();
 
         window.currentUnitSystem = 'imperial'; 
         window.currentActiveVehicleStr = 'falcon 9';
