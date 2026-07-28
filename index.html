@@ -365,7 +365,16 @@
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
             }
             
-            const isEnglish = currentLang.startsWith('en') && !htmlEl.classList.contains('translated-ltr') && !htmlEl.classList.contains('translated-rtl');
+            // Unit system follows the resolved language only. Google Translate's
+            // translated-ltr/translated-rtl classes are internal bookkeeping (it adds
+            // translated-ltr even when the user picks English again from its own dropdown,
+            // not just when translating to some other LTR language) — they don't reliably
+            // mean "not English", so they must not be part of this check. Any language code
+            // starting with "en" (en, en-US, en-GB, ...) means imperial/°F; every other
+            // language covered by the translate widget (he, ar, es, fr, de, ru, zh-CN, it,
+            // cs, sv, nl, da, pt, pl, hi, tr, ...) means metric/°C — this covers switching in
+            // either direction, any number of times, with no refresh needed.
+            const isEnglish = currentLang.startsWith('en');
             const newUnitSystem = isEnglish ? 'imperial' : 'metric';
             
             if (newUnitSystem !== window.currentUnitSystem) {
