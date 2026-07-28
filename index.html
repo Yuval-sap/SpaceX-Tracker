@@ -1558,13 +1558,23 @@
             const container = document.getElementById('x-feed-container');
             if (!container) return;
 
-            const requestId = (window.__xFeedRequestId = (window.__xFeedRequestId || 0) + 1);
             const isLight = document.body.classList.contains('light-theme');
             const themeStr = isLight ? 'light' : 'dark';
 
             container.setAttribute('translate', 'no');
             container.classList.add('notranslate');
             container.setAttribute('lang', 'en');
+
+            // Only ever hit X's syndication endpoint ONCE per page load — repeated
+            // attempts (e.g. on every theme toggle) don't help and just use up
+            // the shared rate-limit budget faster. If we already have a live
+            // embed, leave it. If we already tried and it failed, don't retry.
+            if (window.__xFeedAttempted) {
+                return;
+            }
+            window.__xFeedAttempted = true;
+
+            const requestId = (window.__xFeedRequestId = (window.__xFeedRequestId || 0) + 1);
 
             // 1) Show the reliable card immediately. The box is never empty.
             renderXFeedFallback(container);
@@ -1607,6 +1617,7 @@
                         // Success — swap the working embed into the visible container.
                         container.innerHTML = '';
                         container.appendChild(iframe);
+                        window.__xFeedLoaded = true;
                     }
                     cleanupProbe();
                 })
