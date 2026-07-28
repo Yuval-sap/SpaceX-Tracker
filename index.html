@@ -246,6 +246,11 @@
            leaving the text itself untranslated. */
         html[dir="rtl"] .lang-en-lock { direction: rtl !important; text-align: right !important; }
 
+        /* Anchors the milestone progress bar to the reading-start edge: left in LTR,
+           right in RTL — so it stays visually in sync with the milestone nodes, which
+           already flip order automatically via the flex row's direction. */
+        .timeline-anchor-start { inset-inline-start: 0; }
+
         /* RTL Strict Overrides to Fix Tailwind classes during translation */
         html[dir="rtl"] body { text-align: right; }
         html[dir="rtl"] .text-left { text-align: right !important; }
@@ -421,11 +426,11 @@
                         </span>
                     </div>
 
-                    <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block" dir="ltr">
+                    <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block">
                         <div class="text-[9px] text-zinc-500 font-bold tracking-[2px] uppercase mb-4 opacity-80 milestones-title transition-colors duration-500">MILESTONES</div>
                         <div class="relative flex items-center justify-between w-full px-2">
-                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-800 timeline-track transition-colors duration-500"></div>
-                            <div id="timeline-progress" class="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-emerald-500 transition-all duration-1000 ease-out" style="width: 0%;"></div>
+                            <div class="absolute timeline-anchor-start top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-800 timeline-track transition-colors duration-500"></div>
+                            <div id="timeline-progress" class="absolute timeline-anchor-start top-1/2 -translate-y-1/2 h-[2px] bg-emerald-500 transition-all duration-1000 ease-out" style="width: 0%;"></div>
                             
                             <div class="relative z-10 flex flex-col items-center">
                                 <div id="node-24h" class="w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-600 mb-2 transition-colors duration-300 relative z-10 node-empty"></div>
@@ -2252,7 +2257,7 @@
             let lat = 28.5623, lon = -80.5773; 
             if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('pad 2')) {
                 lat = 25.9973; lon = -97.1556; 
-            } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4') || siteLower.includes('california') || siteLower.includes('pacific')) {
+            } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4e') || siteLower.includes('slc-4w') || siteLower.includes('california') || siteLower.includes('pacific')) {
                 lat = 34.6321; lon = -120.6106; 
             } else if (siteLower.includes('kennedy') || siteLower.includes('lc-39a') || siteLower.includes('ksc')) { 
                 lat = 28.6083; lon = -80.6041; 
