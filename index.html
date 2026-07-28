@@ -1186,6 +1186,50 @@
             tick();
         }
 
+        // setTimeout's delay is capped at a 32-bit signed int (~24.8 days) — pass anything
+        // longer and browsers fire it almost immediately instead of waiting. Launches are
+        // often scheduled further out than that, so a raw setTimeout(ms) here would silently
+        // fire the "10 minutes to launch" notification right away for anything ~25+ days out.
+        // This chains safe-sized waits until we're within range, then does the real, precise wait.
+        const MAX_SAFE_TIMEOUT = 20 * 24 * 60 * 60 * 1000; // 20 days, comfortably under the 32-bit cap
+        function scheduleLongTimeout(callback, delay) {
+            if (delay <= 0) return null;
+            if (delay <= MAX_SAFE_TIMEOUT) {
+                return setTimeout(callback, delay);
+            }
+            return setTimeout(() => scheduleLongTimeout(callback, delay - MAX_SAFE_TIMEOUT), MAX_SAFE_TIMEOUT);
+        }
+
+        function fireLaunchReminderNotification(name) {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification("SpaceX Tracker • Launch Warning", {
+                        body: `${name} is lifting off in 10 minutes!`,
+                        icon: "https://www.spacex.com/static/images/share.jpg",
+                        vibrate: [200, 100, 200]
+                    });
+                });
+            } else {
+                new Notification("SpaceX Tracker • Launch Warning", {
+                    body: `${name} is lifting off in 10 minutes!`,
+                    icon: "https://www.spacex.com/static/images/share.jpg"
+                });
+            }
+        }
+
+        // Re-arms a previously-set reminder. setTimeout only lives as long as this tab stays
+        // open, so a reminder set days ago and not re-armed since would silently do nothing —
+        // this gets called again for every still-reminded upcoming mission each time the app
+        // loads, so reopening the site before launch re-establishes the timer.
+        function armLaunchReminder(name, dateStr) {
+            const launchTime = new Date(dateStr).getTime();
+            const notifyTime = launchTime - (10 * 60 * 1000);
+            const delay = notifyTime - Date.now();
+            if (delay > 0) {
+                scheduleLongTimeout(() => fireLaunchReminderNotification(name), delay);
+            }
+        }
+
         function toggleReminder(id, name, dateStr, event) {
             if (event) {
                 event.stopPropagation();
@@ -1208,23 +1252,8 @@
                         const delay = notifyTime - Date.now();
                         
                         if (delay > 0) {
-                            setTimeout(() => {
-                                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                                    navigator.serviceWorker.ready.then(registration => {
-                                        registration.showNotification("SpaceX Tracker • Launch Warning", {
-                                            body: `${name} is lifting off in 10 minutes!`,
-                                            icon: "https://www.spacex.com/static/images/share.jpg",
-                                            vibrate: [200, 100, 200]
-                                        });
-                                    });
-                                } else {
-                                    new Notification("SpaceX Tracker • Launch Warning", {
-                                        body: `${name} is lifting off in 10 minutes!`,
-                                        icon: "https://www.spacex.com/static/images/share.jpg"
-                                    });
-                                }
-                            }, delay);
-                            alert(`✅ תזכורת הוגדרה בהצלחה עבור:\n${name}\n\nהתראה תקפוץ 10 דקות לפני השיגור.`);
+                            scheduleLongTimeout(() => fireLaunchReminderNotification(name), delay);
+                            alert(`✅ תזכורת הוגדרה בהצלחה עבור:\n${name}\n\nהתראה תקפוץ 10 דקות לפני השיגור — אבל רק אם תשאיר את האתר הזה פתוח בדפדפן (בטאב או ברקע) עד אז. אם תסגור את הדפדפן/הטאב, פתח את האתר שוב לפני השיגור כדי שהתזכורת תופעל מחדש.`);
                         } else {
                             alert("השיגור קרוב מדי או שכבר עבר, התזכורת נשמרה אך לא תוקפץ מראש.");
                         }
@@ -1855,6 +1884,18 @@
             
             document.getElementById('upcoming-count').innerText = dbMissions.length;
 
+            // Re-arm reminders for missions the user already opted into. setTimeout only
+            // survives while a tab is open, so this is what makes a reminder "stick" across
+            // separate visits (as long as one happens before launch) instead of only working
+            // if the original tab is never closed.
+            if (remindedMissions.length && "Notification" in window && Notification.permission === "granted") {
+                dbMissions.forEach(m => {
+                    if (remindedMissions.includes(m.id)) {
+                        armLaunchReminder(m.name, m.date);
+                    }
+                });
+            }
+
             setupHeroBanner();
             
             upcomingForGrid = dbMissions.slice(1, 7);
@@ -2197,7 +2238,7 @@
                         remindBtn.className = "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm";
                         remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i> Remind Me`;
                     }
-                    remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, escapeHTML(nextLaunch.name), nextLaunch.date, event);
+                    remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, sanitizeForInlineAttr(nextLaunch.name), nextLaunch.date, event);
                 }
 
                 heroBanner.classList.remove('hidden');
@@ -2260,18 +2301,31 @@
                 else if (code >= 95) { icon = 'fa-cloud-bolt'; desc = 'Storm'; }
                 
                 let probGO = "TBD";
+                let probNumeric = null;
                 if (probability !== null && probability !== undefined) {
-                    probGO = `${probability}% Favorable`;
+                    probNumeric = probability;
                 } else {
-                    if (code === 0 && windMph < 15) probGO = "95% Favorable";
-                    else if (code >= 1 && code <= 3 && windMph < 20) probGO = "85% Favorable";
-                    else if (code >= 45 && code <= 48) probGO = "70% Favorable";
-                    else if (code >= 51 && code <= 67) probGO = "40% Favorable";
-                    else if (code >= 95 || windMph >= 25) probGO = "10% NO-GO";
-                    else probGO = "TBD";
+                    if (code === 0 && windMph < 15) probNumeric = 95;
+                    else if (code >= 1 && code <= 3 && windMph < 20) probNumeric = 85;
+                    else if (code >= 45 && code <= 48) probNumeric = 70;
+                    else if (code >= 51 && code <= 67) probNumeric = 40;
+                    else if (code >= 95 || windMph >= 25) probNumeric = 10;
                 }
-                
-                let probColor = probGO.includes("NO-GO") || probGO.includes("40%") ? "text-red-400" : "text-emerald-400";
+
+                let probColor = "text-emerald-400";
+                if (probNumeric === null) {
+                    probGO = "TBD";
+                    probColor = "text-zinc-400";
+                } else if (probNumeric < 50) {
+                    probGO = `${probNumeric}% NO-GO`;
+                    probColor = "text-red-400";
+                } else if (probNumeric < 70) {
+                    probGO = `${probNumeric}% Marginal`;
+                    probColor = "text-amber-400";
+                } else {
+                    probGO = `${probNumeric}% Favorable`;
+                    probColor = "text-emerald-400";
+                }
                 
                 window.latestWeather = {
                     isFallback: false,
@@ -2353,7 +2407,7 @@
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
-                                <button onclick="toggleReminder('${m.id}', '${escapeHTML(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
+                                <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
                                     <i class="${bellIconClass}"></i>
                                 </button>
                             </div>
@@ -2415,7 +2469,7 @@
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
-                                <button onclick="toggleReminder('${m.id}', '${escapeHTML(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
+                                <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
                                     <i class="${bellIconClass}"></i>
                                 </button>
                             </div>
@@ -2517,7 +2571,14 @@
             filterMissions();
         }
 
-        function escapeHTML(str) {
+        // NOTE: this does NOT HTML-escape (no &lt;/&gt;/&amp;). It only escapes quotes/newlines
+        // so a mission name can be safely embedded as a JS string literal inside an inline
+        // onclick="..." attribute. That's intentional: the escaped value ends up in alert() and
+        // Notification body text (plain text, not rendered HTML), so HTML-entity-escaping it would
+        // wrongly show literal "&amp;" etc. to the user instead of "&". Keep this scoped to that
+        // one job — if this value is ever rendered as HTML elsewhere, it still needs real
+        // HTML-escaping there.
+        function sanitizeForInlineAttr(str) {
             if (!str) return '';
             return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
         }
