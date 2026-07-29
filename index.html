@@ -267,8 +267,7 @@
         /* Blue (further from launch) fading to green (closer to launch), instead of a flat
            static green — reads more clearly as progress. Direction-aware so the gradient
            still runs from the T-24h edge to the T-0 edge whether the page is LTR or RTL. */
-        .timeline-progress-fill { background: linear-gradient(to right, #3b82f6, #10b981); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
-        html[dir="rtl"] .timeline-progress-fill { background: linear-gradient(to left, #3b82f6, #10b981); }
+        .timeline-progress-fill { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.5); }
 
         .timeline-anchor-start { inset-inline-start: 0; }
 
@@ -926,9 +925,9 @@
                         <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
                             <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
                         </h5>
-                        <div class="flex items-end justify-around h-36 font-mono text-[10px]">
+                        <div class="flex items-end justify-around h-48 font-mono text-xs">
                             <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95" id="scale-box-falcon" onclick="openRocketSpecs('falcon')">
-                                <svg viewBox="0 0 20 100" class="w-5 h-[70px] transition-all" id="scale-bar-falcon">
+                                <svg viewBox="0 0 20 100" class="w-7 h-[95px] transition-all" id="scale-bar-falcon">
                                     <rect x="7" y="15" width="6" height="75" rx="1" fill="#e4e4e7" stroke="#71717a" stroke-width="0.5"/>
                                     <path d="M 7 15 C 7 5, 13 5, 13 15 Z" fill="#ffffff" stroke="#71717a" stroke-width="0.5" />
                                     <rect x="7" y="25" width="6" height="5" fill="#18181b" />
@@ -938,10 +937,10 @@
                                     <rect x="8" y="90" width="4" height="3" fill="#3f3f46" />
                                 </svg>
                                 <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Falcon 9</div>
-                                <div class="text-zinc-500 text-[9px] notranslate" id="scale-text-falcon" dir="ltr" translate="no"></div>
+                                <div class="text-zinc-500 text-[10px] notranslate" id="scale-text-falcon" dir="ltr" translate="no"></div>
                             </div>
                             <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95" id="scale-box-starship" onclick="openRocketSpecs('starship')">
-                                <svg viewBox="0 0 30 130" class="w-8 h-[120px] transition-all" id="scale-bar-starship">
+                                <svg viewBox="0 0 30 130" class="w-11 h-[160px] transition-all" id="scale-bar-starship">
                                     <rect x="9" y="65" width="12" height="55" fill="#a1a1aa" stroke="#52525b" stroke-width="0.5"/>
                                     <rect x="9" y="60" width="12" height="5" fill="#27272a" />
                                     <rect x="9" y="25" width="12" height="35" fill="#d4d4d8" stroke="#71717a" stroke-width="0.5" />
@@ -954,7 +953,7 @@
                                     <rect x="11" y="120" width="8" height="4" fill="#3f3f46" />
                                 </svg>
                                 <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Starship</div>
-                                <div class="text-zinc-500 text-[9px] notranslate" id="scale-text-starship" dir="ltr" translate="no"></div>
+                                <div class="text-zinc-500 text-[10px] notranslate" id="scale-text-starship" dir="ltr" translate="no"></div>
                             </div>
                         </div>
                     </div>
@@ -3198,7 +3197,18 @@
                     tlProgVal = 0;
                 }
                 
-                if(tlProgress) tlProgress.style.width = `${tlProgVal}%`;
+                if(tlProgress) {
+                    tlProgress.style.width = `${tlProgVal}%`;
+                    // Blend blue -> green based on OVERALL progress (not just a fixed decorative
+                    // gradient within the fill's own shrinking width) — so the bar reads as
+                    // "mostly blue early in the countdown, mostly green near launch".
+                    const t = Math.max(0, Math.min(1, tlProgVal / 100));
+                    const r = Math.round(59 + (16 - 59) * t);
+                    const g = Math.round(130 + (185 - 130) * t);
+                    const b = Math.round(246 + (129 - 246) * t);
+                    tlProgress.style.background = `rgb(${r}, ${g}, ${b})`;
+                    tlProgress.style.boxShadow = `0 0 6px rgba(${r}, ${g}, ${b}, 0.6)`;
+                }
 
                 if (diff <= 0) { 
                     if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
