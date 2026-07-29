@@ -417,7 +417,7 @@
         // sentences, so instead this runs a light find-and-replace over the rendered text after
         // translation, in the containers where mission descriptions appear.
         const PHRASE_FIXES_HE = [
-            [/קבוצת כוכבים(?:\s+(?:ה)?לוויינים)?/g, 'מערך הלוויינים'],
+            [/קבוצת\s*ה?כוכבים(?:\s+(?:ה)?לוויינים)?/g, 'מערך הלוויינים'],
         ];
         function fixMistranslatedPhrases(root, currentLang) {
             if (!root) return;
@@ -581,8 +581,8 @@
                             <i class="fa-solid fa-circle-info"></i> View Brief
                         </button>
 
-                        <button id="hero-remind-btn" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm">
-                            <i class="fa-solid fa-bell"></i> Remind Me
+                        <button id="hero-remind-btn" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-all duration-300 shadow-sm shrink-0" title="Remind Me">
+                            <i class="fa-solid fa-bell"></i>
                         </button>
                     </div>
                 </div>
@@ -2368,11 +2368,13 @@
                 if (remindBtn) {
                     const isReminded = remindedMissions.includes(nextLaunch.id);
                     if (isReminded) {
-                        remindBtn.className = "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-emerald-500 text-black border border-emerald-500 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm";
-                        remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i> Reminder Set`;
+                        remindBtn.className = "flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-emerald-500 text-black border border-emerald-500 rounded-xl transition-all duration-300 shadow-sm shrink-0";
+                        remindBtn.title = "Cancel Reminder";
+                        remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i>`;
                     } else {
-                        remindBtn.className = "inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-xs sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm";
-                        remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i> Remind Me`;
+                        remindBtn.className = "flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-all duration-300 shadow-sm shrink-0";
+                        remindBtn.title = "Remind Me";
+                        remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i>`;
                     }
                     remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, sanitizeForInlineAttr(nextLaunch.name), nextLaunch.date, event);
                 }
