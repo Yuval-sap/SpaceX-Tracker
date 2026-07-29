@@ -153,6 +153,18 @@
         }
 
         /* ==================================================
+           THEME TOGGLE TRANSITION (View Transitions API)
+           A single, uniform crossfade for the whole page when switching day/night —
+           supported browsers get a smooth ~450ms fade; unsupported ones fall back to
+           the instant switch with no error and no missing behavior.
+           ================================================== */
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation-duration: 0.45s;
+            animation-timing-function: ease-in-out;
+        }
+
+        /* ==================================================
            INSTANT THEME SWITCH
            While .theme-switching is on <html>, every transition is skipped so
            the day/night change applies in one frame instead of a staggered
@@ -219,6 +231,8 @@
             body.light-theme .md\:hover\:border-emerald-500:hover { border-color: #10b981 !important; }
             body.light-theme .md\:hover\:bg-zinc-800\/50:hover { background-color: rgba(241, 245, 249, 0.7) !important; }
             body.light-theme .md\:hover\:text-amber-300:hover { color: #f59e0b !important; }
+            body.light-theme .md\:hover\:bg-red-500:hover { background-color: #ef4444 !important; }
+            body.light-theme .md\:hover\:border-red-500:hover { border-color: #ef4444 !important; }
         }
         /* Watchlist star icon: group-hover has no md: breakpoint restriction, applies at all sizes */
         body.light-theme .group\/fav:hover .group-hover\/fav\:text-amber-400 { color: #f59e0b !important; }
@@ -248,6 +262,15 @@
         body.light-theme .milestones-title { color: #334155 !important; font-weight: 800; }
 
         body.light-theme .hero-pill { background-color: rgba(16,185,129,0.16) !important; border-color: rgba(16,185,129,0.5) !important; color: #047857 !important; }
+
+        /* Light mode only: match the weather row's green and the View Brief button's hover
+           green to the same green already used in the hero pills above, for consistency. */
+        body.light-theme #hero-weather,
+        body.light-theme #hero-weather .text-emerald-400 { color: #047857 !important; }
+        @media (min-width: 768px) {
+            body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover { background-color: #047857 !important; }
+            body.light-theme #hero-details-btn.md\:hover\:border-emerald-500:hover { border-color: #047857 !important; }
+        }
 
         body.light-theme .text-cyan-500 { color: #0284c7 !important; }
         body.light-theme .text-cyan-400 { color: #0284c7 !important; }
@@ -573,13 +596,13 @@
 
                     <div class="flex flex-wrap items-center gap-2 sm:gap-3 pt-6">
                         <div id="hero-live-container" class="hidden shrink-0">
-                            <a id="hero-live-link" href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-bold tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)] whitespace-nowrap">
-                                <i class="fa-solid fa-play text-[10px] animate-pulse"></i> WATCH LIVE
+                            <a id="hero-live-link" href="https://x.com/SpaceX" target="_blank" class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-red-500 md:hover:text-black border border-zinc-700 md:hover:border-red-500 text-zinc-300 text-[11px] sm:text-xs font-bold tracking-wider rounded-xl transition-all duration-300 shadow-sm whitespace-nowrap">
+                                <i class="fa-solid fa-play text-[10px] text-red-400 md:group-hover:text-black animate-pulse"></i> WATCH LIVE
                             </a>
                         </div>
 
-                        <button id="hero-details-btn" class="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black border border-emerald-500 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.2)] whitespace-nowrap shrink-0">
-                            <i class="fa-solid fa-circle-info"></i> View Brief
+                        <button id="hero-details-btn" class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm whitespace-nowrap shrink-0">
+                            <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black"></i> View Brief
                         </button>
 
                         <button id="hero-remind-btn" class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-all duration-300 shadow-sm shrink-0" title="Remind Me">
@@ -1236,40 +1259,52 @@
         let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
 
         function toggleTheme() {
-            const body = document.body;
-            const doc = document.documentElement;
-            const icon = document.getElementById('theme-icon');
+            const applyThemeChange = () => {
+                const body = document.body;
+                const doc = document.documentElement;
+                const icon = document.getElementById('theme-icon');
 
-            // Suppress every color/background transition for one frame so the
-            // day/night switch itself is instant instead of a staggered fade.
-            doc.classList.add('theme-switching');
+                // Suppress every color/background transition for one frame so the
+                // underlying swap itself is instant — the View Transition crossfade below
+                // (or its fallback, an instant swap) is what the user actually sees.
+                doc.classList.add('theme-switching');
 
-            body.classList.toggle('light-theme');
-            doc.classList.toggle('light-theme');
-            
-            if (body.classList.contains('light-theme')) {
-                if(icon) {
-                    icon.classList.remove('fa-sun');
-                    icon.classList.add('fa-moon');
+                body.classList.toggle('light-theme');
+                doc.classList.toggle('light-theme');
+                
+                if (body.classList.contains('light-theme')) {
+                    if(icon) {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                    }
+                    localStorage.setItem('spacex-theme', 'light');
+                } else {
+                    if(icon) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                    }
+                    localStorage.setItem('spacex-theme', 'dark');
                 }
-                localStorage.setItem('spacex-theme', 'light');
-            } else {
-                if(icon) {
-                    icon.classList.remove('fa-moon');
-                    icon.classList.add('fa-sun');
-                }
-                localStorage.setItem('spacex-theme', 'dark');
-            }
-            
-            refreshXTwitterFeed();
+                
+                refreshXTwitterFeed();
 
-            // Force the browser to apply the new theme with transitions off,
-            // then re-enable transitions on the next frame for normal hover/etc. animations.
-            requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    doc.classList.remove('theme-switching');
+                    requestAnimationFrame(() => {
+                        doc.classList.remove('theme-switching');
+                    });
                 });
-            });
+            };
+
+            // View Transitions API: takes a snapshot before/after the DOM change and
+            // crossfades the whole page as one unit — a single, uniform effect instead of
+            // dozens of elements each animating their own colors. Unsupported browsers
+            // (Firefox, older Safari) just call the function directly — same instant
+            // switch as before, no error, no missing functionality.
+            if (document.startViewTransition) {
+                document.startViewTransition(() => applyThemeChange());
+            } else {
+                applyThemeChange();
+            }
         }
 
         function initThemeIcon() {
