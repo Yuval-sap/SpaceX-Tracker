@@ -1915,27 +1915,45 @@
                     throw new Error("All APIs failed or timed out.");
                 }
 
+                const cachedRawForSanityCheck = localStorage.getItem(CACHE_KEY);
+                let cachedCombinedForSanityCheck = null;
+                if (cachedRawForSanityCheck) {
+                    try { cachedCombinedForSanityCheck = JSON.parse(cachedRawForSanityCheck); } catch (e) {}
+                }
+
+                // The previous-launches API is a free, rate-limited public API. Under rate
+                // limiting it can return a "successful" response (200 OK) with far fewer
+                // results than normal instead of a hard failure — that wouldn't be caught by
+                // a null check, but would still silently overwrite a good, fuller cached list
+                // with a degraded one. Treat a drastic drop vs. what's already cached as
+                // untrustworthy, same as an outright failure.
+                if (previousRaw !== null && cachedCombinedForSanityCheck) {
+                    const nowMsCheck = Date.now();
+                    const cachedPastCount = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() < nowMsCheck).length;
+                    if (cachedPastCount >= 5 && previousRaw.length < cachedPastCount * 0.5) {
+                        previousRaw = null;
+                    }
+                }
+                if (upcomingRaw !== null && cachedCombinedForSanityCheck) {
+                    const nowMsCheck = Date.now();
+                    const cachedUpcomingCount = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() >= nowMsCheck).length;
+                    if (cachedUpcomingCount >= 3 && upcomingRaw.length < cachedUpcomingCount * 0.5) {
+                        upcomingRaw = null;
+                    }
+                }
+
                 // "upcoming" and "previous" are fetched independently — it's possible for one
-                // to succeed while the other fails (e.g. the previous-launches endpoint has
-                // fewer fallback sources and shares a provider with its own fallback, so a
-                // provider-side hiccup can take both down together while upcoming still works
-                // via its separate third-party fallback). Previously this silently rendered
-                // with an empty past (or empty upcoming) section until the next scheduled
-                // refresh — now we backfill just the missing half from the last successful
-                // cache instead of losing it entirely.
-                if (upcomingRaw === null || previousRaw === null) {
-                    const cachedRaw = localStorage.getItem(CACHE_KEY);
-                    if (cachedRaw) {
-                        try {
-                            const cachedCombined = JSON.parse(cachedRaw);
-                            const nowMs = Date.now();
-                            if (upcomingRaw === null) {
-                                upcomingRaw = cachedCombined.filter(m => new Date(m.date).getTime() >= nowMs);
-                            }
-                            if (previousRaw === null) {
-                                previousRaw = cachedCombined.filter(m => new Date(m.date).getTime() < nowMs);
-                            }
-                        } catch (e) {}
+                // to fail (or now, be detected as suspiciously degraded) while the other is
+                // fine. Previously this silently rendered with an empty past (or empty
+                // upcoming) section until the next scheduled refresh — now we backfill just
+                // the missing half from the last successful cache instead of losing it.
+                if ((upcomingRaw === null || previousRaw === null) && cachedCombinedForSanityCheck) {
+                    const nowMs = Date.now();
+                    if (upcomingRaw === null) {
+                        upcomingRaw = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() >= nowMs);
+                    }
+                    if (previousRaw === null) {
+                        previousRaw = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() < nowMs);
                     }
                 }
 
