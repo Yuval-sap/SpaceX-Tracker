@@ -1777,6 +1777,9 @@
             container.setAttribute('translate', 'no');
             container.classList.add('notranslate');
             container.setAttribute('lang', 'en');
+            if (getComputedStyle(container).position === 'static') {
+                container.style.position = 'relative';
+            }
 
             // Only ever hit X's syndication endpoint ONCE per page load — repeated
             // attempts (e.g. on every theme toggle) don't help and just use up
@@ -1792,13 +1795,17 @@
             // 1) Show the reliable card immediately. The box is never empty.
             renderXFeedFallback(container);
 
-            // 2) Try, off-screen, to build the live embed. Only touch the
-            // visible container if it actually succeeds.
+            // 2) Try to build the live embed. IMPORTANT: this renders inside the real
+            // container, on-screen (just invisible via opacity), not off at -9999px.
+            // Many embed widgets (X's included) defer their own internal rendering/sizing
+            // until they detect they're actually within the viewport — an element parked
+            // off-screen may never be considered "visible" and so may never fully render,
+            // even though the surrounding script and iframe technically load fine.
             const probe = document.createElement('div');
-            probe.style.cssText = 'position:absolute;top:-9999px;left:-9999px;width:600px;';
+            probe.style.cssText = 'position:absolute; inset:0; opacity:0; pointer-events:none; z-index:-1;';
             probe.setAttribute('translate', 'no');
             probe.classList.add('notranslate');
-            document.body.appendChild(probe);
+            container.appendChild(probe);
 
             const a = document.createElement('a');
             a.className = "twitter-timeline notranslate";
@@ -1816,6 +1823,21 @@
             probe.appendChild(a);
 
             const cleanupProbe = () => { if (probe.parentNode) probe.parentNode.removeChild(probe); };
+            let settled = false;
+
+            const trySucceed = () => {
+                if (settled || requestId !== window.__xFeedRequestId) return false;
+                const iframe = probe.querySelector('iframe');
+                if (iframe && iframe.offsetHeight > 50) {
+                    settled = true;
+                    // Success — swap the working embed into the visible container.
+                    container.innerHTML = '';
+                    container.appendChild(iframe);
+                    window.__xFeedLoaded = true;
+                    return true;
+                }
+                return false;
+            };
 
             loadTwitterWidgetsScript()
                 .then((twttr) => {
@@ -1824,22 +1846,29 @@
                     return twttr.widgets.load(probe);
                 })
                 .then(() => {
-                    if (requestId !== window.__xFeedRequestId) { cleanupProbe(); return; }
-                    const iframe = probe.querySelector('iframe');
-                    if (iframe && iframe.offsetHeight > 0) {
-                        // Success — swap the working embed into the visible container.
-                        container.innerHTML = '';
-                        container.appendChild(iframe);
-                        window.__xFeedLoaded = true;
-                    }
-                    cleanupProbe();
+                    if (settled || requestId !== window.__xFeedRequestId) { cleanupProbe(); return; }
+                    // The outer promise resolving means the iframe SHELL was created, but its
+                    // own content loads asynchronously (a separate request) and may take a
+                    // little longer to actually paint and report a real height. Poll for it
+                    // instead of checking only once immediately here.
+                    let attempts = 0;
+                    const poll = setInterval(() => {
+                        attempts++;
+                        if (trySucceed()) {
+                            clearInterval(poll);
+                            cleanupProbe();
+                        } else if (attempts >= 14 || requestId !== window.__xFeedRequestId) { // ~7s of polling
+                            clearInterval(poll);
+                            cleanupProbe();
+                        }
+                    }, 500);
                 })
                 .catch(cleanupProbe);
 
             // Safety net in case widgets.js itself never fires load/error.
             setTimeout(() => {
                 if (requestId === window.__xFeedRequestId) cleanupProbe();
-            }, 8000);
+            }, 9000);
         }
 
         async function fetchWithTimeout(resource, options = {}) {
