@@ -1915,6 +1915,30 @@
                     throw new Error("All APIs failed or timed out.");
                 }
 
+                // "upcoming" and "previous" are fetched independently — it's possible for one
+                // to succeed while the other fails (e.g. the previous-launches endpoint has
+                // fewer fallback sources and shares a provider with its own fallback, so a
+                // provider-side hiccup can take both down together while upcoming still works
+                // via its separate third-party fallback). Previously this silently rendered
+                // with an empty past (or empty upcoming) section until the next scheduled
+                // refresh — now we backfill just the missing half from the last successful
+                // cache instead of losing it entirely.
+                if (upcomingRaw === null || previousRaw === null) {
+                    const cachedRaw = localStorage.getItem(CACHE_KEY);
+                    if (cachedRaw) {
+                        try {
+                            const cachedCombined = JSON.parse(cachedRaw);
+                            const nowMs = Date.now();
+                            if (upcomingRaw === null) {
+                                upcomingRaw = cachedCombined.filter(m => new Date(m.date).getTime() >= nowMs);
+                            }
+                            if (previousRaw === null) {
+                                previousRaw = cachedCombined.filter(m => new Date(m.date).getTime() < nowMs);
+                            }
+                        } catch (e) {}
+                    }
+                }
+
                 const combinedData = [...(upcomingRaw || []), ...(previousRaw || [])];
                 
                 if (combinedData.length > 0) {
@@ -3071,6 +3095,15 @@
                 modalEl.classList.remove('hidden');
                 modalEl.style.display = 'flex';
                 setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+
+                // SVG SMIL animations (<animateTransform>) effectively pause while their
+                // container is display:none, and browsers can take a noticeable moment to
+                // resync the animation timeline once it's shown again. Explicitly restarting
+                // them here makes the orbit rings begin rotating immediately on open instead
+                // of lagging behind by a second or more.
+                modalEl.querySelectorAll('animateTransform').forEach(anim => {
+                    try { anim.beginElement(); } catch(e) {}
+                });
             }
         }
 
