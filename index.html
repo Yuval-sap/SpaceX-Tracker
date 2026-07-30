@@ -1841,23 +1841,31 @@
 
             loadTwitterWidgetsScript()
                 .then((twttr) => {
-                    if (requestId !== window.__xFeedRequestId) { cleanupProbe(); return; }
-                    if (!twttr || !twttr.widgets) { cleanupProbe(); return; }
+                    if (requestId !== window.__xFeedRequestId) { cleanupProbe(); return null; }
+                    if (!twttr || !twttr.widgets) { cleanupProbe(); return null; }
                     return twttr.widgets.load(probe);
                 })
-                .then(() => {
-                    if (settled || requestId !== window.__xFeedRequestId) { cleanupProbe(); return; }
-                    // The outer promise resolving means the iframe SHELL was created, but its
-                    // own content loads asynchronously (a separate request) and may take a
-                    // little longer to actually paint and report a real height. Poll for it
-                    // instead of checking only once immediately here.
+                .then((widgets) => {
+                    if (widgets === null || settled || requestId !== window.__xFeedRequestId) { return; }
+                    // Twitter's own documented success signal: widgets.load() resolves with
+                    // an array of the elements that were actually turned into live widgets.
+                    // An empty array means X didn't render anything server-side (e.g. a
+                    // rate limit or quiet error), even if a bare iframe shell still exists
+                    // in the DOM with a height inherited from our own CSS/container sizing —
+                    // that alone was producing false "successes" (a blank swapped-in iframe).
+                    if (!widgets || widgets.length === 0) {
+                        cleanupProbe();
+                        return;
+                    }
+                    // Give the iframe's own async content a brief window to finish loading
+                    // and report a real size before trusting it.
                     let attempts = 0;
                     const poll = setInterval(() => {
                         attempts++;
                         if (trySucceed()) {
                             clearInterval(poll);
                             cleanupProbe();
-                        } else if (attempts >= 14 || requestId !== window.__xFeedRequestId) { // ~7s of polling
+                        } else if (attempts >= 8 || requestId !== window.__xFeedRequestId) { // ~4s
                             clearInterval(poll);
                             cleanupProbe();
                         }
