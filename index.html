@@ -2304,6 +2304,21 @@
                 liveStreamUrl = launch.vidurls[0].url;
             }
 
+            // The Launch Library API marks each video entry with a "live" boolean when a
+            // stream is actually airing right now — this is the real signal for whether a
+            // broadcast exists, instead of guessing from a time window (SpaceX doesn't
+            // stream every launch — lately mostly just Starship).
+            let hasLiveVideo = false;
+            let liveVideoUrl = "";
+            const vidUrlsArr = Array.isArray(launch.vid_urls) ? launch.vid_urls : (Array.isArray(launch.vidurls) ? launch.vidurls : null);
+            if (vidUrlsArr) {
+                const liveEntry = vidUrlsArr.find(v => v && v.live === true);
+                if (liveEntry) {
+                    hasLiveVideo = true;
+                    liveVideoUrl = liveEntry.url || liveStreamUrl;
+                }
+            }
+
             const details = generateDetailedMissionPurpose(launch.name || "SpaceX Mission", category, missionDesc, vehicleName);
 
             // בנייה מדויקת של נתוני מנחתים ובוסטרים
@@ -2428,6 +2443,8 @@
                 objectives: details.objectives,
                 image: launchImage,
                 liveUrl: liveStreamUrl,
+                hasLiveVideo: hasLiveVideo,
+                liveVideoUrl: liveVideoUrl,
                 booster: boosterStr,
                 landing: landingStr,
                 crew: crewArr,
@@ -2489,13 +2506,8 @@
                 const liveLink = document.getElementById('hero-live-link');
                 
                 if (liveBox && liveLink) {
-                    const now = new Date();
-                    const launchDate = new Date(nextLaunch.date);
-                    const hoursUntilLaunch = (launchDate - now) / (1000 * 60 * 60);
-
-                    liveLink.href = "https://x.com/SpaceX";
-                    
-                    if (hoursUntilLaunch <= 24 && hoursUntilLaunch >= -2) {
+                    if (nextLaunch.hasLiveVideo) {
+                        liveLink.href = nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "https://x.com/SpaceX";
                         liveBox.classList.remove('hidden');
                     } else {
                         liveBox.classList.add('hidden');
