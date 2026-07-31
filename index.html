@@ -264,13 +264,17 @@
 
         body.light-theme .hero-pill { background-color: rgba(16,185,129,0.16) !important; border-color: rgba(16,185,129,0.5) !important; color: #047857 !important; }
 
-        /* Light mode only: match the weather row's green and the View Brief button's hover
-           green to the same green already used in the hero pills above, for consistency. */
+        /* Light mode only: match the weather row's green, the View Brief button's hover
+           green, and the reminder button's hover green to the same green already used in
+           the hero pills above, for consistency. (The reminder button sits right next to
+           View Brief, so the two must share the same hover shade or the mismatch is obvious.) */
         body.light-theme #hero-weather,
         body.light-theme #hero-weather .text-emerald-400 { color: #047857 !important; }
         @media (min-width: 768px) {
-            body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover { background-color: #047857 !important; }
-            body.light-theme #hero-details-btn.md\:hover\:border-emerald-500:hover { border-color: #047857 !important; }
+            body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover,
+            body.light-theme #hero-remind-btn.md\:hover\:bg-emerald-500:hover { background-color: #047857 !important; }
+            body.light-theme #hero-details-btn.md\:hover\:border-emerald-500:hover,
+            body.light-theme #hero-remind-btn.md\:hover\:border-emerald-500:hover { border-color: #047857 !important; }
         }
 
         body.light-theme .text-cyan-500 { color: #0284c7 !important; }
@@ -483,11 +487,107 @@
                 if (changed) node.nodeValue = text;
             }
         }
+        // Mission card titles must always show in full on one line — line-clamp truncates
+        // longer titles with an ellipsis instead. Since titles vary in length, a fixed font
+        // size can't guarantee every title fits, so this shrinks the font just enough (in
+        // small steps, down to a readable floor) until the text no longer overflows the card.
+        function fitTitleOneLine(el) {
+            if (!el) return;
+            el.style.fontSize = '';
+            const initialSize = parseFloat(getComputedStyle(el).fontSize);
+            let size = initialSize;
+            const minSize = 11;
+            let guard = 0;
+            while (el.scrollWidth > el.clientWidth + 1 && size > minSize && guard < 60) {
+                size -= 0.5;
+                el.style.fontSize = size + 'px';
+                guard++;
+            }
+        }
+
+        function fitAllTitlesOneLine(root) {
+            (root || document).querySelectorAll('.mission-title-fit').forEach(fitTitleOneLine);
+        }
+
         function applyPhraseFixes(currentLang) {
             fixMistranslatedPhrases(document.getElementById('missions-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('past-launches-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('mission-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('landing-modal'), currentLang);
+        }
+
+        // "Starship" is a brand name, not a common noun, so Google Translate's automatic
+        // word choice for it is unreliable — in Hebrew it can come out as the generic word
+        // for "spacecraft" instead of the actual name. Like the LAUNCH_LABEL_I18N labels
+        // above, we supply the correct term ourselves for every language in the translate
+        // widget's includedLanguages list, rather than either accepting Google's guess or
+        // leaving the word stuck in English. Languages that use the Latin alphabet keep the
+        // name as-is (that's how it's actually written in the press); languages with a
+        // different script get the standard transliteration.
+        const STARSHIP_I18N = {
+            en: "Starship", he: "סטארשיפ", iw: "סטארשיפ", es: "Starship", fr: "Starship",
+            de: "Starship", ru: "Старшип", zh: "星舰", it: "Starship", cs: "Starship",
+            sv: "Starship", nl: "Starship", da: "Starship", pt: "Starship", pl: "Starship",
+            hi: "स्टारशिप", ar: "ستارشيب", tr: "Starship"
+        };
+
+        // Runs on every tick (see the interval below) so it covers both a language switch
+        // (re-localizes spans already tagged .starship-term) and freshly-rendered content
+        // that still contains the raw English word — mission cards/descriptions pulled from
+        // the live API, the facts rotator, rocket spec text, documentary blurbs, etc. — which
+        // can't all be hand-tagged since they're generated at runtime.
+        function localizeStarshipTerm(root) {
+            root = root || document.body;
+            if (!root) return;
+            const currentLang = (document.documentElement.lang || 'en').toLowerCase();
+            let key = currentLang.split('-')[0];
+            if (key === 'iw') key = 'he';
+            const term = STARSHIP_I18N[key] || STARSHIP_I18N.en;
+
+            // Re-localize spans we've already wrapped, keeping whatever boundary spaces
+            // were captured into them originally (data-space-before/-after).
+            root.querySelectorAll('.starship-term').forEach(el => {
+                const before = el.dataset.spaceBefore === '1' ? ' ' : '';
+                const after = el.dataset.spaceAfter === '1' ? ' ' : '';
+                const wanted = before + term + after;
+                if (el.textContent !== wanted) el.textContent = wanted;
+            });
+
+            if (!/starship/i.test(root.textContent || '')) return;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    if (!node.nodeValue || !/starship/i.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+                    const p = node.parentElement;
+                    if (!p || p.closest('.starship-term') || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            let n;
+            while ((n = walker.nextNode())) nodes.push(n);
+            nodes.forEach(node => {
+                const frag = document.createDocumentFragment();
+                // Capture up to one literal space immediately before/after "Starship" into
+                // the same match, so that space travels into the protected span below
+                // instead of staying behind in a sibling text node Google can trim.
+                node.nodeValue.split(/(\s?(?<![a-zA-Z])Starship(?![a-zA-Z])\s?)/i).forEach(part => {
+                    if (!part) return;
+                    if (/^\s?starship\s?$/i.test(part)) {
+                        const hasBefore = /^\s/.test(part);
+                        const hasAfter = /\s$/.test(part);
+                        const span = document.createElement('span');
+                        span.className = 'starship-term notranslate';
+                        span.setAttribute('translate', 'no');
+                        span.dataset.spaceBefore = hasBefore ? '1' : '0';
+                        span.dataset.spaceAfter = hasAfter ? '1' : '0';
+                        span.textContent = (hasBefore ? ' ' : '') + term + (hasAfter ? ' ' : '');
+                        frag.appendChild(span);
+                    } else {
+                        frag.appendChild(document.createTextNode(part));
+                    }
+                });
+                node.parentNode.replaceChild(frag, node);
+            });
         }
 
         // Bulletproof Timer for Google Translate RTL
@@ -506,6 +606,8 @@
 
             applyLaunchLabelTranslations(currentLang);
             applyPhraseFixes(currentLang);
+            localizeStarshipTerm(document.body);
+            fitAllTitlesOneLine(document);
             
             // Unit system follows the resolved language only. Google Translate's
             // translated-ltr/translated-rtl classes are internal bookkeeping (it adds
@@ -660,7 +762,7 @@
                     <!-- Watchlist Button Here -->
                     <button onclick="filterByCategory('favorites')" id="filter-favorites" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap flex items-center gap-1.5 text-amber-400 md:hover:text-amber-300"><i class="fa-solid fa-star"></i> Watchlist</button>
                     <button onclick="filterByCategory('falcon')" id="filter-falcon" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Falcon 9</button>
-                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starship</button>
+                    <button onclick="filterByCategory('starship')" id="filter-starship" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap"><span class="starship-term notranslate" translate="no">Starship</span></button>
                     <button onclick="filterByCategory('starlink')" id="filter-starlink" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap">Starlink</button>
                     <button onclick="filterByCategory('dragon')" id="filter-dragon" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-800/50 transition-all whitespace-nowrap notranslate" translate="no" lang="en"><span id="i18n-filter-dragon">Dragon/Crew</span></button>
                 </div>
@@ -716,9 +818,9 @@
                 <div>
                     <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                         <i class="fa-solid fa-film text-red-400"></i>
-                        Starship
+                        <span class="starship-term notranslate" translate="no">Starship</span>
                     </h3>
-                    <p class="text-sm text-zinc-400 transition-colors duration-500">Starship documentary series</p>
+                    <p class="text-sm text-zinc-400 transition-colors duration-500"><span class="starship-term notranslate" translate="no" data-space-after="1">Starship </span>documentary series</p>
                 </div>
                 <div class="flex items-center gap-x-4 self-start">
                     <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
@@ -894,38 +996,38 @@
                 </div>
                 
                 <div class="flex flex-row gap-3">
-                    <button id="modal-share-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
-                        <i class="fa-solid fa-share-nodes"></i> Share Mission
+                    <button id="modal-share-btn" class="w-1/2 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] xs:text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300 whitespace-nowrap">
+                        <i class="fa-solid fa-share-nodes shrink-0"></i> <span class="truncate min-w-0">Share Mission</span>
                     </button>
-                    <button id="modal-calendar-btn" class="w-1/2 flex items-center justify-center gap-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
-                        <i class="fa-solid fa-calendar-plus"></i> Save to Calendar
+                    <button id="modal-calendar-btn" class="w-1/2 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] xs:text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300 whitespace-nowrap">
+                        <i class="fa-solid fa-calendar-plus shrink-0"></i> <span class="truncate min-w-0">Save to Calendar</span>
                     </button>
                 </div>
 
                 <div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500 items-start">
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openRocketSpecs(window.currentActiveVehicleStr.toLowerCase().includes('starship')?'starship':(window.currentActiveVehicleStr.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
                         <div class="flex items-center gap-1.5">
-                            <div id="i18n-vehicle-type" class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">VEHICLE TYPE</div>
+                            <div id="i18n-vehicle-type" class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">VEHICLE TYPE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
                         <div id="modal-vehicle" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" id="modal-site-click-target">
                         <div class="flex items-center gap-1.5">
-                            <div id="i18n-launch-site" class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">LAUNCH SITE</div>
+                            <div id="i18n-launch-site" class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">LAUNCH SITE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
                         <div id="modal-site" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-zinc-900/50 p-1 rounded-xl transition-colors" onclick="openOrbitSpecs()">
                         <div class="flex items-center gap-1.5">
-                            <div id="i18n-orbit-destination" class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">ORBIT DESTINATION</div>
+                            <div id="i18n-orbit-destination" class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">ORBIT DESTINATION</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
                         <div id="modal-orbit" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate leading-tight" dir="ltr" translate="no">LEO (Low Earth Orbit)</div>
                     </div>
                     <div class="p-1">
-                        <div class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">MISSION STATUS</div>
+                        <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">MISSION STATUS</div>
                         <div id="modal-status" class="text-xs sm:text-sm font-semibold mt-0.5 leading-tight notranslate lang-en-lock" translate="no" lang="en"></div>
                     </div>
                 </div>
@@ -933,12 +1035,12 @@
                 <!-- Hardcore Lore Block (Booster & Landing Zone) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
                     <div class="p-1">
-                        <div class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">FIRST STAGE BOOSTER</div>
+                        <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">FIRST STAGE BOOSTER</div>
                         <div id="modal-booster" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
                     <div class="p-1 cursor-pointer md:hover:bg-zinc-900/50 rounded-xl transition-colors" id="modal-landing-click-target" onclick="openLandingSpecs()">
                         <div class="flex items-center gap-1.5">
-                            <div id="i18n-recovery-zone" class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">RECOVERY ZONE</div>
+                            <div id="i18n-recovery-zone" class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">RECOVERY ZONE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
                         <div id="modal-landing" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
@@ -1006,7 +1108,7 @@
                                     <path d="M 21 52 L 26 58 L 21 60 Z" fill="#27272a" />
                                     <rect x="11" y="120" width="8" height="4" fill="#3f3f46" />
                                 </svg>
-                                <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">Starship</div>
+                                <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors"><span class="starship-term notranslate" translate="no">Starship</span></div>
                                 <div class="text-zinc-500 text-[10px] notranslate" id="scale-text-starship" dir="ltr" translate="no"></div>
                             </div>
                         </div>
@@ -1043,7 +1145,7 @@
             <div class="px-6 py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="rocket-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE SPECIFICATION</div>
+                    <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">VEHICLE SPECIFICATION</div>
                 </div>
                 <button onclick="closeRocketModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -1082,7 +1184,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="site-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">SPACEPORT FACILITY DOSSIER</div>
+                    <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">SPACEPORT FACILITY DOSSIER</div>
                 </div>
                 <button onclick="closeLaunchSiteModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -1117,7 +1219,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">LEO (Low Earth Orbit)</div>
-                    <div class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBITAL MECHANICS DOSSIER</div>
+                    <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">ORBITAL MECHANICS DOSSIER</div>
                 </div>
                 <button onclick="closeOrbitSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -1203,7 +1305,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="landing-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="i18n-recovery-zone-info" class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">RECOVERY ZONE INFORMATION</div>
+                    <div id="i18n-recovery-zone-info" class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate" translate="no" lang="en">RECOVERY ZONE INFORMATION</div>
                 </div>
                 <button onclick="closeLandingSpecs()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -1238,7 +1340,7 @@
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
                     <div id="astro-modal-name" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="astro-modal-agency" class="text-[13px] text-emerald-400 font-semibold tracking-wider uppercase mt-1">ASTRONAUT DOSSIER</div>
+                    <div id="astro-modal-agency" class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">ASTRONAUT DOSSIER</div>
                 </div>
                 <button onclick="closeAstronautModal()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
             </div>
@@ -1823,7 +1925,7 @@
                 return `
                     <div class="flex items-center gap-3 sm:gap-4 group notranslate" translate="no" lang="en">
                         <div class="w-7 sm:w-8 text-center shrink-0 flex items-center justify-center">${rankDisplay}</div>
-                        <div class="w-[4.5rem] sm:w-24 font-mono font-bold text-emerald-400 text-sm sm:text-base shrink-0 tracking-tight">${b.sn}</div>
+                        <div class="w-[4.5rem] sm:w-24 font-mono font-bold text-emerald-400 text-sm sm:text-base shrink-0 tracking-tight origin-left transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.9)]">${b.sn}</div>
                         <div class="flex-1 h-7 sm:h-8 bg-zinc-800/80 rounded-full overflow-hidden relative border border-zinc-700/40">
                             <div class="h-full bg-gradient-to-r from-emerald-700 to-emerald-400 rounded-full transition-all duration-700 ease-out" style="width: ${pct}%"></div>
                         </div>
@@ -2617,7 +2719,7 @@
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between relative z-20 bg-zinc-900">
                         <div>
-                            <div class="font-semibold text-lg line-clamp-1 text-white mb-1.5" title="${m.name}">${m.name}</div>
+                            <div class="mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
                             <div class="text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
                             <div class="text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
                         </div>
@@ -2642,6 +2744,7 @@
             });
             
             startCountdowns(filteredMissions);
+            fitAllTitlesOneLine(grid);
         }
 
         function renderPastMissions(filteredPast) {
@@ -2683,7 +2786,7 @@
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
                         <div>
-                            <div class="font-semibold text-lg mb-1 line-clamp-1 text-white" title="${m.name}">${m.name}</div>
+                            <div class="mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
                             <div class="text-xs text-zinc-500 mb-3">${dateStr} • ${m.site}</div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
@@ -2703,6 +2806,7 @@
                 card.onclick = () => openMissionModal(m);
                 pastGrid.appendChild(card);
             });
+            fitAllTitlesOneLine(pastGrid);
         }
 
         function startCountdowns(missionList) {
@@ -2963,10 +3067,10 @@
             const boxFalcon = document.getElementById('scale-box-falcon');
             const boxStarship = document.getElementById('scale-box-starship');
 
-            bFalcon.style.filter = "grayscale(100%) opacity(30%)";
-            bStarship.style.filter = "grayscale(100%) opacity(30%)";
-            boxFalcon.style.opacity = "0.5";
-            boxStarship.style.opacity = "1";
+            bFalcon.style.filter = "grayscale(100%) opacity(55%)";
+            bStarship.style.filter = "grayscale(100%) opacity(55%)";
+            boxFalcon.style.opacity = "0.7";
+            boxStarship.style.opacity = "0.7";
 
             if (m.category === 'starship' || vehicleLower.includes('starship')) {
                 bStarship.style.filter = "drop-shadow(0 0 8px rgba(16,185,129,0.5))";
@@ -3382,6 +3486,12 @@
             if (filterAll) {
                 filterAll.classList.add('bg-white', 'text-black');
             }
+
+            let resizeFitTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeFitTimer);
+                resizeFitTimer = setTimeout(() => fitAllTitlesOneLine(document), 150);
+            });
         }
         
         window.onload = init;
