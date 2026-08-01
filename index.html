@@ -92,6 +92,15 @@
                 transform: translateY(0);
             }
         }
+        /* Gives the sticky/backdrop-blur nav its own stable compositing layer so mobile
+           Safari doesn't leave it (and the theme toggle button inside it) rendered in a
+           stale position for a frame right after an orientation change. */
+        nav.sticky {
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
         .countdown-small { font-family: 'Space Grotesk', monospace; font-feature-settings: "tnum"; }
         .modal-content { max-height: 90vh; overflow-y: auto; }
         
@@ -892,12 +901,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-between items-center mt-2 gap-3 flex-wrap">
-                        <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800/80 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-lg text-[11px] sm:text-xs font-semibold text-zinc-300 transition-all notranslate" translate="no" lang="en">
-                            <i class="fa-brands fa-x-twitter text-[10px]"></i>
-                            <span id="i18n-spacex-x-link">Follow @SpaceX on X</span>
+                    <div class="flex flex-nowrap justify-between items-center mt-2 gap-2 sm:gap-3">
+                        <a href="https://x.com/SpaceX" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800/80 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-lg text-[11px] sm:text-xs font-semibold text-zinc-300 transition-all notranslate min-w-0" translate="no" lang="en">
+                            <i class="fa-brands fa-x-twitter text-[10px] shrink-0"></i>
+                            <span id="i18n-spacex-x-link" class="truncate">Follow @SpaceX on X</span>
                         </a>
-                        <button onclick="showNextFact(true)" class="px-5 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-zinc-300 md:hover:text-emerald-400 transition-colors flex items-center gap-2">
+                        <button onclick="showNextFact(true)" class="shrink-0 px-3 sm:px-5 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-zinc-300 md:hover:text-emerald-400 transition-colors flex items-center gap-2 whitespace-nowrap">
                             Next Fact <i class="fa-solid fa-arrow-right"></i>
                         </button>
                     </div>
@@ -995,11 +1004,11 @@
                     </div>
                 </div>
                 
-                <div class="flex flex-row gap-3">
-                    <button id="modal-share-btn" class="w-1/2 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] xs:text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300 whitespace-nowrap">
+                <div class="flex flex-row flex-nowrap gap-2 sm:gap-3">
+                    <button id="modal-share-btn" class="w-1/2 min-w-0 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-share-nodes shrink-0"></i> <span class="truncate min-w-0">Share Mission</span>
                     </button>
-                    <button id="modal-calendar-btn" class="w-1/2 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] xs:text-xs sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300 whitespace-nowrap">
+                    <button id="modal-calendar-btn" class="w-1/2 min-w-0 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-calendar-plus shrink-0"></i> <span class="truncate min-w-0">Save to Calendar</span>
                     </button>
                 </div>
@@ -1845,7 +1854,12 @@
 
         function extractBoosterStats() {
             const stats = {};
-            const allMissions = [...(rawPastMissions || []), ...(dbMissions || [])];
+            // Only count flights that have actually happened: completed missions
+            // (rawPastMissions) plus any mission currently mid-launch ("In Progress").
+            // Everything else in dbMissions is still in the future — including it here
+            // would credit a booster with a flight number before it has actually flown.
+            const upcomingButLaunching = (dbMissions || []).filter(m => (m.status || '').toLowerCase() === 'in progress');
+            const allMissions = [...(rawPastMissions || []), ...upcomingButLaunching];
 
             allMissions.forEach(m => {
                 if (!m.booster) return;
@@ -1925,7 +1939,7 @@
                 return `
                     <div class="flex items-center gap-3 sm:gap-4 group notranslate" translate="no" lang="en">
                         <div class="w-7 sm:w-8 text-center shrink-0 flex items-center justify-center">${rankDisplay}</div>
-                        <div class="w-[4.5rem] sm:w-24 font-mono font-bold text-emerald-400 text-sm sm:text-base shrink-0 tracking-tight origin-left transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.9)]">${b.sn}</div>
+                        <div class="w-[4.5rem] sm:w-24 font-mono font-bold text-emerald-400 text-sm sm:text-base shrink-0 tracking-tight origin-left transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.9)] relative z-10">${b.sn}</div>
                         <div class="flex-1 h-7 sm:h-8 bg-zinc-800/80 rounded-full overflow-hidden relative border border-zinc-700/40">
                             <div class="h-full bg-gradient-to-r from-emerald-700 to-emerald-400 rounded-full transition-all duration-700 ease-out" style="width: ${pct}%"></div>
                         </div>
@@ -3492,6 +3506,39 @@
                 clearTimeout(resizeFitTimer);
                 resizeFitTimer = setTimeout(() => fitAllTitlesOneLine(document), 150);
             });
+
+            // On mobile, flipping the device to landscape can leave the sticky nav
+            // (and the theme toggle button inside it) rendered in a stale position for
+            // a frame — briefly overlapping the page headers below it — because the
+            // browser reflows the sticky/backdrop-blur nav and Google Translate's body
+            // offset asynchronously with the orientation change itself. Forcing a
+            // reflow right after (and shortly after) the event settles it immediately.
+            const settleLayoutAfterRotation = () => {
+                const nav = document.querySelector('nav');
+                if (document.body.style.top && document.body.style.top !== '0px') {
+                    document.body.style.top = '0px';
+                }
+                if (nav) {
+                    // Toggling display forces the browser to recompute the sticky nav's
+                    // position/stacking instead of reusing a stale pre-rotation layout.
+                    const prevDisplay = nav.style.display;
+                    nav.style.display = 'none';
+                    // eslint-disable-next-line no-unused-expressions
+                    nav.offsetHeight;
+                    nav.style.display = prevDisplay;
+                }
+                fitAllTitlesOneLine(document);
+            };
+            window.addEventListener('orientationchange', () => {
+                settleLayoutAfterRotation();
+                setTimeout(settleLayoutAfterRotation, 200);
+                setTimeout(settleLayoutAfterRotation, 500);
+            });
+            if (window.screen && window.screen.orientation) {
+                window.screen.orientation.addEventListener('change', () => {
+                    setTimeout(settleLayoutAfterRotation, 200);
+                });
+            }
         }
         
         window.onload = init;
