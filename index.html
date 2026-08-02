@@ -102,6 +102,47 @@
         }
 
         .countdown-small { font-family: 'Space Grotesk', monospace; font-feature-settings: "tnum"; }
+
+        .milestone-item.reveal-init { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+        .milestone-item.reveal-visible { opacity: 1; transform: translateY(0); }
+
+        /* Shimmer skeleton loaders — replaces plain "Loading..." text everywhere */
+        .skel {
+            position: relative;
+            overflow: hidden;
+            background: rgba(255,255,255,0.06);
+        }
+        body.light-theme .skel { background: rgba(15,23,42,0.06); }
+        .skel::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(16,185,129,0.28), transparent);
+            animation: skel-sweep 1.6s ease-in-out infinite;
+        }
+        @keyframes skel-sweep {
+            100% { transform: translateX(100%); }
+        }
+
+        /* News ticker */
+        #news-ticker-track {
+            animation: ticker-scroll-ltr 45s linear infinite;
+        }
+        [dir="rtl"] #news-ticker-track {
+            animation-name: ticker-scroll-rtl;
+        }
+        #news-ticker-wrap:hover #news-ticker-track {
+            animation-play-state: paused;
+        }
+        @keyframes ticker-scroll-ltr {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0%); }
+        }
+        @keyframes ticker-scroll-rtl {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
         .modal-content { max-height: 90vh; overflow-y: auto; }
         
         .hide-scrollbar::-webkit-scrollbar { height: 6px; }
@@ -664,6 +705,18 @@
         </div>
     </nav>
 
+    <div id="news-ticker-wrap" class="hidden bg-zinc-950/80 border-b border-zinc-900/80 overflow-hidden relative transition-colors duration-500 backdrop-blur-sm">
+        <div class="max-w-screen-2xl mx-auto flex items-center">
+            <div class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 bg-emerald-500/10 border-r border-zinc-800/80 z-10">
+                <i class="fa-solid fa-satellite-dish text-emerald-400 text-xs animate-pulse"></i>
+                <span class="text-[10px] sm:text-[11px] font-bold tracking-widest text-emerald-400 uppercase whitespace-nowrap">Live Feed</span>
+            </div>
+            <div class="overflow-hidden flex-1 py-2">
+                <div id="news-ticker-track" class="flex items-center gap-10 whitespace-nowrap w-max"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
         
         <div class="flex flex-row items-center justify-between mb-5 md:mb-6 gap-3">
@@ -674,6 +727,26 @@
             <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
                 <div id="i18n-upcoming-launches" class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap notranslate" translate="no" lang="en">Upcoming Launches</div>
                 <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate leading-none" id="upcoming-count" translate="no">0</div>
+            </div>
+        </div>
+
+        <div id="hero-skeleton" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 transition-all duration-300">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div class="space-y-3 flex-1 w-full min-w-0">
+                    <div class="skel h-6 w-32 rounded-full"></div>
+                    <div class="skel h-9 sm:h-12 w-3/4 rounded-lg"></div>
+                    <div class="flex items-center gap-3 pt-1">
+                        <div class="skel h-4 w-40 rounded"></div>
+                        <div class="skel h-6 w-28 rounded-full"></div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 sm:gap-3 mt-6">
+                        <div class="skel h-14 sm:h-16 rounded-xl"></div>
+                        <div class="skel h-14 sm:h-16 rounded-xl"></div>
+                        <div class="skel h-14 sm:h-16 rounded-xl"></div>
+                        <div class="skel h-14 sm:h-16 rounded-xl"></div>
+                    </div>
+                </div>
+                <div class="skel w-full lg:w-64 h-32 rounded-2xl shrink-0"></div>
             </div>
         </div>
 
@@ -813,9 +886,20 @@
             
             <div class="relative">
                 <div id="past-launches-grid" class="flex gap-4 sm:gap-5 overflow-x-auto pt-2 pb-4 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar snap-x snap-mandatory">
-                    <div class="py-10 text-center text-zinc-500 w-full">
-                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-emerald-400"></i>
-                        <p>Compiling past year flight logs...</p>
+                    <div class="w-[75vw] max-w-[280px] md:w-64 shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
+                        <div class="skel h-28 rounded-xl"></div>
+                        <div class="skel h-5 w-4/5 rounded"></div>
+                        <div class="skel h-3.5 w-2/3 rounded"></div>
+                    </div>
+                    <div class="w-[75vw] max-w-[280px] md:w-64 shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
+                        <div class="skel h-28 rounded-xl"></div>
+                        <div class="skel h-5 w-4/5 rounded"></div>
+                        <div class="skel h-3.5 w-2/3 rounded"></div>
+                    </div>
+                    <div class="w-[75vw] max-w-[280px] md:w-64 shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-2xl p-4 space-y-3 hidden sm:block">
+                        <div class="skel h-28 rounded-xl"></div>
+                        <div class="skel h-5 w-4/5 rounded"></div>
+                        <div class="skel h-3.5 w-2/3 rounded"></div>
                     </div>
                 </div>
             </div>
@@ -897,7 +981,10 @@
                         <div class="flex-1 min-w-0 pt-1">
                             <div class="text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">Did You Know</div>
                             <div id="fact-text" class="text-base sm:text-lg text-zinc-200 leading-relaxed font-medium transition-colors duration-500 min-h-[60px]">
-                                Loading interesting fact...
+                                <div class="space-y-2.5">
+                                    <div class="skel h-4 w-full rounded"></div>
+                                    <div class="skel h-4 w-4/5 rounded"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -948,8 +1035,107 @@
             </div>
         </div>
 
+        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="mb-8">
+                <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    <i class="fa-solid fa-timeline text-emerald-400"></i>
+                    <span>SpaceX Milestones</span>
+                </h3>
+                <p class="text-sm text-zinc-400 transition-colors duration-500">Key firsts on the road to reusable spaceflight</p>
+            </div>
+            <div class="relative pl-8 sm:pl-10 space-y-7">
+                <div class="absolute left-[11px] sm:left-[13px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-500/60 via-zinc-700 to-zinc-800"></div>
+
+                <div class="milestone-item relative">
+                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-rocket"></i></div>
+                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
+                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">SEPTEMBER 2008</div>
+                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Privately-Funded Rocket to Reach Orbit</div>
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">Falcon 1 becomes the first privately developed, liquid-fueled rocket to reach Earth orbit, on its fourth and final funded attempt.</p>
+                    </div>
+                </div>
+
+                <div class="milestone-item relative">
+                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-capsules"></i></div>
+                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
+                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">DECEMBER 2010</div>
+                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Commercial Spacecraft Recovered From Orbit</div>
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">A Dragon capsule is launched, orbits Earth, and is recovered safely — a first for a commercially built and operated spacecraft.</p>
+                    </div>
+                </div>
+
+                <div class="milestone-item relative">
+                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-tower-observation"></i></div>
+                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
+                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">DECEMBER 2015</div>
+                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Landing of an Orbital-Class Rocket Booster</div>
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">The Falcon 9 first stage from the Orbcomm-2 mission returns and lands upright at Landing Zone 1 — the first time an orbital-class booster is recovered intact.</p>
+                    </div>
+                </div>
+
+                <div class="milestone-item relative">
+                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-rotate"></i></div>
+                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
+                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">MARCH 2017</div>
+                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Reflight of an Orbital-Class Booster</div>
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">A previously flown Falcon 9 booster launches again on the SES-10 mission, proving orbital-class rocket reuse for the first time.</p>
+                    </div>
+                </div>
+
+                <div class="milestone-item relative">
+                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-user-astronaut"></i></div>
+                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
+                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">MAY 2020</div>
+                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Crewed Flight by a Private Company</div>
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">Crew Dragon Demo-2 carries NASA astronauts to the ISS — the first crewed orbital flight by a commercial company, and the first launch of astronauts from U.S. soil since 2011.</p>
+                    </div>
+                </div>
+
+                <div class="milestone-item relative">
+                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-hand-holding-hand"></i></div>
+                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
+                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">OCTOBER 2024</div>
+                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Catch of a Super Heavy Booster by the Launch Tower</div>
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">On Starship's fifth flight test, the Super Heavy booster returns to the launch site and is caught mid-air by the tower's mechanical arms — nicknamed "Mechazilla."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                        <i class="fa-solid fa-comments text-emerald-400"></i>
+                        <span>Community Buzz</span>
+                    </h3>
+                    <p class="text-sm text-zinc-400 transition-colors duration-500">Trending right now on r/SpaceX</p>
+                </div>
+                <a href="https://www.reddit.com/r/spacex/" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800/80 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-lg text-xs font-semibold text-zinc-300 transition-all shrink-0">
+                    View Subreddit <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+            <div id="news-feed-container" class="flex gap-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+                <div class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 space-y-3">
+                    <div class="skel h-4 w-full rounded"></div>
+                    <div class="skel h-4 w-2/3 rounded"></div>
+                    <div class="skel h-3 w-full rounded mt-2"></div>
+                </div>
+                <div class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 space-y-3">
+                    <div class="skel h-4 w-full rounded"></div>
+                    <div class="skel h-4 w-2/3 rounded"></div>
+                    <div class="skel h-3 w-full rounded mt-2"></div>
+                </div>
+                <div class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 space-y-3 hidden sm:block">
+                    <div class="skel h-4 w-full rounded"></div>
+                    <div class="skel h-4 w-2/3 rounded"></div>
+                    <div class="skel h-3 w-full rounded mt-2"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500 notranslate" translate="no" lang="en">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-2">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-3">
                 <div>
                     <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                         <i class="fa-solid fa-trophy text-amber-400"></i>
@@ -957,11 +1143,44 @@
                     </h3>
                     <p id="i18n-booster-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate" translate="no" lang="en">Most-flown Falcon 9 &amp; Super Heavy boosters from live mission data</p>
                 </div>
+                <div id="landing-streak-badge" class="hidden shrink-0 items-center gap-2.5 px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 self-start sm:self-auto">
+                    <i class="fa-solid fa-fire text-amber-400"></i>
+                    <div class="leading-tight">
+                        <div id="landing-streak-count" class="font-bold text-sm sm:text-base tabular-nums">0</div>
+                        <div class="text-[9px] sm:text-[10px] font-semibold tracking-wide text-emerald-400/80 uppercase">Consecutive Landings</div>
+                    </div>
+                </div>
             </div>
             <div id="booster-leaderboard" class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 space-y-3.5 transition-colors duration-500 notranslate" translate="no" lang="en">
-                <div class="text-center text-zinc-500 py-10">
-                    <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-emerald-400"></i>
-                    <p id="i18n-booster-analyzing">Analyzing booster flight data...</p>
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="skel w-7 sm:w-8 h-5 rounded shrink-0"></div>
+                    <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
+                    <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
+                    <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
+                </div>
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="skel w-7 sm:w-8 h-5 rounded shrink-0"></div>
+                    <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
+                    <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
+                    <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
+                </div>
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="skel w-7 sm:w-8 h-5 rounded shrink-0"></div>
+                    <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
+                    <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
+                    <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
+                </div>
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="skel w-7 sm:w-8 h-5 rounded shrink-0"></div>
+                    <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
+                    <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
+                    <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
+                </div>
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="skel w-7 sm:w-8 h-5 rounded shrink-0"></div>
+                    <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
+                    <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
+                    <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
                 </div>
             </div>
         </div>
@@ -1053,6 +1272,32 @@
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
                         <div id="modal-landing" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <!-- Prediction Poll -->
+                <div id="modal-poll-section" class="bg-zinc-950 border border-zinc-800/50 p-4 sm:p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-square-poll-vertical text-emerald-400"></i>
+                        <span class="text-sm sm:text-base font-semibold text-zinc-200">Will this launch succeed?</span>
+                    </div>
+                    <div id="modal-poll-vote-buttons" class="flex gap-3">
+                        <button onclick="voteOnMission('yes')" class="flex-1 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black md:hover:border-emerald-500 text-sm font-semibold text-zinc-200 transition-colors">
+                            <i class="fa-solid fa-check mr-1.5"></i>Yes
+                        </button>
+                        <button onclick="voteOnMission('no')" class="flex-1 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 md:hover:bg-red-500 md:hover:text-black md:hover:border-red-500 text-sm font-semibold text-zinc-200 transition-colors">
+                            <i class="fa-solid fa-xmark mr-1.5"></i>No
+                        </button>
+                    </div>
+                    <div id="modal-poll-results" class="hidden space-y-2">
+                        <div class="flex items-center justify-between text-xs sm:text-sm font-semibold">
+                            <span class="text-emerald-400">Yes <span id="modal-poll-yes-pct">0%</span></span>
+                            <span class="text-red-400"><span id="modal-poll-no-pct">0%</span> No</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-red-500/30 rounded-full overflow-hidden">
+                            <div id="modal-poll-bar-yes" class="h-full bg-emerald-500 transition-all duration-500" style="width: 50%"></div>
+                        </div>
+                        <div class="text-[10px] sm:text-[11px] text-zinc-500" id="modal-poll-total-votes">0 votes</div>
                     </div>
                 </div>
 
@@ -1367,6 +1612,26 @@
                 <div class="space-y-2">
                     <h4 class="font-space text-sm sm:text-base font-semibold text-zinc-200">Biography & Background</h4>
                     <p id="astro-modal-bio" class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 rounded-2xl whitespace-pre-line"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booster Passport Modal -->
+    <div id="booster-modal" onclick="if (event.target.id === 'booster-modal') closeBoosterPassport()" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[250]">
+        <div id="booster-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-emerald-500/30 w-full max-w-xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
+                <div>
+                    <div id="booster-modal-sn" class="font-space text-xl sm:text-2xl font-bold text-emerald-400 tracking-tight font-mono"></div>
+                    <div class="text-[10px] sm:text-xs text-zinc-500 font-semibold tracking-wider uppercase mt-1">Booster Flight Passport</div>
+                </div>
+                <button onclick="closeBoosterPassport()" class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
+            </div>
+            <div class="p-5 sm:p-6 space-y-4">
+                <div id="booster-modal-summary" class="grid grid-cols-3 gap-3 bg-zinc-950 border border-zinc-800/50 p-4 rounded-2xl text-center"></div>
+                <div>
+                    <h4 class="font-space text-sm sm:text-base font-semibold text-zinc-200 mb-3">Flight History</h4>
+                    <div id="booster-modal-history" class="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1"></div>
                 </div>
             </div>
         </div>
@@ -1854,6 +2119,7 @@
 
         function extractBoosterStats() {
             const stats = {};
+            const history = {}; // sn -> [{ flight, name, date, landing, landingSuccess, launchSuccess }]
             // Only count flights that have actually happened: completed missions
             // (rawPastMissions) plus any mission currently mid-launch ("In Progress").
             // Everything else in dbMissions is still in the future — including it here
@@ -1874,6 +2140,7 @@
                     const key = 'Super Heavy';
                     const fl = flightMatchSH ? parseInt(flightMatchSH[1], 10) : 1;
                     if (!stats[key] || stats[key] < fl) stats[key] = fl;
+                    (history[key] = history[key] || []).push({ flight: fl, name: m.name, date: m.date, landing: m.landing, landingSuccess: m.landingSuccess, launchSuccess: m.launchSuccess });
                     return;
                 }
                 if (!snMatch) return;
@@ -1885,7 +2152,13 @@
                 if (!stats[sn] || stats[sn] < flight) {
                     stats[sn] = flight;
                 }
+                (history[sn] = history[sn] || []).push({ flight, name: m.name, date: m.date, landing: m.landing, landingSuccess: m.landingSuccess, launchSuccess: m.launchSuccess });
             });
+
+            Object.keys(history).forEach(sn => {
+                history[sn].sort((a, b) => (b.flight || 0) - (a.flight || 0) || new Date(b.date) - new Date(a.date));
+            });
+            window.boosterFlightHistory = history;
 
             return Object.entries(stats)
                 .map(([sn, flights]) => ({ sn, flights }))
@@ -1937,7 +2210,7 @@
                 else rankDisplay = `<span class="text-zinc-500 font-mono text-xs">${i + 1}</span>`;
 
                 return `
-                    <div class="flex items-center gap-3 sm:gap-4 group notranslate" translate="no" lang="en">
+                    <div class="flex items-center gap-3 sm:gap-4 group notranslate cursor-pointer md:hover:bg-zinc-800/40 rounded-xl -mx-2 px-2 py-1 transition-colors" translate="no" lang="en" onclick="openBoosterPassport('${b.sn}')" title="View ${b.sn} flight history">
                         <div class="w-7 sm:w-8 text-center shrink-0 flex items-center justify-center">${rankDisplay}</div>
                         <div class="w-[4.5rem] sm:w-24 font-mono font-bold text-emerald-400 text-sm sm:text-base shrink-0 tracking-tight origin-left transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.9)] relative z-10">${b.sn}</div>
                         <div class="flex-1 h-7 sm:h-8 bg-zinc-800/80 rounded-full overflow-hidden relative border border-zinc-700/40">
@@ -1946,10 +2219,172 @@
                         <div class="w-12 sm:w-14 text-right font-bold text-white text-sm sm:text-base tabular-nums shrink-0">
                             ${b.flights}
                         </div>
+                        <div class="w-4 shrink-0 text-zinc-600 group-hover:text-emerald-400 transition-colors text-xs hidden sm:block">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </div>
                     </div>`;
             }).join('');
 
             container.innerHTML = headerRow + rows;
+        }
+
+        function renderLandingStreak() {
+            const badge = document.getElementById('landing-streak-badge');
+            const countEl = document.getElementById('landing-streak-count');
+            if (!badge || !countEl) return;
+
+            // Most recent mission first; only missions where a landing was actually
+            // attempted count toward the streak (expendable flights are skipped, not
+            // treated as breaks). The streak stops at the first attempt that failed or
+            // whose outcome isn't confirmed yet, so the number is never overstated.
+            const pastDesc = [...(rawPastMissions || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            let streak = 0;
+            for (const m of pastDesc) {
+                if (m.landingAttempt !== true) continue; // no landing attempted — doesn't affect streak
+                if (m.landingSuccess === true) {
+                    streak++;
+                } else {
+                    break; // failed or unconfirmed outcome — streak ends here
+                }
+            }
+
+            if (streak > 0) {
+                countEl.textContent = streak;
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('flex');
+            }
+        }
+
+        function openBoosterPassport(sn) {
+            const history = (window.boosterFlightHistory && window.boosterFlightHistory[sn]) || [];
+            if (history.length === 0) return;
+
+            document.getElementById('booster-modal-sn').textContent = sn;
+
+            const totalFlights = Math.max(...history.map(h => h.flight || 0), history.length);
+            const landingsAttempted = history.filter(h => h.landingSuccess === true || h.landingSuccess === false).length;
+            const landingsSucceeded = history.filter(h => h.landingSuccess === true).length;
+            const landingRate = landingsAttempted > 0 ? Math.round((landingsSucceeded / landingsAttempted) * 100) : null;
+
+            document.getElementById('booster-modal-summary').innerHTML = `
+                <div>
+                    <div class="text-xl sm:text-2xl font-bold text-white tabular-nums">${totalFlights}</div>
+                    <div class="text-[9px] sm:text-[10px] text-zinc-500 font-semibold tracking-wide uppercase mt-0.5">Total Flights</div>
+                </div>
+                <div>
+                    <div class="text-xl sm:text-2xl font-bold text-emerald-400 tabular-nums">${landingsSucceeded}</div>
+                    <div class="text-[9px] sm:text-[10px] text-zinc-500 font-semibold tracking-wide uppercase mt-0.5">Landings</div>
+                </div>
+                <div>
+                    <div class="text-xl sm:text-2xl font-bold text-white tabular-nums">${landingRate !== null ? landingRate + '%' : '—'}</div>
+                    <div class="text-[9px] sm:text-[10px] text-zinc-500 font-semibold tracking-wide uppercase mt-0.5">Landing Rate</div>
+                </div>
+            `;
+
+            document.getElementById('booster-modal-history').innerHTML = history.map(h => {
+                let dateStr = '';
+                try { dateStr = new Date(h.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: userTimezone }); } catch(e) {}
+
+                let landingIcon = '<i class="fa-solid fa-circle-question text-zinc-600"></i>';
+                let landingLabel = 'No landing attempt';
+                if (h.landingSuccess === true) {
+                    landingIcon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+                    landingLabel = 'Landing successful';
+                } else if (h.landingSuccess === false) {
+                    landingIcon = '<i class="fa-solid fa-circle-xmark text-red-400"></i>';
+                    landingLabel = 'Landing failed';
+                }
+
+                return `
+                    <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800/50 rounded-xl px-3.5 py-2.5">
+                        <div class="w-9 h-9 shrink-0 rounded-full bg-zinc-800 flex items-center justify-center text-[11px] font-bold text-zinc-300">#${h.flight || '?'}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs sm:text-sm font-semibold text-zinc-200 truncate">${h.name || 'SpaceX Mission'}</div>
+                            <div class="text-[10px] sm:text-[11px] text-zinc-500">${dateStr}</div>
+                        </div>
+                        <div class="shrink-0 text-base sm:text-lg" title="${landingLabel}">${landingIcon}</div>
+                    </div>`;
+            }).join('');
+
+            const modalEl = document.getElementById('booster-modal');
+            modalEl.classList.remove('hidden');
+            modalEl.style.display = 'flex';
+            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+        }
+
+        function closeBoosterPassport() {
+            const modalEl = document.getElementById('booster-modal');
+            modalEl.classList.add('hidden');
+            modalEl.style.display = 'none';
+        }
+
+        function timeAgoLabel(unixSeconds) {
+            const diffMs = Date.now() - (unixSeconds * 1000);
+            const mins = Math.floor(diffMs / 60000);
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            return `${Math.floor(hrs / 24)}d ago`;
+        }
+
+        async function loadNewsFeed() {
+            const container = document.getElementById('news-feed-container');
+            const tickerWrap = document.getElementById('news-ticker-wrap');
+            const tickerTrack = document.getElementById('news-ticker-track');
+            if (!container) return;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const res = await fetch('https://www.reddit.com/r/spacex/hot.json?limit=10', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!res.ok) throw new Error('Reddit feed request failed');
+                const data = await res.json();
+
+                const posts = (data?.data?.children || [])
+                    .map(c => c.data)
+                    .filter(p => p && !p.stickied && p.title)
+                    .slice(0, 8);
+
+                if (posts.length === 0) throw new Error('No posts found');
+
+                container.innerHTML = posts.map(p => `
+                    <a href="https://reddit.com${p.permalink}" target="_blank" class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 flex flex-col justify-between gap-3 md:hover:border-emerald-500/50 transition-colors">
+                        <div class="text-sm font-semibold text-zinc-200 line-clamp-3 leading-snug">${(p.title || '').replace(/</g,'&lt;')}</div>
+                        <div class="flex items-center justify-between text-[11px] text-zinc-500">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-arrow-up text-emerald-400"></i>${(p.ups || 0).toLocaleString()}</span>
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-comment"></i>${(p.num_comments || 0).toLocaleString()}</span>
+                            <span>${timeAgoLabel(p.created_utc)}</span>
+                        </div>
+                    </a>
+                `).join('');
+
+                if (tickerWrap && tickerTrack) {
+                    // Build the ticker items once, then duplicate the whole set so the CSS
+                    // marquee (translateX 0 -> -50%) loops seamlessly with no visible seam.
+                    const tickerItems = posts.slice(0, 6).map(p => `
+                        <a href="https://reddit.com${p.permalink}" target="_blank" class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
+                            <i class="fa-solid fa-circle text-[4px] text-emerald-400"></i>
+                            <span>${(p.title || '').replace(/</g,'&lt;')}</span>
+                        </a>
+                    `).join('<span class="text-zinc-700 mx-2">/</span>');
+
+                    tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
+                    tickerWrap.classList.remove('hidden');
+                }
+            } catch (e) {
+                container.innerHTML = `
+                    <div class="w-full text-center text-zinc-500 py-6">
+                        <i class="fa-solid fa-satellite-dish text-xl mb-2 text-zinc-600"></i>
+                        <p class="text-sm">Couldn't load the live feed right now.</p>
+                        <a href="https://www.reddit.com/r/spacex/" target="_blank" class="inline-block mt-2 text-emerald-400 text-xs font-semibold hover:underline">Browse r/SpaceX directly →</a>
+                    </div>`;
+                if (tickerWrap) tickerWrap.classList.add('hidden');
+            }
         }
 
         async function fetchWithTimeout(resource, options = {}) {
@@ -2228,6 +2663,8 @@
             updateRefreshSchedule();
             updateStarlinkStats();
             renderBoosterLeaderboard();
+            renderLandingStreak();
+            loadNewsFeed();
         }
 
         function generateDetailedMissionPurpose(name, category, description, vehicle) {
@@ -2304,6 +2741,13 @@
 
             let computedStatus = typeof launch.status === 'string' ? launch.status : (launch.status?.name || "Go for Launch");
 
+            // Preserve the real launch outcome here — a later pass overwrites m.status
+            // to a generic "Completed" for any past mission, which would otherwise make
+            // it impossible to tell a successful launch from a failed one after the fact.
+            let launchSuccess = null;
+            if (/success/i.test(computedStatus)) launchSuccess = true;
+            else if (/fail/i.test(computedStatus)) launchSuccess = false;
+
             let tzCode = "Local Time";
             try {
                 const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(new Date());
@@ -2362,6 +2806,10 @@
             // בנייה מדויקת של נתוני מנחתים ובוסטרים
             let landingStr = "";
             let boosterStr = "Falcon 9 Core";
+            let boosterSerial = null;
+            let boosterFlightNum = null;
+            let landingAttempt = null;
+            let landingSuccess = null;
 
             if (launch.rocket && launch.rocket.launcher_stage && launch.rocket.launcher_stage.length > 0) {
                 const stage = launch.rocket.launcher_stage[0];
@@ -2374,6 +2822,8 @@
                 
                 if (sn) {
                     boosterStr = `Booster ${sn} (${flightSuffix} flight)`;
+                    boosterSerial = sn.toUpperCase();
+                    boosterFlightNum = flight;
                 } else if (vLower.includes('heavy')) {
                     boosterStr = `Falcon Heavy Cores`;
                 } else if (vLower.includes('starship')) {
@@ -2384,6 +2834,8 @@
 
                 if (stage.landing) {
                     if (stage.landing.attempt) {
+                        landingAttempt = true;
+                        landingSuccess = (typeof stage.landing.success === 'boolean') ? stage.landing.success : null;
                         const locName = stage.landing.location ? stage.landing.location.name : "";
                         const typeName = stage.landing.type ? (stage.landing.type.abbrev || stage.landing.type.name) : "";
                         
@@ -2396,6 +2848,7 @@
                             landingStr = `${typeName} • Drone Ship`;
                         }
                     } else if (stage.landing.attempt === false) {
+                        landingAttempt = false;
                         landingStr = "Expendable (No Recovery)";
                     }
                 }
@@ -2485,6 +2938,11 @@
                 liveVideoUrl: liveVideoUrl,
                 booster: boosterStr,
                 landing: landingStr,
+                boosterSerial: boosterSerial,
+                boosterFlightNum: boosterFlightNum,
+                landingAttempt: landingAttempt,
+                landingSuccess: landingSuccess,
+                launchSuccess: launchSuccess,
                 crew: crewArr,
                 probability: prob
             };
@@ -2585,6 +3043,8 @@
             } else {
                 heroBanner.classList.add('hidden');
             }
+            const heroSkel = document.getElementById('hero-skeleton');
+            if (heroSkel) heroSkel.classList.add('hidden');
         }
 
         async function fetchLiveWeather(siteLower, probability) {
@@ -2924,6 +3384,79 @@
             return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
         }
 
+        // --- Prediction Poll ---
+        // No backend is wired up for this site, so "community" vote counts are simulated:
+        // each mission gets a fixed baseline (deterministically derived from its id, so it's
+        // stable across visits/devices rather than random every load) skewed toward success,
+        // reflecting SpaceX's real-world track record. The user's own vote is layered on top
+        // and remembered locally so they see their locked-in choice next time.
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = (hash << 5) - hash + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return hash >>> 0;
+        }
+
+        function mulberry32(seed) {
+            return function() {
+                seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+                let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function getPollBaseline(missionId) {
+            const rand = mulberry32(simpleHash(missionId));
+            const totalVotes = 35 + Math.floor(rand() * 120); // 35-155 baseline votes
+            const yesShare = 0.78 + rand() * 0.19; // 78%-97% yes, in line with SpaceX's real success rate
+            const yesVotes = Math.round(totalVotes * yesShare);
+            return { yesVotes, noVotes: totalVotes - yesVotes };
+        }
+
+        function getStoredPollVotes() {
+            try { return JSON.parse(localStorage.getItem('spacex_poll_votes')) || {}; }
+            catch(e) { return {}; }
+        }
+
+        function voteOnMission(choice) {
+            const missionId = window.currentModalMissionId;
+            if (!missionId) return;
+            const votes = getStoredPollVotes();
+            if (votes[missionId]) return; // one vote per mission per visitor
+            votes[missionId] = choice;
+            try { localStorage.setItem('spacex_poll_votes', JSON.stringify(votes)); } catch(e) {}
+            renderPollForMission(missionId);
+        }
+
+        function renderPollForMission(missionId) {
+            const base = getPollBaseline(missionId);
+            let yesVotes = base.yesVotes, noVotes = base.noVotes;
+            const userChoice = getStoredPollVotes()[missionId];
+            if (userChoice === 'yes') yesVotes++;
+            else if (userChoice === 'no') noVotes++;
+
+            const total = yesVotes + noVotes;
+            const yesPct = total > 0 ? Math.round((yesVotes / total) * 100) : 50;
+
+            document.getElementById('modal-poll-yes-pct').textContent = yesPct + '%';
+            document.getElementById('modal-poll-no-pct').textContent = (100 - yesPct) + '%';
+            document.getElementById('modal-poll-bar-yes').style.width = yesPct + '%';
+            document.getElementById('modal-poll-total-votes').textContent = total.toLocaleString() + ' votes';
+
+            const btns = document.getElementById('modal-poll-vote-buttons');
+            const results = document.getElementById('modal-poll-results');
+            if (userChoice) {
+                btns.classList.add('hidden');
+                results.classList.remove('hidden');
+            } else {
+                btns.classList.remove('hidden');
+                results.classList.add('hidden');
+            }
+        }
+
         function openMissionModal(m) {
             document.getElementById('modal-name').innerText = m.name;
             
@@ -3045,6 +3578,17 @@
             }
 
             handleModalFeatures(m);
+
+            window.currentModalMissionId = m.id;
+            const pollSection = document.getElementById('modal-poll-section');
+            if (pollSection) {
+                if ((m.status || '').toLowerCase().includes('completed')) {
+                    pollSection.classList.add('hidden');
+                } else {
+                    pollSection.classList.remove('hidden');
+                    renderPollForMission(m.id);
+                }
+            }
 
             const modalEl = document.getElementById('mission-modal');
             modalEl.classList.remove('hidden');
@@ -3538,6 +4082,22 @@
                 window.screen.orientation.addEventListener('change', () => {
                     setTimeout(settleLayoutAfterRotation, 200);
                 });
+            }
+
+            // Milestones timeline: fade/slide each entry in as it scrolls into view.
+            // Falls back to fully visible immediately if IntersectionObserver isn't supported.
+            if ('IntersectionObserver' in window) {
+                const milestoneItems = document.querySelectorAll('.milestone-item');
+                milestoneItems.forEach(el => el.classList.add('reveal-init'));
+                const milestoneObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('reveal-visible');
+                            milestoneObserver.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+                milestoneItems.forEach(el => milestoneObserver.observe(el));
             }
         }
         
