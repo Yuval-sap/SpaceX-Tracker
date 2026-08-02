@@ -690,6 +690,16 @@
             }
         }, 500);
 
+        // The setInterval above only starts protecting text every 500ms, which can lose
+        // the race against Google Translate's very first translation pass on content
+        // that's already in the DOM at page load (like the milestones section) — once
+        // Google has already mangled a sentence's word order/spacing around "Starship",
+        // merely wrapping the word afterward doesn't undo that damage. Running this once,
+        // as soon as the DOM is ready, protects that static content before Google gets to it.
+        document.addEventListener('DOMContentLoaded', () => {
+            localizeStarshipTerm(document.body);
+        });
+
     </script>
 </head>
 <body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
@@ -1160,8 +1170,8 @@
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-fire"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider">APRIL 2023</div>
-                        <div class="font-semibold text-white text-sm truncate">Starship's First Integrated Flight Test</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">The fully stacked Starship and Super Heavy booster fly together for the first time.</p>
+                        <div class="font-semibold text-white text-sm truncate"><span class="starship-term notranslate" translate="no" data-space-before="0" data-space-after="0">Starship</span>'s First Integrated Flight Test</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">The fully stacked<span class="starship-term notranslate" translate="no" data-space-before="1" data-space-after="1"> Starship </span>and Super Heavy booster fly together for the first time.</p>
                     </div>
                 </div>
 
@@ -1179,7 +1189,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider">OCTOBER 2024</div>
                         <div class="font-semibold text-white text-sm truncate">First Catch of a Super Heavy Booster by the Tower</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">Starship's Super Heavy booster is caught mid-air by "Mechazilla."</p>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1"><span class="starship-term notranslate" translate="no" data-space-before="0" data-space-after="0">Starship</span>'s Super Heavy booster is caught mid-air by "Mechazilla."</p>
                     </div>
                 </div>
             </div>
@@ -2316,6 +2326,10 @@
                 `).join('<span class="text-zinc-700 mx-2">/</span>');
 
                 tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
+                // Dynamic content added long after page load — Google Translate's mutation
+                // observer will translate it on the fly, so this must run synchronously,
+                // right now, before that has a chance to run and mangle "Starship".
+                localizeStarshipTerm(tickerTrack);
                 tickerWrap.classList.remove('hidden');
 
                 // Keep scroll speed consistent (~55px/sec) no matter how much content
