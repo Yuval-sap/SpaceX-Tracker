@@ -103,8 +103,10 @@
 
         .countdown-small { font-family: 'Space Grotesk', monospace; font-feature-settings: "tnum"; }
 
-        .milestone-item.reveal-init { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
-        .milestone-item.reveal-visible { opacity: 1; transform: translateY(0); }
+        .milestones-scrollbox::-webkit-scrollbar { width: 5px; }
+        .milestones-scrollbox::-webkit-scrollbar-track { background: transparent; }
+        .milestones-scrollbox::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.35); border-radius: 3px; }
+        .milestones-scrollbox { scrollbar-width: thin; scrollbar-color: rgba(16,185,129,0.35) transparent; }
 
         /* Shimmer skeleton loaders — replaces plain "Loading..." text everywhere */
         .skel {
@@ -127,7 +129,14 @@
 
         /* News ticker */
         #news-ticker-track {
-            animation: ticker-scroll-ltr 45s linear infinite;
+            /* Force LTR layout on the track itself regardless of page direction — under
+               html[dir=rtl] this element would otherwise inherit direction:rtl, which
+               reverses flex item order and shifts the overflow anchor, breaking the
+               percentage-based translateX loop (items would run out and leave it blank).
+               The visual left/right scroll direction is controlled purely by the
+               keyframes below, independent of this. */
+            direction: ltr;
+            animation: ticker-scroll-ltr 60s linear infinite;
         }
         [dir="rtl"] #news-ticker-track {
             animation-name: ticker-scroll-rtl;
@@ -682,6 +691,18 @@
 <body class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
     <div class="stars-container" id="stars-background"></div>
 
+    <div id="news-ticker-wrap" class="hidden bg-zinc-950 border-b border-emerald-500/20 overflow-hidden relative transition-colors duration-500">
+        <div class="max-w-screen-2xl mx-auto flex items-center">
+            <div class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-500/10 border-r border-zinc-800/80 z-10">
+                <i class="fa-solid fa-satellite-dish text-emerald-400 text-[10px] animate-pulse"></i>
+                <span class="text-[9px] sm:text-[10px] font-bold tracking-widest text-emerald-400 uppercase whitespace-nowrap">Space News</span>
+            </div>
+            <div class="overflow-hidden flex-1 py-1.5">
+                <div id="news-ticker-track" class="flex items-center gap-10 whitespace-nowrap w-max"></div>
+            </div>
+        </div>
+    </div>
+
     <nav class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
             <div class="flex items-center shrink min-w-0 pr-2">
@@ -704,18 +725,6 @@
             </div>
         </div>
     </nav>
-
-    <div id="news-ticker-wrap" class="hidden bg-zinc-950/80 border-b border-zinc-900/80 overflow-hidden relative transition-colors duration-500 backdrop-blur-sm">
-        <div class="max-w-screen-2xl mx-auto flex items-center">
-            <div class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 bg-emerald-500/10 border-r border-zinc-800/80 z-10">
-                <i class="fa-solid fa-satellite-dish text-emerald-400 text-xs animate-pulse"></i>
-                <span class="text-[10px] sm:text-[11px] font-bold tracking-widest text-emerald-400 uppercase whitespace-nowrap">Live Feed</span>
-            </div>
-            <div class="overflow-hidden flex-1 py-2">
-                <div id="news-ticker-track" class="flex items-center gap-10 whitespace-nowrap w-max"></div>
-            </div>
-        </div>
-    </div>
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
         
@@ -1036,100 +1045,66 @@
         </div>
 
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
-            <div class="mb-8">
+            <div class="mb-4">
                 <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                     <i class="fa-solid fa-timeline text-emerald-400"></i>
                     <span>SpaceX Milestones</span>
                 </h3>
-                <p class="text-sm text-zinc-400 transition-colors duration-500">Key firsts on the road to reusable spaceflight</p>
+                <p class="text-sm text-zinc-400 transition-colors duration-500">Key firsts on the road to reusable spaceflight — scroll for more</p>
             </div>
-            <div class="relative pl-8 sm:pl-10 space-y-7">
-                <div class="absolute left-[11px] sm:left-[13px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-500/60 via-zinc-700 to-zinc-800"></div>
-
-                <div class="milestone-item relative">
-                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-rocket"></i></div>
-                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
-                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">SEPTEMBER 2008</div>
-                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Privately-Funded Rocket to Reach Orbit</div>
-                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">Falcon 1 becomes the first privately developed, liquid-fueled rocket to reach Earth orbit, on its fourth and final funded attempt.</p>
+            <div class="milestones-scrollbox max-h-[268px] sm:max-h-[280px] overflow-y-auto pr-1.5 space-y-2.5">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                    <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-rocket"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold text-emerald-400 tracking-wider">SEPTEMBER 2008</div>
+                        <div class="font-semibold text-white text-sm truncate">First Privately-Funded Rocket to Reach Orbit</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">Falcon 1 becomes the first privately developed, liquid-fueled rocket to reach Earth orbit.</p>
                     </div>
                 </div>
 
-                <div class="milestone-item relative">
-                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-capsules"></i></div>
-                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
-                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">DECEMBER 2010</div>
-                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Commercial Spacecraft Recovered From Orbit</div>
-                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">A Dragon capsule is launched, orbits Earth, and is recovered safely — a first for a commercially built and operated spacecraft.</p>
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                    <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-capsules"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold text-emerald-400 tracking-wider">DECEMBER 2010</div>
+                        <div class="font-semibold text-white text-sm truncate">First Commercial Spacecraft Recovered From Orbit</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">A Dragon capsule is launched, orbits Earth, and is recovered safely.</p>
                     </div>
                 </div>
 
-                <div class="milestone-item relative">
-                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-tower-observation"></i></div>
-                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
-                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">DECEMBER 2015</div>
-                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Landing of an Orbital-Class Rocket Booster</div>
-                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">The Falcon 9 first stage from the Orbcomm-2 mission returns and lands upright at Landing Zone 1 — the first time an orbital-class booster is recovered intact.</p>
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                    <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-tower-observation"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold text-emerald-400 tracking-wider">DECEMBER 2015</div>
+                        <div class="font-semibold text-white text-sm truncate">First Landing of an Orbital-Class Rocket Booster</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">Falcon 9's first stage lands upright at Landing Zone 1 for the first time.</p>
                     </div>
                 </div>
 
-                <div class="milestone-item relative">
-                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-rotate"></i></div>
-                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
-                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">MARCH 2017</div>
-                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Reflight of an Orbital-Class Booster</div>
-                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">A previously flown Falcon 9 booster launches again on the SES-10 mission, proving orbital-class rocket reuse for the first time.</p>
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                    <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-rotate"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold text-emerald-400 tracking-wider">MARCH 2017</div>
+                        <div class="font-semibold text-white text-sm truncate">First Reflight of an Orbital-Class Booster</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">A previously flown Falcon 9 booster launches again on SES-10.</p>
                     </div>
                 </div>
 
-                <div class="milestone-item relative">
-                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-user-astronaut"></i></div>
-                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
-                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">MAY 2020</div>
-                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Crewed Flight by a Private Company</div>
-                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">Crew Dragon Demo-2 carries NASA astronauts to the ISS — the first crewed orbital flight by a commercial company, and the first launch of astronauts from U.S. soil since 2011.</p>
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                    <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-user-astronaut"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold text-emerald-400 tracking-wider">MAY 2020</div>
+                        <div class="font-semibold text-white text-sm truncate">First Crewed Flight by a Private Company</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">Crew Dragon Demo-2 carries NASA astronauts to the ISS.</p>
                     </div>
                 </div>
 
-                <div class="milestone-item relative">
-                    <div class="absolute -left-8 sm:-left-10 top-0.5 w-6 h-6 rounded-full bg-zinc-900 border-2 border-emerald-500 flex items-center justify-center text-[10px] text-emerald-400"><i class="fa-solid fa-hand-holding-hand"></i></div>
-                    <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 sm:p-5 transition-colors duration-500">
-                        <div class="text-[11px] font-bold text-emerald-400 tracking-wider mb-1">OCTOBER 2024</div>
-                        <div class="font-semibold text-white text-sm sm:text-base mb-1">First Catch of a Super Heavy Booster by the Launch Tower</div>
-                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">On Starship's fifth flight test, the Super Heavy booster returns to the launch site and is caught mid-air by the tower's mechanical arms — nicknamed "Mechazilla."</p>
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                    <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-hand-holding-hand"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold text-emerald-400 tracking-wider">OCTOBER 2024</div>
+                        <div class="font-semibold text-white text-sm truncate">First Catch of a Super Heavy Booster by the Tower</div>
+                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1">Starship's Super Heavy booster is caught mid-air by "Mechazilla."</p>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h3 class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
-                        <i class="fa-solid fa-comments text-emerald-400"></i>
-                        <span>Community Buzz</span>
-                    </h3>
-                    <p class="text-sm text-zinc-400 transition-colors duration-500">Trending right now on r/SpaceX</p>
-                </div>
-                <a href="https://www.reddit.com/r/spacex/" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800/80 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-lg text-xs font-semibold text-zinc-300 transition-all shrink-0">
-                    View Subreddit <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                </a>
-            </div>
-            <div id="news-feed-container" class="flex gap-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2 -mx-4 px-4 md:mx-0 md:px-0">
-                <div class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 space-y-3">
-                    <div class="skel h-4 w-full rounded"></div>
-                    <div class="skel h-4 w-2/3 rounded"></div>
-                    <div class="skel h-3 w-full rounded mt-2"></div>
-                </div>
-                <div class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 space-y-3">
-                    <div class="skel h-4 w-full rounded"></div>
-                    <div class="skel h-4 w-2/3 rounded"></div>
-                    <div class="skel h-3 w-full rounded mt-2"></div>
-                </div>
-                <div class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 space-y-3 hidden sm:block">
-                    <div class="skel h-4 w-full rounded"></div>
-                    <div class="skel h-4 w-2/3 rounded"></div>
-                    <div class="skel h-3 w-full rounded mt-2"></div>
                 </div>
             </div>
         </div>
@@ -2322,68 +2297,95 @@
             modalEl.style.display = 'none';
         }
 
-        function timeAgoLabel(unixSeconds) {
-            const diffMs = Date.now() - (unixSeconds * 1000);
+        function timeAgoLabel(dateInput) {
+            const diffMs = Date.now() - new Date(dateInput).getTime();
             const mins = Math.floor(diffMs / 60000);
+            if (mins < 1) return 'just now';
             if (mins < 60) return `${mins}m ago`;
             const hrs = Math.floor(mins / 60);
             if (hrs < 24) return `${hrs}h ago`;
             return `${Math.floor(hrs / 24)}d ago`;
         }
 
-        async function loadNewsFeed() {
-            const container = document.getElementById('news-feed-container');
+        async function fetchRssAsJson(rssUrl) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            try {
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                const res = await fetch(apiUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!res.ok) return [];
+                const data = await res.json();
+                if (data.status !== 'ok' || !Array.isArray(data.items)) return [];
+                return data.items;
+            } catch (e) {
+                clearTimeout(timeoutId);
+                return [];
+            }
+        }
+
+        async function loadNewsTicker() {
             const tickerWrap = document.getElementById('news-ticker-wrap');
             const tickerTrack = document.getElementById('news-ticker-track');
-            if (!container) return;
+            if (!tickerWrap || !tickerTrack) return;
+
+            const sourceStyles = {
+                'SpaceX': 'bg-emerald-500/15 text-emerald-400',
+                'NASA': 'bg-blue-500/15 text-blue-400',
+                'Blue Origin': 'bg-orange-500/15 text-orange-400',
+                'Space News': 'bg-violet-500/15 text-violet-400'
+            };
 
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-                const res = await fetch('https://www.reddit.com/r/spacex/hot.json?limit=10', { signal: controller.signal });
-                clearTimeout(timeoutId);
-                if (!res.ok) throw new Error('Reddit feed request failed');
-                const data = await res.json();
+                // Independent editorial sources — no social platforms involved:
+                // Teslarati's SpaceX category, NASA's official releases, SpaceNews' general
+                // industry feed (covers Blue Origin, ULA, Rocket Lab etc.), and SpaceNews'
+                // dedicated Blue Origin tag for extra depth on that specific company.
+                const [spacexItems, nasaItems, spaceNewsItems, blueOriginItems] = await Promise.all([
+                    fetchRssAsJson('https://www.teslarati.com/category/spacex/feed/'),
+                    fetchRssAsJson('https://www.nasa.gov/news-release/feed/'),
+                    fetchRssAsJson('https://spacenews.com/feed/'),
+                    fetchRssAsJson('https://spacenews.com/tag/blue-origin/feed/')
+                ]);
 
-                const posts = (data?.data?.children || [])
-                    .map(c => c.data)
-                    .filter(p => p && !p.stickied && p.title)
-                    .slice(0, 8);
+                const combined = [
+                    ...spacexItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'SpaceX' })),
+                    ...nasaItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'NASA' })),
+                    ...spaceNewsItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'Space News' })),
+                    ...blueOriginItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'Blue Origin' }))
+                ]
+                    .filter(i => i.title && i.link)
+                    // De-dupe the same story appearing in more than one feed (e.g. a
+                    // SpaceNews piece that also gets tagged Blue Origin)
+                    .filter((item, idx, arr) => arr.findIndex(o => o.link === item.link) === idx)
+                    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+                    .slice(0, 24);
 
-                if (posts.length === 0) throw new Error('No posts found');
+                if (combined.length === 0) throw new Error('No news items found');
 
-                container.innerHTML = posts.map(p => `
-                    <a href="https://reddit.com${p.permalink}" target="_blank" class="w-[78vw] max-w-[300px] md:w-72 shrink-0 snap-start bg-zinc-900 border border-zinc-800/80 rounded-2xl p-4 flex flex-col justify-between gap-3 md:hover:border-emerald-500/50 transition-colors">
-                        <div class="text-sm font-semibold text-zinc-200 line-clamp-3 leading-snug">${(p.title || '').replace(/</g,'&lt;')}</div>
-                        <div class="flex items-center justify-between text-[11px] text-zinc-500">
-                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-arrow-up text-emerald-400"></i>${(p.ups || 0).toLocaleString()}</span>
-                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-comment"></i>${(p.num_comments || 0).toLocaleString()}</span>
-                            <span>${timeAgoLabel(p.created_utc)}</span>
-                        </div>
+                // Build the ticker items once, then duplicate the whole set so the CSS
+                // marquee loops seamlessly with no visible seam.
+                const tickerItems = combined.map(item => `
+                    <a href="${item.link}" target="_blank" class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${sourceStyles[item.source] || 'bg-zinc-700/30 text-zinc-300'}">${item.source}</span>
+                        <span>${(item.title || '').replace(/</g,'&lt;')}</span>
+                        <span class="text-zinc-600 text-[10px]">${timeAgoLabel(item.pubDate)}</span>
                     </a>
-                `).join('');
+                `).join('<span class="text-zinc-700 mx-2">/</span>');
 
-                if (tickerWrap && tickerTrack) {
-                    // Build the ticker items once, then duplicate the whole set so the CSS
-                    // marquee (translateX 0 -> -50%) loops seamlessly with no visible seam.
-                    const tickerItems = posts.slice(0, 6).map(p => `
-                        <a href="https://reddit.com${p.permalink}" target="_blank" class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
-                            <i class="fa-solid fa-circle text-[4px] text-emerald-400"></i>
-                            <span>${(p.title || '').replace(/</g,'&lt;')}</span>
-                        </a>
-                    `).join('<span class="text-zinc-700 mx-2">/</span>');
+                tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
+                tickerWrap.classList.remove('hidden');
 
-                    tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
-                    tickerWrap.classList.remove('hidden');
-                }
+                // Keep scroll speed consistent (~55px/sec) no matter how much content
+                // loaded — a fixed duration would race through a short feed or crawl
+                // through a long one.
+                requestAnimationFrame(() => {
+                    const contentWidth = tickerTrack.scrollWidth / 2;
+                    const durationSec = Math.max(20, Math.round(contentWidth / 55));
+                    tickerTrack.style.animationDuration = durationSec + 's';
+                });
             } catch (e) {
-                container.innerHTML = `
-                    <div class="w-full text-center text-zinc-500 py-6">
-                        <i class="fa-solid fa-satellite-dish text-xl mb-2 text-zinc-600"></i>
-                        <p class="text-sm">Couldn't load the live feed right now.</p>
-                        <a href="https://www.reddit.com/r/spacex/" target="_blank" class="inline-block mt-2 text-emerald-400 text-xs font-semibold hover:underline">Browse r/SpaceX directly →</a>
-                    </div>`;
-                if (tickerWrap) tickerWrap.classList.add('hidden');
+                tickerWrap.classList.add('hidden');
             }
         }
 
@@ -2664,7 +2666,7 @@
             updateStarlinkStats();
             renderBoosterLeaderboard();
             renderLandingStreak();
-            loadNewsFeed();
+            loadNewsTicker();
         }
 
         function generateDetailedMissionPurpose(name, category, description, vehicle) {
@@ -4082,22 +4084,6 @@
                 window.screen.orientation.addEventListener('change', () => {
                     setTimeout(settleLayoutAfterRotation, 200);
                 });
-            }
-
-            // Milestones timeline: fade/slide each entry in as it scrolls into view.
-            // Falls back to fully visible immediately if IntersectionObserver isn't supported.
-            if ('IntersectionObserver' in window) {
-                const milestoneItems = document.querySelectorAll('.milestone-item');
-                milestoneItems.forEach(el => el.classList.add('reveal-init'));
-                const milestoneObserver = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            entry.target.classList.add('reveal-visible');
-                            milestoneObserver.unobserve(entry.target);
-                        }
-                    });
-                }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-                milestoneItems.forEach(el => milestoneObserver.observe(el));
             }
         }
         
