@@ -145,6 +145,19 @@
         [dir="rtl"] #news-ticker-track {
             animation-name: ticker-scroll-rtl;
         }
+        /* The label box always sits first in source order (needed to keep the ticker's
+           forced-LTR box model above intact), which visually pins it to the left even
+           for RTL languages. Reordering only the flex items (not the direction itself)
+           moves the label to the right for RTL while leaving the ticker's scrolling
+           behavior completely untouched. */
+        [dir="rtl"] #news-ticker-label-wrap {
+            order: 2;
+            border-right: none;
+            border-left: 1px solid rgba(39,39,42,0.8);
+        }
+        [dir="rtl"] #news-ticker-track-wrap {
+            order: 1;
+        }
         #news-ticker-wrap:hover #news-ticker-track {
             animation-play-state: paused;
         }
@@ -756,7 +769,7 @@
                 <i class="fa-solid fa-satellite-dish text-emerald-400 text-[10px] animate-pulse"></i>
                 <span class="text-[9px] sm:text-[10px] font-bold tracking-widest text-emerald-400 uppercase whitespace-nowrap">Space News</span>
             </div>
-            <div class="overflow-hidden flex-1 py-1.5">
+            <div id="news-ticker-track-wrap" class="overflow-hidden flex-1 py-1.5">
                 <div id="news-ticker-track" class="flex items-center gap-10 whitespace-nowrap w-max"></div>
             </div>
         </div>
@@ -1117,7 +1130,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">2002</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">SpaceX Is Founded</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Elon Musk founds Space Exploration Technologies Corp. with the goal of making spaceflight affordable.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Elon Musk founds Space Exploration Technologies Corp. with the goal of making spaceflight affordable.</p>
                     </div>
                 </div>
 
@@ -1126,7 +1139,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">SEPTEMBER 2008</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Privately-Funded Rocket to Reach Orbit</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Falcon 1 becomes the first privately developed, liquid-fueled rocket to reach Earth orbit.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Falcon 1 becomes the first privately developed, liquid-fueled rocket to reach Earth orbit.</p>
                     </div>
                 </div>
 
@@ -1135,7 +1148,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">DECEMBER 2010</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Commercial Spacecraft Recovered From Orbit</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">A Dragon capsule is launched, orbits Earth, and is recovered safely.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">A Dragon capsule is launched, orbits Earth, and is recovered safely.</p>
                     </div>
                 </div>
 
@@ -1144,7 +1157,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">OCTOBER 2012</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Commercial Cargo Delivery to the ISS</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Dragon docks with the International Space Station on the first operational CRS mission.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Dragon docks with the International Space Station on the first operational CRS mission.</p>
                     </div>
                 </div>
 
@@ -1153,7 +1166,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">2013</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">Grasshopper Proves Vertical Landing Is Possible</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">The Grasshopper test vehicle completes a high-altitude vertical takeoff-and-landing flight.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">The Grasshopper test vehicle completes a high-altitude vertical takeoff-and-landing flight.</p>
                     </div>
                 </div>
 
@@ -1162,7 +1175,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">DECEMBER 2015</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Landing of an Orbital-Class Rocket Booster</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Falcon 9's first stage lands upright at Landing Zone 1 for the first time.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Falcon 9's first stage lands upright at Landing Zone 1 for the first time.</p>
                     </div>
                 </div>
 
@@ -1171,7 +1184,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">MARCH 2017</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Reflight of an Orbital-Class Booster</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">A previously flown Falcon 9 booster launches again on SES-10.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">A previously flown Falcon 9 booster launches again on SES-10.</p>
                     </div>
                 </div>
 
@@ -1180,7 +1193,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">FEBRUARY 2018</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">Falcon Heavy's Maiden Flight</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Falcon Heavy launches for the first time, with its two side boosters landing simultaneously.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Falcon Heavy launches for the first time, with its two side boosters landing simultaneously.</p>
                     </div>
                 </div>
 
@@ -1189,7 +1202,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">MARCH 2019</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">Crew Dragon's First Trip to the ISS</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Demo-1 sends an uncrewed Crew Dragon to dock with the station ahead of crewed flights.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Demo-1 sends an uncrewed Crew Dragon to dock with the station ahead of crewed flights.</p>
                     </div>
                 </div>
 
@@ -1198,7 +1211,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">MAY 2020</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Crewed Flight by a Private Company</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Crew Dragon Demo-2 carries NASA astronauts to the ISS.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Crew Dragon Demo-2 carries NASA astronauts to the ISS.</p>
                     </div>
                 </div>
 
@@ -1207,7 +1220,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">SEPTEMBER 2021</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First All-Civilian Orbital Spaceflight</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Inspiration4 sends a crew with no professional astronauts into orbit aboard Crew Dragon.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Inspiration4 sends a crew with no professional astronauts into orbit aboard Crew Dragon.</p>
                     </div>
                 </div>
 
@@ -1216,7 +1229,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">APRIL 2023</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">Starship's First Integrated Flight Test</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">The fully stacked Starship and Super Heavy booster fly together for the first time.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">The fully stacked Starship and Super Heavy booster fly together for the first time.</p>
                     </div>
                 </div>
 
@@ -1225,7 +1238,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">SEPTEMBER 2024</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Commercial Spacewalk</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">The Polaris Dawn crew performs the first spacewalk conducted by private citizens.</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">The Polaris Dawn crew performs the first spacewalk conducted by private citizens.</p>
                     </div>
                 </div>
 
@@ -1234,7 +1247,7 @@
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">OCTOBER 2024</div>
                         <div class="font-semibold text-white text-sm truncate milestone-title">First Catch of a Super Heavy Booster by the Tower</div>
-                        <p class="text-xs text-zinc-400 leading-snug line-clamp-1 milestone-desc">Starship's Super Heavy booster is caught mid-air by &quot;Mechazilla.&quot;</p>
+                        <p class="text-xs text-zinc-400 leading-snug sm:line-clamp-1 milestone-desc">Starship's Super Heavy booster is caught mid-air by &quot;Mechazilla.&quot;</p>
                     </div>
                 </div>
             </div>
