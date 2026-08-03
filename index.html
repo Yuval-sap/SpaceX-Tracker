@@ -196,9 +196,16 @@
         .goog-te-gadget .goog-te-combo:hover { border-color: #10b981 !important; }
         .goog-logo-link { display: none !important; }
         .goog-te-gadget img { display: none !important; }
-        .goog-te-banner-frame, .goog-te-banner-frame.skiptranslate, iframe.goog-te-banner-frame, .skiptranslate iframe { display: none !important; visibility: hidden !important; height: 0 !important; opacity: 0 !important; }
+        /* The banner iframe is kept OUT of display:none on purpose: Google Translate uses it
+           internally (postMessage handshake) to register each language switch. Fully removing
+           it from the render tree with display:none breaks that handshake after the first
+           switch, which is why a second language change used to need an extra click before
+           anything happened. Zero height/opacity + pointer-events:none hides it just as
+           effectively without stopping its script from running. */
+        .goog-te-banner-frame, .goog-te-banner-frame.skiptranslate, iframe.goog-te-banner-frame { visibility: hidden !important; height: 0 !important; min-height: 0 !important; opacity: 0 !important; position: absolute !important; pointer-events: none !important; }
+        .skiptranslate iframe { display: none !important; visibility: hidden !important; height: 0 !important; opacity: 0 !important; }
         /* NOTE: the broad ".skiptranslate iframe" rule above is what hides Google's translate
-           banner reliably, but Google Translate also auto-tags elements marked translate="no"
+           popups reliably, but Google Translate also auto-tags elements marked translate="no"
            (like our X widget container) as "skiptranslate" — which would otherwise hide the
            X/Twitter iframe too. The ID-selector overrides below have higher CSS specificity than
            the class-based rule above, so they win regardless of source order and keep the X
@@ -326,6 +333,7 @@
         body.light-theme .milestones-title { color: #334155 !important; font-weight: 800; }
 
         body.light-theme .hero-pill { background-color: rgba(16,185,129,0.16) !important; border-color: rgba(16,185,129,0.5) !important; color: #047857 !important; }
+        body.light-theme #news-ticker-label-wrap .text-emerald-400 { color: #047857 !important; }
 
         /* Light mode only: match the weather row's green, the View Brief button's hover
            green, and the reminder button's hover green to the same green already used in
@@ -707,7 +715,7 @@
 
     <div id="news-ticker-wrap" dir="ltr" class="hidden bg-zinc-950 border-b border-emerald-500/20 overflow-hidden relative transition-colors duration-500">
         <div class="max-w-screen-2xl mx-auto flex items-center">
-            <div class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-500/10 border-r border-zinc-800/80 z-10">
+            <div id="news-ticker-label-wrap" class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-500/10 border-r border-zinc-800/80 z-10">
                 <i class="fa-solid fa-satellite-dish text-emerald-400 text-[10px] animate-pulse"></i>
                 <span class="text-[9px] sm:text-[10px] font-bold tracking-widest text-emerald-400 uppercase whitespace-nowrap">Space News</span>
             </div>
@@ -842,14 +850,14 @@
                 </div>
 
                 <div class="bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0 transition-colors duration-500">
-                    <div class="text-[10px] uppercase tracking-[3px] text-zinc-500 font-bold mb-2 text-center w-full">LOCAL COUNTDOWN</div>
+                    <div class="text-[12px] uppercase tracking-[3px] text-zinc-500 font-bold mb-2 text-center w-full">LOCAL COUNTDOWN</div>
                     <div id="hero-countdown" dir="ltr" class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center w-full" translate="no">
                         <!-- Populated by JS -->
                     </div>
                     
                     <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
                     
-                    <div id="i18n-launch-window" class="text-[9px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5 notranslate" translate="no" lang="en">LAUNCH WINDOW</div>
+                    <div id="i18n-launch-window" class="text-[11px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5 notranslate" translate="no" lang="en">LAUNCH WINDOW</div>
                     <div id="hero-window" class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500 notranslate" dir="ltr" translate="no">--:-- - --:--</div>
                 </div>
             </div>
@@ -2285,26 +2293,31 @@
                 'SpaceX': 'bg-emerald-500/15 text-emerald-400',
                 'NASA': 'bg-blue-500/15 text-blue-400',
                 'Blue Origin': 'bg-orange-500/15 text-orange-400',
-                'Space News': 'bg-violet-500/15 text-violet-400'
+                'Space News': 'bg-violet-500/15 text-violet-400',
+                'ESA': 'bg-sky-500/15 text-sky-400'
             };
 
             try {
                 // Independent editorial sources — no social platforms involved:
                 // Teslarati's SpaceX category, NASA's official releases, SpaceNews' general
-                // industry feed (covers Blue Origin, ULA, Rocket Lab etc.), and SpaceNews'
-                // dedicated Blue Origin tag for extra depth on that specific company.
-                const [spacexItems, nasaItems, spaceNewsItems, blueOriginItems] = await Promise.all([
+                // industry feed (covers Blue Origin, ULA, Rocket Lab etc.), SpaceNews'
+                // dedicated Blue Origin tag for extra depth on that specific company, and
+                // ESA's own newsroom feed for coverage of Europe's space agencies/programs
+                // (Ariane, Vega, member-state missions) straight from the source.
+                const [spacexItems, nasaItems, spaceNewsItems, blueOriginItems, esaItems] = await Promise.all([
                     fetchRssAsJson('https://www.teslarati.com/category/spacex/feed/'),
                     fetchRssAsJson('https://www.nasa.gov/news-release/feed/'),
                     fetchRssAsJson('https://spacenews.com/feed/'),
-                    fetchRssAsJson('https://spacenews.com/tag/blue-origin/feed/')
+                    fetchRssAsJson('https://spacenews.com/tag/blue-origin/feed/'),
+                    fetchRssAsJson('https://www.esa.int/rssfeed/TopNews')
                 ]);
 
                 const combined = [
                     ...spacexItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'SpaceX' })),
                     ...nasaItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'NASA' })),
                     ...spaceNewsItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'Space News' })),
-                    ...blueOriginItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'Blue Origin' }))
+                    ...blueOriginItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'Blue Origin' })),
+                    ...esaItems.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, source: 'ESA' }))
                 ]
                     .filter(i => i.title && i.link)
                     // De-dupe the same story appearing in more than one feed (e.g. a
@@ -2622,6 +2635,11 @@
             updateStarlinkStats();
             renderBoosterLeaderboard();
             loadNewsTicker();
+            // The RSS sources behind the ticker (Teslarati, NASA, SpaceNews, ESA) each
+            // publish at their own pace — some multiple times an hour during a launch
+            // campaign, others a few times a day. Re-pulling every 15 minutes keeps the
+            // ticker current for all of them without hammering the rss2json proxy.
+            setInterval(loadNewsTicker, 15 * 60 * 1000);
         }
 
         function generateDetailedMissionPurpose(name, category, description, vehicle) {
@@ -3131,7 +3149,7 @@
                 const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${m.status}</div>`;
                 
                 const isFav = favoriteMissions.includes(m.id);
-                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
+                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
 
                 const isReminded = remindedMissions.includes(m.id);
                 const bellClass = isReminded 
@@ -3160,7 +3178,7 @@
                                 <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
-                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
                                 <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
@@ -3199,7 +3217,7 @@
                 } catch(e) {}
                 
                 const isFav = favoriteMissions.includes(m.id);
-                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
+                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
 
                 const isReminded = remindedMissions.includes(m.id);
                 const bellClass = isReminded 
@@ -3223,7 +3241,7 @@
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
                             <button class="text-sm text-left text-emerald-400 hover:underline font-medium">View Mission Details →</button>
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-zinc-700/80 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
                                 <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
@@ -4020,13 +4038,20 @@
                     document.body.style.top = '0px';
                 }
                 if (nav) {
-                    // Toggling display forces the browser to recompute the sticky nav's
-                    // position/stacking instead of reusing a stale pre-rotation layout.
+                    // Toggling display AND position forces the browser to recompute the
+                    // sticky nav's position/stacking instead of reusing a stale
+                    // pre-rotation layout — iOS Safari in particular can leave a
+                    // sticky + backdrop-blur element (like this nav, with the theme
+                    // toggle button inside it) rendered at its old position for a beat
+                    // after a landscape flip, overlapping the headers beneath it.
                     const prevDisplay = nav.style.display;
+                    const prevPosition = nav.style.position;
                     nav.style.display = 'none';
+                    nav.style.position = 'static';
                     // eslint-disable-next-line no-unused-expressions
                     nav.offsetHeight;
                     nav.style.display = prevDisplay;
+                    nav.style.position = prevPosition;
                 }
                 fitAllTitlesOneLine(document);
             };
@@ -4038,6 +4063,16 @@
             if (window.screen && window.screen.orientation) {
                 window.screen.orientation.addEventListener('change', () => {
                     setTimeout(settleLayoutAfterRotation, 200);
+                });
+            }
+            // visualViewport fires more reliably than orientationchange on some mobile
+            // browsers (and fires once the viewport dimensions have actually settled,
+            // rather than at the start of the rotation), so it's a useful second net.
+            if (window.visualViewport) {
+                let vvRotateTimer;
+                window.visualViewport.addEventListener('resize', () => {
+                    clearTimeout(vvRotateTimer);
+                    vvRotateTimer = setTimeout(settleLayoutAfterRotation, 150);
                 });
             }
         }
