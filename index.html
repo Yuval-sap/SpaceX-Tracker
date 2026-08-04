@@ -691,6 +691,67 @@
             });
         }
 
+        // Real photos for each milestone, sourced from Wikimedia Commons (same order as
+        // the cards in the milestones list). Special:FilePath resolves to the current
+        // full file regardless of the underlying storage path, so these links stay valid
+        // even if the file is renamed/moved on Commons.
+        const MILESTONE_IMAGES = [
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance%20to%20SpaceX%20headquarters.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Falcon%201%20Flight%204%20liftoff.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/COTS-1%20Dragon%20After%20Return%20from%20Orbit%20%28crop%29.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/SpaceX%20CRS-1%20is%20berthed%20to%20the%20Harmony%20node.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Spx%20Grasshopper%2001.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Falcon%209%20first%20stage%20at%20LZ-1%28two%29.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/SES-10%20Launch%20-%20world%27s%20first%20reflight%20of%20an%20orbital%20class%20rocket%20%2832915197674%29.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Falcon%20Heavy%20Side%20Boosters%20landing%20on%20LZ1%20and%20LZ2%20-%202018%20%2825254688767%29.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Crew%20Dragon%20is%20retrieved%20by%20the%20company%E2%80%99s%20recovery%20ship%2C%20Go%20Searcher.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/KSC-20200523-PH-KLS01%200019.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Inspiration4%20Launch%20%28210915-F-CG053-1003%29.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Launch%20and%20explosion%20of%20Starship%20Integrated%20Flight%20Test%20captured%20by%20GOES-16%20%28unannotated%29.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/Polaris%20Dawn%20crew.jpg?width=900",
+            "https://commons.wikimedia.org/wiki/Special:FilePath/SpaceX%20Starship%20Booster%20Back%20at%20its%20Perch%20IFT-5.jpg?width=900"
+        ];
+
+        function openMilestoneImage(idx) {
+            const modal = document.getElementById('milestone-image-modal');
+            const img = document.getElementById('milestone-image-photo');
+            const spinner = document.getElementById('milestone-image-spinner');
+            const yearEl = document.getElementById('milestone-image-year');
+            const titleEl = document.getElementById('milestone-image-title');
+            if (!modal || !img) return;
+
+            const currentLang = (document.documentElement.lang || 'en').toLowerCase();
+            const key = currentLang.split('-')[0];
+            const dict = MILESTONES_I18N[key] || MILESTONES_I18N.en;
+            const starshipTerm = STARSHIP_I18N[key] || STARSHIP_I18N.en;
+            const item = dict.items[idx];
+            if (item) {
+                if (yearEl) yearEl.textContent = item.y.replace(/\{\{STARSHIP\}\}/g, starshipTerm).toUpperCase();
+                if (titleEl) titleEl.textContent = item.t.replace(/\{\{STARSHIP\}\}/g, starshipTerm);
+            }
+
+            img.classList.add('hidden');
+            if (spinner) spinner.classList.remove('hidden');
+            img.onload = () => {
+                img.classList.remove('hidden');
+                if (spinner) spinner.classList.add('hidden');
+            };
+            img.onerror = () => {
+                if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl';
+            };
+            img.src = MILESTONE_IMAGES[idx] || '';
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeMilestoneImageModal() {
+            const modal = document.getElementById('milestone-image-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         // Runs on every tick (see the interval below) so it covers both a language switch
         // (re-localizes spans already tagged .starship-term) and freshly-rendered content
         // that still contains the raw English word — mission cards/descriptions pulled from
@@ -1169,7 +1230,7 @@
                 <p id="i18n-milestones-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate" translate="no" lang="en">Key firsts on the road to reusable spaceflight — scroll for more</p>
             </div>
             <div class="milestones-scrollbox max-h-[268px] sm:max-h-[280px] overflow-y-auto pr-1.5 space-y-2.5 notranslate" translate="no" lang="en">
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(0)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-flag"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">2002</div>
@@ -1178,7 +1239,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(1)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-rocket"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">SEPTEMBER 2008</div>
@@ -1187,7 +1248,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(2)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-capsules"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">DECEMBER 2010</div>
@@ -1196,7 +1257,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(3)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-link"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">OCTOBER 2012</div>
@@ -1205,7 +1266,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(4)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-gauge-high"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">2013</div>
@@ -1214,7 +1275,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(5)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-tower-observation"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">DECEMBER 2015</div>
@@ -1223,7 +1284,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(6)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-rotate"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">MARCH 2017</div>
@@ -1232,7 +1293,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(7)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-layer-group"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">FEBRUARY 2018</div>
@@ -1241,7 +1302,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(8)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-vial"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">MARCH 2019</div>
@@ -1250,7 +1311,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(9)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-user-astronaut"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">MAY 2020</div>
@@ -1259,7 +1320,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(10)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-earth-americas"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">SEPTEMBER 2021</div>
@@ -1268,7 +1329,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(11)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-fire"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">APRIL 2023</div>
@@ -1277,7 +1338,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(12)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-satellite"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">SEPTEMBER 2024</div>
@@ -1286,7 +1347,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500">
+                <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors duration-500 cursor-pointer md:hover:bg-zinc-800/60 md:hover:border-emerald-500/30" onclick="openMilestoneImage(13)">
                     <div class="shrink-0 w-9 h-9 rounded-full bg-zinc-950 border-2 border-emerald-500 flex items-center justify-center text-xs text-emerald-400"><i class="fa-solid fa-hand-holding-hand"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-bold text-emerald-400 tracking-wider milestone-year">OCTOBER 2024</div>
@@ -1357,6 +1418,25 @@
     </footer>
 
     <!-- Mission Modal -->
+    <div id="milestone-image-modal" onclick="if (event.target.id === 'milestone-image-modal') closeMilestoneImageModal()" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[110]">
+        <div class="relative max-w-3xl w-full">
+            <button onclick="closeMilestoneImageModal()" class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div class="w-full aspect-[3/2] bg-zinc-900 flex items-center justify-center overflow-hidden">
+                    <i id="milestone-image-spinner" class="fa-solid fa-spinner fa-spin text-zinc-600 text-2xl"></i>
+                    <img id="milestone-image-photo" src="" alt="" class="hidden w-full h-full object-cover">
+                </div>
+                <div class="p-4 sm:p-5">
+                    <div id="milestone-image-year" class="text-[10px] font-bold text-emerald-400 tracking-wider mb-1"></div>
+                    <div id="milestone-image-title" class="font-semibold text-white text-base sm:text-lg mb-1.5"></div>
+                    <p class="text-[11px] text-zinc-500">Photo: Wikimedia Commons</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="mission-modal" onclick="if (event.target.id === 'mission-modal') closeModal()" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto z-[100]">
         <div id="mission-modal-content" onclick="event.stopImmediatePropagation()" class="bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl rounded-3xl overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
             <div class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
