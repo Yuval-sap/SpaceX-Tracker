@@ -134,7 +134,13 @@
         .milestones-scrollbox::-webkit-scrollbar { width: 5px; }
         .milestones-scrollbox::-webkit-scrollbar-track { background: transparent; }
         .milestones-scrollbox::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.35); border-radius: 3px; }
-        .milestones-scrollbox { scrollbar-width: thin; scrollbar-color: rgba(16,185,129,0.35) transparent; }
+        .milestones-scrollbox {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(16,185,129,0.35) transparent;
+            /* Extra top padding so the first card's hover lift is not clipped by overflow-y:auto */
+            padding-top: 6px;
+            margin-top: -2px;
+        }
 
         /* Shimmer skeleton loaders — replaces plain "Loading..." text everywhere */
         .skel {
@@ -199,10 +205,12 @@
         }
         .modal-content { max-height: 90vh; overflow-y: auto; }
         
-        .hide-scrollbar::-webkit-scrollbar { height: 6px; }
+        /* Identical to .milestones-scrollbox scrollbar (same color day & night) */
+        .hide-scrollbar::-webkit-scrollbar { height: 5px; }
         .hide-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .hide-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
-        .hide-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.35); border-radius: 3px; }
+        .hide-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(16,185,129,0.55); }
+        .hide-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(16,185,129,0.35) transparent; }
 
         .stars-container {
             position: fixed;
@@ -377,8 +385,6 @@
         body.light-theme nav { background-color: rgba(255,255,255,0.85) !important; border-color: #e2e8f0 !important; }
         body.light-theme svg.fill-zinc-800 { fill: #e2e8f0 !important; stroke: #94a3b8 !important; }
         
-        body.light-theme .hide-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
-        body.light-theme .hide-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         body.light-theme .timeline-track { background-color: #cbd5e1 !important; }
         body.light-theme .node-empty { background-color: #ffffff !important; border-color: #94a3b8 !important; }
@@ -406,6 +412,9 @@
         body.light-theme .from-cyan-400 { --tw-gradient-from: #0ea5e9 !important; }
 
         #fact-text { transition: opacity 0.25s ease-in-out; }
+
+        /* Wind number+unit: physical order via inline styles on the element itself
+           (see renderWeatherHTML). Stylesheet rules alone get overridden by GT/RTL. */
 
         /* Text-only badges that are locked to English (translate="no") sit inside
            otherwise-RTL layouts. Google Translate sometimes forces its own
@@ -684,7 +693,7 @@
         // It's rendered from these language-neutral keys instead — see renderWeatherHTML —
         // with "NO-GO" left untranslated everywhere since that's the actual international
         // aerospace term, kept in English even in translated NASA/ESA press materials.
-        const WEATHER_I18N = {"en": {"clear": "Clear", "partlyCloudy": "Partly Cloudy", "fog": "Fog", "rain": "Rain", "storm": "Storm", "favorable": "Favorable", "marginal": "Marginal", "nogo": "NO-GO", "tbd": "TBD"}, "he": {"clear": "בהיר", "partlyCloudy": "מעונן חלקית", "fog": "ערפל", "rain": "גשם", "storm": "סופה", "favorable": "נוח לשיגור", "marginal": "גבולי", "nogo": "NO-GO", "tbd": "טרם נקבע"}, "es": {"clear": "Despejado", "partlyCloudy": "Parcialmente Nublado", "fog": "Niebla", "rain": "Lluvia", "storm": "Tormenta", "favorable": "Favorable", "marginal": "Marginal", "nogo": "NO-GO", "tbd": "Por Determinar"}, "fr": {"clear": "Dégagé", "partlyCloudy": "Partiellement Nuageux", "fog": "Brouillard", "rain": "Pluie", "storm": "Orage", "favorable": "Favorable", "marginal": "Limite", "nogo": "NO-GO", "tbd": "À Déterminer"}, "de": {"clear": "Klar", "partlyCloudy": "Teilweise Bewölkt", "fog": "Nebel", "rain": "Regen", "storm": "Sturm", "favorable": "Günstig", "marginal": "Grenzwertig", "nogo": "NO-GO", "tbd": "Noch Offen"}, "ru": {"clear": "Ясно", "partlyCloudy": "Переменная Облачность", "fog": "Туман", "rain": "Дождь", "storm": "Гроза", "favorable": "Благоприятно", "marginal": "Погранично", "nogo": "NO-GO", "tbd": "Уточняется"}, "zh": {"clear": "晴朗", "partlyCloudy": "局部多云", "fog": "雾", "rain": "雨", "storm": "风暴", "favorable": "良好", "marginal": "一般", "nogo": "NO-GO", "tbd": "待定"}, "it": {"clear": "Sereno", "partlyCloudy": "Parzialmente Nuvoloso", "fog": "Nebbia", "rain": "Pioggia", "storm": "Temporale", "favorable": "Favorevole", "marginal": "Marginale", "nogo": "NO-GO", "tbd": "Da Determinare"}, "cs": {"clear": "Jasno", "partlyCloudy": "Polojasno", "fog": "Mlha", "rain": "Déšť", "storm": "Bouřka", "favorable": "Příznivé", "marginal": "Hraniční", "nogo": "NO-GO", "tbd": "Zatím Neurčeno"}, "sv": {"clear": "Klart", "partlyCloudy": "Delvis Molnigt", "fog": "Dimma", "rain": "Regn", "storm": "Storm", "favorable": "Gynnsamt", "marginal": "Marginellt", "nogo": "NO-GO", "tbd": "Ej Fastställt"}, "nl": {"clear": "Helder", "partlyCloudy": "Gedeeltelijk Bewolkt", "fog": "Mist", "rain": "Regen", "storm": "Storm", "favorable": "Gunstig", "marginal": "Marginaal", "nogo": "NO-GO", "tbd": "Nog Te Bepalen"}, "da": {"clear": "Klart", "partlyCloudy": "Delvist Skyet", "fog": "Tåge", "rain": "Regn", "storm": "Storm", "favorable": "Gunstigt", "marginal": "Marginalt", "nogo": "NO-GO", "tbd": "Endnu Ikke Fastsat"}, "pt": {"clear": "Céu Limpo", "partlyCloudy": "Parcialmente Nublado", "fog": "Nevoeiro", "rain": "Chuva", "storm": "Tempestade", "favorable": "Favorável", "marginal": "Marginal", "nogo": "NO-GO", "tbd": "A Determinar"}, "pl": {"clear": "Bezchmurnie", "partlyCloudy": "Częściowe Zachmurzenie", "fog": "Mgła", "rain": "Deszcz", "storm": "Burza", "favorable": "Sprzyjające", "marginal": "Graniczne", "nogo": "NO-GO", "tbd": "Do Ustalenia"}, "hi": {"clear": "साफ़", "partlyCloudy": "आंशिक बादल", "fog": "कोहरा", "rain": "बारिश", "storm": "तूफ़ान", "favorable": "अनुकूल", "marginal": "सीमांत", "nogo": "NO-GO", "tbd": "अनिर्धारित"}, "ar": {"clear": "صافٍ", "partlyCloudy": "غائم جزئيًا", "fog": "ضباب", "rain": "مطر", "storm": "عاصفة", "favorable": "مواتٍ", "marginal": "حدّي", "nogo": "NO-GO", "tbd": "لم يُحدَّد بعد"}, "tr": {"clear": "Açık", "partlyCloudy": "Parçalı Bulutlu", "fog": "Sis", "rain": "Yağmur", "storm": "Fırtına", "favorable": "Elverişli", "marginal": "Sınırda", "nogo": "NO-GO", "tbd": "Henüz Belirlenmedi"}, "iw": {"clear": "בהיר", "partlyCloudy": "מעונן חלקית", "fog": "ערפל", "rain": "גשם", "storm": "סופה", "favorable": "נוח לשיגור", "marginal": "גבולי", "nogo": "NO-GO", "tbd": "טרם נקבע"}};
+        const WEATHER_I18N = {"en": {"clear": "Clear", "partlyCloudy": "Partly Cloudy", "fog": "Fog", "rain": "Rain", "storm": "Storm", "favorable": "Favorable", "marginal": "Marginal", "nogo": "NO-GO", "tbd": "TBD", "kmh": "km/h", "mph": "mph"}, "he": {"clear": "בהיר", "partlyCloudy": "מעונן חלקית", "fog": "ערפל", "rain": "גשם", "storm": "סופה", "favorable": "נוח לשיגור", "marginal": "גבולי", "nogo": "NO-GO", "tbd": "טרם נקבע", "kmh": "קמ״ש", "mph": "mph"}, "es": {"clear": "Despejado", "partlyCloudy": "Parcialmente Nublado", "fog": "Niebla", "rain": "Lluvia", "storm": "Tormenta", "favorable": "Favorable", "marginal": "Marginal", "nogo": "NO-GO", "tbd": "Por Determinar", "kmh": "km/h", "mph": "mph"}, "fr": {"clear": "Dégagé", "partlyCloudy": "Partiellement Nuageux", "fog": "Brouillard", "rain": "Pluie", "storm": "Orage", "favorable": "Favorable", "marginal": "Limite", "nogo": "NO-GO", "tbd": "À Déterminer", "kmh": "km/h", "mph": "mph"}, "de": {"clear": "Klar", "partlyCloudy": "Teilweise Bewölkt", "fog": "Nebel", "rain": "Regen", "storm": "Sturm", "favorable": "Günstig", "marginal": "Grenzwertig", "nogo": "NO-GO", "tbd": "Noch Offen", "kmh": "km/h", "mph": "mph"}, "ru": {"clear": "Ясно", "partlyCloudy": "Переменная Облачность", "fog": "Туман", "rain": "Дождь", "storm": "Гроза", "favorable": "Благоприятно", "marginal": "Погранично", "nogo": "NO-GO", "tbd": "Уточняется", "kmh": "км/ч", "mph": "миль/ч"}, "zh": {"clear": "晴朗", "partlyCloudy": "局部多云", "fog": "雾", "rain": "雨", "storm": "风暴", "favorable": "良好", "marginal": "一般", "nogo": "NO-GO", "tbd": "待定", "kmh": "公里/小时", "mph": "英里/小时"}, "it": {"clear": "Sereno", "partlyCloudy": "Parzialmente Nuvoloso", "fog": "Nebbia", "rain": "Pioggia", "storm": "Temporale", "favorable": "Favorevole", "marginal": "Marginale", "nogo": "NO-GO", "tbd": "Da Determinare", "kmh": "km/h", "mph": "mph"}, "cs": {"clear": "Jasno", "partlyCloudy": "Polojasno", "fog": "Mlha", "rain": "Déšť", "storm": "Bouřka", "favorable": "Příznivé", "marginal": "Hraniční", "nogo": "NO-GO", "tbd": "Zatím Neurčeno", "kmh": "km/h", "mph": "mph"}, "sv": {"clear": "Klart", "partlyCloudy": "Delvis Molnigt", "fog": "Dimma", "rain": "Regn", "storm": "Storm", "favorable": "Gynnsamt", "marginal": "Marginellt", "nogo": "NO-GO", "tbd": "Ej Fastställt", "kmh": "km/h", "mph": "mph"}, "nl": {"clear": "Helder", "partlyCloudy": "Gedeeltelijk Bewolkt", "fog": "Mist", "rain": "Regen", "storm": "Storm", "favorable": "Gunstig", "marginal": "Marginaal", "nogo": "NO-GO", "tbd": "Nog Te Bepalen", "kmh": "km/u", "mph": "mph"}, "da": {"clear": "Klart", "partlyCloudy": "Delvist Skyet", "fog": "Tåge", "rain": "Regn", "storm": "Storm", "favorable": "Gunstigt", "marginal": "Marginalt", "nogo": "NO-GO", "tbd": "Endnu Ikke Fastsat", "kmh": "km/t", "mph": "mph"}, "pt": {"clear": "Céu Limpo", "partlyCloudy": "Parcialmente Nublado", "fog": "Nevoeiro", "rain": "Chuva", "storm": "Tempestade", "favorable": "Favorável", "marginal": "Marginal", "nogo": "NO-GO", "tbd": "A Determinar", "kmh": "km/h", "mph": "mph"}, "pl": {"clear": "Bezchmurnie", "partlyCloudy": "Częściowe Zachmurzenie", "fog": "Mgła", "rain": "Deszcz", "storm": "Burza", "favorable": "Sprzyjające", "marginal": "Graniczne", "nogo": "NO-GO", "tbd": "Do Ustalenia", "kmh": "km/h", "mph": "mph"}, "hi": {"clear": "साफ़", "partlyCloudy": "आंशिक बादल", "fog": "कोहरा", "rain": "बारिश", "storm": "तूफ़ान", "favorable": "अनुकूल", "marginal": "सीमांत", "nogo": "NO-GO", "tbd": "अनिर्धारित", "kmh": "किमी/घं", "mph": "mph"}, "ar": {"clear": "صافٍ", "partlyCloudy": "غائم جزئيًا", "fog": "ضباب", "rain": "مطر", "storm": "عاصفة", "favorable": "مواتٍ", "marginal": "حدّي", "nogo": "NO-GO", "tbd": "لم يُحدَّد بعد", "kmh": "كم/س", "mph": "ميل/س"}, "tr": {"clear": "Açık", "partlyCloudy": "Parçalı Bulutlu", "fog": "Sis", "rain": "Yağmur", "storm": "Fırtına", "favorable": "Elverişli", "marginal": "Sınırda", "nogo": "NO-GO", "tbd": "Henüz Belirlenmedi", "kmh": "km/sa", "mph": "mph"}, "iw": {"clear": "בהיר", "partlyCloudy": "מעונן חלקית", "fog": "ערפל", "rain": "גשם", "storm": "סופה", "favorable": "נוח לשיגור", "marginal": "גבולי", "nogo": "NO-GO", "tbd": "טרם נקבע", "kmh": "קמ״ש", "mph": "mph"}};
 
         let lastAppliedMilestonesLang = null;
         let lastAppliedWeatherLang = null;
@@ -720,21 +729,22 @@
         // the cards in the milestones list). Special:FilePath resolves to the current
         // full file regardless of the underlying storage path, so these links stay valid
         // even if the file is renamed/moved on Commons.
+        // Direct upload.wikimedia.org thumbnails (~960px) — faster load, no redirect hop
         const MILESTONE_IMAGES = [
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance%20to%20SpaceX%20headquarters.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Falcon%201%20Flight%204%20liftoff.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/COTS-1%20Dragon%20After%20Return%20from%20Orbit%20%28crop%29.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/SpaceX%20CRS-1%20is%20berthed%20to%20the%20Harmony%20node.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Spx%20Grasshopper%2001.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Falcon%209%20first%20stage%20at%20LZ-1%28two%29.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/SES-10%20Launch%20-%20world%27s%20first%20reflight%20of%20an%20orbital%20class%20rocket%20%2832915197674%29.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Falcon%20Heavy%20Side%20Boosters%20landing%20on%20LZ1%20and%20LZ2%20-%202018%20%2825254688767%29.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Iss058e027796%20The%20uncrewed%20SpaceX%20Crew%20Dragon%20spacecraft%20docked%20to%20the%20International%20Space%20Station.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/KSC-20200523-PH-KLS01%200019.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Inspiration4%20Launch%20%28210915-F-CG053-1003%29.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Launch%20and%20explosion%20of%20Starship%20Integrated%20Flight%20Test%20captured%20by%20GOES-16%20%28unannotated%29.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/Polaris%20Dawn%20crew.jpg?width=900",
-            "https://commons.wikimedia.org/wiki/Special:FilePath/SpaceX%20Starship%20Booster%20Back%20at%20its%20Perch%20IFT-5.jpg?width=900"
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Entrance_to_SpaceX_headquarters.jpg/960px-Entrance_to_SpaceX_headquarters.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/c/c8/Falcon_1_Flight_4_liftoff.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/COTS-1_Dragon_After_Return_from_Orbit_%28crop%29.jpg/960px-COTS-1_Dragon_After_Return_from_Orbit_%28crop%29.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/SpaceX_CRS-1_is_berthed_to_the_Harmony_node.jpg/960px-SpaceX_CRS-1_is_berthed_to_the_Harmony_node.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Spx_Grasshopper_01.jpg/960px-Spx_Grasshopper_01.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Falcon_9_first_stage_at_LZ-1%28two%29.jpg/960px-Falcon_9_first_stage_at_LZ-1%28two%29.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/SES-10_Launch_-_world%27s_first_reflight_of_an_orbital_class_rocket_%2832915197674%29.jpg/960px-SES-10_Launch_-_world%27s_first_reflight_of_an_orbital_class_rocket_%2832915197674%29.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Falcon_Heavy_Side_Boosters_landing_on_LZ1_and_LZ2_-_2018_%2825254688767%29.jpg/960px-Falcon_Heavy_Side_Boosters_landing_on_LZ1_and_LZ2_-_2018_%2825254688767%29.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Iss058e027796_The_uncrewed_SpaceX_Crew_Dragon_spacecraft_docked_to_the_International_Space_Station.jpg/960px-Iss058e027796_The_uncrewed_SpaceX_Crew_Dragon_spacecraft_docked_to_the_International_Space_Station.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/KSC-20200523-PH-KLS01_0019.jpg/960px-KSC-20200523-PH-KLS01_0019.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Inspiration4_Launch_%28210915-F-CG053-1003%29.jpg/960px-Inspiration4_Launch_%28210915-F-CG053-1003%29.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/StarshipLaunch.jpg/960px-StarshipLaunch.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Polaris_Dawn_crew.jpg/960px-Polaris_Dawn_crew.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/SpaceX_Starship_Booster_Back_at_its_Perch_IFT-5.jpg/960px-SpaceX_Starship_Booster_Back_at_its_Perch_IFT-5.jpg"
         ];
 
         function openMilestoneImage(idx) {
@@ -982,7 +992,7 @@
                         <p id="hero-details" class="text-zinc-400 text-xs sm:text-sm flex items-center gap-2">
                             <i class="fa-solid fa-location-dot text-zinc-600"></i> <span id="hero-details-text">--</span>
                         </p>
-                        <span id="hero-weather" class="px-2.5 py-1 bg-zinc-950 border border-zinc-800 text-emerald-400 text-[11px] font-semibold tracking-wider rounded-full flex items-center gap-1.5 cursor-default select-none">
+                        <span id="hero-weather" translate="no" class="notranslate px-2.5 py-1 bg-zinc-950 border border-zinc-800 text-emerald-400 text-[11px] font-semibold tracking-wider rounded-full flex items-center gap-1.5 cursor-default select-none">
                             <i class="fa-solid fa-spinner fa-spin"></i> Syncing Weather...
                         </span>
                     </div>
@@ -1096,7 +1106,7 @@
             </div>
             
             <div class="relative">
-                <div id="past-launches-grid" class="flex gap-4 sm:gap-5 overflow-x-auto pt-2 pb-4 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar snap-x snap-mandatory">
+                <div id="past-launches-grid" class="flex gap-4 sm:gap-5 overflow-x-auto pt-4 pb-8 -mx-4 px-6 md:mx-0 md:px-3 hide-scrollbar snap-x snap-mandatory">
                     <div class="w-[75vw] max-w-[280px] md:w-64 shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
                         <div class="skel h-28 rounded-xl"></div>
                         <div class="skel h-5 w-4/5 rounded"></div>
@@ -3152,10 +3162,12 @@
 
             const w = window.latestWeather;
             let tStr = window.currentUnitSystem === 'metric' ? `${w.tempC}°C` : `${w.tempF}°F`;
-            let wStr = window.currentUnitSystem === 'metric' ? `${Math.round(w.windKmh)} km/h` : `${w.windMph} mph`;
+            // Flex row + direction:ltr → number then unit. Unit span keeps native Hebrew letter order.
+            const wNum = window.currentUnitSystem === 'metric' ? Math.round(w.windKmh) : w.windMph;
+            const wUnit = window.currentUnitSystem === 'metric' ? (wDict.kmh || 'km/h') : (wDict.mph || 'mph');
             const probText = w.probKey === 'tbd' ? wDict.tbd : `${w.probNumeric}% ${wDict[w.probKey]}`;
             
-            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate inline-block" dir="ltr" translate="no">${wStr}</span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
+            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate" translate="no" dir="ltr" style="direction:ltr!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="rtl" style="unicode-bidi:isolate!important">${wUnit}</span></span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
         }
 
         function setupHeroBanner() {
@@ -3430,7 +3442,7 @@
                 const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
                 const card = document.createElement('div');
-                card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 transition-all z-20 mission-card`;
+                card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card`;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
                 card.innerHTML = `
                     <div class="relative h-40 overflow-hidden z-20">
