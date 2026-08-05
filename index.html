@@ -3134,7 +3134,7 @@
 
         window.latestWeather = null;
         
-        function renderWeatherHTML() {
+function renderWeatherHTML() {
             const weatherEl = document.getElementById('hero-weather');
             if(!weatherEl) return;
 
@@ -3156,17 +3156,21 @@
                 }
 
                 let tStr = window.currentUnitSystem === 'metric' ? `${defaultTempC}°C` : `${defaultTempF}°F`;
-               weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate inline-flex items-center gap-1 whitespace-nowrap" translate="no"><span>${wNum}</span><span>${wUnit}</span></span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
+                weatherEl.innerHTML = `<i class="fa-solid ${defaultIcon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[defaultDescKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span>`;
+                return;
             }
 
             const w = window.latestWeather;
             let tStr = window.currentUnitSystem === 'metric' ? `${w.tempC}°C` : `${w.tempF}°F`;
-            // Flex row + direction:ltr → number then unit. Unit span keeps native Hebrew letter order.
             const wNum = window.currentUnitSystem === 'metric' ? Math.round(w.windKmh) : w.windMph;
             const wUnit = window.currentUnitSystem === 'metric' ? (wDict.kmh || 'km/h') : (wDict.mph || 'mph');
             const probText = w.probKey === 'tbd' ? wDict.tbd : `${w.probNumeric}% ${wDict[w.probKey]}`;
             
-            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate" translate="no" dir="ltr" style="direction:ltr!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="rtl" style="unicode-bidi:isolate!important">${wUnit}</span></span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
+            // זיהוי דינמי של כיוון השפה ודריסה מוחלטת של ה-LTR שגוגל טרנסלייט כופה
+            const isRtl = ['he', 'iw', 'ar'].includes(langKey) || document.documentElement.getAttribute('dir') === 'rtl';
+            const windDir = isRtl ? 'rtl' : 'ltr';
+
+            weatherEl.innerHTML = `<i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate" translate="no" dir="${windDir}" style="direction:${windDir}!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="${windDir}" style="unicode-bidi:isolate!important">${wUnit}</span></span> <span class="mx-1 opacity-50">|</span> <span class="${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
         }
 
         function setupHeroBanner() {
