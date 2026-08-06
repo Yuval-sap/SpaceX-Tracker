@@ -681,6 +681,18 @@
             color: #f59e0b !important;
         }
 
+        /* "Watch the Launch" / "Open on YouTube" buttons (launch modal): their hover states
+           were too subtle to notice in both themes — a one-shade background shift with no
+           other visual cue. Restored here with the same !important pattern as the block
+           above (needed in light mode because their light-theme base colors are !important
+           and silently cancel Tailwind's non-!important hover classes), plus a glow so the
+           hover is unmistakable in dark mode too, not just restored to "technically works". */
+        @media (min-width: 768px) {
+            body.light-theme #modal-video-yt-link.md\:hover\:border-red-600:hover {
+                border-color: #dc2626 !important;
+            }
+        }
+
         body.light-theme .shadow-\[0_20px_50px_rgba\(0\,0\,0\,0\.8\)\] {
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1) !important;
         }
@@ -924,6 +936,7 @@
         window.currentUnitSystem = 'imperial';
         window.currentActiveVehicleStr = 'falcon 9';
         window.currentActiveLandingStr = "Autonomous Spaceport Drone Ships (ASDS)";
+        window.currentActiveOrbitCode = 'LEO';
 
         function updateUnitsDisplay() {
             if (window.latestWeather) {
@@ -936,11 +949,10 @@
             const ss = document.getElementById('scale-text-starship');
             if (ss) ss.innerText = window.currentUnitSystem === 'metric' ? '124m' : '407ft';
 
-            const oa = document.getElementById('orbit-alt');
-            if (oa) oa.innerText = window.currentUnitSystem === 'metric' ? '160 - 2,000 km' : '100 - 1,200 mi';
-
-            const ov = document.getElementById('orbit-vel');
-            if (ov) ov.innerText = window.currentUnitSystem === 'metric' ? '~27,000 km/h' : '~17,000 mph';
+            const orbitModalEl = document.getElementById('orbit-modal');
+            if (orbitModalEl && !orbitModalEl.classList.contains('hidden')) {
+                renderOrbitDossier(window.currentActiveOrbitCode || 'LEO');
+            }
 
             if (!document.getElementById('rocket-modal').classList.contains('hidden')) {
                 let type = 'falcon';
@@ -2204,7 +2216,7 @@
                 <!-- Past launches only: in-page player + fallback link -->
                 <div id="modal-video-btn-wrap" class="hidden space-y-3">
                     <button type="button" id="modal-watch-launch-btn"
-                        class="w-full flex items-center justify-center gap-2 py-3.5 bg-red-600 md:hover:bg-red-500 border border-red-500 rounded-2xl text-sm sm:text-base font-semibold text-white transition-all shadow-md">
+                        class="w-full flex items-center justify-center gap-2 py-3.5 bg-red-600 md:hover:bg-red-500 md:hover:scale-[1.02] md:hover:shadow-[0_0_22px_rgba(239,68,68,0.55)] border border-red-500 md:hover:border-red-400 rounded-2xl text-sm sm:text-base font-semibold text-white transition-all duration-300 shadow-md">
                         <i class="fa-solid fa-play"></i> <span id="i18n-watch-launch" class="notranslate" translate="no"
                             lang="en">Watch the Launch</span>
                     </button>
@@ -2216,9 +2228,10 @@
                             allowfullscreen></iframe>
                     </div>
                     <a id="modal-video-yt-link" href="#" target="_blank" rel="noopener"
-                        class="hidden w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-800 md:hover:bg-zinc-700 border border-zinc-700 rounded-2xl text-xs sm:text-sm font-semibold text-zinc-300 md:hover:text-white transition-all no-underline">
-                        <i class="fa-brands fa-youtube text-red-500"></i> <span id="i18n-open-youtube"
-                            class="notranslate" translate="no" lang="en">Open on YouTube</span>
+                        class="hidden w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-xs sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
+                        <i class="fa-brands fa-youtube text-red-500"></i>
+                        <span id="i18n-open-youtube" class="notranslate" translate="no" lang="en">Open on
+                            YouTube</span>
                     </a>
                 </div>
                 <div id="modal-video-fallback" class="hidden">
@@ -2578,8 +2591,8 @@
             <div
                 class="px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
-                    <div class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">LEO (Low Earth
-                        Orbit)</div>
+                    <div id="orbit-modal-title" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
+                        LEO (Low Earth Orbit)</div>
                     <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         ORBITAL MECHANICS DOSSIER</div>
                 </div>
@@ -2597,38 +2610,40 @@
                         <text x="200" y="153" text-anchor="middle" fill="#fff" font-size="10" font-family="monospace"
                             font-weight="bold">EARTH</text>
 
-                        <!-- LEO Ring (Highlighted) -->
-                        <circle cx="200" cy="150" r="55" fill="none" stroke="#10b981" stroke-width="2" opacity="0.8"
-                            stroke-dasharray="4 3" />
-                        <circle cx="200" cy="95" r="4" fill="#10b981" filter="drop-shadow(0 0 4px #10b981)">
+                        <!-- LEO Ring -->
+                        <circle id="orbit-ring-LEO" cx="200" cy="150" r="55" fill="none" stroke="#10b981"
+                            stroke-width="2" opacity="0.8" stroke-dasharray="4 3" />
+                        <circle id="orbit-dot-LEO" cx="200" cy="95" r="4" fill="#10b981"
+                            filter="drop-shadow(0 0 4px #10b981)">
                             <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150"
                                 dur="4s" repeatCount="indefinite" />
                         </circle>
-                        <text x="200" y="85" text-anchor="middle" fill="#10b981" font-size="10" font-weight="bold"
-                            letter-spacing="1">LEO</text>
+                        <text id="orbit-label-LEO" x="200" y="85" text-anchor="middle" fill="#10b981" font-size="10"
+                            font-weight="bold" letter-spacing="1">LEO</text>
 
-                        <!-- MEO Ring (Dimmed) -->
-                        <circle cx="200" cy="150" r="95" fill="none" stroke="#52525b" stroke-width="1.5"
-                            opacity="0.5" />
-                        <circle cx="200" cy="55" r="3" fill="#71717a">
+                        <!-- MEO Ring -->
+                        <circle id="orbit-ring-MEO" cx="200" cy="150" r="95" fill="none" stroke="#52525b"
+                            stroke-width="1.5" opacity="0.5" />
+                        <circle id="orbit-dot-MEO" cx="200" cy="55" r="3" fill="#71717a">
                             <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150"
                                 dur="10s" repeatCount="indefinite" />
                         </circle>
-                        <text x="200" y="47" text-anchor="middle" fill="#71717a" font-size="9"
+                        <text id="orbit-label-MEO" x="200" y="47" text-anchor="middle" fill="#71717a" font-size="9"
                             letter-spacing="1">MEO</text>
 
-                        <!-- GEO Ring (Dimmed) -->
-                        <circle cx="200" cy="150" r="140" fill="none" stroke="#3f3f46" stroke-width="1" opacity="0.4" />
-                        <circle cx="200" cy="10" r="2.5" fill="#52525b">
+                        <!-- GEO Ring -->
+                        <circle id="orbit-ring-GEO" cx="200" cy="150" r="140" fill="none" stroke="#3f3f46"
+                            stroke-width="1" opacity="0.4" />
+                        <circle id="orbit-dot-GEO" cx="200" cy="10" r="2.5" fill="#52525b">
                             <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150"
                                 dur="20s" repeatCount="indefinite" />
                         </circle>
-                        <text x="200" y="22" text-anchor="middle" fill="#52525b" font-size="8"
+                        <text id="orbit-label-GEO" x="200" y="22" text-anchor="middle" fill="#52525b" font-size="8"
                             letter-spacing="1">GEO</text>
                     </svg>
                 </div>
 
-                <!-- LEO Specs Grid -->
+                <!-- Specs Grid -->
                 <div
                     class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
@@ -2647,44 +2662,31 @@
                         <div class="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Orbital
                             Period</div>
                         <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate"
-                            translate="no">~90 Mins</div>
+                            id="orbit-period" translate="no"></div>
                     </div>
                 </div>
 
                 <!-- Descriptions -->
                 <div class="space-y-4">
                     <div>
-                        <h4
+                        <h4 id="orbit-heading-main"
                             class="font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2">
-                            <i class="fa-solid fa-satellite"></i> Low Earth Orbit (LEO)</h4>
-                        <p
+                            <i class="fa-solid fa-satellite"></i> <span></span></h4>
+                        <p id="orbit-desc-main"
                             class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl transition-colors duration-500">
-                            The primary operational domain for SpaceX. Operating near Earth allows for the cheapest
-                            access to space, heavy payloads, and ultra-low communication latency (vital for Starlink,
-                            deployed at approximately 530-550 km). Objects here experience slight atmospheric drag,
-                            meaning defunct satellites eventually burn up harmlessly in the atmosphere, keeping the
-                            orbit clean. The ISS, Crew Dragon, and Starlink all operate here.
                         </p>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
-                            <h4 class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">Medium Earth Orbit
-                                (MEO)</h4>
-                            <p class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed">
-                                Located above LEO but below GEO (2,000 - 35,786 km). It is the sweet spot for global
-                                navigation satellite systems (like GPS and Galileo). Satellites here take 2 to 24 hours
-                                to circle the Earth.
-                            </p>
+                            <h4 id="orbit-heading-a" class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            </h4>
+                            <p id="orbit-desc-a" class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
                         <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
-                            <h4 class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">Geosynchronous Orbit
-                                (GEO)</h4>
-                            <p class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed">
-                                At precisely 35,786 km, satellites match Earth's rotation perfectly, appearing "parked"
-                                over a single spot on the equator. Used for traditional TV and weather satellites, but
-                                suffers from high ping (latency).
-                            </p>
+                            <h4 id="orbit-heading-b" class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            </h4>
+                            <p id="orbit-desc-b" class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
                     </div>
                 </div>
@@ -3751,6 +3753,32 @@
             setInterval(loadNewsTicker, 15 * 60 * 1000);
         }
 
+        // מזהה את יעד המסלול האמיתי של השיגור (LEO / MEO / GEO) במקום להניח תמיד LEO.
+        // קודם מנסה שדה מבנה מה-API עצמו (הכי אמין), ואם אין - סורק את תקציר השיגור ואת
+        // שם המשימה אחרי המילים LEO/MEO/GEO/GTO/SSO. חוזר גם קוד מסלול לצורך הגרפיקה
+        // (LEO/MEO/GEO בלבד - GTO ו-SSO משוייכים חזותית לטבעת הקרובה ביותר) וגם טקסט
+        // תצוגה מדויק יותר.
+        function classifyOrbitDestination(launch, missionDesc, nameLower) {
+            const apiOrbitName = (launch && launch.mission && launch.mission.orbit &&
+                (launch.mission.orbit.name || launch.mission.orbit.abbrev)) || '';
+            const searchText = `${apiOrbitName} ${missionDesc || ''} ${nameLower || ''}`.toUpperCase();
+
+            if (/\bGTO\b|TRANSFER ORBIT/.test(searchText)) {
+                return { code: 'GEO', label: 'GTO (Geostationary Transfer Orbit)' };
+            }
+            if (/\bGEO\b|GEOSTATIONARY|GEOSYNCHRONOUS/.test(searchText)) {
+                return { code: 'GEO', label: 'GEO (Geosynchronous Orbit)' };
+            }
+            if (/\bMEO\b|MEDIUM EARTH ORBIT/.test(searchText)) {
+                return { code: 'MEO', label: 'MEO (Medium Earth Orbit)' };
+            }
+            if (/\bSSO\b|SUN[- ]SYNCHRONOUS/.test(searchText)) {
+                return { code: 'LEO', label: 'SSO (Sun-Synchronous Orbit)' };
+            }
+            // ברירת מחדל: LEO, כי זה היעד של רוב שיגורי SpaceX (סטארלינק, דרגון וכו')
+            return { code: 'LEO', label: 'LEO (Low Earth Orbit)' };
+        }
+
         function generateDetailedMissionPurpose(name, category, description, vehicle) {
             const isStarlink = category === 'starlink';
             const isStarship = category === 'starship';
@@ -3804,6 +3832,7 @@
             const nameLower = String(launch.name || "").toLowerCase();
             const missionDesc = launch.mission_description || launch.mission?.description || "SpaceX operational launch deployment mission.";
             const descLower = missionDesc.toLowerCase();
+            const orbitInfo = classifyOrbitDestination(launch, missionDesc, nameLower);
 
             let category = 'falcon';
             let vLower = vehicleName.toLowerCase();
@@ -4053,6 +4082,8 @@
                 status: computedStatus,
                 category: category,
                 description: missionDesc,
+                orbitCode: orbitInfo.code,
+                orbitLabel: orbitInfo.label,
                 detailedAnalysis: details.analysis,
                 objectives: details.objectives,
                 image: launchImage,
@@ -4638,6 +4669,10 @@
             document.getElementById('modal-vehicle').innerText = m.vehicle;
             window.currentActiveVehicleStr = m.vehicle || "falcon 9";
 
+            const modalOrbitEl = document.getElementById('modal-orbit');
+            if (modalOrbitEl) modalOrbitEl.innerText = m.orbitLabel || 'LEO (Low Earth Orbit)';
+            window.currentActiveOrbitCode = m.orbitCode || 'LEO';
+
             document.getElementById('modal-booster').innerText = m.booster || "Falcon 9 Core";
             window.currentActiveLandingStr = m.landing || "Autonomous Spaceport Drone Ships (ASDS)";
             const modalLandingEl = document.getElementById('modal-landing');
@@ -5001,9 +5036,121 @@
             modal.classList.add('hidden');
         }
 
+        // נתוני התצוגה של כל מסלול (סטטיסטיקות + טקסטים) — ה-key חייב להתאים לקוד שמחזיר
+        // classifyOrbitDestination (LEO/MEO/GEO). "short" משמש לכרטיסייה הקטנה כשהמסלול
+        // הזה אינו המסלול הפעיל של השיגור הנוכחי.
+        const ORBIT_INFO = {
+            LEO: {
+                title: 'LEO (Low Earth Orbit)',
+                heading: 'Low Earth Orbit (LEO)',
+                altitude: { metric: '160 - 2,000 km', imperial: '100 - 1,200 mi' },
+                velocity: { metric: '~27,000 km/h', imperial: '~17,000 mph' },
+                period: '~90 Mins',
+                description: 'The primary operational domain for SpaceX. Operating near Earth allows for the cheapest access to space, heavy payloads, and ultra-low communication latency (vital for Starlink, deployed at approximately 530-550 km). Objects here experience slight atmospheric drag, meaning defunct satellites eventually burn up harmlessly in the atmosphere, keeping the orbit clean. The ISS, Crew Dragon, and Starlink all operate here.',
+                short: 'The primary operational domain for SpaceX, home to the ISS, Crew Dragon, and the Starlink constellation (~530-550 km). Offers the cheapest access to space and ultra-low latency.'
+            },
+            MEO: {
+                title: 'MEO (Medium Earth Orbit)',
+                heading: 'Medium Earth Orbit (MEO)',
+                altitude: { metric: '2,000 - 35,786 km', imperial: '1,243 - 22,236 mi' },
+                velocity: { metric: '~14,000 km/h', imperial: '~8,700 mph' },
+                period: '2 - 24 Hrs',
+                description: 'Located above LEO but below GEO (2,000 - 35,786 km). It is the sweet spot for global navigation satellite systems (like GPS and Galileo). Satellites here take 2 to 24 hours to circle the Earth, trading higher latency for far wider single-satellite coverage than LEO.',
+                short: 'Located above LEO but below GEO (2,000 - 35,786 km). The sweet spot for global navigation satellites like GPS and Galileo, completing an orbit every 2-24 hours.'
+            },
+            GEO: {
+                title: 'GEO (Geosynchronous Orbit)',
+                heading: 'Geosynchronous Orbit (GEO)',
+                altitude: { metric: '35,786 km', imperial: '22,236 mi' },
+                velocity: { metric: '~11,000 km/h', imperial: '~6,850 mph' },
+                period: '~24 Hrs',
+                description: 'At precisely 35,786 km, satellites match Earth\'s rotation perfectly, appearing "parked" over a single spot on the equator. Used for traditional TV, weather, and communications satellites, but suffers from high ping (latency) due to the huge distance.',
+                short: 'At exactly 35,786 km, satellites match Earth\'s rotation, appearing "parked" over one spot on the equator. Used for TV, weather, and comms — at the cost of higher latency.'
+            }
+        };
+
+        // הסגנון החזותי של כל טבעת ב-SVG: "dimmed" הוא הסגנון הקבוע-לעומק של אותה טבעת עצמה
+        // (כפי שהיה מקורית בקובץ), ו-"active" הוא הסגנון האחיד (ירוק, זוהר) שמוצג על הטבעת
+        // שתואמת בפועל את יעד המסלול של השיגור הנבחר.
+        const ORBIT_RING_DIMMED = {
+            LEO: { stroke: '#71717a', width: '1.5', opacity: '0.55', dot: '#a1a1aa', labelSize: '10' },
+            MEO: { stroke: '#52525b', width: '1.5', opacity: '0.5', dot: '#71717a', labelSize: '9' },
+            GEO: { stroke: '#3f3f46', width: '1', opacity: '0.4', dot: '#52525b', labelSize: '8' }
+        };
+        const ORBIT_RING_ACTIVE = { stroke: '#10b981', width: '2', opacity: '0.8', dot: '#10b981', labelSize: '10' };
+
+        function applyOrbitRingVisual(code) {
+            ['LEO', 'MEO', 'GEO'].forEach(ring => {
+                const isActive = ring === code;
+                const style = isActive ? ORBIT_RING_ACTIVE : ORBIT_RING_DIMMED[ring];
+                const ringEl = document.getElementById('orbit-ring-' + ring);
+                const dotEl = document.getElementById('orbit-dot-' + ring);
+                const labelEl = document.getElementById('orbit-label-' + ring);
+
+                if (ringEl) {
+                    ringEl.setAttribute('stroke', style.stroke);
+                    ringEl.setAttribute('stroke-width', style.width);
+                    ringEl.setAttribute('opacity', style.opacity);
+                }
+                if (dotEl) {
+                    dotEl.setAttribute('fill', style.dot);
+                    dotEl.setAttribute('filter', isActive ? `drop-shadow(0 0 4px ${style.dot})` : 'none');
+                }
+                if (labelEl) {
+                    labelEl.setAttribute('fill', style.stroke);
+                    labelEl.setAttribute('font-size', style.labelSize);
+                    labelEl.setAttribute('font-weight', isActive ? 'bold' : 'normal');
+                }
+            });
+        }
+
+        // מרנדר מחדש את כל הדוסייה (כותרת, גרפיקה, מפרט וטקסטים) לפי יעד המסלול שהתגלה
+        // בפועל לשיגור הנבחר, במקום להציג תמיד LEO ללא קשר למשימה.
+        function renderOrbitDossier(code) {
+            const activeCode = ORBIT_INFO[code] ? code : 'LEO';
+            const info = ORBIT_INFO[activeCode];
+            const unit = window.currentUnitSystem === 'metric' ? 'metric' : 'imperial';
+            const others = ['LEO', 'MEO', 'GEO'].filter(c => c !== activeCode);
+
+            const titleEl = document.getElementById('orbit-modal-title');
+            if (titleEl) titleEl.innerText = info.title;
+
+            const oa = document.getElementById('orbit-alt');
+            if (oa) oa.innerText = info.altitude[unit];
+
+            const ov = document.getElementById('orbit-vel');
+            if (ov) ov.innerText = info.velocity[unit];
+
+            const op = document.getElementById('orbit-period');
+            if (op) op.innerText = info.period;
+
+            const headingMain = document.getElementById('orbit-heading-main');
+            if (headingMain) {
+                const span = headingMain.querySelector('span');
+                if (span) span.innerText = info.heading;
+            }
+            const descMain = document.getElementById('orbit-desc-main');
+            if (descMain) descMain.innerText = info.description;
+
+            const infoA = ORBIT_INFO[others[0]];
+            const infoB = ORBIT_INFO[others[1]];
+            const headingA = document.getElementById('orbit-heading-a');
+            const descA = document.getElementById('orbit-desc-a');
+            const headingB = document.getElementById('orbit-heading-b');
+            const descB = document.getElementById('orbit-desc-b');
+            if (headingA && infoA) headingA.innerText = infoA.heading;
+            if (descA && infoA) descA.innerText = infoA.short;
+            if (headingB && infoB) headingB.innerText = infoB.heading;
+            if (descB && infoB) descB.innerText = infoB.short;
+
+            applyOrbitRingVisual(activeCode);
+        }
+
         function openOrbitSpecs() {
             const modalEl = document.getElementById('orbit-modal');
             if (modalEl) {
+                renderOrbitDossier(window.currentActiveOrbitCode || 'LEO');
+
                 modalEl.classList.remove('hidden');
                 modalEl.style.display = 'flex';
                 setTimeout(() => { modalEl.scrollTop = 0; }, 10);
