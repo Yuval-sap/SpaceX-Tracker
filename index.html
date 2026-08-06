@@ -1548,9 +1548,9 @@
                                     WATCH LIVE
                                 </button>
                                 <a id="hero-live-link" href="https://x.com/SpaceX" target="_blank" rel="noopener"
-                                    class="flex-[1] min-w-0 group inline-flex items-center justify-center gap-1 px-1 py-2 sm:py-2.5 bg-zinc-800 border border-zinc-700 md:hover:border-red-500 text-zinc-300 text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all duration-300 shadow-sm no-underline">
+                                    class="flex-[1] min-w-0 group inline-flex items-center justify-center text-center gap-1 px-1 py-2 sm:py-2.5 bg-zinc-800 border border-zinc-700 md:hover:border-red-500 text-zinc-300 text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all duration-300 shadow-sm no-underline">
                                     <i id="hero-live-link-icon" class="fa-brands fa-youtube text-red-500 shrink-0"></i>
-                                    <span id="hero-live-link-label" class="truncate">YouTube</span>
+                                    <span id="hero-live-link-label" class="leading-tight">YouTube</span>
                                 </a>
                             </div>
                             <div id="hero-video-section"
@@ -2243,10 +2243,10 @@
                                 lang="en">Watch the Launch</span>
                         </button>
                         <a id="modal-video-yt-link" href="#" target="_blank" rel="noopener"
-                            class="hidden w-1/4 min-w-0 flex items-center justify-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
+                            class="hidden w-1/4 min-w-0 flex items-center justify-center text-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
                             <i class="fa-brands fa-youtube text-red-500 shrink-0"></i>
-                            <span id="i18n-open-youtube" class="notranslate truncate" translate="no" lang="en">Open on
-                                YouTube</span>
+                            <span id="i18n-open-youtube" class="notranslate leading-tight" translate="no" lang="en">Open
+                                on YouTube</span>
                         </a>
                     </div>
                     <div id="modal-video-section"
@@ -5016,10 +5016,13 @@
 
         function loadMissionVideo() { /* unused */ }
 
-        // Mobile: tapping the video reveals the close button; resetVideoControlsOverlay()
-        // hides it again (and re-arms the tap overlay) whenever a fresh video is loaded/closed.
-        // prefix lets this serve both the mission-modal player ('modal', default) and the
-        // hero live-stream player ('hero').
+        // Mobile: tapping the video reveals the close button for a few seconds, then it
+        // auto-hides again (hideMobileVideoControls) so it doesn't sit on screen forever.
+        // resetVideoControlsOverlay() fully resets state whenever a fresh video is
+        // loaded/closed. prefix lets this serve both the mission-modal player ('modal',
+        // default) and the hero live-stream player ('hero').
+        window._videoControlsTimers = window._videoControlsTimers || {};
+
         function revealMobileVideoControls(prefix) {
             prefix = prefix || 'modal';
             const btn = document.getElementById(prefix + '-video-close-btn');
@@ -5031,10 +5034,35 @@
             // Let the next tap reach the YouTube player itself (play/pause etc.)
             // instead of being swallowed by our overlay.
             if (overlay) overlay.style.pointerEvents = 'none';
+
+            if (window._videoControlsTimers[prefix]) clearTimeout(window._videoControlsTimers[prefix]);
+            window._videoControlsTimers[prefix] = setTimeout(function () {
+                hideMobileVideoControls(prefix);
+            }, 3000);
+        }
+
+        function hideMobileVideoControls(prefix) {
+            prefix = prefix || 'modal';
+            const btn = document.getElementById(prefix + '-video-close-btn');
+            const overlay = document.getElementById(prefix + '-video-tap-overlay');
+            if (btn) {
+                btn.style.opacity = '0';
+                btn.style.pointerEvents = 'none';
+            }
+            // Re-arm the overlay so the next tap shows the button again.
+            if (overlay) overlay.style.pointerEvents = 'auto';
+            if (window._videoControlsTimers[prefix]) {
+                clearTimeout(window._videoControlsTimers[prefix]);
+                delete window._videoControlsTimers[prefix];
+            }
         }
 
         function resetVideoControlsOverlay(prefix) {
             prefix = prefix || 'modal';
+            if (window._videoControlsTimers[prefix]) {
+                clearTimeout(window._videoControlsTimers[prefix]);
+                delete window._videoControlsTimers[prefix];
+            }
             const btn = document.getElementById(prefix + '-video-close-btn');
             const overlay = document.getElementById(prefix + '-video-tap-overlay');
             if (btn) {
