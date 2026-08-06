@@ -280,6 +280,45 @@
             overflow-y: auto;
         }
 
+        /* Card modals (mission/rocket/site/orbit/landing/astronaut): vertical scrollbar
+           styled to match .milestones-scrollbox — same thin green thumb, same color in
+           both day and night theme. */
+        .card-modal-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .card-modal-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .card-modal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.35);
+            border-radius: 3px;
+        }
+
+        .card-modal-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.55);
+        }
+
+        .card-modal-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(16, 185, 129, 0.35) transparent;
+        }
+
+        /* Under html[dir=rtl], a scrollable box's own scrollbar moves to its left edge
+           (native browser behavior for RTL boxes) — inside these right-aligned Hebrew
+           cards that reads as "wrong side". Forcing the scroll container itself back to
+           ltr keeps the scrollbar pinned to the physical right, while re-asserting rtl on
+           its direct children (the sticky header + the body) keeps all of the actual
+           text/layout reading right-to-left as normal. */
+        [dir="rtl"] .card-modal-scroll {
+            direction: ltr;
+        }
+
+        [dir="rtl"] .card-modal-scroll>* {
+            direction: rtl;
+        }
+
         /* Identical to .milestones-scrollbox scrollbar (same color day & night) */
         .hide-scrollbar::-webkit-scrollbar {
             height: 5px;
@@ -2210,7 +2249,7 @@
     <div id="mission-modal" onclick="if (event.target.id === 'mission-modal') closeModal()"
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto z-[100]">
         <div id="mission-modal-content" onclick="event.stopImmediatePropagation()"
-            class="bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
+            class="card-modal-scroll bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
@@ -2505,7 +2544,7 @@
     <div id="rocket-modal" onclick="if (event.target.id === 'rocket-modal') closeRocketModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
         <div id="rocket-modal-content" onclick="event.stopImmediatePropagation()"
-            class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.15)] my-auto transition-colors duration-500">
+            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.15)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-6 py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
@@ -2565,7 +2604,7 @@
     <div id="site-modal" onclick="if (event.target.id === 'site-modal') closeLaunchSiteModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
         <div id="site-modal-content" onclick="event.stopImmediatePropagation()"
-            class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
@@ -2616,7 +2655,7 @@
     <div id="orbit-modal" onclick="if (event.target.id === 'orbit-modal') closeOrbitSpecs()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
         <div id="orbit-modal-content" onclick="event.stopImmediatePropagation()"
-            class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
@@ -2727,7 +2766,7 @@
     <div id="landing-modal" onclick="if (event.target.id === 'landing-modal') closeLandingSpecs()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[200]">
         <div id="landing-modal-content" onclick="event.stopImmediatePropagation()"
-            class="bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
@@ -2779,7 +2818,7 @@
     <div id="astronaut-modal" onclick="if (event.target.id === 'astronaut-modal') closeAstronautModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-3 sm:p-4 overflow-y-auto z-[250]">
         <div id="astronaut-modal-content" onclick="event.stopImmediatePropagation()"
-            class="bg-zinc-900 border border-emerald-500/40 w-full max-w-lg max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.25)] my-auto transition-colors duration-500">
+            class="card-modal-scroll bg-zinc-900 border border-emerald-500/40 w-full max-w-lg max-h-[88vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.25)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
@@ -4792,6 +4831,8 @@
         }
 
         function openMissionModal(m) {
+            const missionModalContentEl = document.getElementById('mission-modal-content');
+            if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
             document.getElementById('modal-name').innerText = m.name;
 
             let dateStr = '';
@@ -4970,7 +5011,7 @@
             const modalEl = document.getElementById('mission-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+            setTimeout(() => { if (missionModalContentEl) missionModalContentEl.scrollTop = 0; }, 10);
         }
 
         function handleModalFeatures(m) {
@@ -5187,6 +5228,9 @@
             const data = ROCKET_DATABASE[type];
             if (!data) return;
 
+            const rocketModalContentEl = document.getElementById('rocket-modal-content');
+            if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0;
+
             document.getElementById('rocket-modal-name').innerText = data.name;
 
             const imgEl = document.getElementById('rocket-modal-img');
@@ -5201,7 +5245,7 @@
             const modalEl = document.getElementById('rocket-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+            setTimeout(() => { if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0; }, 10);
         }
 
         function closeRocketModal() {
@@ -5214,6 +5258,9 @@
             const data = SITE_DATABASE[type];
             if (!data) return;
 
+            const siteModalContentEl = document.getElementById('site-modal-content');
+            if (siteModalContentEl) siteModalContentEl.scrollTop = 0;
+
             document.getElementById('site-modal-name').innerText = data.name;
             document.getElementById('site-modal-img').src = data.image;
             document.getElementById('site-modal-coords').innerText = data.coords;
@@ -5223,7 +5270,7 @@
             const modalEl = document.getElementById('site-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+            setTimeout(() => { if (siteModalContentEl) siteModalContentEl.scrollTop = 0; }, 10);
         }
 
         function closeLaunchSiteModal() {
@@ -5349,7 +5396,8 @@
 
                 modalEl.classList.remove('hidden');
                 modalEl.style.display = 'flex';
-                setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+                const orbitModalContentEl = document.getElementById('orbit-modal-content');
+                if (orbitModalContentEl) orbitModalContentEl.scrollTop = 0;
 
                 // SVG SMIL animations (<animateTransform>) effectively pause while their
                 // container is display:none, and browsers can take a noticeable moment to
@@ -5372,6 +5420,9 @@
 
         function openLandingSpecs() {
             const str = (window.currentActiveLandingStr || "Autonomous Spaceport Drone Ships (ASDS)").toLowerCase();
+
+            const landingModalContentEl = document.getElementById('landing-modal-content');
+            if (landingModalContentEl) landingModalContentEl.scrollTop = 0;
 
             const nameEl = document.getElementById('landing-modal-name');
             const imgEl = document.getElementById('landing-modal-img');
@@ -5441,7 +5492,7 @@
             const modalEl = document.getElementById('landing-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+            setTimeout(() => { if (landingModalContentEl) landingModalContentEl.scrollTop = 0; }, 10);
         }
 
         function closeLandingSpecs() {
@@ -5455,6 +5506,9 @@
         function openAstronautModal(index) {
             if (!window.currentMissionCrew || !window.currentMissionCrew[index]) return;
 
+            const astronautModalContentEl = document.getElementById('astronaut-modal-content');
+            if (astronautModalContentEl) astronautModalContentEl.scrollTop = 0;
+
             const c = window.currentMissionCrew[index];
             document.getElementById('astro-modal-name').innerText = c.name;
             document.getElementById('astro-modal-role').innerText = c.role;
@@ -5465,7 +5519,7 @@
             const modalEl = document.getElementById('astronaut-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            setTimeout(() => { modalEl.scrollTop = 0; }, 10);
+            setTimeout(() => { if (astronautModalContentEl) astronautModalContentEl.scrollTop = 0; }, 10);
         }
 
         function closeAstronautModal() {
