@@ -4257,8 +4257,11 @@
                 window._pendingHeroYoutubeId = null;
 
                 if (liveBox && liveLink) {
-                    if (nextLaunch.hasLiveVideo) {
-                        const liveSrcUrl = nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "https://x.com/SpaceX";
+                    // Require an actual, launch-specific stream link — never fall back to a
+                    // generic channel URL. If the API flagged hasLiveVideo but gave us no
+                    // real link, treat it the same as "no live video" and hide the button.
+                    const liveSrcUrl = nextLaunch.hasLiveVideo ? (nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "") : "";
+                    if (liveSrcUrl) {
                         const heroYoutubeId = extractYoutubeId(liveSrcUrl);
                         const isXLink = liveSrcUrl.includes('x.com') || liveSrcUrl.includes('twitter.com');
 
@@ -4929,11 +4932,12 @@
                         : '<i class="fa-solid fa-play"></i> <span>Watch Launch Video</span>';
                     videoFallback.classList.remove('hidden');
                 }
-            } else if (!isPastMission && m.hasLiveVideo) {
-                // Upcoming mission with a real live stream (same source the hero banner
-                // uses): show the same 2-button player when it's embeddable on YouTube,
-                // otherwise fall back to a single external link (e.g. an X stream).
-                const liveSrcUrl = m.liveVideoUrl || m.liveUrl || "https://x.com/SpaceX";
+            } else if (!isPastMission && m.hasLiveVideo && (m.liveVideoUrl || m.liveUrl)) {
+                // Upcoming mission with a real, launch-specific live stream link (same
+                // source the hero banner uses) — never a generic fallback channel. Show
+                // the same 2-button player when it's embeddable on YouTube, otherwise fall
+                // back to a single external link (e.g. an X stream).
+                const liveSrcUrl = m.liveVideoUrl || m.liveUrl;
                 const liveYoutubeId = extractYoutubeId(liveSrcUrl);
                 if (liveYoutubeId) {
                     wireModalYoutubePlayer(liveYoutubeId, liveSrcUrl);
@@ -4954,13 +4958,12 @@
             const mStreamLink = document.getElementById('modal-live-link');
 
             if (mStreamBox && mStreamLink) {
-                const now = new Date();
-                const launchDate = new Date(m.date);
-                const hoursUntilLaunch = (launchDate - now) / (1000 * 60 * 60);
-
-                mStreamLink.href = "https://x.com/SpaceX";
-
-                if (hoursUntilLaunch <= 24 && hoursUntilLaunch >= -2) {
+                // Only show this floating badge when there's a real, launch-specific
+                // stream link — same data-driven check used everywhere else, never a
+                // time-window guess and never a generic fallback channel.
+                const mStreamUrl = (!isPastMission && m.hasLiveVideo) ? (m.liveVideoUrl || m.liveUrl || "") : "";
+                if (mStreamUrl) {
+                    mStreamLink.href = mStreamUrl;
                     mStreamBox.classList.remove('hidden');
                 } else {
                     mStreamBox.classList.add('hidden');
@@ -5011,6 +5014,7 @@
             const modalEl = document.getElementById('mission-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            lockBodyScroll();
             setTimeout(() => { if (missionModalContentEl) missionModalContentEl.scrollTop = 0; }, 10);
         }
 
@@ -5113,10 +5117,52 @@
             if (overlay) overlay.style.pointerEvents = '';
         }
 
+        // Locks/unlocks background page scrolling while any of the card modals (mission,
+        // rocket, site, orbit, landing, astronaut) is open. Without this, scrolling with
+        // the cursor anywhere outside the card's own bounds scrolls the blurred page
+        // behind it instead of the card. Reference-counted so a modal opened from inside
+        // another modal (e.g. the astronaut dossier from the mission card) doesn't
+        // prematurely unlock the background when the inner one closes.
+        window._openModalCount = window._openModalCount || 0;
+        function lockBodyScroll() {
+            window._openModalCount++;
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        }
+        function unlockBodyScroll() {
+            window._openModalCount = Math.max(0, window._openModalCount - 1);
+            if (window._openModalCount === 0) {
+                document.documentElement.style.overflow = '';
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Forwards mouse-wheel scrolling anywhere over a card modal's overlay (including
+        // the blurred backdrop area around the card, not just the card itself) to the
+        // card's own scrollable content — so the user never has to hover precisely over
+        // the card to scroll it.
+        [
+            ['mission-modal', 'mission-modal-content'],
+            ['rocket-modal', 'rocket-modal-content'],
+            ['site-modal', 'site-modal-content'],
+            ['orbit-modal', 'orbit-modal-content'],
+            ['landing-modal', 'landing-modal-content'],
+            ['astronaut-modal', 'astronaut-modal-content'],
+        ].forEach(([overlayId, contentId]) => {
+            const overlay = document.getElementById(overlayId);
+            const content = document.getElementById(contentId);
+            if (!overlay || !content) return;
+            overlay.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                content.scrollTop += e.deltaY;
+            }, { passive: false });
+        });
+
         function closeModal() {
             const modal = document.getElementById('mission-modal');
             modal.style.display = 'none';
             modal.classList.add('hidden');
+            unlockBodyScroll();
             // Stop any playing YouTube embed so audio/video does not continue in background
             const videoIframe = document.getElementById('modal-video-iframe');
             if (videoIframe) videoIframe.src = '';
@@ -5245,6 +5291,7 @@
             const modalEl = document.getElementById('rocket-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            lockBodyScroll();
             setTimeout(() => { if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0; }, 10);
         }
 
@@ -5252,6 +5299,7 @@
             const modal = document.getElementById('rocket-modal');
             modal.style.display = 'none';
             modal.classList.add('hidden');
+            unlockBodyScroll();
         }
 
         function openLaunchSiteSpecs(type) {
@@ -5270,6 +5318,7 @@
             const modalEl = document.getElementById('site-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            lockBodyScroll();
             setTimeout(() => { if (siteModalContentEl) siteModalContentEl.scrollTop = 0; }, 10);
         }
 
@@ -5277,6 +5326,7 @@
             const modal = document.getElementById('site-modal');
             modal.style.display = 'none';
             modal.classList.add('hidden');
+            unlockBodyScroll();
         }
 
         // נתוני התצוגה של כל מסלול (סטטיסטיקות + טקסטים) — ה-key חייב להתאים לקוד שמחזיר
@@ -5396,6 +5446,7 @@
 
                 modalEl.classList.remove('hidden');
                 modalEl.style.display = 'flex';
+                lockBodyScroll();
                 const orbitModalContentEl = document.getElementById('orbit-modal-content');
                 if (orbitModalContentEl) orbitModalContentEl.scrollTop = 0;
 
@@ -5415,6 +5466,7 @@
             if (modal) {
                 modal.style.display = 'none';
                 modal.classList.add('hidden');
+                unlockBodyScroll();
             }
         }
 
@@ -5492,6 +5544,7 @@
             const modalEl = document.getElementById('landing-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            lockBodyScroll();
             setTimeout(() => { if (landingModalContentEl) landingModalContentEl.scrollTop = 0; }, 10);
         }
 
@@ -5500,6 +5553,7 @@
             if (modal) {
                 modal.style.display = 'none';
                 modal.classList.add('hidden');
+                unlockBodyScroll();
             }
         }
 
@@ -5519,6 +5573,7 @@
             const modalEl = document.getElementById('astronaut-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
+            lockBodyScroll();
             setTimeout(() => { if (astronautModalContentEl) astronautModalContentEl.scrollTop = 0; }, 10);
         }
 
@@ -5527,6 +5582,7 @@
             if (modal) {
                 modal.style.display = 'none';
                 modal.classList.add('hidden');
+                unlockBodyScroll();
             }
         }
 
