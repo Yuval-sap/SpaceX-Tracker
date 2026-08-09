@@ -4783,6 +4783,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     </div>
                 `;
                 card.onclick = () => openMissionModal(m);
+                // Protect "Starship" in the mission title (and anywhere else in the card,
+                // e.g. the description) before this card ever touches the live document.
+                // Google Translate's own MutationObserver watches document.body and can
+                // translate freshly-inserted text within milliseconds — faster than our
+                // 500ms "Bulletproof Timer" tick can catch up — which is exactly how a
+                // filtered/re-rendered card (built after the page was already translated)
+                // ends up with "Starship" mistranslated before localizeStarshipTerm() gets
+                // a chance to wrap it. Running it here, on the detached card, wraps the
+                // word in its protected notranslate span first, so Google never sees the
+                // raw English text to mistranslate in the first place.
+                localizeStarshipTerm(card);
                 grid.appendChild(card);
             });
 
@@ -4853,6 +4864,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 `;
 
                 card.onclick = () => openMissionModal(m);
+                // Same fix as renderMissions() above: protect "Starship" in the title
+                // before this (re-rendered, e.g. from a filter change) card is inserted
+                // into the live document, so Google Translate's mutation-watching never
+                // gets a chance to mistranslate it first.
+                localizeStarshipTerm(card);
                 pastGrid.appendChild(card);
             });
             fitAllTitlesOneLine(pastGrid);
