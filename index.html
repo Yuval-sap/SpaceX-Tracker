@@ -5969,6 +5969,55 @@
             }, 'google_translate_element');
         }
     </script>
+    <script>
+// פונקציה שרצה מיידית ותופסת שינויים בעמוד ברמת המילי-שניה
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (node.nodeValue.includes("Block 5")) {
+                    node.nodeValue = node.nodeValue.replace(/Block 5/gi, "");
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // סריקה מהירה של הילדים בתוך האלמנט שנוסף
+                if (node.innerHTML && node.innerHTML.includes("Block 5")) {
+                    node.innerHTML = node.innerHTML.replace(/Block\s*5/gi, "");
+                }
+            }
+        });
+    });
+});
+
+// התחלת האזנה לשינויים בגוף העמוד
+observer.observe(document.body, { childList: true, subtree: true });
+</script>
+<script>
+// פונקציה שרצה מיידית ותופסת שינויים בעמוד ברמת המילי-שניה
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (node.nodeValue.includes("Block 5")) {
+                    node.nodeValue = node.nodeValue.replace(/Block 5/gi, "");
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // סריקה מהירה של הילדים בתוך האלמנט שנוסף
+                if (node.innerHTML && node.innerHTML.includes("Block 5")) {
+                    node.innerHTML = node.innerHTML.replace(/Block\s*5/gi, "");
+                }
+            }
+        });
+    });
+});
+
+// התחלת האזנה לשינויים בגוף העמוד
+observer.observe(document.body, { childList: true, subtree: true });
+</script>
+
+// הרצה של הפונקציה לאחר טעינת הדף וכל פעם שהתוכן מתעדכן
+window.addEventListener('load', removeBlock5FromPage);
+setInterval(removeBlock5FromPage, 2000); 
+</script>
     <script type="text/javascript"
         src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
 </body>
