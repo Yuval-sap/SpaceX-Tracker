@@ -30,11 +30,18 @@
     #hero-name {
         display: block !important;
         white-space: nowrap !important;
-        overflow: hidden !important;          /* רק כדי שלא יחרוג, בלי ellipsis */
-        text-overflow: clip !important;       /* במקום ellipsis */
+        overflow: hidden !important;
+        text-overflow: clip !important;
         max-width: 100% !important;
-        font-size: clamp(16px, 6.5vw, 28px) !important;  /* נקודת התחלה קצת יותר נמוכה */
+        width: 100% !important;                 /* ← הוסף */
+        font-size: clamp(14px, 5.8vw, 26px) !important;  /* ← קצת יותר נמוך */
         line-height: 1.15 !important;
+        box-sizing: border-box !important;
+    }
+
+    html[dir="rtl"] #hero-name {
+        text-align: right !important;
+        direction: rtl !important;
     }
 }
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
@@ -1185,19 +1192,29 @@
         // longer titles with an ellipsis instead. Since titles vary in length, a fixed font
         // size can't guarantee every title fits, so this shrinks the font just enough (in
         // small steps, down to a readable floor) until the text no longer overflows the card.
-        function fitTitleOneLine(el) {
-            if (!el) return;
-            el.style.fontSize = '';
-            const initialSize = parseFloat(getComputedStyle(el).fontSize);
-            let size = initialSize;
-            const minSize = 11;
-            let guard = 0;
-            while (el.scrollWidth > el.clientWidth + 1 && size > minSize && guard < 60) {
-                size -= 0.5;
-                el.style.fontSize = size + 'px';
-                guard++;
-            }
-        }
+      function fitTitleOneLine(el) {
+    if (!el) return;
+
+    // איפוס
+    el.style.fontSize = '';
+    void el.offsetWidth;
+
+    // אם אין טקסט אמיתי – אל תעשה כלום
+    if (!el.textContent || el.textContent.trim().length < 3) return;
+
+    const initialSize = parseFloat(getComputedStyle(el).fontSize) || 22;
+    let size = initialSize;
+    const minSize = 10;
+    let guard = 0;
+
+    // מדידה אגרסיבית יותר – ממשיכים עד שהטקסט באמת נכנס
+    while (el.scrollWidth > el.clientWidth + 1 && size > minSize && guard < 100) {
+        size -= 0.4;
+        el.style.fontSize = size + 'px';
+        void el.offsetWidth; // כפיית reflow
+        guard++;
+    }
+}
 
         function fitAllTitlesOneLine(root) {
             (root || document).querySelectorAll('.mission-title-fit').forEach(fitTitleOneLine);
@@ -4429,6 +4446,14 @@
     requestAnimationFrame(() => {
         fitTitleOneLine(document.getElementById('hero-name'));
     });
+    // קריאה נוספת אחרי שגוגל טרנסלייט מסיים לתרגם (חשוב לעברית)
+setTimeout(() => {
+    fitTitleOneLine(document.getElementById('hero-name'));
+}, 800);
+
+setTimeout(() => {
+    fitTitleOneLine(document.getElementById('hero-name'));
+}, 1800);
 // מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
 fitTitleOneLine(document.getElementById('hero-name'));
                 let dateStr = 'TBD';
@@ -5972,6 +5997,20 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     vvRotateTimer = setTimeout(settleLayoutAfterRotation, 150);
                 });
             }
+            // כשגוגל טרנסלייט מסיים לתרגם – מקטין שוב את כותרת ההירו
+const heroNameEl = document.getElementById('hero-name');
+if (heroNameEl) {
+    const langObserver = new MutationObserver(() => {
+        // דיליי קטן כדי לתת לגוגל לסיים לעדכן את ה-DOM
+        setTimeout(() => fitTitleOneLine(heroNameEl), 150);
+        setTimeout(() => fitTitleOneLine(heroNameEl), 600);
+    });
+    langObserver.observe(heroNameEl, {
+        childList: true,
+        characterData: true,
+        subtree: true
+    });
+}
         }
 
         window.onload = init;
