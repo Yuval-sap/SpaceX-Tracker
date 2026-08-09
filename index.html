@@ -1645,7 +1645,13 @@
                 <img id="hero-image" src="" alt="" class="w-full h-full object-cover object-[center_19%] opacity-30 hero-fade-image">
             </div>
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
-                <div class="space-y-3 flex-1 w-full min-w-0">
+                <!-- On mobile this wrapper is unwrapped (display:contents) so its two children
+                     (the info block below, and the buttons/video block further down) become
+                     direct items of the flex column above — letting the buttons/video block be
+                     reordered (via order-last) to sit after #countdown-box instead of before it.
+                     On lg+ it reverts to its original block layout, so desktop is unaffected. -->
+                <div class="contents lg:block lg:space-y-3 lg:flex-1 lg:w-full lg:min-w-0">
+                <div class="space-y-3">
                     <div class="flex flex-wrap items-center gap-2 mb-1">
                         <span
                             class="hero-pill px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs sm:text-[13px] font-bold tracking-[0.2em] rounded-full flex items-center">
@@ -1715,9 +1721,15 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="pt-6 space-y-3">
-                        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <!-- Buttons + video block: order-last (mobile only, via contents-unwrapping
+                         above) pushes this after #countdown-box so it lands below the countdown
+                         clock on mobile; lg:order-none restores its normal in-flow position on
+                         desktop. justify-center (mobile only) centers the button row instead of
+                         it hugging the left edge. -->
+                    <div class="space-y-3 order-last lg:order-none lg:pt-6">
+                        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3">
                             <button id="hero-details-btn"
                                 class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm whitespace-nowrap shrink-0">
                                 <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black"></i> View
@@ -1737,7 +1749,7 @@
                             </button>
                         </div>
                         <div id="hero-video-section"
-                            class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video w-full sm:max-w-md">
+                            class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video w-full sm:max-w-md mx-auto lg:mx-0">
                             <iframe id="hero-video-iframe" class="w-full h-full absolute inset-0" src=""
                                 title="Live Launch Video" frameborder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
