@@ -26,6 +26,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+@media (max-width: 640px) {
+    #hero-name {
+        display: block !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;          /* רק כדי שלא יחרוג, בלי ellipsis */
+        text-overflow: clip !important;       /* במקום ellipsis */
+        max-width: 100% !important;
+        font-size: clamp(16px, 6.5vw, 28px) !important;  /* נקודת התחלה קצת יותר נמוכה */
+        line-height: 1.15 !important;
+    }
+}
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
         * {
@@ -4412,8 +4423,14 @@
             }
 
             if (nextLaunch) {
-                document.getElementById('hero-name').innerText = nextLaunch.name;
+    document.getElementById('hero-name').innerText = nextLaunch.name;
 
+    // מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
+    requestAnimationFrame(() => {
+        fitTitleOneLine(document.getElementById('hero-name'));
+    });
+// מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
+fitTitleOneLine(document.getElementById('hero-name'));
                 let dateStr = 'TBD';
                 try {
                     dateStr = new Date(nextLaunch.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
