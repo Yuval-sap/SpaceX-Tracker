@@ -82,18 +82,22 @@
         /* T-5 pre-launch alert mode: same 3s / cubic-bezier(0.4,0,0.6,1) rhythm as
            pulse-calm above (used elsewhere for the near-T-0 countdown text) so the
            border and the countdown digits breathe in sync instead of at two
-           different, competing speeds. */
+           different, competing speeds.
+           This animates box-shadow only (an inset ring standing in for the border,
+           plus an outer glow) rather than border-color directly: in light mode the
+           theme stylesheet sets border-color on these elements with !important,
+           which would otherwise permanently win over the keyframe and make the
+           pulse invisible. box-shadow isn't touched by that override, so this reads
+           the same way in both themes. */
         @keyframes border-pulse-calm {
 
             0%,
             100% {
-                border-color: rgba(63, 63, 70, 1);
-                box-shadow: none;
+                box-shadow: inset 0 0 0 1.5px rgba(239, 68, 68, 0);
             }
 
             50% {
-                border-color: rgba(239, 68, 68, 0.7);
-                box-shadow: 0 0 24px -6px rgba(239, 68, 68, 0.35);
+                box-shadow: inset 0 0 0 1.5px rgba(239, 68, 68, 0.85), 0 0 24px -6px rgba(239, 68, 68, 0.45);
             }
         }
 
@@ -1012,24 +1016,24 @@
         // the correct wording ourselves for every language in the translate widget's
         // includedLanguages list ('en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr').
         const LAUNCH_LABEL_I18N = {
-            en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Launches This Year", launchWindow: "LAUNCH WINDOW", launchSite: "LAUNCH SITE", recoveryZone: "RECOVERY ZONE", recoveryZoneInfo: "RECOVERY ZONE INFORMATION", launchesSection: "Scheduled Launches", pastLaunchesSection: "Recent Past Launches", vehicleType: "VEHICLE TYPE", orbitDestination: "ORBIT DESTINATION", asds: "Autonomous Spaceport Drone Ship (ASDS)", filterAll: "All", filterDragon: "Dragon/Crew", boosterTitle: "Booster Flight Leaderboard", boosterSubtitle: "Most-flown Falcon 9 & Super Heavy boosters from live mission data", boosterAnalyzing: "Analyzing booster flight data...", boosterNoData: "No booster flight data available yet.", flights: "Flights", boosterRank: "Rank", boosterCol: "Booster", spacexXLink: "Follow @SpaceX on X", systemsGo: "SYSTEMS GO", finalCountdown: "FINAL COUNTDOWN", watchLaunch: "Watch the Launch", openOnYoutube: "Open on YouTube", watchDetailsVideo: "Watch Launch Details and Video", viewMissionDetails: "View Mission Details →" },
-            he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "דירוג טיסות בוסטרים", boosterSubtitle: "הבוסטרים עם מספר הטיסות הגבוה ביותר מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" },
-            iw: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "דירוג טיסות בוסטרים", boosterSubtitle: "הבוסטרים עם מספר הטיסות הגבוה ביותר מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" },
-            es: { nextLaunch: "PRÓXIMO LANZAMIENTO", upcomingLaunches: "Lanzamientos Este Año", launchWindow: "VENTANA DE LANZAMIENTO", launchSite: "SITIO DE LANZAMIENTO", recoveryZone: "ZONA DE RECUPERACIÓN", recoveryZoneInfo: "INFORMACIÓN DE LA ZONA DE RECUPERACIÓN", launchesSection: "Lanzamientos Programados", pastLaunchesSection: "Lanzamientos Recientes", vehicleType: "TIPO DE COHETE", orbitDestination: "DESTINO ORBITAL", asds: "Nave Dron Autónoma de Aterrizaje (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Clasificación de Vuelos de Boosters", boosterSubtitle: "Boosters Falcon 9 y Super Heavy con más vuelos según datos en vivo", boosterAnalyzing: "Analizando datos de vuelos de boosters...", boosterNoData: "Aún no hay datos de vuelos de boosters.", flights: "Vuelos", boosterRank: "Puesto", boosterCol: "Booster", spacexXLink: "Sigue a @SpaceX en X", systemsGo: "TODO LISTO", finalCountdown: "CUENTA REGRESIVA FINAL", watchLaunch: "Ver el lanzamiento", openOnYoutube: "Abrir en YouTube", watchDetailsVideo: "Ver Detalles y Video del Lanzamiento", viewMissionDetails: "Ver Detalles de la Misión →" },
-            fr: { nextLaunch: "PROCHAIN LANCEMENT", upcomingLaunches: "Lancements Cette Année", launchWindow: "FENÊTRE DE LANCEMENT", launchSite: "SITE DE LANCEMENT", recoveryZone: "ZONE DE RÉCUPÉRATION", recoveryZoneInfo: "INFORMATIONS SUR LA ZONE DE RÉCUPÉRATION", launchesSection: "Lancements Programmés", pastLaunchesSection: "Lancements Récents", vehicleType: "TYPE DE FUSÉE", orbitDestination: "DESTINATION ORBITALE", asds: "Navire-Drone Autonome d'Atterrissage (ASDS)", filterAll: "Tous", filterDragon: "Dragon/Crew", boosterTitle: "Classement des Vols de Boosters", boosterSubtitle: "Boosters Falcon 9 et Super Heavy les plus utilisés selon les données en direct", boosterAnalyzing: "Analyse des données de vol des boosters...", boosterNoData: "Aucune donnée de vol de booster disponible pour le moment.", flights: "Vols", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Suivez @SpaceX sur X", systemsGo: "SYSTÈMES PRÊTS", finalCountdown: "COMPTE À REBOURS FINAL", watchLaunch: "Voir le lancement", openOnYoutube: "Ouvrir sur YouTube", watchDetailsVideo: "Voir les Détails et la Vidéo du Lancement", viewMissionDetails: "Voir les Détails de la Mission →" },
-            de: { nextLaunch: "NÄCHSTER START", upcomingLaunches: "Starts Dieses Jahr", launchWindow: "STARTFENSTER", launchSite: "STARTPLATZ", recoveryZone: "LANDEZONE", recoveryZoneInfo: "INFORMATIONEN ZUR LANDEZONE", launchesSection: "Geplante Starts", pastLaunchesSection: "Letzte Starts", vehicleType: "RAKETENTYP", orbitDestination: "ORBITALES ZIEL", asds: "Autonomes Drohnenschiff (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "Booster-Flug-Rangliste", boosterSubtitle: "Am häufigsten geflogene Falcon 9- und Super Heavy-Booster aus Live-Daten", boosterAnalyzing: "Analysiere Booster-Flugdaten...", boosterNoData: "Noch keine Booster-Flugdaten verfügbar.", flights: "Flüge", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Folge @SpaceX auf X", systemsGo: "SYSTEME BEREIT", finalCountdown: "FINALER COUNTDOWN", watchLaunch: "Start ansehen", openOnYoutube: "Auf YouTube öffnen", watchDetailsVideo: "Startdetails und Video ansehen", viewMissionDetails: "Missionsdetails ansehen →" },
-            ru: { nextLaunch: "СЛЕДУЮЩИЙ ЗАПУСК", upcomingLaunches: "Запуски в этом году", launchWindow: "ОКНО ЗАПУСКА", launchSite: "МЕСТО ЗАПУСКА", recoveryZone: "ЗОНА ПОСАДКИ", recoveryZoneInfo: "ИНФОРМАЦИЯ О ЗОНЕ ПОСАДКИ", launchesSection: "Запланированные запуски", pastLaunchesSection: "Недавние запуски", vehicleType: "ТИП РАКЕТЫ", orbitDestination: "ОРБИТАЛЬНЫЙ ПУНКТ НАЗНАЧЕНИЯ", asds: "Автономный дрон-корабль (ASDS)", filterAll: "Все", filterDragon: "Драгон/экипаж", boosterTitle: "Рейтинг полётов бустеров", boosterSubtitle: "Бустеры Falcon 9 и Super Heavy с наибольшим числом полётов по актуальным данным", boosterAnalyzing: "Анализ данных полётов бустеров...", boosterNoData: "Данные о полётах бустеров пока недоступны.", flights: "Полёты", boosterRank: "Место", boosterCol: "Бустер", spacexXLink: "Подписывайтесь на @SpaceX в X", systemsGo: "СИСТЕМЫ ГОТОВЫ", finalCountdown: "ФИНАЛЬНЫЙ ОТСЧЁТ", watchLaunch: "Смотреть запуск", openOnYoutube: "Открыть на YouTube", watchDetailsVideo: "Смотреть детали запуска и видео", viewMissionDetails: "Смотреть детали миссии →" },
-            zh: { nextLaunch: "下一次发射", upcomingLaunches: "本年度发射", launchWindow: "发射窗口", launchSite: "发射场", recoveryZone: "回收区", recoveryZoneInfo: "回收区信息", launchesSection: "计划发射", pastLaunchesSection: "近期发射记录", vehicleType: "火箭类型", orbitDestination: "轨道目的地", asds: "自主无人驳船 (ASDS)", filterAll: "全部", filterDragon: "龙飞船/载人", boosterTitle: "助推器飞行次数排行榜", boosterSubtitle: "根据实时任务数据统计的飞行次数最多的猎鹰9号和超级重型助推器", boosterAnalyzing: "正在分析助推器飞行数据...", boosterNoData: "暂无助推器飞行数据。", flights: "飞行次数", boosterRank: "排名", boosterCol: "助推器", spacexXLink: "在 X 上关注 @SpaceX", systemsGo: "系统正常", finalCountdown: "最终倒计时", watchLaunch: "观看发射", openOnYoutube: "在 YouTube 打开", watchDetailsVideo: "观看发射详情和视频", viewMissionDetails: "查看任务详情 →" },
-            it: { nextLaunch: "PROSSIMO LANCIO", upcomingLaunches: "Lanci di Quest'Anno", launchWindow: "FINESTRA DI LANCIO", launchSite: "SITO DI LANCIO", recoveryZone: "ZONA DI RECUPERO", recoveryZoneInfo: "INFORMAZIONI SULLA ZONA DI RECUPERO", launchesSection: "Lanci Programmati", pastLaunchesSection: "Lanci Recenti", vehicleType: "TIPO DI RAZZO", orbitDestination: "DESTINAZIONE ORBITALE", asds: "Nave Drone Autonoma (ASDS)", filterAll: "Tutti", filterDragon: "Dragon/Crew", boosterTitle: "Classifica Voli dei Booster", boosterSubtitle: "Booster Falcon 9 e Super Heavy con più voli dai dati in tempo reale", boosterAnalyzing: "Analisi dei dati di volo dei booster...", boosterNoData: "Nessun dato di volo booster disponibile ancora.", flights: "Voli", boosterRank: "Posizione", boosterCol: "Booster", spacexXLink: "Segui @SpaceX su X", systemsGo: "SISTEMI PRONTI", finalCountdown: "CONTO ALLA ROVESCIA FINALE", watchLaunch: "Guarda il lancio", openOnYoutube: "Apri su YouTube", watchDetailsVideo: "Guarda Dettagli e Video del Lancio", viewMissionDetails: "Vedi Dettagli della Missione →" },
-            cs: { nextLaunch: "PŘÍŠTÍ START", upcomingLaunches: "Starty v tomto roce", launchWindow: "STARTOVACÍ OKNO", launchSite: "MÍSTO STARTU", recoveryZone: "OBLAST PŘISTÁNÍ", recoveryZoneInfo: "INFORMACE O OBLASTI PŘISTÁNÍ", launchesSection: "Plánované starty", pastLaunchesSection: "Nedávné starty", vehicleType: "TYP RAKETY", orbitDestination: "ORBITÁLNÍ CÍL", asds: "Autonomní robotická loď (ASDS)", filterAll: "Vše", filterDragon: "Dragon/Crew", boosterTitle: "Žebříček letů boosterů", boosterSubtitle: "Nejvíce létané boostery Falcon 9 a Super Heavy podle živých dat", boosterAnalyzing: "Analyzuji data letů boosterů...", boosterNoData: "Zatím nejsou dostupná žádná data o letech boosterů.", flights: "Lety", boosterRank: "Pořadí", boosterCol: "Booster", spacexXLink: "Sledujte @SpaceX na X", systemsGo: "SYSTÉMY PŘIPRAVENY", finalCountdown: "FINÁLNÍ ODPOČET", watchLaunch: "Sledovat start", openOnYoutube: "Otevřít na YouTube", watchDetailsVideo: "Zobrazit podrobnosti startu a video", viewMissionDetails: "Zobrazit podrobnosti mise →" },
-            sv: { nextLaunch: "NÄSTA UPPSKJUTNING", upcomingLaunches: "Uppskjutningar i år", launchWindow: "UPPSKJUTNINGSFÖNSTER", launchSite: "UPPSKJUTNINGSPLATS", recoveryZone: "LANDNINGSZON", recoveryZoneInfo: "INFORMATION OM LANDNINGSZON", launchesSection: "Planerade uppskjutningar", pastLaunchesSection: "Senaste uppskjutningar", vehicleType: "RAKETTYP", orbitDestination: "ORBITAL DESTINATION", asds: "Autonomt dronfartyg (ASDS)", filterAll: "Alla", filterDragon: "Dragon/Crew", boosterTitle: "Booster-flygledartavla", boosterSubtitle: "Mest flugna Falcon 9- och Super Heavy-boosters från live-uppdragsdata", boosterAnalyzing: "Analyserar booster-flygdata...", boosterNoData: "Ingen booster-flygdata tillgänglig ännu.", flights: "Flygningar", boosterRank: "Plats", boosterCol: "Booster", spacexXLink: "Följ @SpaceX på X", systemsGo: "SYSTEM KLARA", finalCountdown: "SISTA NEDRÄKNINGEN", watchLaunch: "Titta på uppskjutningen", openOnYoutube: "Öppna på YouTube", watchDetailsVideo: "Se uppskjutningsdetaljer och video", viewMissionDetails: "Se uppdragsdetaljer →" },
-            nl: { nextLaunch: "VOLGENDE LANCERING", upcomingLaunches: "Lanceringen Dit Jaar", launchWindow: "LANCEERVENSTER", launchSite: "LANCEERPLAATS", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "INFORMATIE LANDINGSZONE", launchesSection: "Geplande Lanceringen", pastLaunchesSection: "Recente lanceringen", vehicleType: "RAKETTYPE", orbitDestination: "BAANBESTEMMING", asds: "Autonoom droneschip (ASDS)", filterAll: "Alles", filterDragon: "Dragon/Crew", boosterTitle: "Booster-vluchtklassement", boosterSubtitle: "Meest gevlogen Falcon 9- en Super Heavy-boosters uit live missiedata", boosterAnalyzing: "Booster-vluchtdata analyseren...", boosterNoData: "Nog geen booster-vluchtdata beschikbaar.", flights: "Vluchten", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Volg @SpaceX op X", systemsGo: "SYSTEMEN GEREED", finalCountdown: "LAATSTE AFTELLEN", watchLaunch: "Bekijk de lancering", openOnYoutube: "Open op YouTube", watchDetailsVideo: "Bekijk lanceringsdetails en video", viewMissionDetails: "Bekijk missiedetails →" },
-            da: { nextLaunch: "NÆSTE OPSENDELSE", upcomingLaunches: "Opsendelser i år", launchWindow: "OPSENDELSESVINDUE", launchSite: "OPSENDELSESSTED", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "OPLYSNINGER OM LANDINGSZONE", launchesSection: "Planlagte Opsendelser", pastLaunchesSection: "Seneste opsendelser", vehicleType: "RAKETTYPE", orbitDestination: "BANEDESTINATION", asds: "Autonomt droneskib (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "Booster-flyverangliste", boosterSubtitle: "Mest fløjne Falcon 9- og Super Heavy-boostere fra live missionsdata", boosterAnalyzing: "Analyserer booster-flyvedata...", boosterNoData: "Ingen booster-flyvedata tilgængelige endnu.", flights: "Flyvninger", boosterRank: "Plads", boosterCol: "Booster", spacexXLink: "Følg @SpaceX på X", systemsGo: "SYSTEMER KLAR", finalCountdown: "SIDSTE NEDTÆLLING", watchLaunch: "Se opsendelsen", openOnYoutube: "Åbn på YouTube", watchDetailsVideo: "Se opsendelsesdetaljer og video", viewMissionDetails: "Se missionsdetaljer →" },
-            pt: { nextLaunch: "PRÓXIMO LANÇAMENTO", upcomingLaunches: "Lançamentos Este Ano", launchWindow: "JANELA DE LANÇAMENTO", launchSite: "LOCAL DE LANÇAMENTO", recoveryZone: "ZONA DE RECUPERAÇÃO", recoveryZoneInfo: "INFORMAÇÕES DA ZONA DE RECUPERAÇÃO", launchesSection: "Lançamentos Programados", pastLaunchesSection: "Lançamentos Recentes", vehicleType: "TIPO DE FOGUETE", orbitDestination: "DESTINO ORBITAL", asds: "Navio-Drone Autônomo (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Ranking de Voos de Boosters", boosterSubtitle: "Boosters Falcon 9 e Super Heavy com mais voos a partir de dados ao vivo", boosterAnalyzing: "Analisando dados de voos de boosters...", boosterNoData: "Ainda não há dados de voos de boosters disponíveis.", flights: "Voos", boosterRank: "Posição", boosterCol: "Booster", spacexXLink: "Siga @SpaceX no X", systemsGo: "SISTEMAS PRONTOS", finalCountdown: "CONTAGEM REGRESSIVA FINAL", watchLaunch: "Assistir ao lançamento", openOnYoutube: "Abrir no YouTube", watchDetailsVideo: "Ver Detalhes e Vídeo do Lançamento", viewMissionDetails: "Ver Detalhes da Missão →" },
-            pl: { nextLaunch: "NASTĘPNY START", upcomingLaunches: "Starty w tym roku", launchWindow: "OKNO STARTOWE", launchSite: "MIEJSCE STARTU", recoveryZone: "STREFA LĄDOWANIA", recoveryZoneInfo: "INFORMACJE O STREFIE LĄDOWANIA", launchesSection: "Planowane starty", pastLaunchesSection: "Ostatnie starty", vehicleType: "TYP RAKIETY", orbitDestination: "CEL ORBITALNY", asds: "Autonomiczny statek-dron (ASDS)", filterAll: "Wszystkie", filterDragon: "Dragon/Crew", boosterTitle: "Ranking lotów boosterów", boosterSubtitle: "Najczęściej latające boostery Falcon 9 i Super Heavy na podstawie danych na żywo", boosterAnalyzing: "Analizowanie danych lotów boosterów...", boosterNoData: "Brak jeszcze danych o lotach boosterów.", flights: "Loty", boosterRank: "Pozycja", boosterCol: "Booster", spacexXLink: "Śledź @SpaceX na X", systemsGo: "SYSTEMY GOTOWE", finalCountdown: "OSTATECZNE ODLICZANIE", watchLaunch: "Obejrzyj start", openOnYoutube: "Otwórz na YouTube", watchDetailsVideo: "Obejrzyj szczegóły startu i wideo", viewMissionDetails: "Zobacz szczegóły misji →" },
-            hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "इस वर्ष के प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल", recoveryZone: "पुनर्प्राप्ति क्षेत्र", recoveryZoneInfo: "पुनर्प्राप्ति क्षेत्र की जानकारी", launchesSection: "नियोजित प्रक्षेपण", pastLaunchesSection: "हाल के प्रक्षेपण", vehicleType: "रॉकेट प्रकार", orbitDestination: "कक्षा गंतव्य", asds: "स्वायत्त ड्रोन जहाज (ASDS)", filterAll: "सभी", filterDragon: "ड्रैगन/क्रू", boosterTitle: "बूस्टर उड़ान लीडरबोर्ड", boosterSubtitle: "लाइव मिशन डेटा से सबसे अधिक उड़े फाल्कन 9 और सुपर हेवी बूस्टर", boosterAnalyzing: "बूस्टर उड़ान डेटा का विश्लेषण...", boosterNoData: "अभी तक कोई बूस्टर उड़ान डेटा उपलब्ध नहीं।", flights: "उड़ानें", boosterRank: "रैंक", boosterCol: "बूस्टर", spacexXLink: "X पर @SpaceX को फॉलो करें", systemsGo: "सिस्टम तैयार", finalCountdown: "अंतिम उलटी गिनती", watchLaunch: "प्रक्षेपण देखें", openOnYoutube: "YouTube पर खोलें", watchDetailsVideo: "प्रक्षेपण विवरण और वीडियो देखें", viewMissionDetails: "मिशन विवरण देखें →" },
-            ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق هذا العام", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق", recoveryZone: "منطقة الاسترداد", recoveryZoneInfo: "معلومات منطقة الاسترداد", launchesSection: "عمليات الإطلاق المجدولة", pastLaunchesSection: "عمليات الإطلاق الأخيرة", vehicleType: "نوع الصاروخ", orbitDestination: "الوجهة المدارية", asds: "سفينة الإنزال الذاتية (ASDS)", filterAll: "الكل", filterDragon: "دراغون/طاقم", boosterTitle: "تصنيف رحلات المعززات", boosterSubtitle: "معززات فالكون 9 وسوبر هيفي الأكثر استخداماً حسب بيانات المهام الحية", boosterAnalyzing: "جاري تحليل بيانات رحلات المعززات...", boosterNoData: "لا تتوفر بيانات رحلات المعززات بعد.", flights: "رحلات", boosterRank: "الترتيب", boosterCol: "المعزز", spacexXLink: "تابع @SpaceX على X", systemsGo: "الأنظمة جاهزة", finalCountdown: "العد التنازلي الأخير", watchLaunch: "شاهد الإطلاق", openOnYoutube: "افتح على YouTube", watchDetailsVideo: "شاهد تفاصيل الإطلاق والفيديو", viewMissionDetails: "عرض تفاصيل المهمة ←" },
-            tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son Fırlatmalar", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", boosterTitle: "Booster Uçuş Sıralaması", boosterSubtitle: "Canlı görev verilerinden en çok uçan Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" },
+            en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Launches This Year", launchWindow: "LAUNCH WINDOW", launchSite: "LAUNCH SITE", recoveryZone: "RECOVERY ZONE", recoveryZoneInfo: "RECOVERY ZONE INFORMATION", launchesSection: "Scheduled Launches", pastLaunchesSection: "Recent Past Launches", vehicleType: "VEHICLE TYPE", orbitDestination: "ORBIT DESTINATION", asds: "Autonomous Spaceport Drone Ship (ASDS)", filterAll: "All", filterDragon: "Dragon/Crew", boosterTitle: "Booster Flight Leaderboard", boosterSubtitle: "Most-flown Falcon 9 & Super Heavy boosters from live mission data", boosterAnalyzing: "Analyzing booster flight data...", boosterNoData: "No booster flight data available yet.", flights: "Flights", boosterRank: "Rank", boosterCol: "Booster", spacexXLink: "Follow @SpaceX on X", systemsGo: "SYSTEMS GO", finalCountdown: "FINAL COUNTDOWN", watchLaunch: "Watch the Launch", openOnYoutube: "Open on YouTube", watchDetailsVideo: "Watch Launch Details and Video", viewMissionDetails: "View Mission Details →" , missionInProgress: "MISSION IN PROGRESS", holdDelayed: "HOLD / DELAYED" },
+            he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "דירוג טיסות בוסטרים", boosterSubtitle: "הבוסטרים עם מספר הטיסות הגבוה ביותר מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה" },
+            iw: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "דירוג טיסות בוסטרים", boosterSubtitle: "הבוסטרים עם מספר הטיסות הגבוה ביותר מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה" },
+            es: { nextLaunch: "PRÓXIMO LANZAMIENTO", upcomingLaunches: "Lanzamientos Este Año", launchWindow: "VENTANA DE LANZAMIENTO", launchSite: "SITIO DE LANZAMIENTO", recoveryZone: "ZONA DE RECUPERACIÓN", recoveryZoneInfo: "INFORMACIÓN DE LA ZONA DE RECUPERACIÓN", launchesSection: "Lanzamientos Programados", pastLaunchesSection: "Lanzamientos Recientes", vehicleType: "TIPO DE COHETE", orbitDestination: "DESTINO ORBITAL", asds: "Nave Dron Autónoma de Aterrizaje (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Clasificación de Vuelos de Boosters", boosterSubtitle: "Boosters Falcon 9 y Super Heavy con más vuelos según datos en vivo", boosterAnalyzing: "Analizando datos de vuelos de boosters...", boosterNoData: "Aún no hay datos de vuelos de boosters.", flights: "Vuelos", boosterRank: "Puesto", boosterCol: "Booster", spacexXLink: "Sigue a @SpaceX en X", systemsGo: "TODO LISTO", finalCountdown: "CUENTA REGRESIVA FINAL", watchLaunch: "Ver el lanzamiento", openOnYoutube: "Abrir en YouTube", watchDetailsVideo: "Ver Detalles y Video del Lanzamiento", viewMissionDetails: "Ver Detalles de la Misión →" , missionInProgress: "MISIÓN EN CURSO", holdDelayed: "RETENCIÓN / RETRASO" },
+            fr: { nextLaunch: "PROCHAIN LANCEMENT", upcomingLaunches: "Lancements Cette Année", launchWindow: "FENÊTRE DE LANCEMENT", launchSite: "SITE DE LANCEMENT", recoveryZone: "ZONE DE RÉCUPÉRATION", recoveryZoneInfo: "INFORMATIONS SUR LA ZONE DE RÉCUPÉRATION", launchesSection: "Lancements Programmés", pastLaunchesSection: "Lancements Récents", vehicleType: "TYPE DE FUSÉE", orbitDestination: "DESTINATION ORBITALE", asds: "Navire-Drone Autonome d'Atterrissage (ASDS)", filterAll: "Tous", filterDragon: "Dragon/Crew", boosterTitle: "Classement des Vols de Boosters", boosterSubtitle: "Boosters Falcon 9 et Super Heavy les plus utilisés selon les données en direct", boosterAnalyzing: "Analyse des données de vol des boosters...", boosterNoData: "Aucune donnée de vol de booster disponible pour le moment.", flights: "Vols", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Suivez @SpaceX sur X", systemsGo: "SYSTÈMES PRÊTS", finalCountdown: "COMPTE À REBOURS FINAL", watchLaunch: "Voir le lancement", openOnYoutube: "Ouvrir sur YouTube", watchDetailsVideo: "Voir les Détails et la Vidéo du Lancement", viewMissionDetails: "Voir les Détails de la Mission →" , missionInProgress: "MISSION EN COURS", holdDelayed: "ATTENTE / RETARD" },
+            de: { nextLaunch: "NÄCHSTER START", upcomingLaunches: "Starts Dieses Jahr", launchWindow: "STARTFENSTER", launchSite: "STARTPLATZ", recoveryZone: "LANDEZONE", recoveryZoneInfo: "INFORMATIONEN ZUR LANDEZONE", launchesSection: "Geplante Starts", pastLaunchesSection: "Letzte Starts", vehicleType: "RAKETENTYP", orbitDestination: "ORBITALES ZIEL", asds: "Autonomes Drohnenschiff (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "Booster-Flug-Rangliste", boosterSubtitle: "Am häufigsten geflogene Falcon 9- und Super Heavy-Booster aus Live-Daten", boosterAnalyzing: "Analysiere Booster-Flugdaten...", boosterNoData: "Noch keine Booster-Flugdaten verfügbar.", flights: "Flüge", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Folge @SpaceX auf X", systemsGo: "SYSTEME BEREIT", finalCountdown: "FINALER COUNTDOWN", watchLaunch: "Start ansehen", openOnYoutube: "Auf YouTube öffnen", watchDetailsVideo: "Startdetails und Video ansehen", viewMissionDetails: "Missionsdetails ansehen →" , missionInProgress: "MISSION LÄUFT", holdDelayed: "HALT / VERZÖGERUNG" },
+            ru: { nextLaunch: "СЛЕДУЮЩИЙ ЗАПУСК", upcomingLaunches: "Запуски в этом году", launchWindow: "ОКНО ЗАПУСКА", launchSite: "МЕСТО ЗАПУСКА", recoveryZone: "ЗОНА ПОСАДКИ", recoveryZoneInfo: "ИНФОРМАЦИЯ О ЗОНЕ ПОСАДКИ", launchesSection: "Запланированные запуски", pastLaunchesSection: "Недавние запуски", vehicleType: "ТИП РАКЕТЫ", orbitDestination: "ОРБИТАЛЬНЫЙ ПУНКТ НАЗНАЧЕНИЯ", asds: "Автономный дрон-корабль (ASDS)", filterAll: "Все", filterDragon: "Драгон/экипаж", boosterTitle: "Рейтинг полётов бустеров", boosterSubtitle: "Бустеры Falcon 9 и Super Heavy с наибольшим числом полётов по актуальным данным", boosterAnalyzing: "Анализ данных полётов бустеров...", boosterNoData: "Данные о полётах бустеров пока недоступны.", flights: "Полёты", boosterRank: "Место", boosterCol: "Бустер", spacexXLink: "Подписывайтесь на @SpaceX в X", systemsGo: "СИСТЕМЫ ГОТОВЫ", finalCountdown: "ФИНАЛЬНЫЙ ОТСЧЁТ", watchLaunch: "Смотреть запуск", openOnYoutube: "Открыть на YouTube", watchDetailsVideo: "Смотреть детали запуска и видео", viewMissionDetails: "Смотреть детали миссии →" , missionInProgress: "МИССИЯ ВЫПОЛНЯЕТСЯ", holdDelayed: "ЗАДЕРЖКА / ОТСРОЧКА" },
+            zh: { nextLaunch: "下一次发射", upcomingLaunches: "本年度发射", launchWindow: "发射窗口", launchSite: "发射场", recoveryZone: "回收区", recoveryZoneInfo: "回收区信息", launchesSection: "计划发射", pastLaunchesSection: "近期发射记录", vehicleType: "火箭类型", orbitDestination: "轨道目的地", asds: "自主无人驳船 (ASDS)", filterAll: "全部", filterDragon: "龙飞船/载人", boosterTitle: "助推器飞行次数排行榜", boosterSubtitle: "根据实时任务数据统计的飞行次数最多的猎鹰9号和超级重型助推器", boosterAnalyzing: "正在分析助推器飞行数据...", boosterNoData: "暂无助推器飞行数据。", flights: "飞行次数", boosterRank: "排名", boosterCol: "助推器", spacexXLink: "在 X 上关注 @SpaceX", systemsGo: "系统正常", finalCountdown: "最终倒计时", watchLaunch: "观看发射", openOnYoutube: "在 YouTube 打开", watchDetailsVideo: "观看发射详情和视频", viewMissionDetails: "查看任务详情 →" , missionInProgress: "任务进行中", holdDelayed: "暂停 / 延迟" },
+            it: { nextLaunch: "PROSSIMO LANCIO", upcomingLaunches: "Lanci di Quest'Anno", launchWindow: "FINESTRA DI LANCIO", launchSite: "SITO DI LANCIO", recoveryZone: "ZONA DI RECUPERO", recoveryZoneInfo: "INFORMAZIONI SULLA ZONA DI RECUPERO", launchesSection: "Lanci Programmati", pastLaunchesSection: "Lanci Recenti", vehicleType: "TIPO DI RAZZO", orbitDestination: "DESTINAZIONE ORBITALE", asds: "Nave Drone Autonoma (ASDS)", filterAll: "Tutti", filterDragon: "Dragon/Crew", boosterTitle: "Classifica Voli dei Booster", boosterSubtitle: "Booster Falcon 9 e Super Heavy con più voli dai dati in tempo reale", boosterAnalyzing: "Analisi dei dati di volo dei booster...", boosterNoData: "Nessun dato di volo booster disponibile ancora.", flights: "Voli", boosterRank: "Posizione", boosterCol: "Booster", spacexXLink: "Segui @SpaceX su X", systemsGo: "SISTEMI PRONTI", finalCountdown: "CONTO ALLA ROVESCIA FINALE", watchLaunch: "Guarda il lancio", openOnYoutube: "Apri su YouTube", watchDetailsVideo: "Guarda Dettagli e Video del Lancio", viewMissionDetails: "Vedi Dettagli della Missione →" , missionInProgress: "MISSIONE IN CORSO", holdDelayed: "ATTESA / RITARDO" },
+            cs: { nextLaunch: "PŘÍŠTÍ START", upcomingLaunches: "Starty v tomto roce", launchWindow: "STARTOVACÍ OKNO", launchSite: "MÍSTO STARTU", recoveryZone: "OBLAST PŘISTÁNÍ", recoveryZoneInfo: "INFORMACE O OBLASTI PŘISTÁNÍ", launchesSection: "Plánované starty", pastLaunchesSection: "Nedávné starty", vehicleType: "TYP RAKETY", orbitDestination: "ORBITÁLNÍ CÍL", asds: "Autonomní robotická loď (ASDS)", filterAll: "Vše", filterDragon: "Dragon/Crew", boosterTitle: "Žebříček letů boosterů", boosterSubtitle: "Nejvíce létané boostery Falcon 9 a Super Heavy podle živých dat", boosterAnalyzing: "Analyzuji data letů boosterů...", boosterNoData: "Zatím nejsou dostupná žádná data o letech boosterů.", flights: "Lety", boosterRank: "Pořadí", boosterCol: "Booster", spacexXLink: "Sledujte @SpaceX na X", systemsGo: "SYSTÉMY PŘIPRAVENY", finalCountdown: "FINÁLNÍ ODPOČET", watchLaunch: "Sledovat start", openOnYoutube: "Otevřít na YouTube", watchDetailsVideo: "Zobrazit podrobnosti startu a video", viewMissionDetails: "Zobrazit podrobnosti mise →" , missionInProgress: "MISE PROBÍHÁ", holdDelayed: "ZDRŽENÍ / ODKLAD" },
+            sv: { nextLaunch: "NÄSTA UPPSKJUTNING", upcomingLaunches: "Uppskjutningar i år", launchWindow: "UPPSKJUTNINGSFÖNSTER", launchSite: "UPPSKJUTNINGSPLATS", recoveryZone: "LANDNINGSZON", recoveryZoneInfo: "INFORMATION OM LANDNINGSZON", launchesSection: "Planerade uppskjutningar", pastLaunchesSection: "Senaste uppskjutningar", vehicleType: "RAKETTYP", orbitDestination: "ORBITAL DESTINATION", asds: "Autonomt dronfartyg (ASDS)", filterAll: "Alla", filterDragon: "Dragon/Crew", boosterTitle: "Booster-flygledartavla", boosterSubtitle: "Mest flugna Falcon 9- och Super Heavy-boosters från live-uppdragsdata", boosterAnalyzing: "Analyserar booster-flygdata...", boosterNoData: "Ingen booster-flygdata tillgänglig ännu.", flights: "Flygningar", boosterRank: "Plats", boosterCol: "Booster", spacexXLink: "Följ @SpaceX på X", systemsGo: "SYSTEM KLARA", finalCountdown: "SISTA NEDRÄKNINGEN", watchLaunch: "Titta på uppskjutningen", openOnYoutube: "Öppna på YouTube", watchDetailsVideo: "Se uppskjutningsdetaljer och video", viewMissionDetails: "Se uppdragsdetaljer →" , missionInProgress: "UPPDRAG PÅGÅR", holdDelayed: "UPPEHÅLL / FÖRSENING" },
+            nl: { nextLaunch: "VOLGENDE LANCERING", upcomingLaunches: "Lanceringen Dit Jaar", launchWindow: "LANCEERVENSTER", launchSite: "LANCEERPLAATS", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "INFORMATIE LANDINGSZONE", launchesSection: "Geplande Lanceringen", pastLaunchesSection: "Recente lanceringen", vehicleType: "RAKETTYPE", orbitDestination: "BAANBESTEMMING", asds: "Autonoom droneschip (ASDS)", filterAll: "Alles", filterDragon: "Dragon/Crew", boosterTitle: "Booster-vluchtklassement", boosterSubtitle: "Meest gevlogen Falcon 9- en Super Heavy-boosters uit live missiedata", boosterAnalyzing: "Booster-vluchtdata analyseren...", boosterNoData: "Nog geen booster-vluchtdata beschikbaar.", flights: "Vluchten", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Volg @SpaceX op X", systemsGo: "SYSTEMEN GEREED", finalCountdown: "LAATSTE AFTELLEN", watchLaunch: "Bekijk de lancering", openOnYoutube: "Open op YouTube", watchDetailsVideo: "Bekijk lanceringsdetails en video", viewMissionDetails: "Bekijk missiedetails →" , missionInProgress: "MISSIE BEZIG", holdDelayed: "VERTRAGING / UITSTEL" },
+            da: { nextLaunch: "NÆSTE OPSENDELSE", upcomingLaunches: "Opsendelser i år", launchWindow: "OPSENDELSESVINDUE", launchSite: "OPSENDELSESSTED", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "OPLYSNINGER OM LANDINGSZONE", launchesSection: "Planlagte Opsendelser", pastLaunchesSection: "Seneste opsendelser", vehicleType: "RAKETTYPE", orbitDestination: "BANEDESTINATION", asds: "Autonomt droneskib (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "Booster-flyverangliste", boosterSubtitle: "Mest fløjne Falcon 9- og Super Heavy-boostere fra live missionsdata", boosterAnalyzing: "Analyserer booster-flyvedata...", boosterNoData: "Ingen booster-flyvedata tilgængelige endnu.", flights: "Flyvninger", boosterRank: "Plads", boosterCol: "Booster", spacexXLink: "Følg @SpaceX på X", systemsGo: "SYSTEMER KLAR", finalCountdown: "SIDSTE NEDTÆLLING", watchLaunch: "Se opsendelsen", openOnYoutube: "Åbn på YouTube", watchDetailsVideo: "Se opsendelsesdetaljer og video", viewMissionDetails: "Se missionsdetaljer →" , missionInProgress: "MISSION I GANG", holdDelayed: "OPHOLD / FORSINKELSE" },
+            pt: { nextLaunch: "PRÓXIMO LANÇAMENTO", upcomingLaunches: "Lançamentos Este Ano", launchWindow: "JANELA DE LANÇAMENTO", launchSite: "LOCAL DE LANÇAMENTO", recoveryZone: "ZONA DE RECUPERAÇÃO", recoveryZoneInfo: "INFORMAÇÕES DA ZONA DE RECUPERAÇÃO", launchesSection: "Lançamentos Programados", pastLaunchesSection: "Lançamentos Recentes", vehicleType: "TIPO DE FOGUETE", orbitDestination: "DESTINO ORBITAL", asds: "Navio-Drone Autônomo (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Ranking de Voos de Boosters", boosterSubtitle: "Boosters Falcon 9 e Super Heavy com mais voos a partir de dados ao vivo", boosterAnalyzing: "Analisando dados de voos de boosters...", boosterNoData: "Ainda não há dados de voos de boosters disponíveis.", flights: "Voos", boosterRank: "Posição", boosterCol: "Booster", spacexXLink: "Siga @SpaceX no X", systemsGo: "SISTEMAS PRONTOS", finalCountdown: "CONTAGEM REGRESSIVA FINAL", watchLaunch: "Assistir ao lançamento", openOnYoutube: "Abrir no YouTube", watchDetailsVideo: "Ver Detalhes e Vídeo do Lançamento", viewMissionDetails: "Ver Detalhes da Missão →" , missionInProgress: "MISSÃO EM ANDAMENTO", holdDelayed: "RETENÇÃO / ATRASO" },
+            pl: { nextLaunch: "NASTĘPNY START", upcomingLaunches: "Starty w tym roku", launchWindow: "OKNO STARTOWE", launchSite: "MIEJSCE STARTU", recoveryZone: "STREFA LĄDOWANIA", recoveryZoneInfo: "INFORMACJE O STREFIE LĄDOWANIA", launchesSection: "Planowane starty", pastLaunchesSection: "Ostatnie starty", vehicleType: "TYP RAKIETY", orbitDestination: "CEL ORBITALNY", asds: "Autonomiczny statek-dron (ASDS)", filterAll: "Wszystkie", filterDragon: "Dragon/Crew", boosterTitle: "Ranking lotów boosterów", boosterSubtitle: "Najczęściej latające boostery Falcon 9 i Super Heavy na podstawie danych na żywo", boosterAnalyzing: "Analizowanie danych lotów boosterów...", boosterNoData: "Brak jeszcze danych o lotach boosterów.", flights: "Loty", boosterRank: "Pozycja", boosterCol: "Booster", spacexXLink: "Śledź @SpaceX na X", systemsGo: "SYSTEMY GOTOWE", finalCountdown: "OSTATECZNE ODLICZANIE", watchLaunch: "Obejrzyj start", openOnYoutube: "Otwórz na YouTube", watchDetailsVideo: "Obejrzyj szczegóły startu i wideo", viewMissionDetails: "Zobacz szczegóły misji →" , missionInProgress: "MISJA W TOKU", holdDelayed: "WSTRZYMANIE / OPÓŹNIENIE" },
+            hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "इस वर्ष के प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल", recoveryZone: "पुनर्प्राप्ति क्षेत्र", recoveryZoneInfo: "पुनर्प्राप्ति क्षेत्र की जानकारी", launchesSection: "नियोजित प्रक्षेपण", pastLaunchesSection: "हाल के प्रक्षेपण", vehicleType: "रॉकेट प्रकार", orbitDestination: "कक्षा गंतव्य", asds: "स्वायत्त ड्रोन जहाज (ASDS)", filterAll: "सभी", filterDragon: "ड्रैगन/क्रू", boosterTitle: "बूस्टर उड़ान लीडरबोर्ड", boosterSubtitle: "लाइव मिशन डेटा से सबसे अधिक उड़े फाल्कन 9 और सुपर हेवी बूस्टर", boosterAnalyzing: "बूस्टर उड़ान डेटा का विश्लेषण...", boosterNoData: "अभी तक कोई बूस्टर उड़ान डेटा उपलब्ध नहीं।", flights: "उड़ानें", boosterRank: "रैंक", boosterCol: "बूस्टर", spacexXLink: "X पर @SpaceX को फॉलो करें", systemsGo: "सिस्टम तैयार", finalCountdown: "अंतिम उलटी गिनती", watchLaunch: "प्रक्षेपण देखें", openOnYoutube: "YouTube पर खोलें", watchDetailsVideo: "प्रक्षेपण विवरण और वीडियो देखें", viewMissionDetails: "मिशन विवरण देखें →" , missionInProgress: "मिशन जारी है", holdDelayed: "होल्ड / देरी" },
+            ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق هذا العام", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق", recoveryZone: "منطقة الاسترداد", recoveryZoneInfo: "معلومات منطقة الاسترداد", launchesSection: "عمليات الإطلاق المجدولة", pastLaunchesSection: "عمليات الإطلاق الأخيرة", vehicleType: "نوع الصاروخ", orbitDestination: "الوجهة المدارية", asds: "سفينة الإنزال الذاتية (ASDS)", filterAll: "الكل", filterDragon: "دراغون/طاقم", boosterTitle: "تصنيف رحلات المعززات", boosterSubtitle: "معززات فالكون 9 وسوبر هيفي الأكثر استخداماً حسب بيانات المهام الحية", boosterAnalyzing: "جاري تحليل بيانات رحلات المعززات...", boosterNoData: "لا تتوفر بيانات رحلات المعززات بعد.", flights: "رحلات", boosterRank: "الترتيب", boosterCol: "المعزز", spacexXLink: "تابع @SpaceX على X", systemsGo: "الأنظمة جاهزة", finalCountdown: "العد التنازلي الأخير", watchLaunch: "شاهد الإطلاق", openOnYoutube: "افتح على YouTube", watchDetailsVideo: "شاهد تفاصيل الإطلاق والفيديو", viewMissionDetails: "عرض تفاصيل المهمة ←" , missionInProgress: "المهمة قيد التنفيذ", holdDelayed: "تعليق / تأخير" },
+            tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son Fırlatmalar", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", boosterTitle: "Booster Uçuş Sıralaması", boosterSubtitle: "Canlı görev verilerinden en çok uçan Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" , missionInProgress: "GÖREV DEVAM EDİYOR", holdDelayed: "BEKLEME / GECİKME" },
         };
         let lastAppliedLaunchLabelLang = null;
         function applyLaunchLabelTranslations(currentLang) {
@@ -1078,6 +1082,15 @@
                     } else {
                         statusTextEl.innerText = dict.finalCountdown;
                     }
+                }
+
+                // Manual translations (not Google Translate, which is blocked on this element
+                // via translate="no" so it doesn't mangle the live-updating digits) for the
+                // two status strings the countdown itself can show once it hits zero.
+                const heroCountdownEl = document.getElementById('hero-countdown');
+                if (heroCountdownEl) {
+                    heroCountdownEl.dataset.inProgressText = dict.missionInProgress || LAUNCH_LABEL_I18N.en.missionInProgress;
+                    heroCountdownEl.dataset.holdText = dict.holdDelayed || LAUNCH_LABEL_I18N.en.holdDelayed;
                 }
 
                 // Re-render booster leaderboard so the dynamic "flights" label updates immediately on language change
@@ -1581,34 +1594,6 @@
                     </div>
 
                     <div class="pt-6 space-y-3">
-                        <div id="hero-live-container" class="hidden w-full sm:max-w-md">
-                            <div id="hero-video-btn-row" class="flex flex-row flex-nowrap gap-2 sm:gap-3">
-                                <button type="button" id="hero-watch-live-btn"
-                                    class="flex-[3] min-w-0 group inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-red-500 md:hover:text-black border border-zinc-700 md:hover:border-red-500 text-zinc-300 text-[11px] sm:text-xs font-bold tracking-wider rounded-xl transition-all duration-300 shadow-sm whitespace-nowrap">
-                                    <i class="fa-solid fa-play text-[10px] text-red-400 md:group-hover:text-black animate-pulse"></i>
-                                    WATCH LIVE
-                                </button>
-                                <a id="hero-live-link" href="https://x.com/SpaceX" target="_blank" rel="noopener"
-                                    class="flex-[1] min-w-0 group inline-flex items-center justify-center text-center gap-1 px-1 py-2 sm:py-2.5 bg-zinc-800 border border-zinc-700 md:hover:border-red-500 text-zinc-300 text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all duration-300 shadow-sm no-underline">
-                                    <i id="hero-live-link-icon" class="fa-brands fa-youtube text-red-500 shrink-0"></i>
-                                    <span id="hero-live-link-label" class="leading-tight">YouTube</span>
-                                </a>
-                            </div>
-                            <div id="hero-video-section"
-                                class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video mt-3 w-full">
-                                <iframe id="hero-video-iframe" class="w-full h-full absolute inset-0" src=""
-                                    title="Live Launch Video" frameborder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                    allowfullscreen></iframe>
-                                <div id="hero-video-tap-overlay" onclick="revealMobileVideoControls('hero')"
-                                    class="absolute inset-0 z-[5] md:hidden"></div>
-                                <button type="button" id="hero-video-close-btn" title="Close"
-                                    class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-0 pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
-                                    <i class="fa-solid fa-xmark text-sm text-red-500"></i>
-                                </button>
-                            </div>
-                        </div>
-
                         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                             <button id="hero-details-btn"
                                 class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm whitespace-nowrap shrink-0">
@@ -1620,6 +1605,25 @@
                                 class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-all duration-300 shadow-sm shrink-0"
                                 title="Remind Me">
                                 <i class="fa-solid fa-bell"></i>
+                            </button>
+
+                            <button type="button" id="hero-watch-live-btn"
+                                class="hidden group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 text-white text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm whitespace-nowrap shrink-0">
+                                <i id="hero-watch-live-icon" class="fa-solid fa-play text-[10px] animate-pulse"></i>
+                                <span id="hero-watch-live-label">WATCH LIVE</span>
+                            </button>
+                        </div>
+                        <div id="hero-video-section"
+                            class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video w-full sm:max-w-md">
+                            <iframe id="hero-video-iframe" class="w-full h-full absolute inset-0" src=""
+                                title="Live Launch Video" frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen></iframe>
+                            <div id="hero-video-tap-overlay" onclick="revealMobileVideoControls('hero')"
+                                class="absolute inset-0 z-[5] md:hidden"></div>
+                            <button type="button" id="hero-video-close-btn" title="Close"
+                                class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-0 pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
+                                <i class="fa-solid fa-xmark text-sm text-red-500"></i>
                             </button>
                         </div>
                     </div>
@@ -2266,12 +2270,6 @@
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <div class="relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg">
                     <div id="modal-image"></div>
-                    <div id="modal-live-container" class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 hidden z-30">
-                        <a id="modal-live-link" href="https://x.com/SpaceX" target="_blank"
-                            class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 md:hover:bg-red-700 text-white text-[10px] sm:text-xs font-bold tracking-wider rounded-xl transition-all shadow-lg animate-pulse">
-                            <i class="fa-solid fa-play text-[9px]"></i> WATCH LIVE
-                        </a>
-                    </div>
                 </div>
 
                 <!-- Launch video: button + embed (loaded only when user clicks "Watch the Launch") -->
@@ -2290,19 +2288,19 @@
                                 on YouTube</span>
                         </a>
                     </div>
-                    <div id="modal-video-section"
-                        class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video">
-                        <iframe id="modal-video-iframe" class="w-full h-full absolute inset-0" src=""
-                            title="Launch Video" frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen></iframe>
-                        <div id="modal-video-tap-overlay" onclick="revealMobileVideoControls()"
-                            class="absolute inset-0 z-[5] md:hidden"></div>
-                        <button type="button" id="modal-video-close-btn" title="Close"
-                            class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-0 pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
-                            <i class="fa-solid fa-xmark text-sm text-red-500"></i>
-                        </button>
-                    </div>
+                </div>
+                <div id="modal-video-section"
+                    class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video">
+                    <iframe id="modal-video-iframe" class="w-full h-full absolute inset-0" src=""
+                        title="Launch Video" frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen></iframe>
+                    <div id="modal-video-tap-overlay" onclick="revealMobileVideoControls()"
+                        class="absolute inset-0 z-[5] md:hidden"></div>
+                    <button type="button" id="modal-video-close-btn" title="Close"
+                        class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-0 pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
+                        <i class="fa-solid fa-xmark text-sm text-red-500"></i>
+                    </button>
                 </div>
                 <div id="modal-video-fallback" class="hidden">
                     <a id="modal-video-fallback-link" href="#" target="_blank" rel="noopener"
@@ -2311,7 +2309,13 @@
                     </a>
                 </div>
 
-                <div class="flex flex-row flex-nowrap gap-2 sm:gap-3">
+                <div id="modal-action-btn-row" class="flex flex-row flex-nowrap gap-2 sm:gap-3">
+                    <button id="modal-watch-live-btn"
+                        class="hidden w-1/3 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-3 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 rounded-2xl text-[11px] sm:text-sm font-bold tracking-wide text-white transition-all duration-300 shadow-md">
+                        <i class="fa-solid fa-play text-[10px] animate-pulse shrink-0"></i>
+                        <span id="modal-watch-live-label" class="truncate min-w-0 notranslate" translate="no"
+                            lang="en">WATCH LIVE</span>
+                    </button>
                     <button id="modal-share-btn"
                         class="w-1/2 min-w-0 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-share-nodes shrink-0"></i> <span class="truncate min-w-0">Share
@@ -2881,6 +2885,7 @@
         let currentFilter = 'all';
         let countdownIntervals = [];
         let refreshIntervalId = null;
+        let heroLiveCheckIntervalId = null;
         let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
         let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
 
@@ -3753,7 +3758,10 @@
                 const now = Date.now();
                 const diffMs = launchTime - now;
 
-                if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
+                // Fast-poll from 5 minutes before liftoff through 20 minutes after it - covers
+                // the window where a stream is most likely to just be starting, not only the
+                // countdown beforehand.
+                if (diffMs <= 5 * 60 * 1000 && diffMs >= -20 * 60 * 1000) {
                     intervalMs = 2 * 60 * 1000;
                 }
             }
@@ -4287,10 +4295,92 @@
             return match ? match[1] : null;
         }
 
+        // Spaceflight Now's YouTube channel reliably starts a live launch broadcast roughly
+        // 30 minutes before liftoff, independent of whether the Launch Library API has flagged
+        // a SpaceX-specific video as live yet. Embedding the channel in "live_stream" mode makes
+        // YouTube itself show whatever is currently live there - no video-ID lookup needed, and
+        // unlike an external link, this plays right inside the site.
+        const SFN_YT_CHANNEL_ID = 'UCoLdERT4-TJ82PJOHSrsZLQ';
+
+        function renderHeroLiveButton(nextLaunch) {
+            const watchLiveBtn = document.getElementById('hero-watch-live-btn');
+            const watchLiveIcon = document.getElementById('hero-watch-live-icon');
+            const watchLiveLabel = document.getElementById('hero-watch-live-label');
+            const heroVideoSection = document.getElementById('hero-video-section');
+            const heroVideoIframe = document.getElementById('hero-video-iframe');
+            const heroVideoCloseBtn = document.getElementById('hero-video-close-btn');
+            if (!watchLiveBtn) return;
+
+            // Don't tear down a player that's already open and playing just because this
+            // function got re-invoked by the 20-second ticker or a data refresh.
+            if (heroVideoSection && !heroVideoSection.classList.contains('hidden')) return;
+
+            const liveSrcUrl = nextLaunch.hasLiveVideo ? (nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "") : "";
+            const heroYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
+
+            const launchTimeMs = new Date(nextLaunch.date).getTime();
+            const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 25 && minutesToLaunch >= -180;
+
+            const embedSrc = heroYoutubeId
+                ? 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1'
+                : `https://www.youtube.com/embed/live_stream?channel=${SFN_YT_CHANNEL_ID}&autoplay=1`;
+
+            if (heroYoutubeId || withinLiveWindow) {
+                // heroYoutubeId: the API confirmed a specific, real SpaceX video - most precise.
+                // Otherwise: no confirmed video yet, but we're inside the pre-launch window -
+                // embed Spaceflight Now's channel live right here on the site.
+                watchLiveBtn.classList.remove('hidden');
+                if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
+                if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
+                watchLiveBtn.onclick = function () {
+                    if (!heroVideoIframe || !heroVideoSection) return;
+                    heroVideoIframe.src = embedSrc;
+                    heroVideoSection.classList.remove('hidden');
+                    resetVideoControlsOverlay('hero');
+                };
+            } else {
+                watchLiveBtn.classList.add('hidden');
+            }
+
+            if (heroVideoCloseBtn) {
+                heroVideoCloseBtn.onclick = function () {
+                    if (heroVideoIframe) heroVideoIframe.src = '';
+                    if (heroVideoSection) heroVideoSection.classList.add('hidden');
+                    resetVideoControlsOverlay('hero');
+                };
+            }
+        }
+
         function setupHeroBanner() {
             const heroBanner = document.getElementById('hero-banner');
-            if (dbMissions.length > 0) {
-                const nextLaunch = dbMissions[0];
+
+            // The 90-minute "In Progress" grace window is meant to keep a just-launched mission
+            // in the hero until the flight itself is basically done - but that classification
+            // happens in processLaunchData() based on our OWN read of the launch time. If the
+            // upstream API itself already stopped listing the mission as "upcoming" (which can
+            // happen right at liftoff, independent of our own logic), it lands in
+            // rawPastMissions before our grace window would have expired. This second check
+            // catches that case: if the most recent past mission launched within the last 90
+            // minutes and there's no other imminent upcoming launch to show instead, keep
+            // displaying it in the hero as in-progress.
+            const HERO_GRACE_MS = 90 * 60 * 1000;
+            let nextLaunch = null;
+
+            if (dbMissions.length > 0 && dbMissions[0].status === 'In Progress') {
+                nextLaunch = dbMissions[0];
+            } else if (rawPastMissions.length > 0) {
+                const mostRecentPast = rawPastMissions[0]; // sorted newest-first
+                const sinceLaunchMs = Date.now() - new Date(mostRecentPast.date).getTime();
+                if (sinceLaunchMs >= 0 && sinceLaunchMs <= HERO_GRACE_MS) {
+                    nextLaunch = Object.assign({}, mostRecentPast, { status: 'In Progress' });
+                }
+            }
+            if (!nextLaunch && dbMissions.length > 0) {
+                nextLaunch = dbMissions[0];
+            }
+
+            if (nextLaunch) {
                 document.getElementById('hero-name').innerText = nextLaunch.name;
 
                 let dateStr = 'TBD';
@@ -4305,77 +4395,9 @@
                 if (nextLaunch.windowStart === nextLaunch.windowEnd) winText = `${nextLaunch.windowStart} (Instant)`;
                 document.getElementById('hero-window').innerText = winText;
 
-                const liveBox = document.getElementById('hero-live-container');
-                const liveLink = document.getElementById('hero-live-link');
-                const liveLinkIcon = document.getElementById('hero-live-link-icon');
-                const liveLinkLabel = document.getElementById('hero-live-link-label');
-                const watchLiveBtn = document.getElementById('hero-watch-live-btn');
-                const heroVideoBtnRow = document.getElementById('hero-video-btn-row');
-                const heroVideoSection = document.getElementById('hero-video-section');
-                const heroVideoIframe = document.getElementById('hero-video-iframe');
-                const heroVideoCloseBtn = document.getElementById('hero-video-close-btn');
-
-                if (heroVideoIframe) heroVideoIframe.src = '';
-                if (heroVideoSection) heroVideoSection.classList.add('hidden');
-                if (heroVideoBtnRow) heroVideoBtnRow.classList.remove('hidden');
-                if (watchLiveBtn) watchLiveBtn.classList.remove('hidden');
-                resetVideoControlsOverlay('hero');
-                window._pendingHeroYoutubeId = null;
-
-                if (liveBox && liveLink) {
-                    // Require an actual, launch-specific stream link — never fall back to a
-                    // generic channel URL. If the API flagged hasLiveVideo but gave us no
-                    // real link, treat it the same as "no live video" and hide the button.
-                    const liveSrcUrl = nextLaunch.hasLiveVideo ? (nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "") : "";
-                    if (liveSrcUrl) {
-                        const heroYoutubeId = extractYoutubeId(liveSrcUrl);
-                        const isXLink = liveSrcUrl.includes('x.com') || liveSrcUrl.includes('twitter.com');
-
-                        liveLink.href = liveSrcUrl;
-
-                        if (heroYoutubeId) {
-                            // We have a real embeddable YouTube stream: show both buttons,
-                            // side by side, like the past-launches player.
-                            window._pendingHeroYoutubeId = heroYoutubeId;
-                            liveLink.classList.remove('flex-1');
-                            liveLink.classList.add('flex-[1]');
-                            if (liveLinkIcon) liveLinkIcon.className = 'fa-brands fa-youtube text-red-500 shrink-0';
-                            if (liveLinkLabel) liveLinkLabel.innerText = 'YouTube';
-                            if (watchLiveBtn) {
-                                watchLiveBtn.classList.remove('hidden');
-                                watchLiveBtn.onclick = function () {
-                                    if (!window._pendingHeroYoutubeId || !heroVideoIframe || !heroVideoSection) return;
-                                    heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + window._pendingHeroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
-                                    heroVideoSection.classList.remove('hidden');
-                                    if (heroVideoBtnRow) heroVideoBtnRow.classList.add('hidden');
-                                    resetVideoControlsOverlay('hero');
-                                };
-                            }
-                        } else {
-                            // No embeddable player available (e.g. the stream link is on X) —
-                            // just the single external link, full width.
-                            if (watchLiveBtn) watchLiveBtn.classList.add('hidden');
-                            if (liveLinkIcon) liveLinkIcon.className = isXLink ? 'fa-brands fa-x-twitter text-zinc-300 shrink-0' : 'fa-solid fa-play text-red-500 shrink-0';
-                            if (liveLinkLabel) liveLinkLabel.innerText = isXLink ? 'Watch on X' : 'Watch Live';
-                            liveLink.classList.remove('flex-[1]');
-                            liveLink.classList.add('flex-1');
-                        }
-
-                        if (heroVideoCloseBtn) {
-                            heroVideoCloseBtn.onclick = function () {
-                                if (heroVideoIframe) heroVideoIframe.src = '';
-                                if (heroVideoSection) heroVideoSection.classList.add('hidden');
-                                if (heroVideoBtnRow) heroVideoBtnRow.classList.remove('hidden');
-                                if (watchLiveBtn) watchLiveBtn.classList.remove('hidden');
-                                resetVideoControlsOverlay('hero');
-                            };
-                        }
-
-                        liveBox.classList.remove('hidden');
-                    } else {
-                        liveBox.classList.add('hidden');
-                    }
-                }
+                renderHeroLiveButton(nextLaunch);
+                if (heroLiveCheckIntervalId) clearInterval(heroLiveCheckIntervalId);
+                heroLiveCheckIntervalId = setInterval(() => renderHeroLiveButton(nextLaunch), 20 * 1000);
 
                 const heroImg = document.getElementById('hero-image');
                 if (heroImg) {
@@ -4899,6 +4921,67 @@
             if (videoBtnWrap) videoBtnWrap.classList.remove('hidden');
         }
 
+        function wireModalLiveButton(m, isPastMission) {
+            const liveBtn = document.getElementById('modal-watch-live-btn');
+            const liveLabel = document.getElementById('modal-watch-live-label');
+            const shareBtn = document.getElementById('modal-share-btn');
+            const calendarBtn = document.getElementById('modal-calendar-btn');
+            const videoSection = document.getElementById('modal-video-section');
+            const videoIframe = document.getElementById('modal-video-iframe');
+            const videoCloseBtn = document.getElementById('modal-video-close-btn');
+            const videoBtnWrap = document.getElementById('modal-video-btn-wrap');
+            if (!liveBtn) return;
+
+            const setThreeUp = (on) => {
+                liveBtn.classList.toggle('hidden', !on);
+                [shareBtn, calendarBtn].forEach(b => {
+                    if (!b) return;
+                    b.classList.toggle('w-1/3', on);
+                    b.classList.toggle('w-1/2', !on);
+                });
+            };
+
+            if (isPastMission) {
+                setThreeUp(false);
+                return;
+            }
+
+            const liveSrcUrl = m.hasLiveVideo ? (m.liveVideoUrl || m.liveUrl || "") : "";
+            const confirmedYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
+            const launchTimeMs = new Date(m.date).getTime();
+            const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 25 && minutesToLaunch >= -180;
+
+            if (!confirmedYoutubeId && !withinLiveWindow) {
+                setThreeUp(false);
+                return;
+            }
+
+            const embedSrc = confirmedYoutubeId
+                ? 'https://www.youtube-nocookie.com/embed/' + confirmedYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1'
+                : `https://www.youtube.com/embed/live_stream?channel=${SFN_YT_CHANNEL_ID}&autoplay=1`;
+
+            if (liveLabel) liveLabel.innerText = 'WATCH LIVE';
+            liveBtn.onclick = function () {
+                if (!videoIframe || !videoSection) return;
+                // Reuse the shared player: make sure the past-launch button row isn't
+                // also showing at the same time.
+                if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
+                videoIframe.src = embedSrc;
+                videoSection.classList.remove('hidden');
+                resetVideoControlsOverlay();
+            };
+            if (videoCloseBtn) {
+                videoCloseBtn.onclick = function () {
+                    if (videoIframe) videoIframe.src = '';
+                    if (videoSection) videoSection.classList.add('hidden');
+                    resetVideoControlsOverlay();
+                };
+            }
+
+            setThreeUp(true);
+        }
+
         function openMissionModal(m) {
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
@@ -4998,43 +5081,12 @@
                         : '<i class="fa-solid fa-play"></i> <span>Watch Launch Video</span>';
                     videoFallback.classList.remove('hidden');
                 }
-            } else if (!isPastMission && m.hasLiveVideo && (m.liveVideoUrl || m.liveUrl)) {
-                // Upcoming mission with a real, launch-specific live stream link (same
-                // source the hero banner uses) — never a generic fallback channel. Show
-                // the same 2-button player when it's embeddable on YouTube, otherwise fall
-                // back to a single external link (e.g. an X stream).
-                const liveSrcUrl = m.liveVideoUrl || m.liveUrl;
-                const liveYoutubeId = extractYoutubeId(liveSrcUrl);
-                if (liveYoutubeId) {
-                    wireModalYoutubePlayer(liveYoutubeId, liveSrcUrl);
-                } else if (videoFallback && videoFallbackLink) {
-                    videoFallbackLink.href = liveSrcUrl;
-                    const isX = liveSrcUrl.includes('x.com') || liveSrcUrl.includes('twitter.com');
-                    videoFallbackLink.innerHTML = isX
-                        ? '<i class="fa-brands fa-x-twitter"></i> <span>Watch Live on X</span>'
-                        : '<i class="fa-solid fa-play"></i> <span>Watch Live</span>';
-                    videoFallback.classList.remove('hidden');
-                }
             }
+
+            wireModalLiveButton(m, isPastMission);
 
             document.getElementById('modal-description-detailed').innerHTML = m.detailedAnalysis.replace(/\n/g, '<br>');
             document.getElementById('modal-includes').innerHTML = m.objectives.map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${i}</span></div>`).join('');
-
-            const mStreamBox = document.getElementById('modal-live-container');
-            const mStreamLink = document.getElementById('modal-live-link');
-
-            if (mStreamBox && mStreamLink) {
-                // Only show this floating badge when there's a real, launch-specific
-                // stream link — same data-driven check used everywhere else, never a
-                // time-window guess and never a generic fallback channel.
-                const mStreamUrl = (!isPastMission && m.hasLiveVideo) ? (m.liveVideoUrl || m.liveUrl || "") : "";
-                if (mStreamUrl) {
-                    mStreamLink.href = mStreamUrl;
-                    mStreamBox.classList.remove('hidden');
-                } else {
-                    mStreamBox.classList.add('hidden');
-                }
-            }
 
             document.getElementById('modal-share-btn').onclick = () => shareMission(m);
             document.getElementById('modal-calendar-btn').onclick = () => saveToCalendar(m);
@@ -5756,10 +5808,10 @@
 
                 if (diff <= 0) {
                     if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
-                        el.innerHTML = 'HOLD / DELAYED';
+                        el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
                         el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                     } else {
-                        el.innerHTML = 'MISSION IN PROGRESS';
+                        el.innerHTML = el.dataset.inProgressText || 'MISSION IN PROGRESS';
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                     }
                     return;
@@ -5771,6 +5823,7 @@
                 const s = Math.floor((diff % 60000) / 1000);
 
                 let timeColor = "text-emerald-400";
+                let pulseOuter = false;
                 if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
                     timeColor = "text-amber-500";
                 } else if (d === 0 && h >= 1) {
@@ -5779,9 +5832,17 @@
                     if (m >= 5) {
                         timeColor = "text-red-500";
                     } else {
-                        timeColor = "text-red-500 animate-pulse-calm";
+                        timeColor = "text-red-500";
+                        pulseOuter = true;
                     }
                 }
+
+                // The pulse class lives on the stable outer container (never destroyed) rather
+                // than on the digit spans below (recreated fresh every second via innerHTML) —
+                // spans that get recreated each tick would restart their CSS animation from
+                // frame 0 every time, turning the intended slow 3s breathing into a fast
+                // per-second blink that's out of sync with the hero border's own pulse.
+                el.classList.toggle('animate-pulse-calm', pulseOuter);
 
                 el.innerHTML = `
                     <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">d</span>
