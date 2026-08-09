@@ -7,28 +7,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght=300;400;500;600;700&family=Heebo:wght@300;400;500;700&display=swap');
-        body {
-            font-family: 'Heebo', sans-serif;
-            background-color: #09090b;
-            color: #e4e4e7;
-            overflow-x: hidden;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;700&display=swap');
+        body { font-family: 'Heebo', sans-serif; background-color: #09090b; color: #e4e4e7; overflow-x: hidden; }
         .font-space { font-family: 'Space Grotesk', sans-serif; }
-        
-        .tweet-box {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-        
-        /* Custom scrollbar */
+        .tweet-box { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #18181b; }
         ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col relative selection:bg-emerald-500 selection:text-black">
-    <!-- Background Effects -->
     <div class="fixed inset-0 z-0 pointer-events-none opacity-20" style="background: radial-gradient(circle at 50% 0%, #10b981 0%, transparent 50%);"></div>
 
     <nav class="bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-800">
@@ -37,79 +25,45 @@
                 <i class="fa-brands fa-x-twitter text-2xl text-white"></i>
                 <span class="font-space font-bold text-xl tracking-wider text-white" dir="ltr">SpaceX Tracker <span class="text-emerald-400">Helper</span></span>
             </div>
-           <div class="flex items-center gap-2 text-sm text-zinc-400">
-    <input type="password" id="api-key-input" placeholder="הדבק כאן Gemini API Key" class="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white w-40 focus:outline-none focus:border-emerald-500" onchange="saveApiKey(this.value)">
-    <span id="api-status"><i class="fa-solid fa-circle-notch fa-spin text-emerald-400"></i> ממתין למפתח...</span>
-</div>
+            <!-- שדה מוגן למפתח ששמור רק אצלך בדפדפן ולא מגיע לגיטהאב -->
+            <div class="flex items-center gap-2 text-sm text-zinc-400" dir="ltr">
+                <input type="password" id="api-key-input" placeholder="Gemini API Key" class="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white w-36 focus:outline-none focus:border-emerald-500" onchange="saveApiKey(this.value)">
+                <span id="api-status" class="text-xs"><i class="fa-solid fa-circle-exclamation text-amber-400"></i> מפתח חסר</span>
+            </div>
         </div>
     </nav>
 
     <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full relative z-10 flex flex-col lg:flex-row gap-8">
-        
-        <!-- חלונית בקרה (שליטה) -->
         <div class="w-full lg:w-1/3 flex flex-col gap-4">
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-lg">
                 <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-white">
                     <i class="fa-solid fa-layer-group text-emerald-400"></i> בחר סקטור
                 </h2>
-                
                 <div class="flex flex-col gap-2">
-                    <button onclick="selectSector('upcoming')" id="btn-upcoming" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-3 active-sector">
+                    <button onclick="selectSector('upcoming')" id="btn-upcoming" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 hover:border-emerald-500 transition-all flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0"><i class="fa-solid fa-clock"></i></div>
-                        <div>
-                            <div class="font-bold text-sm text-white">התרעות שיגור קרוב</div>
-                            <div class="text-xs text-zinc-400">T-Minus והייפ</div>
-                        </div>
+                        <div><div class="font-bold text-sm text-white">התרעות שיגור קרוב</div><div class="text-xs text-zinc-400">T-Minus והייפ</div></div>
                     </button>
-
                     <button onclick="selectSector('past')" id="btn-past" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0"><i class="fa-solid fa-check-double"></i></div>
-                        <div>
-                            <div class="font-bold text-sm text-white">שיגורי עבר (הצלחות)</div>
-                            <div class="text-xs text-zinc-400">חגיגת השיגור האחרון</div>
-                        </div>
+                        <div><div class="font-bold text-sm text-white">שיגורי עבר</div><div class="text-xs text-zinc-400">חגיגת השיגור האחרון</div></div>
                     </button>
-
                     <button onclick="selectSector('starlink')" id="btn-starlink" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0"><i class="fa-solid fa-globe"></i></div>
-                        <div>
-                            <div class="font-bold text-sm text-white">רשת Starlink</div>
-                            <div class="text-xs text-zinc-400">עדכוני פריסה וקצב</div>
-                        </div>
+                        <div><div class="font-bold text-sm text-white">רשת Starlink</div><div class="text-xs text-zinc-400">עדכוני פריסה</div></div>
                     </button>
-
                     <button onclick="selectSector('recovery')" id="btn-recovery" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0"><i class="fa-solid fa-ship"></i></div>
-                        <div>
-                            <div class="font-bold text-sm text-white">נחיתות (Recovery)</div>
-                            <div class="text-xs text-zinc-400">בוסטרים אוטונומיים ומנחתים</div>
-                        </div>
-                    </button>
-
-                    <button onclick="selectSector('lore')" id="btn-lore" class="sector-btn w-full text-right px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-emerald-500 transition-all flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0"><i class="fa-solid fa-lightbulb"></i></div>
-                        <div>
-                            <div class="font-bold text-sm text-white">הידעת? / Lore</div>
-                            <div class="text-xs text-zinc-400">עובדות טכניות ואסטרופיזיקה</div>
-                        </div>
+                        <div><div class="font-bold text-sm text-white">נחיתות (Recovery)</div><div class="text-xs text-zinc-400">בוסטרים ומנחתים</div></div>
                     </button>
                 </div>
             </div>
-
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-lg">
-                <h2 class="text-sm font-bold text-zinc-400 mb-3 uppercase tracking-wider">נתוני הליבה (Live Context)</h2>
-                <div id="context-data" class="space-y-3">
-                    <div class="animate-pulse flex space-x-4 space-x-reverse">
-                        <div class="flex-1 space-y-2 py-1">
-                            <div class="h-2 bg-zinc-700 rounded w-3/4"></div>
-                            <div class="h-2 bg-zinc-700 rounded w-1/2"></div>
-                        </div>
-                    </div>
-                </div>
+                <h2 class="text-sm font-bold text-zinc-400 mb-3 uppercase tracking-wider">נתוני הליבה</h2>
+                <div id="context-data" class="space-y-3"></div>
             </div>
         </div>
 
-        <!-- תצוגת הציוץ -->
         <div class="w-full lg:w-2/3 flex flex-col gap-4">
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-lg flex-1 flex flex-col">
                 <div class="flex justify-between items-center mb-6">
@@ -121,120 +75,58 @@
                     </button>
                 </div>
 
-                <!-- Options Container -->
                 <div class="flex flex-col gap-6">
-                    <!-- Option 1 -->
                     <div class="flex flex-col gap-3">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-emerald-400 font-bold text-sm">אופציה 1</h3>
-                        </div>
-                        <div class="bg-black border border-zinc-800 rounded-xl p-5 relative tweet-box w-full" dir="ltr">
-                            <div class="flex items-start gap-3 mb-2">
-                                <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
-                                    <i class="fa-solid fa-user-astronaut text-zinc-500"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-1">
-                                        <span class="font-bold text-white text-[15px]">SpaceX Tracker</span>
-                                        <i class="fa-solid fa-circle-check text-blue-400 text-xs"></i>
-                                    </div>
-                                    <div class="text-zinc-500 text-[15px] -mt-1 mb-1">@SpaceXFansTrack</div>
-                                    <div id="tweet-output-1" class="text-white text-[15px] leading-normal whitespace-pre-wrap">
-                                        Loading AI intelligence...
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <a id="post-btn-1" href="#" target="_blank" class="w-full bg-white hover:bg-zinc-200 text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] text-base cursor-not-allowed opacity-50">
-                            <i class="fa-brands fa-x-twitter"></i> פרסם אופציה 1
-                        </a>
+                        <h3 class="text-emerald-400 font-bold text-sm">אופציה 1</h3>
+                        <div class="bg-black border border-zinc-800 rounded-xl p-5 text-white text-[15px]" dir="ltr" id="tweet-output-1">טוען נתונים...</div>
+                        <a id="post-btn-1" href="#" target="_blank" class="w-full bg-white text-black font-bold py-2.5 rounded-xl text-center cursor-not-allowed opacity-50">פרסם אופציה 1</a>
                     </div>
-
-                    <!-- Divider -->
                     <div class="h-px w-full bg-zinc-800 my-2"></div>
-
-                    <!-- Option 2 -->
                     <div class="flex flex-col gap-3">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-emerald-400 font-bold text-sm">אופציה 2</h3>
-                        </div>
-                        <div class="bg-black border border-zinc-800 rounded-xl p-5 relative tweet-box w-full" dir="ltr">
-                            <div class="flex items-start gap-3 mb-2">
-                                <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
-                                    <i class="fa-solid fa-user-astronaut text-zinc-500"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-1">
-                                        <span class="font-bold text-white text-[15px]">SpaceX Tracker</span>
-                                        <i class="fa-solid fa-circle-check text-blue-400 text-xs"></i>
-                                    </div>
-                                    <div class="text-zinc-500 text-[15px] -mt-1 mb-1">@SpaceXFansTrack</div>
-                                    <div id="tweet-output-2" class="text-white text-[15px] leading-normal whitespace-pre-wrap">
-                                        Loading AI intelligence...
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <a id="post-btn-2" href="#" target="_blank" class="w-full bg-white hover:bg-zinc-200 text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] text-base cursor-not-allowed opacity-50">
-                            <i class="fa-brands fa-x-twitter"></i> פרסם אופציה 2
-                        </a>
+                        <h3 class="text-emerald-400 font-bold text-sm">אופציה 2</h3>
+                        <div class="bg-black border border-zinc-800 rounded-xl p-5 text-white text-[15px]" dir="ltr" id="tweet-output-2">טוען נתונים...</div>
+                        <a id="post-btn-2" href="#" target="_blank" class="w-full bg-white text-black font-bold py-2.5 rounded-xl text-center cursor-not-allowed opacity-50">פרסם אופציה 2</a>
                     </div>
                 </div>
-
-            </div>
-            
-            <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-emerald-400 text-sm flex items-start gap-3 mt-2">
-                <i class="fa-solid fa-circle-info mt-0.5"></i>
-                <p>המערכת שואבת נתונים <b>ישירות מהזיכרון המקומי (Cache)</b> של האתר הראשי. אם חסרים נתונים, פשוט פתח את האתר הראשי בלשונית מקבילה כדי שיעדכן את הזיכרון!</p>
             </div>
         </div>
-
     </main>
 
     <script>
-        <script>
         let liveUpcomingLaunches = [];
         let latestPastLaunch = null;
         let currentSector = 'upcoming';
 
-        // בדיקה ושמירה של מפתח ה-API
         function getApiKey() {
             return localStorage.getItem('gemini_api_key') || '';
         }
 
         function saveApiKey(val) {
-            localStorage.setItem('gemini_api_key', val.trim());
-            document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> המפתח נשמר!';
-            generateTweets();
+            const trimmed = val.trim();
+            localStorage.setItem('gemini_api_key', trimmed);
+            if (trimmed) {
+                document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> מחובר';
+                generateTweets();
+            } else {
+                document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> מפתח חסר';
+            }
         }
 
-        // טעינת המפתח לתיבה אם כבר קיים
         window.addEventListener('DOMContentLoaded', () => {
             const savedKey = getApiKey();
             if (savedKey) {
                 document.getElementById('api-key-input').value = savedKey;
+                document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> מחובר';
             }
             loadSpaceXDataFromCache();
         });
 
         function getSafePadName(launch) {
             try {
-                if (launch.pad && launch.pad.location && launch.pad.location.name) {
-                    return launch.pad.location.name.split(',')[0];
-                } else if (launch.pad && launch.pad.name) {
-                    return launch.pad.name;
-                }
+                if (launch.pad?.location?.name) return launch.pad.location.name.split(',')[0];
+                if (launch.pad?.name) return launch.pad.name;
             } catch(e) {}
             return "SpaceX Launch Pad";
-        }
-
-        function getLaunchOutcome(launch) {
-            if (!launch) return 'success';
-            const statusStr = (typeof launch.status === 'string' ? launch.status : (launch.status && (launch.status.name || launch.status.abbrev))) || '';
-            const s = statusStr.toLowerCase();
-            if (s.includes('partial')) return 'partial';
-            if (s.includes('fail')) return 'failure';
-            return 'success';
         }
 
         function loadSpaceXDataFromCache() {
@@ -243,116 +135,60 @@
                 if (cachedData) {
                     const allLaunches = JSON.parse(cachedData);
                     const now = new Date().getTime();
-                    let upcoming = [];
-                    let past = [];
-                    
-                    allLaunches.forEach(launch => {
-                        if (!launch.net) return;
-                        const launchTime = new Date(launch.net).getTime();
-                        if (launchTime > now) {
-                            upcoming.push(launch);
-                        } else {
-                            past.push(launch);
-                        }
-                    });
-                    
-                    upcoming.sort((a, b) => new Date(a.net) - new Date(b.net));
-                    past.sort((a, b) => new Date(b.net) - new Date(a.net));
-                    
-                    liveUpcomingLaunches = upcoming;
+                    liveUpcomingLaunches = allLaunches.filter(l => new Date(l.net).getTime() > now).sort((a,b) => new Date(a.net) - new Date(b.net));
+                    const past = allLaunches.filter(l => new Date(l.net).getTime() <= now).sort((a,b) => new Date(b.net) - new Date(a.net));
                     if (past.length > 0) latestPastLaunch = past[0];
-                    
-                    if (!getApiKey()) {
-                        document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> נא להזין מפתח API';
-                    } else {
-                        document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-link text-emerald-400"></i> מחובר ל-AI ולנתונים';
-                    }
-                    
                     updateContextUI();
                     generateTweets();
-                } else {
-                    document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> אין נתונים בזיכרון האתר';
                 }
             } catch (error) {
-                console.error("Error reading cache:", error);
+                console.error("Cache error:", error);
             }
         }
 
         function updateContextUI() {
-            let contextHtml = '';
-            if (currentSector !== 'past' && currentSector !== 'lore') {
-                for(let i=0; i < Math.min(2, liveUpcomingLaunches.length); i++) {
-                    const launch = liveUpcomingLaunches[i];
-                    const dateObj = new Date(launch.net);
-                    contextHtml += `
-                        <div class="bg-zinc-800/50 p-3 rounded-xl border border-zinc-700/50" dir="ltr">
-                            <div class="text-emerald-400 text-[10px] font-bold tracking-wider mb-1">UPCOMING LAUNCH ${i+1}</div>
-                            <div class="text-white text-sm font-bold truncate">${launch.name}</div>
-                            <div class="text-zinc-400 text-xs mt-1"><i class="fa-regular fa-clock"></i> ${dateObj.toLocaleString()}</div>
-                        </div>
-                    `;
-                }
+            let html = '';
+            if (currentSector === 'upcoming' && liveUpcomingLaunches[0]) {
+                html = `<div class="bg-zinc-800/50 p-3 rounded-xl border border-zinc-700/50 text-sm" dir="ltr"><span class="text-emerald-400 font-bold">Next:</span> ${liveUpcomingLaunches[0].name}</div>`;
             } else if (currentSector === 'past' && latestPastLaunch) {
-                contextHtml = `
-                    <div class="bg-zinc-800/50 p-3 rounded-xl border border-purple-500/30" dir="ltr">
-                        <div class="text-purple-400 text-[10px] font-bold tracking-wider mb-1">LATEST LAUNCH</div>
-                        <div class="text-white text-sm font-bold truncate">${latestPastLaunch.name}</div>
-                    </div>
-                `;
-            } else {
-                contextHtml = `<div class="text-zinc-500 text-sm">סקטור כללי / מידע</div>`;
+                html = `<div class="bg-zinc-800/50 p-3 rounded-xl border border-purple-500/30 text-sm" dir="ltr"><span class="text-purple-400 font-bold">Latest:</span> ${latestPastLaunch.name}</div>`;
             }
-            if(contextHtml) document.getElementById('context-data').innerHTML = contextHtml;
+            document.getElementById('context-data').innerHTML = html || '<div class="text-zinc-500 text-sm">אין נתונים פעילים</div>';
         }
 
         function selectSector(sector) {
             currentSector = sector;
-            document.querySelectorAll('.sector-btn').forEach(btn => {
-                btn.classList.remove('border-emerald-500', 'bg-zinc-800');
-                btn.classList.add('border-zinc-800', 'bg-zinc-900/50');
-            });
-            const activeBtn = document.getElementById(`btn-${sector}`);
-            activeBtn.classList.remove('border-zinc-800', 'bg-zinc-900/50');
-            activeBtn.classList.add('border-emerald-500', 'bg-zinc-800');
-            
+            document.querySelectorAll('.sector-btn').forEach(b => b.classList.remove('border-emerald-500', 'bg-zinc-800'));
+            document.getElementById(`btn-${sector}`)?.classList.add('border-emerald-500', 'bg-zinc-800');
             updateContextUI();
             generateTweets();
         }
 
-        // הפונקציה הראשית שפונה לג'ימיני ומייצרת את הציוצים
         async function generateTweets() {
             const apiKey = getApiKey();
-            const outEl1 = document.getElementById('tweet-output-1');
-            const outEl2 = document.getElementById('tweet-output-2');
-            const postBtn1 = document.getElementById('post-btn-1');
-            const postBtn2 = document.getElementById('post-btn-2');
+            const out1 = document.getElementById('tweet-output-1');
+            const out2 = document.getElementById('tweet-output-2');
+            const btn1 = document.getElementById('post-btn-1');
+            const btn2 = document.getElementById('post-btn-2');
 
             if (!apiKey) {
-                outEl1.innerText = "אנא הכנס את מפתח ה-Gemini API שלך בתיבה למעלה.";
-                outEl2.innerText = "אנא הכנס את מפתח ה-Gemini API שלך בתיבה למעלה.";
+                out1.innerText = "נא להזין מפתח Gemini API בתיבה למעלה בסרגל.";
+                out2.innerText = "נא להזין מפתח Gemini API בתיבה למעלה בסרגל.";
                 return;
             }
 
-            outEl1.style.opacity = '0.5';
-            outEl2.style.opacity = '0.5';
-            outEl1.innerText = "מייצר ציוצים חדשים בעזרת AI...";
-            outEl2.innerText = "מייצר ציוצים חדשים בעזרת AI...";
+            out1.innerText = "מייצר ציוצי AI...";
+            out2.innerText = "מייצר ציוצי AI...";
 
-            let currentContextPrompt = `Current sector selected: ${currentSector}.`;
-            if (currentSector === 'upcoming' && liveUpcomingLaunches.length > 0) {
-                const l = liveUpcomingLaunches[0];
-                currentContextPrompt = `Upcoming SpaceX launch: Name: ${l.name}, Time: ${l.net}, Pad:${getSafePadName(l)}`;
-            } else if (currentSector === 'past' && latestPastLaunch) {
-                const l = latestPastLaunch;
-                currentContextPrompt = `Past SpaceX launch: Name: ${l.name}, Date: ${l.net}, Status:${getLaunchOutcome(l)}`;
+            let sectorContext = `Current sector: ${currentSector}.`;
+            if (currentSector === 'upcoming' && liveUpcomingLaunches[0]) {
+                sectorContext = `Upcoming launch: ${liveUpcomingLaunches[0].name}, time: ${liveUpcomingLaunches[0].net}`;
             }
 
-            const prompt = `You are a professional social media manager for a SpaceX tracking account (@SpaceXFansTrack). 
-            Based on this context: "${currentContextPrompt}", generate TWO unique, engaging, hype-building, and short tweets for X (Twitter) including relevant hashtags and emojis. 
-            Return ONLY a valid JSON array containing exactly two string items with the tweet texts, and nothing else (no markdown formatting like ```json, just the raw array like ["tweet1", "tweet2"]).`;
+            const prompt = `You are a social media manager for @SpaceXFansTrack. Based on "${sectorContext}", write TWO short, distinct, hype-building tweets about SpaceX with emojis and hashtags. Return ONLY a raw JSON array with two strings: ["tweet1", "tweet2"] without any markdown formatting.`;
 
             try {
-                const response = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$){apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -362,38 +198,24 @@
                 });
 
                 const data = await response.json();
-                let rawText = data.candidates[0].content.parts[0].text;
-                
-                // ניקוי בטוח למקרה שה-AI החזיר מעט מעטפת טקסט
-                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                let rawText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const aiResult = JSON.parse(rawText);
 
-                const text1 = aiResult[0] || "SpaceX update!";
-                const text2 = aiResult[1] || "Reusability is the future!";
+                out1.innerText = aiResult[0];
+                btn1.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(aiResult[0])}`;
+                btn1.classList.remove('cursor-not-allowed', 'opacity-50');
 
-                outEl1.innerText = text1;
-                outEl1.style.opacity = '1';
-                postBtn1.href = `[https://twitter.com/intent/tweet?text=$](https://twitter.com/intent/tweet?text=$){encodeURIComponent(text1)}`;
-                postBtn1.classList.remove('cursor-not-allowed', 'opacity-50');
+                out2.innerText = aiResult[1];
+                btn2.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(aiResult[1])}`;
+                btn2.classList.remove('cursor-not-allowed', 'opacity-50');
 
-                outEl2.innerText = text2;
-                outEl2.style.opacity = '1';
-                postBtn2.href = `[https://twitter.com/intent/tweet?text=$](https://twitter.com/intent/tweet?text=$){encodeURIComponent(text2)}`;
-                postBtn2.classList.0 = ''; // clear dummy
-                postBtn2.classList.remove('cursor-not-allowed', 'opacity-50');
-
-            } catch (error) {
-                console.error("Gemini API Error:", error);
-                outEl1.innerText = "שגיאה ביצירת הציוצים. בדוק את מפתח ה-API שלך.";
-                outEl2.innerText = "שגיאה ביצירת הציוצים. בדוק את מפתח ה-API שלך.";
+            } catch (e) {
+                out1.innerText = "שגיאה בחיבור ל-API. בדוק שהמפתח תקין.";
+                out2.innerText = "שגיאה בחיבור ל-API. בדוק שהמפתח תקין.";
             }
         }
 
-        window.addEventListener('storage', (event) => {
-            if (event.key === 'spacex_launches_cache') {
-                loadSpaceXDataFromCache();
-            }
-        });
+        loadSpaceXDataFromCache();
     </script>
 </body>
 </html>
