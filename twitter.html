@@ -37,9 +37,10 @@
                 <i class="fa-brands fa-x-twitter text-2xl text-white"></i>
                 <span class="font-space font-bold text-xl tracking-wider text-white" dir="ltr">SpaceX Tracker <span class="text-emerald-400">Helper</span></span>
             </div>
-            <div class="flex items-center gap-2 text-sm text-zinc-400">
-                <span id="api-status"><i class="fa-solid fa-circle-notch fa-spin text-emerald-400"></i> טוען מהזיכרון...</span>
-            </div>
+           <div class="flex items-center gap-2 text-sm text-zinc-400">
+    <input type="password" id="api-key-input" placeholder="הדבק כאן Gemini API Key" class="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white w-40 focus:outline-none focus:border-emerald-500" onchange="saveApiKey(this.value)">
+    <span id="api-status"><i class="fa-solid fa-circle-notch fa-spin text-emerald-400"></i> ממתין למפתח...</span>
+</div>
         </div>
     </nav>
 
@@ -191,99 +192,31 @@
     </main>
 
     <script>
-        // SpaceX Tracker master facts database
-        const masterFacts = [
-            "SpaceX has landed Falcon 9 boosters more than 300 times. Reusability is no longer experimental — it is the standard.",
-            "The Falcon rocket family is named after the 'Millennium Falcon' from Star Wars.",
-            "SpaceX manufactures approximately 80% of its rocket components entirely in-house.",
-            "The recovery ships ('Just Read the Instructions', 'Of Course I Still Love You') are named after sentient starships in Iain M. Banks' 'Culture' sci-fi novels.",
-            "The Merlin 1D engine has one of the highest thrust-to-weight ratios of any rocket engine ever made, exceeding 150:1.",
-            "Starship is constructed from 30X-series stainless steel, chosen because it maintains strength at cryogenic temperatures and survives atmospheric reentry.",
-            "Starlink currently represents over 50% of all active satellites in low Earth orbit.",
-            "The Super Heavy booster is powered by 33 Raptor engines, generating more than twice the thrust of the Saturn V rocket.",
-            "SpaceX's IVA spacesuits are custom-made and plug directly into the Crew Dragon seats to provide communications, cooling, and pressurization.",
-            "Unlike Falcon 9's kerosene, Starship's Raptor engines burn liquid methane and liquid oxygen, chosen because methane can be synthesized on Mars.",
-            "The nine Merlin engines on a Falcon 9 are arranged in an 'Octaweb' pattern for better stress distribution and survivability.",
-            "Before landing orbital rockets, SpaceX tested propulsive landings with a prototype called 'Grasshopper', which hopped up to 744 meters.",
-            "When Falcon Heavy debuted in 2018, it was the most powerful operational rocket in the world by a factor of two.",
-            "The hypersonic titanium grid fins on Falcon 9 boosters are used to steer the rocket during its descent back through the Earth's atmosphere.",
-            "Newer generation Starlink satellites use optical space lasers to route data between each other without needing to bounce signals off ground stations.",
-            "The Raptor engine is the first full-flow staged combustion cycle engine ever to fly.",
-            "To increase payload capacity, Starship uses 'Hot-Staging'—igniting the upper stage engines while still attached to the Super Heavy booster.",
-            "SpaceX operates from historic Launch Complex 39A at Kennedy Space Center, the exact same pad used for the Apollo Moon missions.",
-            "Unlike Falcon 9 which lands on legs, the Starship Super Heavy booster is designed to be caught mid-air by the launch tower's 'Chopstick' arms.",
-            "The Falcon Heavy rocket can perform a synchronized double landing of its two side boosters."
-        ];
-
+        <script>
         let liveUpcomingLaunches = [];
         let latestPastLaunch = null;
         let currentSector = 'upcoming';
 
-        const templates = {
-            upcoming: [
-                "Just analyzed the latest telemetry for {name}. 🚀 We are T-minus {time_diff} away from liftoff at {pad}! The autonomous systems on the Falcon 9 never cease to amaze me. Who's watching the stream? 👀 #SpaceX #Launch",
-                "Liftoff incoming! 💥 {name} is scheduled to launch from {pad} in roughly {time_diff}. Weather looks {weather_adj}, and the rocket is ready. Let's go! 🚀🛰️ #SpaceX",
-                "Spaceflight never gets old. We're tracking {name} targeting a launch from {pad}. 🚀 The engineering required to make this routine is just mind-blowing. T-minus {time_diff}. #Falcon9 #SpaceX",
-                "Targeting {pad} for the launch of {name}. The autonomous Falcon 9 is ready for another flawless ascent and recovery. 🚀 T-minus {time_diff}! #Spaceflight",
-                "Can't wait for {name}! Watching the countdown clock tick down from {time_diff}. Let's light this candle at {pad}! 🔥 #SpaceX",
-                "{time_diff} until {name} lifts off from {pad}. 🕐 Conditions look {weather_adj} and the range is go. Nothing beats a clean countdown. 🚀 #SpaceX #Launch",
-                "Mark your calendars — {name} is next up at {pad}, {time_diff} from now. ⏳ The pace SpaceX keeps up still blows my mind. #Falcon9 #Spaceflight",
-                "Countdown clocks are ticking for {name} out of {pad}. 🚀 {time_diff} to go, weather {weather_adj}. This one's going to be a good watch. 👀 #SpaceX",
-                "Next up on the pad: {name}. 🛰️ Launch window opens in {time_diff} from {pad}. Fingers crossed for a clean ascent. #SpaceX #Launch",
-                "{pad} is prepping for {name}, {time_diff} out. The turnaround times SpaceX pulls off are honestly wild. 🚀 #Falcon9",
-                "Getting close now — {name} targets liftoff from {pad} in {time_diff}. Weather trending {weather_adj}. 🌤️🚀 #SpaceX",
-                "{name} is on deck at {pad}. T-minus {time_diff}. Every launch is a reminder of how far reusable rockets have come. 🚀✨ #Spaceflight"
-            ],
-            pastSuccess: [
-                "Huge congratulations to the SpaceX team on the successful launch of {name}! 🎉 Liftoff from {pad} was flawless. Making access to space routine is no small feat. 🚀✨ #SpaceX #Success",
-                "Another one for the history books! 📖 The recent {name} mission out of {pad} was a complete success. The engineering consistency is just spectacular. 🌌🚀 #Spaceflight",
-                "Still buzzing from the {name} launch! 💥 Seeing the rocket clear the pad at {pad} and execute its mission perfectly is why we love aerospace engineering. On to the next one! 🚀👏 #SpaceX",
-                "Data is looking good! ✅ {name} officially marked another successful mission from {pad}. The cadence SpaceX is maintaining right now is unprecedented. 🛰️🌍 #RocketScience",
-                "Clean liftoff, clean mission. {name} went off without a hitch from {pad}. 🚀 This is what a mature launch cadence looks like. #SpaceX #Success",
-                "{name} is officially in the books — successful launch from {pad}! 🎉 Every one of these makes the next one look easier than it actually is. 🚀 #Spaceflight",
-                "Nailed it again. {name} launched clean from {pad} and mission objectives were met. 👏🚀 #SpaceX",
-                "Textbook mission: {name} lifted off from {pad} and delivered exactly as planned. 🛰️✅ #RocketScience #SpaceX"
-            ],
-            pastPartial: [
-                "Update on {name}: the mission from {pad} saw a partial issue during flight. The team will be digging into the data — this is exactly how the next improvement gets found. 🛰️📊 #SpaceX",
-                "{name} launched from {pad}, but not everything went fully to plan. Real engineering means learning from the parts that didn't. Watching for the official update. 🔍🚀 #Spaceflight"
-            ],
-            pastFailure: [
-                "Update on {name} from {pad}: the mission did not go as planned. Spaceflight is hard, and setbacks are part of pushing the envelope. Waiting on the official post-flight report. 🛰️ #SpaceX",
-                "Tough outcome for {name} out of {pad} today. These moments are why rigorous testing and iteration matter so much in this industry. Following for the official update. 🚀 #Spaceflight"
-            ],
-            starlink: [
-                "Another batch of Starlink satellites heading to orbit! 🛰️ The pace SpaceX is keeping up is insane—averaging around 60 deployments a week. Global, low-latency connectivity is scaling faster than ever. 🌍⚡ #Starlink #SpaceX",
-                "Tracking the next Starlink deployment ({name}). 🛰️ It's wild to think about the autonomous routing algorithms these satellites use in orbit. Building the future of internet infrastructure, one launch at a time. 🌌 #Starlink",
-                "More Starlink nodes joining the constellation! 🚀 The cadence from {pad} is relentless. This isn't just rockets, it's a massive distributed network floating in low Earth orbit. 🤯 #SpaceXTracker #Starlink",
-                "Expanding the grid! 🛰️ {name} is gearing up to deliver more high-speed internet globally. Launching from {pad} in {time_diff}! #Connectivity",
-                "Every {name} mission brings us closer to uninterrupted global coverage. The deployment cadence is just incredible! 🌍✨ #SpaceX",
-                "{name} is next in line to grow the Starlink network — launching from {pad} in {time_diff}. 🛰️ The scale of this constellation is genuinely historic. #Starlink #SpaceX",
-                "Starlink keeps expanding. {name} is targeting {pad} in {time_diff}, adding yet another batch to the largest satellite constellation ever built. 🌐🚀 #Starlink",
-                "One more step toward global broadband from orbit — {name} launches from {pad} in {time_diff}. 🛰️⚡ #SpaceX #Starlink"
-            ],
-            recovery: [
-                "The fact that we can launch an orbital class rocket and then autonomously land the booster on a drone ship in the middle of the ocean will never be normal to me. 🤯🛳️ Pure engineering magic. #SpaceX #Falcon9",
-                "Rocket recovery is the key to the solar system. 🚀 Watching a Falcon 9 execute a perfect entry burn and stick the landing autonomously is a masterclass in control theory and AI. #SpaceX #Landing",
-                "Booster recovery isn't just cool, it's essential. Every time a Falcon 9 lands on an Autonomous Spaceport Drone Ship, it drastically cuts the cost of access to space. 🌊🔥 #ReusableRockets #SpaceX",
-                "RTLS or Drone Ship? Either way, watching a Falcon 9 stick the autonomous landing never gets old. 🎯 #SpaceX",
-                "Another flight-proven booster getting ready to do its job. Reusability is the only way to make humanity multi-planetary! 🌌🚀 #Falcon9",
-                "A grid-fin-guided descent through hypersonic, supersonic, and subsonic flight, ending on a barge the size of a football field. Just let that sink in. 🛬🚀 #SpaceX #Landing",
-                "Every recovered booster is a rocket that doesn't need to be rebuilt from scratch. That's the whole reusability thesis, proven flight after flight. ♻️🚀 #Falcon9",
-                "The grid fins, the relight, the landing burn — every stage of a booster recovery is its own small miracle of engineering. 🚀🎯 #SpaceX"
-            ],
-            lore: [
-                "💡 Space Fact: {fact} 🚀 It's amazing how fast aerospace engineering is evolving. #SpaceX #DidYouKnow",
-                "Here's a piece of SpaceX lore for you today: {fact} 🤯 The details behind this program are incredible! 🌌 #RocketScience",
-                "Fun fact from the tracker: {fact} 🔥 Never gets old learning about the engineering behind these machines. #SpaceX #SpaceFacts",
-                "Daily deep dive: {fact} 🛰️ Every component tells a story of iterative design and crazy ambition. #Engineering #SpaceX",
-                "Did you know? {fact} 🧠 The more you learn about this program, the more impressive it gets. #SpaceX #DidYouKnow",
-                "Today's rabbit hole: {fact} 🔧 Small details like this are why this industry is endlessly fascinating. #RocketScience #SpaceX",
-                "One for the space nerds: {fact} 🛰️ Bookmark this one. #SpaceFacts #SpaceX"
-            ]
-        };
+        // בדיקה ושמירה של מפתח ה-API
+        function getApiKey() {
+            return localStorage.getItem('gemini_api_key') || '';
+        }
 
-        // Extract pad name safely
+        function saveApiKey(val) {
+            localStorage.setItem('gemini_api_key', val.trim());
+            document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> המפתח נשמר!';
+            generateTweets();
+        }
+
+        // טעינת המפתח לתיבה אם כבר קיים
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = getApiKey();
+            if (savedKey) {
+                document.getElementById('api-key-input').value = savedKey;
+            }
+            loadSpaceXDataFromCache();
+        });
+
         function getSafePadName(launch) {
             try {
                 if (launch.pad && launch.pad.location && launch.pad.location.name) {
@@ -295,9 +228,6 @@
             return "SpaceX Launch Pad";
         }
 
-        // Reads the launch's real status instead of assuming success — auto-posting
-        // "huge congratulations on the successful launch!" after an actual failure or
-        // partial failure would be both wrong and a bad look for the account.
         function getLaunchOutcome(launch) {
             if (!launch) return 'success';
             const statusStr = (typeof launch.status === 'string' ? launch.status : (launch.status && (launch.status.name || launch.status.abbrev))) || '';
@@ -307,34 +237,17 @@
             return 'success';
         }
 
-        // Fisher-Yates shuffle. The old `.sort(() => 0.5 - Math.random())` pattern is a
-        // well-known biased shuffle — it does not produce a uniform random ordering, so
-        // some templates would come up disproportionately more often than others.
-        function shuffleArray(arr) {
-            const a = [...arr];
-            for (let i = a.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [a[i], a[j]] = [a[j], a[i]];
-            }
-            return a;
-        }
-
-        // Load data directly from LocalStorage (created by index.html)
         function loadSpaceXDataFromCache() {
             try {
                 const cachedData = localStorage.getItem('spacex_launches_cache');
-                
                 if (cachedData) {
                     const allLaunches = JSON.parse(cachedData);
                     const now = new Date().getTime();
-                    
                     let upcoming = [];
                     let past = [];
                     
                     allLaunches.forEach(launch => {
-                        // Protect against missing dates
                         if (!launch.net) return;
-                        
                         const launchTime = new Date(launch.net).getTime();
                         if (launchTime > now) {
                             upcoming.push(launch);
@@ -343,80 +256,57 @@
                         }
                     });
                     
-                    // Sort upcoming: closest first
                     upcoming.sort((a, b) => new Date(a.net) - new Date(b.net));
-                    // Sort past: most recent first
                     past.sort((a, b) => new Date(b.net) - new Date(a.net));
                     
                     liveUpcomingLaunches = upcoming;
-                    if (past.length > 0) {
-                        latestPastLaunch = past[0];
-                    }
+                    if (past.length > 0) latestPastLaunch = past[0];
                     
-                    document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-link text-emerald-400"></i> מחובר לנתוני האתר';
+                    if (!getApiKey()) {
+                        document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> נא להזין מפתח API';
+                    } else {
+                        document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-link text-emerald-400"></i> מחובר ל-AI ולנתונים';
+                    }
                     
                     updateContextUI();
                     generateTweets();
                 } else {
-                    document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> אין נתונים בזיכרון (פתח את האתר הראשי)';
+                    document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> אין נתונים בזיכרון האתר';
                 }
             } catch (error) {
                 console.error("Error reading cache:", error);
-                document.getElementById('api-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-400"></i> שגיאת קריאה מהזיכרון';
             }
         }
 
         function updateContextUI() {
             let contextHtml = '';
-            
             if (currentSector !== 'past' && currentSector !== 'lore') {
                 for(let i=0; i < Math.min(2, liveUpcomingLaunches.length); i++) {
                     const launch = liveUpcomingLaunches[i];
                     const dateObj = new Date(launch.net);
-                    const padName = getSafePadName(launch);
-                    
                     contextHtml += `
                         <div class="bg-zinc-800/50 p-3 rounded-xl border border-zinc-700/50" dir="ltr">
                             <div class="text-emerald-400 text-[10px] font-bold tracking-wider mb-1">UPCOMING LAUNCH ${i+1}</div>
                             <div class="text-white text-sm font-bold truncate">${launch.name}</div>
                             <div class="text-zinc-400 text-xs mt-1"><i class="fa-regular fa-clock"></i> ${dateObj.toLocaleString()}</div>
-                            <div class="text-zinc-400 text-xs mt-1 truncate"><i class="fa-solid fa-location-dot"></i> ${padName}</div>
                         </div>
                     `;
                 }
-                if (liveUpcomingLaunches.length === 0) {
-                     contextHtml = `<div class="text-zinc-500 text-sm">לא נמצאו נתונים.</div>`;
-                }
             } else if (currentSector === 'past' && latestPastLaunch) {
-                const dateObj = new Date(latestPastLaunch.net);
-                const padName = getSafePadName(latestPastLaunch);
-                const outcome = getLaunchOutcome(latestPastLaunch);
-                const outcomeLabel = outcome === 'failure' ? 'FAILURE — REVIEW BEFORE POSTING' : (outcome === 'partial' ? 'PARTIAL FAILURE — REVIEW BEFORE POSTING' : 'LATEST SUCCESSFUL LAUNCH');
-                const outcomeColor = outcome === 'success' ? 'purple' : 'red';
-                
                 contextHtml = `
-                    <div class="bg-zinc-800/50 p-3 rounded-xl border border-${outcomeColor}-500/30" dir="ltr">
-                        <div class="text-${outcomeColor}-400 text-[10px] font-bold tracking-wider mb-1">${outcomeLabel}</div>
+                    <div class="bg-zinc-800/50 p-3 rounded-xl border border-purple-500/30" dir="ltr">
+                        <div class="text-purple-400 text-[10px] font-bold tracking-wider mb-1">LATEST LAUNCH</div>
                         <div class="text-white text-sm font-bold truncate">${latestPastLaunch.name}</div>
-                        <div class="text-zinc-400 text-xs mt-1"><i class="fa-regular fa-clock"></i> ${dateObj.toLocaleString()}</div>
-                        <div class="text-zinc-400 text-xs mt-1 truncate"><i class="fa-solid fa-location-dot"></i> ${padName}</div>
                     </div>
                 `;
-            } else if (currentSector === 'lore') {
-                contextHtml = `
-                    <div class="bg-zinc-800/50 p-3 rounded-xl border border-emerald-500/30 text-center text-zinc-400 text-sm" dir="rtl">
-                        <i class="fa-solid fa-database text-emerald-400 text-lg mb-2 block"></i>
-                        מחובר למסד הנתונים masterFacts מתוך האתר.
-                    </div>
-                `;
+            } else {
+                contextHtml = `<div class="text-zinc-500 text-sm">סקטור כללי / מידע</div>`;
             }
-            
             if(contextHtml) document.getElementById('context-data').innerHTML = contextHtml;
         }
 
         function selectSector(sector) {
             currentSector = sector;
-            
             document.querySelectorAll('.sector-btn').forEach(btn => {
                 btn.classList.remove('border-emerald-500', 'bg-zinc-800');
                 btn.classList.add('border-zinc-800', 'bg-zinc-900/50');
@@ -429,143 +319,78 @@
             generateTweets();
         }
 
-        function getTimeDiffString(dateString) {
-            const now = new Date();
-            const target = new Date(dateString);
-            const diffMs = target - now;
-            
-            if (diffMs <= 0) return "moments";
-            
-            const diffDays = Math.floor(diffMs / 86400000);
-            const diffHours = Math.floor((diffMs % 86400000) / 3600000);
-            
-            if (diffDays > 0) return `${diffDays} days and ${diffHours} hours`;
-            return `${diffHours} hours`;
-        }
-
-        function generateTweets() {
+        // הפונקציה הראשית שפונה לג'ימיני ומייצרת את הציוצים
+        async function generateTweets() {
+            const apiKey = getApiKey();
             const outEl1 = document.getElementById('tweet-output-1');
             const outEl2 = document.getElementById('tweet-output-2');
             const postBtn1 = document.getElementById('post-btn-1');
             const postBtn2 = document.getElementById('post-btn-2');
-            
+
+            if (!apiKey) {
+                outEl1.innerText = "אנא הכנס את מפתח ה-Gemini API שלך בתיבה למעלה.";
+                outEl2.innerText = "אנא הכנס את מפתח ה-Gemini API שלך בתיבה למעלה.";
+                return;
+            }
+
             outEl1.style.opacity = '0.5';
             outEl2.style.opacity = '0.5';
-            
-            setTimeout(() => {
-                let noRelevantData = false;
-                let text1 = "";
-                let text2 = "";
+            outEl1.innerText = "מייצר ציוצים חדשים בעזרת AI...";
+            outEl2.innerText = "מייצר ציוצים חדשים בעזרת AI...";
 
-                if (currentSector === 'lore') {
-                    const pool = shuffleArray(templates.lore);
-                    const facts = shuffleArray(masterFacts);
-                    text1 = pool[0].replace(/{fact}/g, facts[0]);
-                    text2 = pool[1].replace(/{fact}/g, facts[1]);
-                } 
-                else if (currentSector === 'past') {
-                    // Use the launch's REAL outcome instead of always assuming success —
-                    // posting "huge congratulations, flawless success!" after an actual
-                    // failure or partial failure would be wrong and a bad look.
-                    const outcome = getLaunchOutcome(latestPastLaunch);
-                    const poolKey = outcome === 'failure' ? 'pastFailure' : (outcome === 'partial' ? 'pastPartial' : 'pastSuccess');
-                    const pool = shuffleArray(templates[poolKey]);
-                    const t1 = pool[0];
-                    const t2 = pool.length > 1 ? pool[1] : pool[0];
+            let currentContextPrompt = `Current sector selected: ${currentSector}.`;
+            if (currentSector === 'upcoming' && liveUpcomingLaunches.length > 0) {
+                const l = liveUpcomingLaunches[0];
+                currentContextPrompt = `Upcoming SpaceX launch: Name: ${l.name}, Time: ${l.net}, Pad:${getSafePadName(l)}`;
+            } else if (currentSector === 'past' && latestPastLaunch) {
+                const l = latestPastLaunch;
+                currentContextPrompt = `Past SpaceX launch: Name: ${l.name}, Date: ${l.net}, Status:${getLaunchOutcome(l)}`;
+            }
 
-                    function formatPastTemplate(template, launch) {
-                        if (launch) {
-                            let tName = launch.name.replace('SpaceX ', '');
-                            let tPad = getSafePadName(launch);
-                            return template.replace(/{name}/g, tName).replace(/{pad}/g, tPad);
-                        }
-                        return template.replace(/{name}/g, "a recent mission").replace(/{pad}/g, "the Cape");
-                    }
-                    text1 = formatPastTemplate(t1, latestPastLaunch);
-                    text2 = formatPastTemplate(t2, latestPastLaunch);
-                }
-                else {
-                    let launch1 = liveUpcomingLaunches.length > 0 ? liveUpcomingLaunches[0] : null;
-                    let launch2 = liveUpcomingLaunches.length > 1 ? liveUpcomingLaunches[1] : launch1;
-                    let pool = shuffleArray(templates[currentSector]);
-                    
-                    if (currentSector === 'starlink') {
-                        const starlinks = liveUpcomingLaunches.filter(l => l.name.toLowerCase().includes('starlink'));
-                        if (starlinks.length >= 2) {
-                            launch1 = starlinks[0];
-                            launch2 = starlinks[1];
-                        } else if (starlinks.length === 1) {
-                            launch1 = starlinks[0];
-                            launch2 = starlinks[0];
-                        } else {
-                            // No real Starlink mission currently tracked — do NOT fall back to
-                            // a random non-Starlink launch with Starlink-themed copy, that
-                            // would misrepresent what's actually happening.
-                            noRelevantData = true;
-                        }
-                    }
+            const prompt = `You are a professional social media manager for a SpaceX tracking account (@SpaceXFansTrack). 
+            Based on this context: "${currentContextPrompt}", generate TWO unique, engaging, hype-building, and short tweets for X (Twitter) including relevant hashtags and emojis. 
+            Return ONLY a valid JSON array containing exactly two string items with the tweet texts, and nothing else (no markdown formatting like ```json, just the raw array like ["tweet1", "tweet2"]).`;
 
-                    function formatTemplate(template, launch) {
-                        if (launch) {
-                            let tName = launch.name.replace('SpaceX ', '');
-                            let tPad = getSafePadName(launch);
-                            let tDiff = getTimeDiffString(launch.net);
-                            const weathers = ["optimal", "favorable", "steady", "promising", "clear", "textbook"];
-                            let tWeather = weathers[Math.floor(Math.random() * weathers.length)];
-                            
-                            return template.replace(/{name}/g, tName)
-                                           .replace(/{pad}/g, tPad)
-                                           .replace(/{time_diff}/g, tDiff)
-                                           .replace(/{weather_adj}/g, tWeather);
-                        } else {
-                            return template.replace(/{name}/g, "the next SpaceX mission")
-                                           .replace(/{pad}/g, "the Cape")
-                                           .replace(/{time_diff}/g, "a few days")
-                                           .replace(/{weather_adj}/g, "optimal");
-                        }
-                    }
-                    
-                    if (noRelevantData) {
-                        text1 = "No upcoming Starlink missions are currently tracked in the data — check back later rather than posting a placeholder.";
-                        text2 = text1;
-                    } else {
-                        text1 = formatTemplate(pool[0], launch1);
-                        text2 = formatTemplate(pool.length > 1 ? pool[1] : pool[0], launch2);
-                    }
-                }
+            try {
+                const response = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$){apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                const data = await response.json();
+                let rawText = data.candidates[0].content.parts[0].text;
                 
-                // Render Option 1
+                // ניקוי בטוח למקרה שה-AI החזיר מעט מעטפת טקסט
+                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const aiResult = JSON.parse(rawText);
+
+                const text1 = aiResult[0] || "SpaceX update!";
+                const text2 = aiResult[1] || "Reusability is the future!";
+
                 outEl1.innerText = text1;
                 outEl1.style.opacity = '1';
-                if (noRelevantData) {
-                    postBtn1.removeAttribute('href');
-                    postBtn1.classList.add('cursor-not-allowed', 'opacity-50');
-                } else {
-                    postBtn1.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text1)}`;
-                    postBtn1.classList.remove('cursor-not-allowed', 'opacity-50');
-                }
-                
-                // Render Option 2
+                postBtn1.href = `[https://twitter.com/intent/tweet?text=$](https://twitter.com/intent/tweet?text=$){encodeURIComponent(text1)}`;
+                postBtn1.classList.remove('cursor-not-allowed', 'opacity-50');
+
                 outEl2.innerText = text2;
                 outEl2.style.opacity = '1';
-                if (noRelevantData) {
-                    postBtn2.removeAttribute('href');
-                    postBtn2.classList.add('cursor-not-allowed', 'opacity-50');
-                } else {
-                    postBtn2.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text2)}`;
-                    postBtn2.classList.remove('cursor-not-allowed', 'opacity-50');
-                }
-                
-            }, 300);
+                postBtn2.href = `[https://twitter.com/intent/tweet?text=$](https://twitter.com/intent/tweet?text=$){encodeURIComponent(text2)}`;
+                postBtn2.classList.0 = ''; // clear dummy
+                postBtn2.classList.remove('cursor-not-allowed', 'opacity-50');
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                outEl1.innerText = "שגיאה ביצירת הציוצים. בדוק את מפתח ה-API שלך.";
+                outEl2.innerText = "שגיאה ביצירת הציוצים. בדוק את מפתח ה-API שלך.";
+            }
         }
 
-        // Initialize by loading from cache
-        loadSpaceXDataFromCache();
-        
-        // Listen to storage events so if you leave this tab open, it updates when the main site fetches new data!
         window.addEventListener('storage', (event) => {
             if (event.key === 'spacex_launches_cache') {
-                console.log("Main site updated cache, reloading data...");
                 loadSpaceXDataFromCache();
             }
         });
