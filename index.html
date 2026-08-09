@@ -1421,6 +1421,22 @@
         });
 
     </script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+    apiKey: "AIzaSyACAE-CK7a9w4e3bmr3rCjKVUYnyICQn9o",
+    authDomain: "spacex-tracker-4a165.firebaseapp.com",
+    projectId: "spacex-tracker-4a165",
+    storageBucket: "spacex-tracker-4a165.firebasestorage.app",
+    messagingSenderId: "357378828042",
+    appId: "1:357378828042:web:f7bd376e1910879d86fcf3",
+    measurementId: "G-T7CKXLKQFV"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
 </head>
 
 <body
@@ -4779,70 +4795,60 @@
             return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
         }
 
-        // --- Prediction Poll ---
-        // No backend is wired up for this site, so "community" vote counts are simulated:
-        // each mission gets a fixed baseline (deterministically derived from its id, so it's
-        // stable across visits/devices rather than random every load) skewed toward success,
-        // reflecting SpaceX's real-world track record. The user's own vote is layered on top
-        // and remembered locally so they see their locked-in choice next time.
-        function simpleHash(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = (hash << 5) - hash + str.charCodeAt(i);
-                hash |= 0;
-            }
-            return hash >>> 0;
-        }
-
-        function mulberry32(seed) {
-            return function () {
-                seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-                let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-            };
-        }
-
-        function getPollBaseline(missionId) {
-            const rand = mulberry32(simpleHash(missionId));
-            const totalVotes = 35 + Math.floor(rand() * 120); // 35-155 baseline votes
-            const yesShare = 0.78 + rand() * 0.19; // 78%-97% yes, in line with SpaceX's real success rate
-            const yesVotes = Math.round(totalVotes * yesShare);
-            return { yesVotes, noVotes: totalVotes - yesVotes };
-        }
-
+        // --- Prediction Poll (Firebase) ---
         function getStoredPollVotes() {
             try { return JSON.parse(localStorage.getItem('spacex_poll_votes')) || {}; }
             catch (e) { return {}; }
         }
 
-        function voteOnMission(choice) {
+        async function voteOnMission(choice) {
             const missionId = window.currentModalMissionId;
             if (!missionId) return;
+            
             const votes = getStoredPollVotes();
-            if (votes[missionId]) return; // one vote per mission per visitor
+            if (votes[missionId]) return;
+            
             votes[missionId] = choice;
             try { localStorage.setItem('spacex_poll_votes', JSON.stringify(votes)); } catch (e) { }
+            
+            const docRef = db.collection('polls').doc(missionId);
+            const increment = firebase.firestore.FieldValue.increment(1);
+            await docRef.set({ [choice]: increment }, { merge: true });
+
             renderPollForMission(missionId);
         }
 
-        function renderPollForMission(missionId) {
-            const base = getPollBaseline(missionId);
-            let yesVotes = base.yesVotes, noVotes = base.noVotes;
-            const userChoice = getStoredPollVotes()[missionId];
-            if (userChoice === 'yes') yesVotes++;
-            else if (userChoice === 'no') noVotes++;
-
-            const total = yesVotes + noVotes;
-            const yesPct = total > 0 ? Math.round((yesVotes / total) * 100) : 50;
-
-            document.getElementById('modal-poll-yes-pct').textContent = yesPct + '%';
-            document.getElementById('modal-poll-no-pct').textContent = (100 - yesPct) + '%';
-            document.getElementById('modal-poll-bar-yes').style.width = yesPct + '%';
-            document.getElementById('modal-poll-total-votes').textContent = total.toLocaleString() + ' votes';
-
+        async function renderPollForMission(missionId) {
             const btns = document.getElementById('modal-poll-vote-buttons');
             const results = document.getElementById('modal-poll-results');
+            
+            document.getElementById('modal-poll-total-votes').textContent = 'Loading...';
+            
+            const userChoice = getStoredPollVotes()[missionId];
+            const docRef = db.collection('polls').doc(missionId);
+            
+            try {
+                const docSnap = await docRef.get();
+                let yesVotes = 0;
+                let noVotes = 0;
+
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    yesVotes = data.yes || 0;
+                    noVotes = data.no || 0;
+                }
+
+                const total = yesVotes + noVotes;
+                const yesPct = total > 0 ? Math.round((yesVotes / total) * 100) : 50;
+
+                document.getElementById('modal-poll-yes-pct').textContent = yesPct + '%';
+                document.getElementById('modal-poll-no-pct').textContent = (100 - yesPct) + '%';
+                document.getElementById('modal-poll-bar-yes').style.width = yesPct + '%';
+                document.getElementById('modal-poll-total-votes').textContent = total.toLocaleString() + ' votes';
+            } catch (e) {
+                document.getElementById('modal-poll-total-votes').textContent = 'Error loading votes';
+            }
+
             if (userChoice) {
                 btns.classList.add('hidden');
                 results.classList.remove('hidden');
