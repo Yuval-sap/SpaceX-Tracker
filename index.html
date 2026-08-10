@@ -1479,36 +1479,38 @@
             if (ep3) ep3.innerText = dict.ep3;
         }
 
-        // Manual transliterations for the three real-world launch site names that show up
-        // in m.site (built in mapLaunchToSchema from the live API's pad/location names, e.g.
-        // "SLC-4E, Vandenberg SFB"). This text isn't blocked from Google Translate, but
-        // Google generally leaves real place names as-is rather than translating them — so
-        // "Vandenberg"/"Cape Canaveral"/"Kennedy Space Center" stay in English even once the
-        // rest of the page (including the date right next to it) is translated. Facility
-        // codes (SLC-4E, LC-39A, SFB, SFS) are left alone, same as "Landing Zone 40" or
-        // "Falcon 9" elsewhere — they're designations, not prose, and read the same in every
-        // language. In Latin-script languages, these names are conventionally spelled the
-        // same as in English (that's genuinely how French/German/Spanish news write them),
-        // so only the non-Latin-script entries actually change anything.
+        // Manual transliterations for the real-world launch site names that show up in
+        // m.site (built in mapLaunchToSchema from the live API's pad/location names, e.g.
+        // "SLC-4E, Vandenberg SFB" or "Orbital Launch Pad 2, SpaceX Starbase"). This text
+        // isn't blocked from Google Translate, but Google generally leaves real place names
+        // as-is rather than translating them — so these stay in English even once the rest of
+        // the page (including the date right next to it) is translated. Facility codes
+        // (SLC-4E, LC-39A, SFB, SFS) are left alone, same as "Landing Zone 40" or "Falcon 9"
+        // elsewhere — they're designations, not prose, and read the same in every language.
+        // Starbase is transliterated like "Starship" (STARSHIP_I18N) rather than left as an
+        // English brand name, matching that established precedent. In Latin-script languages,
+        // Vandenberg/Cape Canaveral/Kennedy Space Center are conventionally spelled the same
+        // as in English (that's genuinely how French/German/Spanish news write them), so only
+        // the non-Latin-script entries actually change anything for those three.
         const SITE_NAME_I18N = {
-            en: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
-            he: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי" },
-            iw: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי" },
-            es: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Cañaveral", kennedySpaceCenter: "Centro Espacial Kennedy" },
-            fr: { vandenberg: "Vandenberg", capeCanaveral: "Cap Canaveral", kennedySpaceCenter: "Centre Spatial Kennedy" },
-            de: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
-            ru: { vandenberg: "Ванденберг", capeCanaveral: "Мыс Канаверал", kennedySpaceCenter: "Космический центр Кеннеди" },
-            zh: { vandenberg: "范登堡", capeCanaveral: "卡纳维拉尔角", kennedySpaceCenter: "肯尼迪航天中心" },
-            it: { vandenberg: "Vandenberg", capeCanaveral: "Capo Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
-            cs: { vandenberg: "Vandenberg", capeCanaveral: "Mys Canaveral", kennedySpaceCenter: "Kennedyho vesmírné středisko" },
-            sv: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
-            nl: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
-            da: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
-            pt: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Canaveral", kennedySpaceCenter: "Centro Espacial Kennedy" },
-            pl: { vandenberg: "Vandenberg", capeCanaveral: "Przylądek Canaveral", kennedySpaceCenter: "Centrum Kosmiczne Kennedy'ego" },
-            hi: { vandenberg: "वैंडेनबर्ग", capeCanaveral: "केप कैनावेरल", kennedySpaceCenter: "कैनेडी स्पेस सेंटर" },
-            ar: { vandenberg: "فاندنبرغ", capeCanaveral: "كيب كانافيرال", kennedySpaceCenter: "مركز كينيدي للفضاء" },
-            tr: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Uzay Merkezi" },
+            en: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbital Launch Pad" },
+            he: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי", starbase: "סטארבייס", orbitalLaunchPad: "משטח שיגור מסלולי" },
+            iw: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי", starbase: "סטארבייס", orbitalLaunchPad: "משטח שיגור מסלולי" },
+            es: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Cañaveral", kennedySpaceCenter: "Centro Espacial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Plataforma de Lanzamiento Orbital" },
+            fr: { vandenberg: "Vandenberg", capeCanaveral: "Cap Canaveral", kennedySpaceCenter: "Centre Spatial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Pas de Tir Orbital" },
+            de: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbitale Startrampe" },
+            ru: { vandenberg: "Ванденберг", capeCanaveral: "Мыс Канаверал", kennedySpaceCenter: "Космический центр Кеннеди", starbase: "Старбейз", orbitalLaunchPad: "Орбитальная Стартовая Площадка" },
+            zh: { vandenberg: "范登堡", capeCanaveral: "卡纳维拉尔角", kennedySpaceCenter: "肯尼迪航天中心", starbase: "星际基地", orbitalLaunchPad: "轨道发射台" },
+            it: { vandenberg: "Vandenberg", capeCanaveral: "Capo Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Rampa di Lancio Orbitale" },
+            cs: { vandenberg: "Vandenberg", capeCanaveral: "Mys Canaveral", kennedySpaceCenter: "Kennedyho vesmírné středisko", starbase: "Starbase", orbitalLaunchPad: "Orbitální Odpalovací Rampa" },
+            sv: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbital Startramp" },
+            nl: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbitaal Lanceerplatform" },
+            da: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbital Affyringsrampe" },
+            pt: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Canaveral", kennedySpaceCenter: "Centro Espacial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Plataforma de Lançamento Orbital" },
+            pl: { vandenberg: "Vandenberg", capeCanaveral: "Przylądek Canaveral", kennedySpaceCenter: "Centrum Kosmiczne Kennedy'ego", starbase: "Starbase", orbitalLaunchPad: "Orbitalna Wyrzutnia Startowa" },
+            hi: { vandenberg: "वैंडेनबर्ग", capeCanaveral: "केप कैनावेरल", kennedySpaceCenter: "कैनेडी स्पेस सेंटर", starbase: "स्टारबेस", orbitalLaunchPad: "ऑर्बिटल लॉन्च पैड" },
+            ar: { vandenberg: "فاندنبرغ", capeCanaveral: "كيب كانافيرال", kennedySpaceCenter: "مركز كينيدي للفضاء", starbase: "ستاربيس", orbitalLaunchPad: "منصة الإطلاق المدارية" },
+            tr: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Uzay Merkezi", starbase: "Starbase", orbitalLaunchPad: "Orbital Fırlatma Rampası" },
         };
 
         function localizeSiteStr(raw, currentLang) {
@@ -1517,9 +1519,11 @@
             if (key === 'zh') key = 'zh';
             const d = SITE_NAME_I18N[key] || SITE_NAME_I18N.en;
             let out = raw;
+            out = out.replace(/Orbital Launch Pad/g, d.orbitalLaunchPad);
             out = out.replace(/Kennedy Space Center/g, d.kennedySpaceCenter);
             out = out.replace(/Cape Canaveral/g, d.capeCanaveral);
             out = out.replace(/Vandenberg/g, d.vandenberg);
+            out = out.replace(/Starbase/g, d.starbase);
             return out;
         }
 
@@ -1829,7 +1833,7 @@
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
                 if (heroDetailsTextEl && window.currentActiveHeroSite) {
                     const heroDateSpan = heroDetailsTextEl.textContent.split('•')[0].trim();
-                    heroDetailsTextEl.innerHTML = `${heroDateSpan} • <span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
+                    heroDetailsTextEl.innerHTML = `<span dir="auto">${heroDateSpan}</span> • <span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
                 }
             }
             applyPhraseFixes(currentLang);
@@ -4873,7 +4877,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 } catch (e) { }
 
                 window.currentActiveHeroSite = nextLaunch.site;
-                document.getElementById('hero-details-text').innerHTML = `${dateStr} • <span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
+                document.getElementById('hero-details-text').innerHTML = `<span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
                 fetchLiveWeather(nextLaunch.siteLower, nextLaunch.probability);
 
                 let winText = `${nextLaunch.windowStart} - ${nextLaunch.windowEnd}`;
@@ -5160,7 +5164,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
                         <div>
                             <div class="mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
-                            <div class="text-xs text-zinc-500 mb-3">${dateStr} • <span class="notranslate" translate="no">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
+                            <div class="text-xs text-zinc-500 mb-3"><span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
                             <button class="text-sm text-left text-emerald-400 hover:underline font-medium notranslate" translate="no" data-i18n-past-details="1" data-has-video="${hasVideo ? '1' : '0'}">${detailsLabel}</button>
