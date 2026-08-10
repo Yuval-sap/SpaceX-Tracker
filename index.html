@@ -185,6 +185,30 @@
             will-change: transform;
         }
 
+        /* Sticky-nav mini countdown (see initStickyCountdown / #sticky-countdown-wrap):
+           starts scaled-down, shifted slightly above its resting spot, and glow-free; the
+           .is-visible modifier (toggled by the IntersectionObserver) animates it down into
+           place with a slight overshoot via the same "ease-out-back" curve the mission cards
+           use elsewhere on this page (cubic-bezier(0.16, 1, 0.3, 1)), plus an emerald glow
+           that blooms in alongside it — reads as it "dropping into" the nav bar rather than
+           just fading, which a plain opacity transition didn't convey. */
+        #sticky-countdown-wrap {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, calc(-50% - 14px)) scale(0.85);
+            box-shadow: 0 0 0px rgba(16, 185, 129, 0);
+            transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #sticky-countdown-wrap.is-visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            box-shadow: 0 0 22px rgba(16, 185, 129, 0.3);
+            pointer-events: auto;
+        }
+
         .countdown-small {
             font-family: 'Space Grotesk', monospace;
             font-feature-settings: "tnum";
@@ -1142,6 +1166,7 @@
                 lastAppliedLaunchLabelLang = key;
                 const map = {
                     'i18n-next-launch': dict.nextLaunch,
+                    'i18n-next-launch-sticky': dict.nextLaunch,
                     'i18n-upcoming-launches': dict.upcomingLaunches,
                     'i18n-launch-window': dict.launchWindow,
                     'i18n-countdown-to-launch': dict.countdownToLaunch,
@@ -1921,6 +1946,20 @@
                 <span
                     class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
                     TELEMETRY</span>
+            </div>
+
+            <!-- Mirrors #hero-countdown's live value (see updateHeroCountdown) — hidden until
+                 the hero's own countdown box scrolls out of view (see initStickyCountdown),
+                 so there's always exactly one countdown visible on screen, never both. -->
+            <div id="sticky-countdown-wrap"
+                class="hidden md:flex absolute left-1/2 top-1/2 items-center gap-x-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-2xl notranslate"
+                translate="no">
+                <span id="i18n-next-launch-sticky"
+                    class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold notranslate"
+                    translate="no" lang="en">NEXT LAUNCH</span>
+                <span id="sticky-countdown" dir="ltr"
+                    class="font-space text-sm sm:text-base font-bold tabular-nums tracking-tight text-emerald-400 notranslate"
+                    translate="no">--:--:--</span>
             </div>
 
             <div class="flex items-center gap-x-1.5 sm:gap-x-4 shrink-0 ml-1">
@@ -7586,6 +7625,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
         function updateHeroCountdown(targetDate, currentStatus) {
             if (heroInterval) clearInterval(heroInterval);
             const el = document.getElementById('hero-countdown');
+            const stickyEl = document.getElementById('sticky-countdown');
 
             const tlProgress = document.getElementById('timeline-progress');
             const n24 = document.getElementById('node-24h');
@@ -7688,9 +7728,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
                         el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
                         el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                        if (stickyEl) {
+                            stickyEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
+                            stickyEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
+                        }
                     } else {
                         el.innerHTML = el.dataset.inProgressText || 'MISSION IN PROGRESS';
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                        if (stickyEl) {
+                            stickyEl.innerText = el.dataset.inProgressText || 'MISSION IN PROGRESS';
+                            stickyEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
+                        }
                     }
                     return;
                 }
@@ -7728,10 +7776,36 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">m</span>
                     <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">s</span>
                 `;
+
+                if (stickyEl) {
+                    stickyEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight ${timeColor} notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
+                    stickyEl.innerText = `${d}d ${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+                }
             };
 
             update();
             heroInterval = setInterval(update, 1000);
+        }
+
+        // Shows the sticky-nav mini countdown (#sticky-countdown-wrap) only once the hero's
+        // own countdown box (#countdown-box) has scrolled out of view above the top of the
+        // viewport, and hides it again once the user scrolls back up past it — so there's
+        // never a moment with two countdowns visible, and never a moment with zero.
+        function initStickyCountdown() {
+            const target = document.getElementById('countdown-box');
+            const wrap = document.getElementById('sticky-countdown-wrap');
+            if (!target || !wrap || !('IntersectionObserver' in window)) return;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    // Only count it as "scrolled past" when the box left via the TOP of the
+                    // viewport (boundingClientRect.top < 0) — not before it has ever appeared,
+                    // which also reports isIntersecting:false but with top > 0.
+                    const showSticky = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+                    wrap.classList.toggle('is-visible', showSticky);
+                });
+            }, { threshold: 0 });
+            observer.observe(target);
         }
 
         function init() {
@@ -7740,6 +7814,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             generateProceduralStars();
             updateClock();
             initDidYouKnow();
+            initStickyCountdown();
             fetchLiveLaunches();
 
             const currentLang = document.documentElement.lang.toLowerCase() || 'en';
