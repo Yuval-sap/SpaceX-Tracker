@@ -1019,11 +1019,12 @@
                 renderWeatherHTML();
             }
 
+            const scaleUnitDict = (typeof getSpecDict === 'function') ? getSpecDict(document.documentElement.lang) : { m: 'm', ft: 'ft' };
             const sf = document.getElementById('scale-text-falcon');
-            if (sf) sf.innerText = window.currentUnitSystem === 'metric' ? '70m' : '229ft';
+            if (sf) sf.innerText = window.currentUnitSystem === 'metric' ? `70 ${scaleUnitDict.m}` : `229 ${scaleUnitDict.ft}`;
 
             const ss = document.getElementById('scale-text-starship');
-            if (ss) ss.innerText = window.currentUnitSystem === 'metric' ? '124m' : '407ft';
+            if (ss) ss.innerText = window.currentUnitSystem === 'metric' ? `124 ${scaleUnitDict.m}` : `407 ${scaleUnitDict.ft}`;
 
             const orbitModalEl = document.getElementById('orbit-modal');
             if (orbitModalEl && !orbitModalEl.classList.contains('hidden')) {
@@ -1383,24 +1384,24 @@
         // "Starbase Mechazilla") are deliberately left as-is, same as "LEO"/"Falcon 9"
         // elsewhere on the site — only plain English descriptor words are translated.
         const LANDING_I18N = {
-            en: { ocean: "Ocean", oceanWaterLanding: "Ocean Water Landing", towerCatch: "Tower Catch", droneShip: "Drone Ship", expendableNoRecovery: "Expendable (No Recovery)", gulfOfAmerica: "Gulf of America", indianOcean: "Indian Ocean", waterLanding: "Water Landing", groundLandingZone: "Ground Landing Zone", rtlsReturnToLaunchSite: "RTLS (Return To Launch Site)", towerCatchRecovery: "Tower Catch Recovery", expendableMission: "Expendable Mission", noRecoveryAttempt: "No Recovery Attempt", oceanDisposal: "Ocean Disposal", atlanticPacificFleets: "Atlantic & Pacific Ocean Fleets" },
-            he: { ocean: "אוקיינוס", oceanWaterLanding: "נחיתת מים באוקיינוס", towerCatch: "תפיסה במגדל", droneShip: "ספינת רחפן", expendableNoRecovery: "מתכלה (ללא שחזור)", gulfOfAmerica: "מפרץ אמריקה", indianOcean: "האוקיינוס ההודי", waterLanding: "נחיתת מים", groundLandingZone: "אזור נחיתה יבשתי", rtlsReturnToLaunchSite: "RTLS (חזרה לאתר השיגור)", towerCatchRecovery: "שחזור בתפיסת מגדל", expendableMission: "משימה מתכלה", noRecoveryAttempt: "ללא ניסיון שחזור", oceanDisposal: "סילוק באוקיינוס", atlanticPacificFleets: "צי האוקיינוס האטלנטי והשקט" },
-            iw: { ocean: "אוקיינוס", oceanWaterLanding: "נחיתת מים באוקיינוס", towerCatch: "תפיסה במגדל", droneShip: "ספינת רחפן", expendableNoRecovery: "מתכלה (ללא שחזור)", gulfOfAmerica: "מפרץ אמריקה", indianOcean: "האוקיינוס ההודי", waterLanding: "נחיתת מים", groundLandingZone: "אזור נחיתה יבשתי", rtlsReturnToLaunchSite: "RTLS (חזרה לאתר השיגור)", towerCatchRecovery: "שחזור בתפיסת מגדל", expendableMission: "משימה מתכלה", noRecoveryAttempt: "ללא ניסיון שחזור", oceanDisposal: "סילוק באוקיינוס", atlanticPacificFleets: "צי האוקיינוס האטלנטי והשקט" },
-            es: { ocean: "Océano", oceanWaterLanding: "Amerizaje en el Océano", towerCatch: "Captura en la Torre", droneShip: "Barcaza no Tripulada", expendableNoRecovery: "Desechable (Sin Recuperación)", gulfOfAmerica: "Golfo de América", indianOcean: "Océano Índico", waterLanding: "Amerizaje", groundLandingZone: "Zona de Aterrizaje Terrestre", rtlsReturnToLaunchSite: "RTLS (Regreso al Sitio de Lanzamiento)", towerCatchRecovery: "Recuperación por Captura en Torre", expendableMission: "Misión Desechable", noRecoveryAttempt: "Sin Intento de Recuperación", oceanDisposal: "Descarte en el Océano", atlanticPacificFleets: "Flotas del Atlántico y el Pacífico" },
-            fr: { ocean: "Océan", oceanWaterLanding: "Amerrissage dans l'Océan", towerCatch: "Capture par la Tour", droneShip: "Barge Autonome", expendableNoRecovery: "Non Récupérable (Sans Récupération)", gulfOfAmerica: "Golfe de l'Amérique", indianOcean: "Océan Indien", waterLanding: "Amerrissage", groundLandingZone: "Zone d'Atterrissage au Sol", rtlsReturnToLaunchSite: "RTLS (Retour au Site de Lancement)", towerCatchRecovery: "Récupération par Capture en Tour", expendableMission: "Mission Non Récupérable", noRecoveryAttempt: "Aucune Tentative de Récupération", oceanDisposal: "Élimination en Mer", atlanticPacificFleets: "Flottes de l'Atlantique et du Pacifique" },
-            de: { ocean: "Ozean", oceanWaterLanding: "Wasserlandung im Ozean", towerCatch: "Turmfang", droneShip: "Drohnenschiff", expendableNoRecovery: "Nicht Wiederverwendbar (Keine Bergung)", gulfOfAmerica: "Golf von Amerika", indianOcean: "Indischer Ozean", waterLanding: "Wasserlandung", groundLandingZone: "Boden-Landezone", rtlsReturnToLaunchSite: "RTLS (Rückkehr zum Startplatz)", towerCatchRecovery: "Bergung durch Turmfang", expendableMission: "Nicht Wiederverwendbare Mission", noRecoveryAttempt: "Kein Bergungsversuch", oceanDisposal: "Entsorgung im Ozean", atlanticPacificFleets: "Atlantik- und Pazifikflotten" },
-            ru: { ocean: "Океан", oceanWaterLanding: "Приводнение в Океане", towerCatch: "Захват Башней", droneShip: "Дрон-корабль", expendableNoRecovery: "Одноразовый (Без Спасения)", gulfOfAmerica: "Залив Америки", indianOcean: "Индийский Океан", waterLanding: "Приводнение", groundLandingZone: "Наземная Зона Посадки", rtlsReturnToLaunchSite: "RTLS (Возврат на Место Старта)", towerCatchRecovery: "Спасение Захватом Башней", expendableMission: "Одноразовая Миссия", noRecoveryAttempt: "Без Попытки Спасения", oceanDisposal: "Утилизация в Океане", atlanticPacificFleets: "Флоты Атлантического и Тихого Океанов" },
-            zh: { ocean: "海洋", oceanWaterLanding: "海洋溅落", towerCatch: "塔式捕获", droneShip: "无人驳船", expendableNoRecovery: "一次性(不回收)", gulfOfAmerica: "美国湾", indianOcean: "印度洋", waterLanding: "溅落", groundLandingZone: "陆地着陆区", rtlsReturnToLaunchSite: "RTLS(返回发射场)", towerCatchRecovery: "塔式捕获回收", expendableMission: "一次性任务", noRecoveryAttempt: "不尝试回收", oceanDisposal: "海洋处置", atlanticPacificFleets: "大西洋与太平洋船队" },
-            it: { ocean: "Oceano", oceanWaterLanding: "Ammaraggio nell'Oceano", towerCatch: "Cattura dalla Torre", droneShip: "Chiatta Autonoma", expendableNoRecovery: "Non Recuperabile (Nessun Recupero)", gulfOfAmerica: "Golfo d'America", indianOcean: "Oceano Indiano", waterLanding: "Ammaraggio", groundLandingZone: "Zona di Atterraggio a Terra", rtlsReturnToLaunchSite: "RTLS (Ritorno al Sito di Lancio)", towerCatchRecovery: "Recupero tramite Cattura dalla Torre", expendableMission: "Missione Non Recuperabile", noRecoveryAttempt: "Nessun Tentativo di Recupero", oceanDisposal: "Smaltimento in Oceano", atlanticPacificFleets: "Flotte dell'Atlantico e del Pacifico" },
-            cs: { ocean: "Oceán", oceanWaterLanding: "Přistání na Vodu v Oceánu", towerCatch: "Zachycení Věží", droneShip: "Dronová Loď", expendableNoRecovery: "Nenávratný (Bez Záchrany)", gulfOfAmerica: "Americký Záliv", indianOcean: "Indický Oceán", waterLanding: "Přistání na Vodu", groundLandingZone: "Pozemní Přistávací Zóna", rtlsReturnToLaunchSite: "RTLS (Návrat na Místo Startu)", towerCatchRecovery: "Záchrana Zachycením Věží", expendableMission: "Nenávratná Mise", noRecoveryAttempt: "Bez Pokusu o Záchranu", oceanDisposal: "Likvidace v Oceánu", atlanticPacificFleets: "Flotily Atlantiku a Pacifiku" },
-            sv: { ocean: "Ocean", oceanWaterLanding: "Vattenlandning i Oceanen", towerCatch: "Torngripning", droneShip: "Drönarskepp", expendableNoRecovery: "Förbrukningsbar (Ingen Återvinning)", gulfOfAmerica: "Amerikas Golf", indianOcean: "Indiska Oceanen", waterLanding: "Vattenlandning", groundLandingZone: "Marklandningszon", rtlsReturnToLaunchSite: "RTLS (Återgång till Startplatsen)", towerCatchRecovery: "Bärgning genom Torngripning", expendableMission: "Förbrukningsbart Uppdrag", noRecoveryAttempt: "Inget Återvinningsförsök", oceanDisposal: "Bortskaffande i Oceanen", atlanticPacificFleets: "Atlant- och Stillahavsflottorna" },
-            nl: { ocean: "Oceaan", oceanWaterLanding: "Waterlanding in de Oceaan", towerCatch: "Torenvangst", droneShip: "Droneschip", expendableNoRecovery: "Niet Herbruikbaar (Geen Berging)", gulfOfAmerica: "Golf van Amerika", indianOcean: "Indische Oceaan", waterLanding: "Waterlanding", groundLandingZone: "Landlandingszone", rtlsReturnToLaunchSite: "RTLS (Terugkeer naar Lanceerplaats)", towerCatchRecovery: "Berging door Torenvangst", expendableMission: "Niet-herbruikbare Missie", noRecoveryAttempt: "Geen Bergingspoging", oceanDisposal: "Verwijdering in de Oceaan", atlanticPacificFleets: "Atlantische en Pacifische Vloten" },
-            da: { ocean: "Ocean", oceanWaterLanding: "Vandlanding i Oceanet", towerCatch: "Tårnopfangst", droneShip: "Droneskib", expendableNoRecovery: "Ikke-genanvendelig (Ingen Bjærgning)", gulfOfAmerica: "Amerikas Golf", indianOcean: "Det Indiske Ocean", waterLanding: "Vandlanding", groundLandingZone: "Landingszone på Land", rtlsReturnToLaunchSite: "RTLS (Retur til Opsendelsessted)", towerCatchRecovery: "Bjærgning ved Tårnopfangst", expendableMission: "Ikke-genanvendelig Mission", noRecoveryAttempt: "Intet Bjærgningsforsøg", oceanDisposal: "Bortskaffelse i Oceanet", atlanticPacificFleets: "Atlanterhavs- og Stillehavsflåderne" },
-            pt: { ocean: "Oceano", oceanWaterLanding: "Pouso na Água do Oceano", towerCatch: "Captura pela Torre", droneShip: "Balsa Autônoma", expendableNoRecovery: "Descartável (Sem Recuperação)", gulfOfAmerica: "Golfo da América", indianOcean: "Oceano Índico", waterLanding: "Pouso na Água", groundLandingZone: "Zona de Pouso Terrestre", rtlsReturnToLaunchSite: "RTLS (Retorno ao Local de Lançamento)", towerCatchRecovery: "Recuperação por Captura na Torre", expendableMission: "Missão Descartável", noRecoveryAttempt: "Sem Tentativa de Recuperação", oceanDisposal: "Descarte no Oceano", atlanticPacificFleets: "Frotas do Atlântico e do Pacífico" },
-            pl: { ocean: "Ocean", oceanWaterLanding: "Wodowanie w Oceanie", towerCatch: "Przechwycenie przez Wieżę", droneShip: "Statek Dronowy", expendableNoRecovery: "Bezpowrotny (Bez Odzysku)", gulfOfAmerica: "Zatoka Ameryki", indianOcean: "Ocean Indyjski", waterLanding: "Wodowanie", groundLandingZone: "Naziemna Strefa Lądowania", rtlsReturnToLaunchSite: "RTLS (Powrót na Miejsce Startu)", towerCatchRecovery: "Odzysk przez Przechwycenie Wieżą", expendableMission: "Misja Bezpowrotna", noRecoveryAttempt: "Bez Próby Odzysku", oceanDisposal: "Utylizacja w Oceanie", atlanticPacificFleets: "Flota Atlantycka i Pacyficzna" },
-            hi: { ocean: "महासागर", oceanWaterLanding: "महासागर में जल-लैंडिंग", towerCatch: "टावर कैच", droneShip: "ड्रोन शिप", expendableNoRecovery: "डिस्पोजेबल (कोई पुनर्प्राप्ति नहीं)", gulfOfAmerica: "अमेरिका की खाड़ी", indianOcean: "हिंद महासागर", waterLanding: "जल-लैंडिंग", groundLandingZone: "भूमि लैंडिंग क्षेत्र", rtlsReturnToLaunchSite: "RTLS (प्रक्षेपण स्थल पर वापसी)", towerCatchRecovery: "टावर कैच द्वारा पुनर्प्राप्ति", expendableMission: "डिस्पोजेबल मिशन", noRecoveryAttempt: "कोई पुनर्प्राप्ति प्रयास नहीं", oceanDisposal: "महासागर में निपटान", atlanticPacificFleets: "अटलांटिक और प्रशांत बेड़े" },
-            ar: { ocean: "المحيط", oceanWaterLanding: "هبوط مائي في المحيط", towerCatch: "الإمساك بالبرج", droneShip: "سفينة مسيّرة", expendableNoRecovery: "غير قابل للاسترجاع (بدون استرداد)", gulfOfAmerica: "خليج أمريكا", indianOcean: "المحيط الهندي", waterLanding: "هبوط مائي", groundLandingZone: "منطقة هبوط أرضية", rtlsReturnToLaunchSite: "RTLS (العودة إلى موقع الإطلاق)", towerCatchRecovery: "استرداد بالإمساك بالبرج", expendableMission: "مهمة غير قابلة للاسترجاع", noRecoveryAttempt: "بدون محاولة استرداد", oceanDisposal: "التخلص في المحيط", atlanticPacificFleets: "أساطيل المحيطين الأطلسي والهادئ" },
-            tr: { ocean: "Okyanus", oceanWaterLanding: "Okyanusta Suya İniş", towerCatch: "Kule ile Yakalama", droneShip: "Drone Gemisi", expendableNoRecovery: "Tek Kullanımlık (Kurtarma Yok)", gulfOfAmerica: "Amerika Körfezi", indianOcean: "Hint Okyanusu", waterLanding: "Suya İniş", groundLandingZone: "Kara İniş Bölgesi", rtlsReturnToLaunchSite: "RTLS (Fırlatma Sahasına Dönüş)", towerCatchRecovery: "Kule ile Yakalama Kurtarma", expendableMission: "Tek Kullanımlık Görev", noRecoveryAttempt: "Kurtarma Girişimi Yok", oceanDisposal: "Okyanusta İmha", atlanticPacificFleets: "Atlantik ve Pasifik Filoları" },
+            en: { ocean: "Ocean", oceanWaterLanding: "Ocean Water Landing", towerCatch: "Tower Catch", droneShip: "Drone Ship", expendableNoRecovery: "Expendable (No Recovery)", gulfOfAmerica: "Gulf of America", indianOcean: "Indian Ocean", waterLanding: "Water Landing", groundLandingZone: "Ground Landing Zone", landingZone: "Landing Zone", rtlsReturnToLaunchSite: "RTLS (Return To Launch Site)", towerCatchRecovery: "Tower Catch Recovery", expendableMission: "Expendable Mission", noRecoveryAttempt: "No Recovery Attempt", oceanDisposal: "Ocean Disposal", atlanticPacificFleets: "Atlantic & Pacific Ocean Fleets" },
+            he: { ocean: "אוקיינוס", oceanWaterLanding: "נחיתת מים באוקיינוס", towerCatch: "תפיסה במגדל", droneShip: "ספינת רחפן", expendableNoRecovery: "מתכלה (ללא שחזור)", gulfOfAmerica: "מפרץ אמריקה", indianOcean: "האוקיינוס ההודי", waterLanding: "נחיתת מים", groundLandingZone: "אזור נחיתה יבשתי", landingZone: "אזור נחיתה", rtlsReturnToLaunchSite: "RTLS (חזרה לאתר השיגור)", towerCatchRecovery: "שחזור בתפיסת מגדל", expendableMission: "משימה מתכלה", noRecoveryAttempt: "ללא ניסיון שחזור", oceanDisposal: "סילוק באוקיינוס", atlanticPacificFleets: "צי האוקיינוס האטלנטי והשקט" },
+            iw: { ocean: "אוקיינוס", oceanWaterLanding: "נחיתת מים באוקיינוס", towerCatch: "תפיסה במגדל", droneShip: "ספינת רחפן", expendableNoRecovery: "מתכלה (ללא שחזור)", gulfOfAmerica: "מפרץ אמריקה", indianOcean: "האוקיינוס ההודי", waterLanding: "נחיתת מים", groundLandingZone: "אזור נחיתה יבשתי", landingZone: "אזור נחיתה", rtlsReturnToLaunchSite: "RTLS (חזרה לאתר השיגור)", towerCatchRecovery: "שחזור בתפיסת מגדל", expendableMission: "משימה מתכלה", noRecoveryAttempt: "ללא ניסיון שחזור", oceanDisposal: "סילוק באוקיינוס", atlanticPacificFleets: "צי האוקיינוס האטלנטי והשקט" },
+            es: { ocean: "Océano", oceanWaterLanding: "Amerizaje en el Océano", towerCatch: "Captura en la Torre", droneShip: "Barcaza no Tripulada", expendableNoRecovery: "Desechable (Sin Recuperación)", gulfOfAmerica: "Golfo de América", indianOcean: "Océano Índico", waterLanding: "Amerizaje", groundLandingZone: "Zona de Aterrizaje Terrestre", landingZone: "Zona de Aterrizaje", rtlsReturnToLaunchSite: "RTLS (Regreso al Sitio de Lanzamiento)", towerCatchRecovery: "Recuperación por Captura en Torre", expendableMission: "Misión Desechable", noRecoveryAttempt: "Sin Intento de Recuperación", oceanDisposal: "Descarte en el Océano", atlanticPacificFleets: "Flotas del Atlántico y el Pacífico" },
+            fr: { ocean: "Océan", oceanWaterLanding: "Amerrissage dans l'Océan", towerCatch: "Capture par la Tour", droneShip: "Barge Autonome", expendableNoRecovery: "Non Récupérable (Sans Récupération)", gulfOfAmerica: "Golfe de l'Amérique", indianOcean: "Océan Indien", waterLanding: "Amerrissage", groundLandingZone: "Zone d'Atterrissage au Sol", landingZone: "Zone d'Atterrissage", rtlsReturnToLaunchSite: "RTLS (Retour au Site de Lancement)", towerCatchRecovery: "Récupération par Capture en Tour", expendableMission: "Mission Non Récupérable", noRecoveryAttempt: "Aucune Tentative de Récupération", oceanDisposal: "Élimination en Mer", atlanticPacificFleets: "Flottes de l'Atlantique et du Pacifique" },
+            de: { ocean: "Ozean", oceanWaterLanding: "Wasserlandung im Ozean", towerCatch: "Turmfang", droneShip: "Drohnenschiff", expendableNoRecovery: "Nicht Wiederverwendbar (Keine Bergung)", gulfOfAmerica: "Golf von Amerika", indianOcean: "Indischer Ozean", waterLanding: "Wasserlandung", groundLandingZone: "Boden-Landezone", landingZone: "Landezone", rtlsReturnToLaunchSite: "RTLS (Rückkehr zum Startplatz)", towerCatchRecovery: "Bergung durch Turmfang", expendableMission: "Nicht Wiederverwendbare Mission", noRecoveryAttempt: "Kein Bergungsversuch", oceanDisposal: "Entsorgung im Ozean", atlanticPacificFleets: "Atlantik- und Pazifikflotten" },
+            ru: { ocean: "Океан", oceanWaterLanding: "Приводнение в Океане", towerCatch: "Захват Башней", droneShip: "Дрон-корабль", expendableNoRecovery: "Одноразовый (Без Спасения)", gulfOfAmerica: "Залив Америки", indianOcean: "Индийский Океан", waterLanding: "Приводнение", groundLandingZone: "Наземная Зона Посадки", landingZone: "Зона Посадки", rtlsReturnToLaunchSite: "RTLS (Возврат на Место Старта)", towerCatchRecovery: "Спасение Захватом Башней", expendableMission: "Одноразовая Миссия", noRecoveryAttempt: "Без Попытки Спасения", oceanDisposal: "Утилизация в Океане", atlanticPacificFleets: "Флоты Атлантического и Тихого Океанов" },
+            zh: { ocean: "海洋", oceanWaterLanding: "海洋溅落", towerCatch: "塔式捕获", droneShip: "无人驳船", expendableNoRecovery: "一次性(不回收)", gulfOfAmerica: "美国湾", indianOcean: "印度洋", waterLanding: "溅落", groundLandingZone: "陆地着陆区", landingZone: "着陆区", rtlsReturnToLaunchSite: "RTLS(返回发射场)", towerCatchRecovery: "塔式捕获回收", expendableMission: "一次性任务", noRecoveryAttempt: "不尝试回收", oceanDisposal: "海洋处置", atlanticPacificFleets: "大西洋与太平洋船队" },
+            it: { ocean: "Oceano", oceanWaterLanding: "Ammaraggio nell'Oceano", towerCatch: "Cattura dalla Torre", droneShip: "Chiatta Autonoma", expendableNoRecovery: "Non Recuperabile (Nessun Recupero)", gulfOfAmerica: "Golfo d'America", indianOcean: "Oceano Indiano", waterLanding: "Ammaraggio", groundLandingZone: "Zona di Atterraggio a Terra", landingZone: "Zona di Atterraggio", rtlsReturnToLaunchSite: "RTLS (Ritorno al Sito di Lancio)", towerCatchRecovery: "Recupero tramite Cattura dalla Torre", expendableMission: "Missione Non Recuperabile", noRecoveryAttempt: "Nessun Tentativo di Recupero", oceanDisposal: "Smaltimento in Oceano", atlanticPacificFleets: "Flotte dell'Atlantico e del Pacifico" },
+            cs: { ocean: "Oceán", oceanWaterLanding: "Přistání na Vodu v Oceánu", towerCatch: "Zachycení Věží", droneShip: "Dronová Loď", expendableNoRecovery: "Nenávratný (Bez Záchrany)", gulfOfAmerica: "Americký Záliv", indianOcean: "Indický Oceán", waterLanding: "Přistání na Vodu", groundLandingZone: "Pozemní Přistávací Zóna", landingZone: "Přistávací Zóna", rtlsReturnToLaunchSite: "RTLS (Návrat na Místo Startu)", towerCatchRecovery: "Záchrana Zachycením Věží", expendableMission: "Nenávratná Mise", noRecoveryAttempt: "Bez Pokusu o Záchranu", oceanDisposal: "Likvidace v Oceánu", atlanticPacificFleets: "Flotily Atlantiku a Pacifiku" },
+            sv: { ocean: "Ocean", oceanWaterLanding: "Vattenlandning i Oceanen", towerCatch: "Torngripning", droneShip: "Drönarskepp", expendableNoRecovery: "Förbrukningsbar (Ingen Återvinning)", gulfOfAmerica: "Amerikas Golf", indianOcean: "Indiska Oceanen", waterLanding: "Vattenlandning", groundLandingZone: "Marklandningszon", landingZone: "Landningszon", rtlsReturnToLaunchSite: "RTLS (Återgång till Startplatsen)", towerCatchRecovery: "Bärgning genom Torngripning", expendableMission: "Förbrukningsbart Uppdrag", noRecoveryAttempt: "Inget Återvinningsförsök", oceanDisposal: "Bortskaffande i Oceanen", atlanticPacificFleets: "Atlant- och Stillahavsflottorna" },
+            nl: { ocean: "Oceaan", oceanWaterLanding: "Waterlanding in de Oceaan", towerCatch: "Torenvangst", droneShip: "Droneschip", expendableNoRecovery: "Niet Herbruikbaar (Geen Berging)", gulfOfAmerica: "Golf van Amerika", indianOcean: "Indische Oceaan", waterLanding: "Waterlanding", groundLandingZone: "Landlandingszone", landingZone: "Landingszone", rtlsReturnToLaunchSite: "RTLS (Terugkeer naar Lanceerplaats)", towerCatchRecovery: "Berging door Torenvangst", expendableMission: "Niet-herbruikbare Missie", noRecoveryAttempt: "Geen Bergingspoging", oceanDisposal: "Verwijdering in de Oceaan", atlanticPacificFleets: "Atlantische en Pacifische Vloten" },
+            da: { ocean: "Ocean", oceanWaterLanding: "Vandlanding i Oceanet", towerCatch: "Tårnopfangst", droneShip: "Droneskib", expendableNoRecovery: "Ikke-genanvendelig (Ingen Bjærgning)", gulfOfAmerica: "Amerikas Golf", indianOcean: "Det Indiske Ocean", waterLanding: "Vandlanding", groundLandingZone: "Landingszone på Land", landingZone: "Landingszone", rtlsReturnToLaunchSite: "RTLS (Retur til Opsendelsessted)", towerCatchRecovery: "Bjærgning ved Tårnopfangst", expendableMission: "Ikke-genanvendelig Mission", noRecoveryAttempt: "Intet Bjærgningsforsøg", oceanDisposal: "Bortskaffelse i Oceanet", atlanticPacificFleets: "Atlanterhavs- og Stillehavsflåderne" },
+            pt: { ocean: "Oceano", oceanWaterLanding: "Pouso na Água do Oceano", towerCatch: "Captura pela Torre", droneShip: "Balsa Autônoma", expendableNoRecovery: "Descartável (Sem Recuperação)", gulfOfAmerica: "Golfo da América", indianOcean: "Oceano Índico", waterLanding: "Pouso na Água", groundLandingZone: "Zona de Pouso Terrestre", landingZone: "Zona de Pouso", rtlsReturnToLaunchSite: "RTLS (Retorno ao Local de Lançamento)", towerCatchRecovery: "Recuperação por Captura na Torre", expendableMission: "Missão Descartável", noRecoveryAttempt: "Sem Tentativa de Recuperação", oceanDisposal: "Descarte no Oceano", atlanticPacificFleets: "Frotas do Atlântico e do Pacífico" },
+            pl: { ocean: "Ocean", oceanWaterLanding: "Wodowanie w Oceanie", towerCatch: "Przechwycenie przez Wieżę", droneShip: "Statek Dronowy", expendableNoRecovery: "Bezpowrotny (Bez Odzysku)", gulfOfAmerica: "Zatoka Ameryki", indianOcean: "Ocean Indyjski", waterLanding: "Wodowanie", groundLandingZone: "Naziemna Strefa Lądowania", landingZone: "Strefa Lądowania", rtlsReturnToLaunchSite: "RTLS (Powrót na Miejsce Startu)", towerCatchRecovery: "Odzysk przez Przechwycenie Wieżą", expendableMission: "Misja Bezpowrotna", noRecoveryAttempt: "Bez Próby Odzysku", oceanDisposal: "Utylizacja w Oceanie", atlanticPacificFleets: "Flota Atlantycka i Pacyficzna" },
+            hi: { ocean: "महासागर", oceanWaterLanding: "महासागर में जल-लैंडिंग", towerCatch: "टावर कैच", droneShip: "ड्रोन शिप", expendableNoRecovery: "डिस्पोजेबल (कोई पुनर्प्राप्ति नहीं)", gulfOfAmerica: "अमेरिका की खाड़ी", indianOcean: "हिंद महासागर", waterLanding: "जल-लैंडिंग", groundLandingZone: "भूमि लैंडिंग क्षेत्र", landingZone: "लैंडिंग क्षेत्र", rtlsReturnToLaunchSite: "RTLS (प्रक्षेपण स्थल पर वापसी)", towerCatchRecovery: "टावर कैच द्वारा पुनर्प्राप्ति", expendableMission: "डिस्पोजेबल मिशन", noRecoveryAttempt: "कोई पुनर्प्राप्ति प्रयास नहीं", oceanDisposal: "महासागर में निपटान", atlanticPacificFleets: "अटलांटिक और प्रशांत बेड़े" },
+            ar: { ocean: "المحيط", oceanWaterLanding: "هبوط مائي في المحيط", towerCatch: "الإمساك بالبرج", droneShip: "سفينة مسيّرة", expendableNoRecovery: "غير قابل للاسترجاع (بدون استرداد)", gulfOfAmerica: "خليج أمريكا", indianOcean: "المحيط الهندي", waterLanding: "هبوط مائي", groundLandingZone: "منطقة هبوط أرضية", landingZone: "منطقة الهبوط", rtlsReturnToLaunchSite: "RTLS (العودة إلى موقع الإطلاق)", towerCatchRecovery: "استرداد بالإمساك بالبرج", expendableMission: "مهمة غير قابلة للاسترجاع", noRecoveryAttempt: "بدون محاولة استرداد", oceanDisposal: "التخلص في المحيط", atlanticPacificFleets: "أساطيل المحيطين الأطلسي والهادئ" },
+            tr: { ocean: "Okyanus", oceanWaterLanding: "Okyanusta Suya İniş", towerCatch: "Kule ile Yakalama", droneShip: "Drone Gemisi", expendableNoRecovery: "Tek Kullanımlık (Kurtarma Yok)", gulfOfAmerica: "Amerika Körfezi", indianOcean: "Hint Okyanusu", waterLanding: "Suya İniş", groundLandingZone: "Kara İniş Bölgesi", landingZone: "İniş Bölgesi", rtlsReturnToLaunchSite: "RTLS (Fırlatma Sahasına Dönüş)", towerCatchRecovery: "Kule ile Yakalama Kurtarma", expendableMission: "Tek Kullanımlık Görev", noRecoveryAttempt: "Kurtarma Girişimi Yok", oceanDisposal: "Okyanusta İmha", atlanticPacificFleets: "Atlantik ve Pasifik Filoları" },
         };
 
         function localizeLandingStr(raw, currentLang) {
@@ -1425,6 +1426,7 @@
             out = out.replace(/Gulf of America/g, d.gulfOfAmerica);
             out = out.replace(/Indian Ocean/g, d.indianOcean);
             out = out.replace(/Drone Ship/g, d.droneShip);
+            out = out.replace(/Landing Zone/g, d.landingZone);
             out = out.replace(/\bOcean\b/g, d.ocean);
             return out;
         }
@@ -1433,6 +1435,92 @@
             let key = (currentLang || 'en').split('-')[0];
             if (key === 'zh') key = 'zh';
             return LANDING_I18N[key] || LANDING_I18N.en;
+        }
+
+        // Manual translations for the three episode titles in the "Official Documentary
+        // Section" (#doc-ep1-title / #doc-ep2-title / #doc-ep3-title). Left open to Google
+        // Translate, idiomatic titles like "Test Like You Fly" (an aerospace-testing phrase,
+        // not a literal instruction) came out as nonsensical word-for-word translations —
+        // same rationale as MILESTONES_I18N above, so these get the same manual treatment.
+        // Episode descriptions are left as-is for Google Translate.
+        const DOC_EPISODE_I18N = {
+            en: { ep1: "Critical Path", ep2: "Test Like You Fly", ep3: "Fifth Flight Test" },
+            he: { ep1: "המסלול הקריטי", ep2: "לבחון כפי שטסים", ep3: "טיסת המבחן החמישית" },
+            iw: { ep1: "המסלול הקריטי", ep2: "לבחון כפי שטסים", ep3: "טיסת המבחן החמישית" },
+            es: { ep1: "Ruta Crítica", ep2: "Prueba Como Vuelas", ep3: "Quinto Vuelo de Prueba" },
+            fr: { ep1: "Chemin Critique", ep2: "Teste Comme Tu Voles", ep3: "Cinquième Vol d'Essai" },
+            de: { ep1: "Kritischer Pfad", ep2: "Teste, Wie Du Fliegst", ep3: "Fünfter Testflug" },
+            ru: { ep1: "Критический Путь", ep2: "Испытывай, Как Летаешь", ep3: "Пятый Испытательный Полёт" },
+            zh: { ep1: "关键路径", ep2: "像飞行一样测试", ep3: "第五次试飞" },
+            it: { ep1: "Percorso Critico", ep2: "Testa Come Voli", ep3: "Quinto Volo di Prova" },
+            cs: { ep1: "Kritická Cesta", ep2: "Testuj, Jak Létáš", ep3: "Pátý Zkušební Let" },
+            sv: { ep1: "Kritisk Väg", ep2: "Testa Som Du Flyger", ep3: "Femte Testflygningen" },
+            nl: { ep1: "Kritiek Pad", ep2: "Test Zoals Je Vliegt", ep3: "Vijfde Testvlucht" },
+            da: { ep1: "Kritisk Vej", ep2: "Test Som Du Flyver", ep3: "Femte Testflyvning" },
+            pt: { ep1: "Caminho Crítico", ep2: "Teste Como Voa", ep3: "Quinto Voo de Teste" },
+            pl: { ep1: "Ścieżka Krytyczna", ep2: "Testuj Tak, Jak Latasz", ep3: "Piąty Lot Testowy" },
+            hi: { ep1: "क्रिटिकल पाथ", ep2: "जैसे उड़ो वैसे परखो", ep3: "पांचवीं परीक्षण उड़ान" },
+            ar: { ep1: "المسار الحرج", ep2: "اختبر كما تطير", ep3: "رحلة الاختبار الخامسة" },
+            tr: { ep1: "Kritik Yol", ep2: "Uçtuğun Gibi Test Et", ep3: "Beşinci Test Uçuşu" },
+        };
+
+        let lastAppliedDocEpisodeLang = null;
+        function applyDocEpisodeTranslations(currentLang) {
+            let key = (currentLang || 'en').split('-')[0];
+            if (key === 'zh') key = 'zh';
+            if (lastAppliedDocEpisodeLang === key) return;
+            lastAppliedDocEpisodeLang = key;
+            const dict = DOC_EPISODE_I18N[key] || DOC_EPISODE_I18N.en;
+            const ep1 = document.getElementById('doc-ep1-title');
+            const ep2 = document.getElementById('doc-ep2-title');
+            const ep3 = document.getElementById('doc-ep3-title');
+            if (ep1) ep1.innerText = dict.ep1;
+            if (ep2) ep2.innerText = dict.ep2;
+            if (ep3) ep3.innerText = dict.ep3;
+        }
+
+        // Manual transliterations for the three real-world launch site names that show up
+        // in m.site (built in mapLaunchToSchema from the live API's pad/location names, e.g.
+        // "SLC-4E, Vandenberg SFB"). This text isn't blocked from Google Translate, but
+        // Google generally leaves real place names as-is rather than translating them — so
+        // "Vandenberg"/"Cape Canaveral"/"Kennedy Space Center" stay in English even once the
+        // rest of the page (including the date right next to it) is translated. Facility
+        // codes (SLC-4E, LC-39A, SFB, SFS) are left alone, same as "Landing Zone 40" or
+        // "Falcon 9" elsewhere — they're designations, not prose, and read the same in every
+        // language. In Latin-script languages, these names are conventionally spelled the
+        // same as in English (that's genuinely how French/German/Spanish news write them),
+        // so only the non-Latin-script entries actually change anything.
+        const SITE_NAME_I18N = {
+            en: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
+            he: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי" },
+            iw: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי" },
+            es: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Cañaveral", kennedySpaceCenter: "Centro Espacial Kennedy" },
+            fr: { vandenberg: "Vandenberg", capeCanaveral: "Cap Canaveral", kennedySpaceCenter: "Centre Spatial Kennedy" },
+            de: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
+            ru: { vandenberg: "Ванденберг", capeCanaveral: "Мыс Канаверал", kennedySpaceCenter: "Космический центр Кеннеди" },
+            zh: { vandenberg: "范登堡", capeCanaveral: "卡纳维拉尔角", kennedySpaceCenter: "肯尼迪航天中心" },
+            it: { vandenberg: "Vandenberg", capeCanaveral: "Capo Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
+            cs: { vandenberg: "Vandenberg", capeCanaveral: "Mys Canaveral", kennedySpaceCenter: "Kennedyho vesmírné středisko" },
+            sv: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
+            nl: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
+            da: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center" },
+            pt: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Canaveral", kennedySpaceCenter: "Centro Espacial Kennedy" },
+            pl: { vandenberg: "Vandenberg", capeCanaveral: "Przylądek Canaveral", kennedySpaceCenter: "Centrum Kosmiczne Kennedy'ego" },
+            hi: { vandenberg: "वैंडेनबर्ग", capeCanaveral: "केप कैनावेरल", kennedySpaceCenter: "कैनेडी स्पेस सेंटर" },
+            ar: { vandenberg: "فاندنبرغ", capeCanaveral: "كيب كانافيرال", kennedySpaceCenter: "مركز كينيدي للفضاء" },
+            tr: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Uzay Merkezi" },
+        };
+
+        function localizeSiteStr(raw, currentLang) {
+            if (!raw) return raw;
+            let key = (currentLang || 'en').split('-')[0];
+            if (key === 'zh') key = 'zh';
+            const d = SITE_NAME_I18N[key] || SITE_NAME_I18N.en;
+            let out = raw;
+            out = out.replace(/Kennedy Space Center/g, d.kennedySpaceCenter);
+            out = out.replace(/Cape Canaveral/g, d.capeCanaveral);
+            out = out.replace(/Vandenberg/g, d.vandenberg);
+            return out;
         }
 
         // Manual translations for the "Mission Objectives & Strategic Significance"
@@ -1684,12 +1772,18 @@
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
             applyPollTranslations(currentLang);
+            applyDocEpisodeTranslations(currentLang);
             if (lastAppliedWeatherLang !== currentLang.split('-')[0]) {
                 lastAppliedWeatherLang = currentLang.split('-')[0];
                 renderWeatherHTML();
             }
             if (lastAppliedSpecLang !== currentLang.split('-')[0]) {
                 lastAppliedSpecLang = currentLang.split('-')[0];
+                // updateUnitsDisplay() only runs when metric/imperial actually flips (see
+                // where it's called below), so switching between two metric languages (e.g.
+                // Hebrew to Russian) wouldn't otherwise refresh the Rocket Scale Comparator's
+                // unit word — do it here too, on every language change.
+                if (typeof updateUnitsDisplay === 'function') updateUnitsDisplay();
                 // Re-render any open vehicle/orbit modal so its notranslate spec values
                 // (height/thrust/payload, altitude/velocity/period) switch language too —
                 // these are blocked from Google Translate on purpose, so they only update
@@ -1722,6 +1816,20 @@
                 const descDetailEl = document.getElementById('modal-description-detailed');
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && descDetailEl && window.currentActiveMissionCategory) {
                     descDetailEl.innerHTML = renderMissionPurposeHtml(window.currentActiveMissionCategory, window.currentActiveMissionDescription, currentLang);
+                }
+                // Same for the mission modal's LAUNCH SITE value and the hero banner's site
+                // line — both notranslate now (see localizeSiteStr above), so a language
+                // switch needs to explicitly re-run the transliteration instead of relying on
+                // Google Translate, which was leaving "Vandenberg"/"Cape Canaveral" untouched
+                // anyway.
+                const modalSiteEl = document.getElementById('modal-site');
+                if (missionModalEl && !missionModalEl.classList.contains('hidden') && modalSiteEl && window.currentActiveMissionSite) {
+                    modalSiteEl.innerText = localizeSiteStr(window.currentActiveMissionSite, currentLang);
+                }
+                const heroDetailsTextEl = document.getElementById('hero-details-text');
+                if (heroDetailsTextEl && window.currentActiveHeroSite) {
+                    const heroDateSpan = heroDetailsTextEl.textContent.split('•')[0].trim();
+                    heroDetailsTextEl.innerHTML = `${heroDateSpan} • <span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
                 }
             }
             applyPhraseFixes(currentLang);
@@ -2152,8 +2260,8 @@
                                     class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
                                     1 • RELEASED</span>
                             </div>
-                            <h4
-                                class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">
+                            <h4 id="doc-ep1-title" translate="no"
+                                class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                 Critical Path</h4>
                             <p class="text-xs text-zinc-400 line-clamp-4">The path to launch is filled with obstacles
                                 and success is only possible through the tireless efforts of many working together
@@ -2175,8 +2283,8 @@
                                     class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
                                     2 • RELEASED</span>
                             </div>
-                            <h4
-                                class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">
+                            <h4 id="doc-ep2-title" translate="no"
+                                class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                 Test Like You Fly</h4>
                             <p class="text-xs text-zinc-400 line-clamp-4">Three years since the first flight of
                                 Starship, the next generation is here. New ship. New booster. New engines. New pad and
@@ -2203,8 +2311,8 @@
                                         class="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
                                         3 • COMING SOON</span>
                                 </div>
-                                <h4
-                                    class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500">
+                                <h4 id="doc-ep3-title" translate="no"
+                                    class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                     Fifth Flight Test</h4>
                                 <p class="text-xs text-zinc-400 mb-3 line-clamp-4">The highly anticipated fifth flight
                                     test, targeting the first-ever catch of the Super Heavy booster by the launch tower.
@@ -2714,8 +2822,8 @@
                                 translate="no" lang="en">LAUNCH SITE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
-                        <div id="modal-site"
-                            class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight"></div>
+                        <div id="modal-site" translate="no"
+                            class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight notranslate"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
                         onclick="openOrbitSpecs()">
@@ -2855,7 +2963,7 @@
                                 </svg>
                                 <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">
                                     Falcon 9</div>
-                                <div class="text-zinc-500 text-[10px] notranslate" id="scale-text-falcon" dir="ltr"
+                                <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-falcon" dir="auto"
                                     translate="no"></div>
                             </div>
                             <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95"
@@ -2878,7 +2986,7 @@
                                 </svg>
                                 <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">
                                     <span class="starship-term notranslate" translate="no">Starship</span></div>
-                                <div class="text-zinc-500 text-[10px] notranslate" id="scale-text-starship" dir="ltr"
+                                <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-starship" dir="auto"
                                     translate="no"></div>
                             </div>
                         </div>
@@ -4783,7 +4891,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     dateStr = new Date(nextLaunch.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
                 } catch (e) { }
 
-                document.getElementById('hero-details-text').innerText = `${dateStr} • ${nextLaunch.site}`;
+                window.currentActiveHeroSite = nextLaunch.site;
+                document.getElementById('hero-details-text').innerHTML = `${dateStr} • <span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
                 fetchLiveWeather(nextLaunch.siteLower, nextLaunch.probability);
 
                 let winText = `${nextLaunch.windowStart} - ${nextLaunch.windowEnd}`;
@@ -5070,7 +5179,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
                         <div>
                             <div class="mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
-                            <div class="text-xs text-zinc-500 mb-3">${dateStr} • ${m.site}</div>
+                            <div class="text-xs text-zinc-500 mb-3">${dateStr} • <span class="notranslate" translate="no">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
                             <button class="text-sm text-left text-emerald-400 hover:underline font-medium notranslate" translate="no" data-i18n-past-details="1" data-has-video="${hasVideo ? '1' : '0'}">${detailsLabel}</button>
@@ -5404,7 +5513,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
             } catch (e) { dateStr = m.window; }
 
             document.getElementById('modal-date').innerText = dateStr;
-            document.getElementById('modal-site').innerText = m.site;
+            window.currentActiveMissionSite = m.site;
+            document.getElementById('modal-site').innerText = localizeSiteStr(m.site, document.documentElement.lang);
             document.getElementById('modal-vehicle').innerText = m.vehicle;
             window.currentActiveVehicleStr = m.vehicle || "falcon 9";
 
