@@ -4040,60 +4040,41 @@
             return response;
         }
 
-        // Fetches the true count of SpaceX launches since Jan 1 of the current year (not just
-        // whatever page of "previous launches" happens to be cached). Uses the Launch Library 2
-        // API's `count` field with a net__gte filter and limit=1, so we get an exact total
-        // without pulling down every launch record. Recomputing the year boundary from
-        // `new Date()` on every call (rather than baking in a fixed year) is what makes this
-        // roll over to next year's count automatically once 2027 starts, and so on.
-        const YEAR_COUNT_CACHE_KEY = 'spacex_year_launch_count_cache';
-        async function fetchYearToDateLaunchCount() {
-            const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)).toISOString();
-            const buildUrl = (base) => `${base}/2.2.0/launch/previous/?lsp__id=121&net__gte=${encodeURIComponent(yearStart)}&limit=1`;
+        // "Launches This Year" used to be fetched from the Launch Library 2 API's own
+        // year-to-date `count` field. That turned out to be unreliable in two ways: (1) when
+        // that request hit LL2's rate limit (which this app hits often — see the booster/data
+        // discussions elsewhere in this codebase's history), it fell back to counting
+        // rawPastMissions locally — but that fallback counted *every* mission the app had
+        // filed as "past", including ones still sitting at status TBD/Hold/"Delayed / Under
+        // Review" whose original scheduled time had simply slipped more than 24h behind (see
+        // the isPast logic above, around "diff > 24 * 60 * 60 * 1000"). A launch that got
+        // scrubbed and pushed to tomorrow got silently counted as if it had already flown.
+        // (2) Even when the primary fetch succeeded, LL2's own database can lag behind a
+        // just-announced scrub, showing the same inflated number.
+        //
+        // Instead of trusting either external count, this now anchors to a known-correct
+        // baseline the user confirmed (95 launches as of the morning of Aug 10, 2026) and
+        // adds only launches this app's own data has *confirmed actually flew* since then —
+        // m.launchSuccess is non-null only when the source status matched /success/i or
+        // /fail/i (see mapLaunchToSchema), which a still-TBD/postponed launch never does. That
+        // makes a scrub impossible to miscount as a launch, regardless of what LL2's bucketing
+        // or rate limit is doing at the moment.
+        const LAUNCH_COUNT_BASE = 95;
+        const LAUNCH_COUNT_BASE_DATE = '2026-08-10T00:00:00Z';
 
-            const tryFetch = async (base) => {
-                try {
-                    const res = await fetchWithTimeout(buildUrl(base), { timeout: 12000 });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (typeof data.count === 'number') return data.count;
-                    }
-                } catch (e) { }
-                return null;
-            };
-
-            let count = await tryFetch('https://ll.thespacedevs.com');
-            if (count === null) count = await tryFetch('https://lldev.thespacedevs.com');
-
-            if (count !== null) {
-                try {
-                    localStorage.setItem(YEAR_COUNT_CACHE_KEY, JSON.stringify({ year: new Date().getUTCFullYear(), count }));
-                } catch (e) { }
-                return count;
-            }
-
-            // Both endpoints failed - fall back to a cached count from earlier this same year,
-            // rather than showing 0 or a stale number from a previous year.
-            try {
-                const cached = JSON.parse(localStorage.getItem(YEAR_COUNT_CACHE_KEY) || 'null');
-                if (cached && cached.year === new Date().getUTCFullYear()) return cached.count;
-            } catch (e) { }
-            return null;
+        function computeYearToDateLaunchCount() {
+            const baseMs = new Date(LAUNCH_COUNT_BASE_DATE).getTime();
+            const confirmedSinceBase = (rawPastMissions || []).filter(m => {
+                const t = new Date(m.date).getTime();
+                return t >= baseMs && m.launchSuccess !== null;
+            }).length;
+            return LAUNCH_COUNT_BASE + confirmedSinceBase;
         }
 
-        async function updateYearToDateLaunchCount() {
+        function updateYearToDateLaunchCount() {
             const el = document.getElementById('upcoming-count');
             if (!el) return;
-            const count = await fetchYearToDateLaunchCount();
-            if (count !== null) {
-                el.innerText = count;
-            } else if (rawPastMissions && rawPastMissions.length) {
-                // Last resort: derive from whatever past-launch data we already have loaded
-                // (covers only up to the last ~50 fetched launches, so may undercount in a
-                // very high-cadence year, but beats showing nothing).
-                const yearStartMs = Date.UTC(new Date().getUTCFullYear(), 0, 1);
-                el.innerText = rawPastMissions.filter(m => new Date(m.date).getTime() >= yearStartMs).length;
-            }
+            el.innerText = computeYearToDateLaunchCount();
         }
 
         async function fetchLiveLaunches() {
