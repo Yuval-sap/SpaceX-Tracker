@@ -2979,6 +2979,21 @@
                         class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
                         <i class="fa-solid fa-xmark text-sm text-red-500"></i>
                     </button>
+                    <!-- Mirrors #hero-video-unconfirmed-overlay: shown INSTEAD of the iframe
+                         whenever we don't yet have a confirmed, reliably-embeddable video ID for
+                         a live launch - covers the iframe entirely so nobody ever sees YouTube's
+                         own bare "video unavailable" message from the unreliable
+                         embed/live_stream?channel=X trick. Hidden again the moment the background
+                         resolver in wireModalLiveButton finds the real current live video. -->
+                    <div id="modal-video-unconfirmed-overlay"
+                        class="hidden absolute inset-0 z-10 flex-col items-center justify-center gap-3 bg-zinc-950 text-center px-6">
+                        <i class="fa-solid fa-satellite-dish text-2xl text-zinc-600"></i>
+                        <p id="modal-video-unconfirmed-text" class="text-xs sm:text-sm text-zinc-400 max-w-xs">
+                            We haven't confirmed a live stream is playing here yet.</p>
+                        <a id="modal-video-unconfirmed-yt-btn" href="#" target="_blank" rel="noopener"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-black font-semibold text-sm rounded-xl md:hover:bg-emerald-400 transition-colors notranslate text-center whitespace-normal max-w-full"
+                            translate="no"><i class="fa-brands fa-youtube shrink-0"></i> Watch on YouTube</a>
+                    </div>
                 </div>
                 <div id="modal-video-fallback" class="hidden">
                     <a id="modal-video-fallback-link" href="#" target="_blank" rel="noopener"
@@ -6475,23 +6490,63 @@
             if (sfnLiveVideoIdCache.id && Date.now() - sfnLiveVideoIdCache.fetchedAt < 2 * 60 * 1000) {
                 return sfnLiveVideoIdCache.id;
             }
-            try {
-                // This runs entirely in the background (see renderHeroLiveButton) - nothing
-                // visible is waiting on it, so a generous timeout only improves the odds of a
-                // successful silent upgrade with no UX cost either way.
-                const res = await fetchWithTimeout(
-                    'https://api.allorigins.win/get?url=' + encodeURIComponent(`https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`),
-                    { timeout: 15000 }
-                );
-                if (!res.ok) return null;
-                const data = await res.json();
-                const match = (data.contents || '').match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-                if (match) {
-                    sfnLiveVideoIdCache = { id: match[1], fetchedAt: Date.now() };
-                    return match[1];
-                }
-            } catch (e) { }
+            const targetUrl = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
+            // allorigins.win is a free, unauthenticated proxy that measurably errors or times
+            // out on a large fraction of requests (confirmed directly: repeated 500/520/522 and
+            // outright connection failures against this exact URL, even though the underlying
+            // YouTube page loads fine every time) - a "true miss" here used to permanently show
+            // "we haven't confirmed a live stream" for the rest of that click, even during an
+            // actual live broadcast. A few quick retries turn that unreliable single shot into
+            // something the live-launch flow can actually depend on. This runs entirely in the
+            // background (see renderHeroLiveButton / wireModalLiveButton) - nothing visible is
+            // waiting on it, so spending a few extra seconds only improves the odds of a
+            // successful silent upgrade with no UX cost either way.
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const res = await fetchWithTimeout(
+                        'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl),
+                        { timeout: 8000 }
+                    );
+                    if (res.ok) {
+                        const data = await res.json();
+                        const match = (data.contents || '').match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+                        if (match) {
+                            sfnLiveVideoIdCache = { id: match[1], fetchedAt: Date.now() };
+                            return match[1];
+                        }
+                    }
+                } catch (e) { }
+                if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
+            }
             return null;
+        }
+
+        // After a live-launch player opens without a confirmed video ID (the "we haven't
+        // confirmed a live stream" overlay), keeps retrying resolveSfnLiveVideoId() every 20s
+        // for as long as that player stays open and unconfirmed, instead of giving up after the
+        // one attempt behind the initial click. Upgrades to the real embed and hides the overlay
+        // the moment a resolve succeeds - self-heals past allorigins.win's flakiness across the
+        // whole live window rather than needing the user to close and reopen the player to get a
+        // fresh attempt. Shared by both the hero and mission-modal players (see prefix pattern
+        // used elsewhere in this file).
+        function pollForConfirmedLiveVideo(videoIframe, videoSection, unconfirmedOverlay) {
+            const attempt = () => {
+                if (!videoIframe || !videoSection || videoSection.classList.contains('hidden')) return;
+                if (!unconfirmedOverlay || unconfirmedOverlay.classList.contains('hidden')) return; // already resolved (or closed) elsewhere
+                resolveSfnLiveVideoId().then(resolvedId => {
+                    if (!videoSection || videoSection.classList.contains('hidden')) return; // player closed meanwhile
+                    if (!resolvedId) {
+                        setTimeout(attempt, 20000);
+                        return;
+                    }
+                    videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                    if (unconfirmedOverlay) {
+                        unconfirmedOverlay.classList.add('hidden');
+                        unconfirmedOverlay.classList.remove('flex');
+                    }
+                });
+            };
+            setTimeout(attempt, 20000);
         }
 
         function renderHeroLiveButton(nextLaunch) {
@@ -6553,7 +6608,10 @@
                     }
 
                     resolveSfnLiveVideoId().then(resolvedId => {
-                        if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) return;
+                        if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) {
+                            pollForConfirmedLiveVideo(heroVideoIframe, heroVideoSection, heroVideoUnconfirmedOverlay);
+                            return;
+                        }
                         heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
                         if (heroVideoUnconfirmedOverlay) {
                             heroVideoUnconfirmedOverlay.classList.add('hidden');
@@ -7240,6 +7298,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const videoIframe = document.getElementById('modal-video-iframe');
             const videoCloseBtn = document.getElementById('modal-video-close-btn');
             const videoBtnWrap = document.getElementById('modal-video-btn-wrap');
+            const videoUnconfirmedOverlay = document.getElementById('modal-video-unconfirmed-overlay');
+            const videoUnconfirmedYtBtn = document.getElementById('modal-video-unconfirmed-yt-btn');
             if (!liveBtn) return;
 
             const setThreeUp = (on) => {
@@ -7267,9 +7327,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 return;
             }
 
-            const embedSrc = confirmedYoutubeId
-                ? 'https://www.youtube-nocookie.com/embed/' + confirmedYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1'
-                : `https://www.youtube.com/embed/live_stream?channel=${SFN_YT_CHANNEL_ID}&autoplay=1`;
+            const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
 
             if (liveLabel) liveLabel.innerText = 'WATCH LIVE';
             liveBtn.onclick = function () {
@@ -7277,14 +7335,54 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // Reuse the shared player: make sure the past-launch button row isn't
                 // also showing at the same time.
                 if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
-                videoIframe.src = embedSrc;
                 videoSection.classList.remove('hidden');
                 resetVideoControlsOverlay();
+
+                if (confirmedYoutubeId) {
+                    // The API confirmed a specific, real SpaceX video - most precise, embed it
+                    // directly, no overlay needed.
+                    videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + confirmedYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                    if (videoUnconfirmedOverlay) {
+                        videoUnconfirmedOverlay.classList.add('hidden');
+                        videoUnconfirmedOverlay.classList.remove('flex');
+                    }
+                    return;
+                }
+
+                // No confirmed video yet, but we're inside the pre-launch window. Embedding
+                // "embed/live_stream?channel=X" directly was confirmed to show YouTube's own
+                // bare "video unavailable" even while the channel genuinely is live - so show
+                // the "not confirmed yet" overlay with a real "Watch on YouTube" link instead,
+                // while a background lookup (resolveSfnLiveVideoId) tries to resolve the actual
+                // current video ID and, if it succeeds in time, silently swaps in a real,
+                // reliably-embeddable player and hides the overlay.
+                videoIframe.src = '';
+                if (videoUnconfirmedYtBtn) videoUnconfirmedYtBtn.href = youtubeOpenUrlFallback;
+                if (videoUnconfirmedOverlay) {
+                    videoUnconfirmedOverlay.classList.remove('hidden');
+                    videoUnconfirmedOverlay.classList.add('flex');
+                }
+
+                resolveSfnLiveVideoId().then(resolvedId => {
+                    if (!resolvedId || !videoIframe || videoSection.classList.contains('hidden')) {
+                        pollForConfirmedLiveVideo(videoIframe, videoSection, videoUnconfirmedOverlay);
+                        return;
+                    }
+                    videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                    if (videoUnconfirmedOverlay) {
+                        videoUnconfirmedOverlay.classList.add('hidden');
+                        videoUnconfirmedOverlay.classList.remove('flex');
+                    }
+                });
             };
             if (videoCloseBtn) {
                 videoCloseBtn.onclick = function () {
                     if (videoIframe) videoIframe.src = '';
                     if (videoSection) videoSection.classList.add('hidden');
+                    if (videoUnconfirmedOverlay) {
+                        videoUnconfirmedOverlay.classList.add('hidden');
+                        videoUnconfirmedOverlay.classList.remove('flex');
+                    }
                     resetVideoControlsOverlay();
                 };
             }
