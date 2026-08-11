@@ -5677,7 +5677,13 @@
             el.innerText = computeYearToDateLaunchCount();
         }
 
-        async function fetchLiveLaunches() {
+        // fetchUpcoming/fetchPrevious let callers refresh just one half - see
+        // updateRefreshSchedule() and startPastLaunchesRefreshSchedule() below. Skipping a half
+        // makes its "Raw" value null, which the existing cache-backfill logic further down
+        // already treats exactly like a failed fetch: it transparently refills that half from
+        // the last successful cache instead of wiping it, so a previous-only refresh can't
+        // blank out the upcoming list (or vice versa).
+        async function fetchLiveLaunches({ fetchUpcoming = true, fetchPrevious = true } = {}) {
             const CACHE_KEY = 'spacex_launches_cache';
 
             try {
@@ -5736,8 +5742,8 @@
                 };
 
                 let [upcomingRaw, previousRaw] = await Promise.all([
-                    fetchUpcomingWithFallback(),
-                    fetchPreviousWithFallback()
+                    fetchUpcoming ? fetchUpcomingWithFallback() : Promise.resolve(null),
+                    fetchPrevious ? fetchPreviousWithFallback() : Promise.resolve(null)
                 ]);
 
                 if (upcomingRaw === null && previousRaw === null) {
@@ -5756,16 +5762,19 @@
                 // a null check, but would still silently overwrite a good, fuller cached list
                 // with a degraded one. Treat a drastic drop vs. what's already cached as
                 // untrustworthy, same as an outright failure.
+                // cachedCombinedForSanityCheck holds RAW API objects (as originally fetched,
+                // pre-mapLaunchToSchema) - those use "net" for the launch time, not "date"
+                // (".date" only exists on the mapped mission schema used elsewhere in the app).
                 if (previousRaw !== null && cachedCombinedForSanityCheck) {
                     const nowMsCheck = Date.now();
-                    const cachedPastCount = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() < nowMsCheck).length;
+                    const cachedPastCount = cachedCombinedForSanityCheck.filter(m => new Date(m.net).getTime() < nowMsCheck).length;
                     if (cachedPastCount >= 5 && previousRaw.length < cachedPastCount * 0.5) {
                         previousRaw = null;
                     }
                 }
                 if (upcomingRaw !== null && cachedCombinedForSanityCheck) {
                     const nowMsCheck = Date.now();
-                    const cachedUpcomingCount = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() >= nowMsCheck).length;
+                    const cachedUpcomingCount = cachedCombinedForSanityCheck.filter(m => new Date(m.net).getTime() >= nowMsCheck).length;
                     if (cachedUpcomingCount >= 3 && upcomingRaw.length < cachedUpcomingCount * 0.5) {
                         upcomingRaw = null;
                     }
@@ -5779,10 +5788,10 @@
                 if ((upcomingRaw === null || previousRaw === null) && cachedCombinedForSanityCheck) {
                     const nowMs = Date.now();
                     if (upcomingRaw === null) {
-                        upcomingRaw = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() >= nowMs);
+                        upcomingRaw = cachedCombinedForSanityCheck.filter(m => new Date(m.net).getTime() >= nowMs);
                     }
                     if (previousRaw === null) {
-                        previousRaw = cachedCombinedForSanityCheck.filter(m => new Date(m.date).getTime() < nowMs);
+                        previousRaw = cachedCombinedForSanityCheck.filter(m => new Date(m.net).getTime() < nowMs);
                     }
                 }
 
@@ -5809,31 +5818,57 @@
             }
         }
 
+        // Upcoming-launch polling, tiered by proximity to the next liftoff. The free LL2 tier
+        // caps out at 15 requests/hour total - a flat "every 5 min" schedule already burns 24/hr
+        // on its own before counting anything else, which is why this API kept throttling us all
+        // session. Quiet days should barely touch the quota; the final approach to an actual
+        // launch is the one place worth deliberately spending past it, since holds/scrubs
+        // overwhelmingly happen in the last few minutes, not half an hour out - a short throttle
+        // penalty right after is a fair trade for catching that.
+        // Uses a self-rescheduling setTimeout (not setInterval) so the interval can actually
+        // change as the launch gets closer, instead of being locked to whatever was true when
+        // the timer was first started.
         function updateRefreshSchedule() {
             if (refreshIntervalId) {
-                clearInterval(refreshIntervalId);
+                clearTimeout(refreshIntervalId);
                 refreshIntervalId = null;
             }
 
-            let intervalMs = 5 * 60 * 1000;
+            let intervalMs = 15 * 60 * 1000; // default: no imminent launch, or none at all
 
             if (dbMissions.length > 0) {
                 const next = dbMissions[0];
-                const launchTime = new Date(next.date).getTime();
-                const now = Date.now();
-                const diffMs = launchTime - now;
+                const diffMs = new Date(next.date).getTime() - Date.now();
+                const diffHours = diffMs / (60 * 60 * 1000);
 
-                // Fast-poll from 5 minutes before liftoff through 20 minutes after it - covers
-                // the window where a stream is most likely to just be starting, not only the
-                // countdown beforehand.
-                if (diffMs <= 5 * 60 * 1000 && diffMs >= -20 * 60 * 1000) {
-                    intervalMs = 2 * 60 * 1000;
+                if (diffMs <= 20 * 60 * 1000 && diffMs >= -20 * 60 * 1000) {
+                    intervalMs = 60 * 1000; // T-20min through T+20min: the critical window
+                } else if (diffHours <= 1) {
+                    intervalMs = 4 * 60 * 1000;
+                } else if (diffHours <= 6) {
+                    intervalMs = 8 * 60 * 1000;
+                } else {
+                    intervalMs = 15 * 60 * 1000;
                 }
             }
 
-            refreshIntervalId = setInterval(() => {
-                fetchLiveLaunches();
+            refreshIntervalId = setTimeout(async () => {
+                await fetchLiveLaunches({ fetchUpcoming: true, fetchPrevious: false });
+                updateRefreshSchedule(); // re-evaluate proximity fresh, so the cadence tightens/loosens as time passes
             }, intervalMs);
+        }
+
+        // Past-launch data barely changes minute to minute (only when a launch actually
+        // completes), so it's deliberately decoupled from the upcoming-launch polling above and
+        // kept on its own slow, fixed cadence - see also the one-off refresh scheduled in
+        // updateHeroCountdown() right as a launch's countdown crosses T-0, which is what
+        // actually catches a launch's outcome promptly instead of waiting on this interval.
+        let pastLaunchesRefreshIntervalId = null;
+        function startPastLaunchesRefreshSchedule() {
+            if (pastLaunchesRefreshIntervalId) return; // already running - only ever start this once
+            pastLaunchesRefreshIntervalId = setInterval(() => {
+                fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
+            }, 45 * 60 * 1000);
         }
 
         function processLaunchData(combinedRawData) {
@@ -5951,6 +5986,7 @@
             filterMissions();
 
             updateRefreshSchedule();
+            startPastLaunchesRefreshSchedule();
             updateStarlinkStats();
             renderBoosterLeaderboard();
             loadNewsTicker();
@@ -8018,6 +8054,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const statusIcon = document.getElementById('hero-status-icon');
             const statusText = document.getElementById('hero-status-text');
 
+            // Set the moment this specific target's countdown first crosses T-0 (see below) -
+            // scoped per updateHeroCountdown() call, so it resets cleanly whenever a new next
+            // launch is loaded rather than only firing once ever.
+            let pastRefreshScheduled = false;
+
             const update = () => {
                 const now = new Date();
                 const diff = target - now;
@@ -8099,6 +8140,14 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 }
 
                 if (diff <= 0) {
+                    if (!pastRefreshScheduled) {
+                        pastRefreshScheduled = true;
+                        // Give the upstream API a few minutes to register the completed launch's
+                        // outcome before asking it - a one-off refresh right as the countdown
+                        // crosses T-0, rather than adding this to the constant polling schedule
+                        // for the whole hour just to catch one moment.
+                        setTimeout(() => fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true }), 3 * 60 * 1000);
+                    }
                     if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
                         el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
                         el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
