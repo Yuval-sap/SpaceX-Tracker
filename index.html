@@ -5690,24 +5690,25 @@
                         }
                     } catch (e) { }
 
-                    // Try the LL2 dev mirror before spacelaunch.dev: it's the same throttled
-                    // service's dev environment, but it carries the FULL LL2 schema (crew,
-                    // booster, orbit, and - notably - mission_patches). spacelaunch.dev's schema
-                    // is missing several of those fields entirely, so it's kept as the last
-                    // resort rather than the first fallback.
-                    try {
-                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
-                        if (fb2Res.ok) {
-                            const fb2Data = await fb2Res.json();
-                            if (fb2Data.results && fb2Data.results.length > 0) return fb2Data.results;
-                        }
-                    } catch (e) { }
-
                     try {
                         const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', { timeout: 12000 });
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
+                        }
+                    } catch (e) { }
+
+                    // Tried last, not first: this LL2 dev mirror carries the full schema
+                    // (mission_patches included) but has shown stale net/status data for at
+                    // least one real mission - a launch it reported as already having happened
+                    // was, per SpaceX's own site, still ~2 hours out. Getting the countdown
+                    // right matters more than getting a patch image, so this only gets used if
+                    // spacelaunch.dev is also unavailable.
+                    try {
+                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
+                        if (fb2Res.ok) {
+                            const fb2Data = await fb2Res.json();
+                            if (fb2Data.results && fb2Data.results.length > 0) return fb2Data.results;
                         }
                     } catch (e) { }
 
