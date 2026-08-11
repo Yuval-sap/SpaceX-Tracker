@@ -7090,14 +7090,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
         // Hebrew keyword groups used both for exact-word smart search (translate a full typed
         // word to its English equivalent) and for live-as-you-type prefix matching below (e.g.
         // typing "סטא" - a prefix of "סטארשיפ" but not yet the full word - already surfaces
-        // Starship results, narrowing down as more letters make the word unambiguous). Kept as
-        // one list so both behaviors always stay in sync with the same word set.
+        // Starship results, narrowing down as more letters make the word unambiguous). `categories`
+        // mirrors the same m.category values the "Falcon 9 / Starship / Starlink / Dragon" filter
+        // buttons already use (see filterByCategory) - matching against that curated field, not
+        // free text, is what keeps e.g. a Starlink search from also matching a Starship mission
+        // whose prose description happens to mention Starlink in passing. Kept as one list so both
+        // behaviors always stay in sync with the same word set.
         const HEBREW_SEARCH_KEYWORDS = [
-            { words: ['צוות'], en: 'crew' },
-            { words: ['סטארשיפ', 'סטרשיפ'], en: 'starship' },
-            { words: ['פלקון'], en: 'falcon' },
-            { words: ['דרגון', 'דראגון'], en: 'dragon' },
-            { words: ['סטארלינק', 'סטרלינק', 'סטארפול', 'סטארפאל'], en: 'starlink' },
+            { words: ['צוות'], en: 'crew', categories: ['dragon'] },
+            { words: ['סטארשיפ', 'סטרשיפ'], en: 'starship', categories: ['starship'] },
+            { words: ['פלקון'], en: 'falcon', categories: ['falcon', 'falcon_heavy'] },
+            { words: ['דרגון', 'דראגון'], en: 'dragon', categories: ['dragon'] },
+            { words: ['סטארלינק', 'סטרלינק', 'סטארפול', 'סטארפאל'], en: 'starlink', categories: ['starlink'] },
         ];
 
         function filterMissions() {
@@ -7112,27 +7116,30 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // נרמול חיפוש - החלפת מקפים ברווחים כדי ש"crew 12" ימצא "Crew-12"
             let cleanSearchTerm = term.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 
+            // אם כל מה שהוקלד (אחרי התרגום) הוא בדיוק מילת מפתח אחת ("סטארלינק"/"starlink" ולא
+            // עוד כלום) - מתאימים לפי שדה הקטגוריה המדויק של המשימה במקום חיפוש טקסט חופשי, כדי
+            // שלא יוצגו משימות מסוג אחר רק כי התקציר החופשי שלהן מזכיר בדרך אגב "סטארלינק"/וכו'.
+            const exactCategoryGroup = HEBREW_SEARCH_KEYWORDS.find(g => g.en === cleanSearchTerm);
+
             // חיפוש חי תוך כדי הקלדה: אם המילה האחרונה שהוקלדה היא רק תחילת מילת מפתח בעברית
-            // (למשל "סטא" מתוך "סטארשיפ") ועדיין לא המילה השלמה, כבר מציגים תוצאות לפי התרגום
+            // (למשל "סטא" מתוך "סטארשיפ") ועדיין לא המילה השלמה, כבר מציגים תוצאות לפי הקטגוריה
             // שלה - בנוסף לחיפוש הרגיל - כדי שהתוצאות יתעדכנו תוך כדי ההקלדה במקום לחכות למילה
             // המלאה. מצטמצם/מתחלף אוטומטית ברגע שההקלדה הבאה מבהירה שהכוונה הייתה למשהו אחר.
             const lastToken = rawTerm.trim().split(/\s+/).pop() || '';
-            let extraCandidateTerms = [];
-            if (lastToken.length >= 2) {
-                HEBREW_SEARCH_KEYWORDS.forEach(({ words, en }) => {
-                    const isPartialMatch = words.some(w => w.startsWith(lastToken) && lastToken.length < w.length);
-                    if (isPartialMatch) extraCandidateTerms.push(en);
-                });
+            let prefixCategoryGroups = [];
+            if (!exactCategoryGroup && lastToken.length >= 2) {
+                prefixCategoryGroups = HEBREW_SEARCH_KEYWORDS.filter(({ words }) =>
+                    words.some(w => w.startsWith(lastToken) && lastToken.length < w.length));
             }
 
             const matchesMission = (m) => {
+                if (exactCategoryGroup) return exactCategoryGroup.categories.includes(m.category);
                 let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
-                const desc = m.description.toLowerCase();
-                const vehicle = m.vehicle.toLowerCase();
-                if (cleanName.includes(cleanSearchTerm) || desc.includes(term) || vehicle.includes(term)) return true;
-                return extraCandidateTerms.some(t => cleanName.includes(t) || desc.includes(t) || vehicle.includes(t));
+                const textMatch = cleanName.includes(cleanSearchTerm) || m.description.toLowerCase().includes(term) || m.vehicle.toLowerCase().includes(term);
+                if (prefixCategoryGroups.length) return textMatch || prefixCategoryGroups.some(g => g.categories.includes(m.category));
+                return textMatch;
             };
-            const hasActiveSearch = !!cleanSearchTerm || extraCandidateTerms.length > 0;
+            const hasActiveSearch = !!cleanSearchTerm;
 
             let filteredUpcoming;
             if (currentFilter === 'favorites') {
