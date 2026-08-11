@@ -2261,14 +2261,21 @@
                                 class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-0 pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
                                 <i class="fa-solid fa-xmark text-sm text-red-500"></i>
                             </button>
-                        </div>
-                        <div id="hero-video-fallback-note"
-                            class="hidden mt-2 text-[11px] sm:text-xs text-zinc-500 items-center justify-between gap-3 w-full sm:max-w-md mx-auto lg:mx-0">
-                            <span id="hero-video-fallback-text">If the stream doesn't load yet, the broadcast
-                                hasn't started - try again in a few minutes.</span>
-                            <a id="hero-video-fallback-yt-link" href="#" target="_blank" rel="noopener"
-                                class="text-emerald-400 md:hover:underline whitespace-nowrap shrink-0 notranslate"
-                                translate="no">Open on YouTube</a>
+                            <!-- Shown INSTEAD of the iframe whenever we don't yet have a confirmed,
+                                 reliably-embeddable video - covers the iframe entirely (z-10, above
+                                 both the iframe and the tap overlay) so nobody ever sees YouTube's own
+                                 bare "video unavailable" message. Hidden again the moment either a
+                                 confirmed video ID is embedded directly, or the background resolver in
+                                 renderHeroLiveButton finds the real current live video and upgrades to it. -->
+                            <div id="hero-video-unconfirmed-overlay"
+                                class="hidden absolute inset-0 z-10 flex-col items-center justify-center gap-3 bg-zinc-950 text-center px-6">
+                                <i class="fa-solid fa-satellite-dish text-2xl text-zinc-600"></i>
+                                <p id="hero-video-unconfirmed-text" class="text-xs sm:text-sm text-zinc-400 max-w-xs">
+                                    We haven't confirmed a live stream is playing here yet.</p>
+                                <a id="hero-video-unconfirmed-yt-btn" href="#" target="_blank" rel="noopener"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-black font-semibold text-sm rounded-xl md:hover:bg-emerald-400 transition-colors notranslate"
+                                    translate="no"><i class="fa-brands fa-youtube"></i> Watch on YouTube</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -6465,9 +6472,12 @@
                 return sfnLiveVideoIdCache.id;
             }
             try {
+                // This runs entirely in the background (see renderHeroLiveButton) - nothing
+                // visible is waiting on it, so a generous timeout only improves the odds of a
+                // successful silent upgrade with no UX cost either way.
                 const res = await fetchWithTimeout(
                     'https://api.allorigins.win/get?url=' + encodeURIComponent(`https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`),
-                    { timeout: 6000 }
+                    { timeout: 15000 }
                 );
                 if (!res.ok) return null;
                 const data = await res.json();
@@ -6487,8 +6497,8 @@
             const heroVideoSection = document.getElementById('hero-video-section');
             const heroVideoIframe = document.getElementById('hero-video-iframe');
             const heroVideoCloseBtn = document.getElementById('hero-video-close-btn');
-            const heroVideoFallbackNote = document.getElementById('hero-video-fallback-note');
-            const heroVideoFallbackLink = document.getElementById('hero-video-fallback-yt-link');
+            const heroVideoUnconfirmedOverlay = document.getElementById('hero-video-unconfirmed-overlay');
+            const heroVideoUnconfirmedYtBtn = document.getElementById('hero-video-unconfirmed-yt-btn');
             if (!watchLiveBtn) return;
 
             // Don't tear down a player that's already open and playing just because this
@@ -6500,21 +6510,20 @@
 
             const launchTimeMs = new Date(nextLaunch.date).getTime();
             const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
-            // Narrowed from 25 to 15 minutes - Spaceflight Now's broadcast usually isn't live
-            // yet much earlier than that, and opening the embed before it starts just shows
-            // YouTube's own bare "video unavailable" message instead of anything useful.
             const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 15 && minutesToLaunch >= -180;
 
             const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
 
             if (heroYoutubeId || withinLiveWindow) {
                 // heroYoutubeId: the API confirmed a specific, real SpaceX video - most precise,
-                // embed it directly. Otherwise: no confirmed video yet, but we're inside the
-                // pre-launch window - resolve Spaceflight Now's actual current live video ID
-                // first (see resolveSfnLiveVideoId) and embed THAT directly. The old
-                // "embed/live_stream?channel=X" shortcut is kept only as a last-resort fallback
-                // if that resolution fails - confirmed directly that it doesn't reliably play
-                // even while the channel genuinely is live, so it's not trustworthy on its own.
+                // embed it directly, no overlay needed. Otherwise: no confirmed video yet, but
+                // we're inside the pre-launch window - show the "not confirmed yet" overlay with
+                // a real "Watch on YouTube" button INSTEAD of attempting the unreliable
+                // "embed/live_stream?channel=X" trick, which was confirmed directly to show
+                // YouTube's own bare "video unavailable" even while the channel genuinely is
+                // live. A background lookup (resolveSfnLiveVideoId) tries to resolve the actual
+                // current video ID and, if it succeeds in time, silently swaps in a real,
+                // reliably-embeddable player and hides the overlay.
                 watchLiveBtn.classList.remove('hidden');
                 if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
                 if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
@@ -6525,36 +6534,26 @@
 
                     if (heroYoutubeId) {
                         heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
-                        if (heroVideoFallbackLink) heroVideoFallbackLink.href = `https://www.youtube.com/watch?v=${heroYoutubeId}`;
-                        if (heroVideoFallbackNote) {
-                            heroVideoFallbackNote.classList.add('hidden');
-                            heroVideoFallbackNote.classList.remove('flex');
+                        if (heroVideoUnconfirmedOverlay) {
+                            heroVideoUnconfirmedOverlay.classList.add('hidden');
+                            heroVideoUnconfirmedOverlay.classList.remove('flex');
                         }
                         return;
                     }
 
-                    // Show the guessed-channel embed immediately - waiting on the resolver
-                    // (a CORS-proxied fetch, which can itself be slow or unavailable) would make
-                    // the button feel unresponsive. The fallback note/link stay visible since we
-                    // don't yet know whether this embed will actually play.
-                    heroVideoIframe.src = `https://www.youtube.com/embed/live_stream?channel=${SFN_YT_CHANNEL_ID}&autoplay=1`;
-                    if (heroVideoFallbackLink) heroVideoFallbackLink.href = youtubeOpenUrlFallback;
-                    if (heroVideoFallbackNote) {
-                        heroVideoFallbackNote.classList.remove('hidden');
-                        heroVideoFallbackNote.classList.add('flex');
+                    heroVideoIframe.src = '';
+                    if (heroVideoUnconfirmedYtBtn) heroVideoUnconfirmedYtBtn.href = youtubeOpenUrlFallback;
+                    if (heroVideoUnconfirmedOverlay) {
+                        heroVideoUnconfirmedOverlay.classList.remove('hidden');
+                        heroVideoUnconfirmedOverlay.classList.add('flex');
                     }
 
-                    // In the background, try to resolve the real current video ID and silently
-                    // upgrade to it if it arrives in time and the player is still open - more
-                    // reliable than the channel trick, confirmed directly via YouTube's own
-                    // oEmbed API, but too slow/unreliable itself to block the initial display on.
                     resolveSfnLiveVideoId().then(resolvedId => {
                         if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) return;
                         heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
-                        if (heroVideoFallbackLink) heroVideoFallbackLink.href = `https://www.youtube.com/watch?v=${resolvedId}`;
-                        if (heroVideoFallbackNote) {
-                            heroVideoFallbackNote.classList.add('hidden');
-                            heroVideoFallbackNote.classList.remove('flex');
+                        if (heroVideoUnconfirmedOverlay) {
+                            heroVideoUnconfirmedOverlay.classList.add('hidden');
+                            heroVideoUnconfirmedOverlay.classList.remove('flex');
                         }
                     });
                 };
@@ -6566,9 +6565,9 @@
                 heroVideoCloseBtn.onclick = function () {
                     if (heroVideoIframe) heroVideoIframe.src = '';
                     if (heroVideoSection) heroVideoSection.classList.add('hidden');
-                    if (heroVideoFallbackNote) {
-                        heroVideoFallbackNote.classList.add('hidden');
-                        heroVideoFallbackNote.classList.remove('flex');
+                    if (heroVideoUnconfirmedOverlay) {
+                        heroVideoUnconfirmedOverlay.classList.add('hidden');
+                        heroVideoUnconfirmedOverlay.classList.remove('flex');
                     }
                     resetVideoControlsOverlay('hero');
                 };
