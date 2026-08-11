@@ -6934,6 +6934,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                 const card = document.createElement('div');
                 card.className = `mission-card w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col snap-start shrink-0 hover:border-zinc-700`;
+                card.dataset.missionId = m.id;
+                card.dataset.category = m.category;
                 card.style = `animation-delay: ${idx * 100}ms;`;
                 card.innerHTML = `
                     <div class="relative h-40 overflow-hidden z-20">
@@ -6977,6 +6979,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 grid.appendChild(card);
             });
 
+            // Hidden placeholder applySearchFilter() reveals when the search box matches none
+            // of these cards - kept separate from the "no missions in this category" message
+            // above, which only applies before any search text narrows things further.
+            const searchEmptyMsg = document.createElement('div');
+            searchEmptyMsg.id = 'missions-grid-search-empty';
+            searchEmptyMsg.className = 'hidden col-span-full py-10 text-center text-zinc-500';
+            searchEmptyMsg.textContent = 'No missions match your search.';
+            grid.appendChild(searchEmptyMsg);
+
             startCountdowns(filteredMissions);
             fitAllTitlesOneLine(grid);
         }
@@ -7013,6 +7024,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                 const card = document.createElement('div');
                 card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card`;
+                card.dataset.missionId = m.id;
+                card.dataset.category = m.category;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
                 const hasVideo = !!m.youtubeId;
                 const pastCardLangKey = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
@@ -7051,6 +7064,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 localizeStarshipTerm(card);
                 pastGrid.appendChild(card);
             });
+
+            const pastSearchEmptyMsg = document.createElement('div');
+            pastSearchEmptyMsg.id = 'past-launches-grid-search-empty';
+            pastSearchEmptyMsg.className = 'hidden py-10 text-zinc-500 text-center w-full';
+            pastSearchEmptyMsg.textContent = 'No missions match your search.';
+            pastGrid.appendChild(pastSearchEmptyMsg);
+
             fitAllTitlesOneLine(pastGrid);
         }
 
@@ -7087,60 +7107,95 @@ fitTitleOneLine(document.getElementById('hero-name'));
             });
         }
 
-        // Hebrew keyword groups used both for exact-word smart search (translate a full typed
-        // word to its English equivalent) and for live-as-you-type prefix matching below (e.g.
-        // typing "סטא" - a prefix of "סטארשיפ" but not yet the full word - already surfaces
-        // Starship results, narrowing down as more letters make the word unambiguous). `categories`
-        // mirrors the same m.category values the "Falcon 9 / Starship / Starlink / Dragon" filter
-        // buttons already use (see filterByCategory) - matching against that curated field, not
-        // free text, is what keeps e.g. a Starlink search from also matching a Starship mission
-        // whose prose description happens to mention Starlink in passing. Kept as one list so both
-        // behaviors always stay in sync with the same word set.
-        const HEBREW_SEARCH_KEYWORDS = [
-            { words: ['צוות'], en: 'crew', categories: ['dragon'] },
-            { words: ['סטארשיפ', 'סטרשיפ'], en: 'starship', categories: ['starship'] },
-            { words: ['פלקון'], en: 'falcon', categories: ['falcon', 'falcon_heavy'] },
-            { words: ['דרגון', 'דראגון'], en: 'dragon', categories: ['dragon'] },
-            { words: ['סטארלינק', 'סטרלינק', 'סטארפול', 'סטארפאל'], en: 'starlink', categories: ['starlink'] },
+        // Multilingual keyword groups used both for exact-word smart search (translate a full
+        // typed word, in any of the site's languages, to its English equivalent) and for
+        // live-as-you-type prefix matching below (e.g. typing "סטא"/"стар" - a prefix of a known
+        // word but not the full word yet - already surfaces Starship results, narrowing down as
+        // more letters make it unambiguous). `categories` mirrors the same m.category values the
+        // "Falcon 9 / Starship / Starlink / Dragon" filter buttons already use (see
+        // filterByCategory) - matching against that curated field, not free text, is what keeps
+        // e.g. a Starlink search from also matching a Starship mission whose title happens to
+        // mention Starlink in passing.
+        //
+        // "starship" reuses the exact same per-language terms as STARSHIP_I18N above (the
+        // dictionary that already fixes Google Translate mistranslating "Starship" in the UI
+        // itself) so search always recognizes whatever word actually ends up on screen. Falcon/
+        // Dragon/Starlink/crew don't have an equivalent protected-display dictionary anywhere
+        // else in this file, so these are this file's own best-effort terms: for the
+        // Latin-script languages (es/fr/de/it/cs/sv/nl/da/pt/pl/tr), Falcon/Dragon/Starship/
+        // Starlink are brand names that are normally left in English/Latin script (same as
+        // STARSHIP_I18N shows for those languages) - typing the plain English word already
+        // matches directly, so no extra entries are needed there. Non-Latin-script languages
+        // (Hebrew, Russian, Chinese, Hindi, Arabic) commonly get phonetically transliterated (or,
+        // for Chinese, genuinely translated) instead, so those get explicit entries below. "crew"
+        // is a real common word (not a brand name) and is spelled out for every language, with
+        // both accented and unaccented forms where relevant since accents are often skipped when
+        // typing on the fly.
+        const CATEGORY_SEARCH_KEYWORDS = [
+            {
+                en: 'crew', categories: ['dragon'], words: [
+                    'צוות', // he/iw
+                    'tripulación', 'tripulacion', // es
+                    'équipage', 'equipage', // fr
+                    'besatzung', // de
+                    'экипаж', // ru
+                    '乘组', '机组', // zh
+                    'equipaggio', // it
+                    'posádka', 'posadka', // cs
+                    'besättning', 'besattning', // sv
+                    'bemanning', // nl
+                    'besætning', 'besaetning', // da
+                    'tripulação', 'tripulacao', // pt
+                    'załoga', 'zaloga', // pl
+                    'चालक दल', // hi
+                    'طاقم', // ar
+                    'mürettebat', 'murettebat', // tr
+                ]
+            },
+            {
+                en: 'starship', categories: ['starship'], words: [
+                    'סטארשיפ', 'סטרשיפ', // he/iw
+                    'старшип', // ru
+                    '星舰', // zh
+                    'स्टारशिप', // hi
+                    'ستارشيب', // ar
+                ]
+            },
+            {
+                en: 'falcon', categories: ['falcon', 'falcon_heavy'], words: [
+                    'פלקון', // he/iw
+                    'фалькон', 'фалкон', // ru
+                    '猎鹰', // zh
+                    'फाल्कन', // hi
+                    'فالكون', // ar
+                ]
+            },
+            {
+                en: 'dragon', categories: ['dragon'], words: [
+                    'דרגון', 'דראגון', // he/iw
+                    'дракон', // ru
+                    '龙飞船', '龙', // zh
+                    'ड्रैगन', // hi
+                    'دراغون', // ar
+                ]
+            },
+            {
+                en: 'starlink', categories: ['starlink'], words: [
+                    'סטארלינק', 'סטרלינק', 'סטארפול', 'סטארפאל', // he/iw
+                    'старлинк', // ru
+                    '星链', // zh
+                    'स्टारलिंक', // hi
+                    'ستارلينك', // ar
+                ]
+            },
         ];
 
-        function filterMissions() {
-            let rawTerm = document.getElementById('search-input').value.toLowerCase();
-            let term = rawTerm;
-
-            // תרגום חכם לחיפוש עברי - מילה מלאה
-            HEBREW_SEARCH_KEYWORDS.forEach(({ words, en }) => {
-                words.forEach(w => { term = term.split(w).join(en); });
-            });
-
-            // נרמול חיפוש - החלפת מקפים ברווחים כדי ש"crew 12" ימצא "Crew-12"
-            let cleanSearchTerm = term.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-
-            // אם כל מה שהוקלד (אחרי התרגום) הוא בדיוק מילת מפתח אחת ("סטארלינק"/"starlink" ולא
-            // עוד כלום) - מתאימים לפי שדה הקטגוריה המדויק של המשימה במקום חיפוש טקסט חופשי, כדי
-            // שלא יוצגו משימות מסוג אחר רק כי התקציר החופשי שלהן מזכיר בדרך אגב "סטארלינק"/וכו'.
-            const exactCategoryGroup = HEBREW_SEARCH_KEYWORDS.find(g => g.en === cleanSearchTerm);
-
-            // חיפוש חי תוך כדי הקלדה: אם המילה האחרונה שהוקלדה היא רק תחילת מילת מפתח בעברית
-            // (למשל "סטא" מתוך "סטארשיפ") ועדיין לא המילה השלמה, כבר מציגים תוצאות לפי הקטגוריה
-            // שלה - בנוסף לחיפוש הרגיל - כדי שהתוצאות יתעדכנו תוך כדי ההקלדה במקום לחכות למילה
-            // המלאה. מצטמצם/מתחלף אוטומטית ברגע שההקלדה הבאה מבהירה שהכוונה הייתה למשהו אחר.
-            const lastToken = rawTerm.trim().split(/\s+/).pop() || '';
-            let prefixCategoryGroups = [];
-            if (!exactCategoryGroup && lastToken.length >= 1) {
-                prefixCategoryGroups = HEBREW_SEARCH_KEYWORDS.filter(({ words }) =>
-                    words.some(w => w.startsWith(lastToken) && lastToken.length < w.length));
-            }
-
-            const matchesMission = (m) => {
-                if (exactCategoryGroup) return exactCategoryGroup.categories.includes(m.category);
-                let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
-                const textMatch = cleanName.includes(cleanSearchTerm) || m.description.toLowerCase().includes(term) || m.vehicle.toLowerCase().includes(term);
-                if (prefixCategoryGroups.length) return textMatch || prefixCategoryGroups.some(g => g.categories.includes(m.category));
-                return textMatch;
-            };
-            const hasActiveSearch = !!cleanSearchTerm;
-
+        // Rebuilds the grids for the current category tab (favorites/all/falcon/starship/
+        // starlink/dragon) only - no search text involved. Search is applied afterward, as a
+        // separate show/hide pass (applySearchFilter), so that typing in the search box never
+        // tears down and re-creates cards that are already on screen (see filterMissions below
+        // for why that matters for translated text).
+        function renderMissionsForCategory() {
             let filteredUpcoming;
             if (currentFilter === 'favorites') {
                 filteredUpcoming = dbMissions.filter(m => favoriteMissions.includes(m.id));
@@ -7148,10 +7203,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 filteredUpcoming = upcomingForGrid;
             } else {
                 filteredUpcoming = upcomingForGrid.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
-            }
-
-            if (hasActiveSearch) {
-                filteredUpcoming = filteredUpcoming.filter(matchesMission);
             }
             renderMissions(filteredUpcoming);
 
@@ -7161,11 +7212,91 @@ fitTitleOneLine(document.getElementById('hero-name'));
             } else if (currentFilter !== 'all') {
                 filteredPast = filteredPast.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
             }
-
-            if (hasActiveSearch) {
-                filteredPast = filteredPast.filter(matchesMission);
-            }
             renderPastMissions(filteredPast);
+        }
+
+        // Shows/hides the already-rendered cards in place, based on the search box, WITHOUT
+        // rebuilding any DOM - the cards already exist and have already been translated (by
+        // Google Translate, into whatever language the page is in) by the time the user starts
+        // typing. Matching against each card's own live on-screen title text - instead of the
+        // underlying English data field - is what makes search "just work" in every language the
+        // site is translated into, without needing a manual translation dictionary here: whatever
+        // is visibly printed on the card is exactly what gets matched against what was typed.
+        // The multilingual keyword groups (CATEGORY_SEARCH_KEYWORDS) still apply on top of that,
+        // for the precise category-based match and for live partial-word matching while typing.
+        function applySearchFilter() {
+            const searchInputEl = document.getElementById('search-input');
+            const rawTerm = (searchInputEl ? searchInputEl.value : '').toLowerCase().trim();
+
+            const grids = [
+                { grid: document.getElementById('missions-grid'), empty: document.getElementById('missions-grid-search-empty') },
+                { grid: document.getElementById('past-launches-grid'), empty: document.getElementById('past-launches-grid-search-empty') },
+            ];
+
+            if (!rawTerm) {
+                grids.forEach(({ grid, empty }) => {
+                    if (!grid) return;
+                    grid.querySelectorAll('.mission-card').forEach(card => card.classList.remove('hidden'));
+                    if (empty) empty.classList.add('hidden');
+                });
+                return;
+            }
+
+            // תרגום חכם לחיפוש - מילה מלאה (בכל שפה מבין השפות המוגדרות למעלה)
+            let term = rawTerm;
+            CATEGORY_SEARCH_KEYWORDS.forEach(({ words, en }) => {
+                words.forEach(w => { term = term.split(w).join(en); });
+            });
+            // נרמול חיפוש - החלפת מקפים ברווחים כדי ש"crew 12" ימצא "Crew-12"
+            const cleanTerm = term.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+
+            // אם כל מה שהוקלד (אחרי התרגום) הוא בדיוק מילת מפתח אחת ("סטארלינק"/"starlink" ולא
+            // עוד כלום) - מתאימים לפי שדה הקטגוריה המדויק של המשימה בנוסף להתאמת הטקסט, כדי
+            // שלא יוצגו משימות מסוג אחר רק כי הכותרת/התקציר המוצגים שלהן מזכירים בדרך אגב מילה
+            // דומה.
+            const exactCategoryGroup = CATEGORY_SEARCH_KEYWORDS.find(g => g.en === cleanTerm);
+
+            // חיפוש חי תוך כדי הקלדה: אם המילה האחרונה שהוקלדה היא רק תחילת מילת מפתח (בכל שפה)
+            // (למשל "סטא" מתוך "סטארשיפ") ועדיין לא המילה השלמה, כבר מציגים תוצאות לפי הקטגוריה
+            // שלה - כדי שהתוצאות יתעדכנו תוך כדי ההקלדה, כבר מהאות הראשונה, במקום לחכות למילה
+            // המלאה. מצטמצם/מתחלף אוטומטית ברגע שההקלדה הבאה מבהירה שהכוונה הייתה למשהו אחר.
+            const lastToken = rawTerm.split(/\s+/).pop() || '';
+            let prefixCategoryGroups = [];
+            if (!exactCategoryGroup && lastToken.length >= 1) {
+                prefixCategoryGroups = CATEGORY_SEARCH_KEYWORDS.filter(({ words }) =>
+                    words.some(w => w.startsWith(lastToken) && lastToken.length < w.length));
+            }
+
+            grids.forEach(({ grid, empty }) => {
+                if (!grid) return;
+                const cards = grid.querySelectorAll('.mission-card');
+                let visibleCount = 0;
+                cards.forEach(card => {
+                    const titleEl = card.querySelector('.mission-title-fit');
+                    const titleText = titleEl ? titleEl.textContent.toLowerCase() : '';
+                    const normalizedTitle = titleText.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+                    const cardCategory = card.dataset.category || '';
+
+                    let isMatch = titleText.includes(rawTerm) || (cleanTerm && normalizedTitle.includes(cleanTerm));
+                    if (!isMatch && exactCategoryGroup) isMatch = exactCategoryGroup.categories.includes(cardCategory);
+                    if (!isMatch && prefixCategoryGroups.length) isMatch = prefixCategoryGroups.some(g => g.categories.includes(cardCategory));
+
+                    card.classList.toggle('hidden', !isMatch);
+                    if (isMatch) visibleCount++;
+                });
+                if (empty) empty.classList.toggle('hidden', cards.length === 0 || visibleCount > 0);
+            });
+        }
+
+        // Full refresh: rebuilds the current category's cards, then reapplies whatever search
+        // text is currently in the box on top of the fresh cards. Used whenever the underlying
+        // data/category actually changed (category tab switch, favorite/reminder toggle, new
+        // launch data loaded) - NOT wired to the search box itself, which calls
+        // applySearchFilter() directly instead (see the search-input listener) so that typing
+        // never rebuilds cards that are already correctly on screen.
+        function filterMissions() {
+            renderMissionsForCategory();
+            applySearchFilter();
         }
 
         function filterByCategory(cat) {
@@ -8514,10 +8645,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const searchIn = document.getElementById('search-input');
             if (searchIn) {
                 // 'input' (not 'keyup') so live filtering also reacts to paste/autocomplete/
-                // voice dictation, not just physical key presses.
-                searchIn.addEventListener('input', filterMissions);
+                // voice dictation, not just physical key presses. Calls applySearchFilter()
+                // directly (NOT filterMissions/renderMissionsForCategory) - it only shows/hides
+                // cards that are already rendered, instead of tearing them all down and
+                // rebuilding them on every keystroke. That matters for two reasons: it's what
+                // lets search match each card's actual on-screen (translated) text, and it
+                // stops re-triggering Google Translate on every letter typed.
+                searchIn.addEventListener('input', applySearchFilter);
                 // Dismissing the (mobile) keyboard is handled separately from filtering, and
-                // only on Enter - filterMissions() itself must never blur the field, or every
+                // only on Enter - filtering itself must never blur the field, or every
                 // keystroke would close the keyboard mid-word.
                 searchIn.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter') searchIn.blur();
