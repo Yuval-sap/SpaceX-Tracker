@@ -3718,6 +3718,15 @@
             vandenberg: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiaqeG_lyxoLQjmQKwPVJyerJwpKr-Ngj-5Di6yihsBR45pKUcJwkpqvaG&s=10"
         };
 
+        // LL2 only has an official mission_patches entry for a fraction of Starlink/Starship
+        // launches (its data just isn't fully up to date for these), so those two categories
+        // get a fixed generic patch instead of relying on the API - see mapLaunchToSchema.
+        // Every other category keeps using whatever LL2 actually returns.
+        const GENERIC_PATCH_IMAGES = {
+            starlink: "https://thespacedevs-dev.nyc3.digitaloceanspaces.com/media/mission_patch_images/space2520x252_mission_patch_20221011205756.png",
+            starship: "https://thespacedevs-dev.nyc3.digitaloceanspaces.com/media/mission_patch_images/starship2520if_mission_patch_20230414221655.png"
+        };
+
         const masterFacts = [
             "More than 300 times, Falcon 9 boosters have been landed by SpaceX. Reusability is no longer experimental — it is the standard.",
             "The Falcon rocket family is named after the 'Millennium Falcon' from Star Wars.",
@@ -6042,6 +6051,7 @@
                 const bestPatch = sortedPatches.find(p => p && p.image_url);
                 if (bestPatch) patchUrl = bestPatch.image_url;
             }
+            if (GENERIC_PATCH_IMAGES[category]) patchUrl = GENERIC_PATCH_IMAGES[category];
 
             const details = generateDetailedMissionPurpose(launch.name || "SpaceX Mission", category, missionDesc, vehicleName);
 
