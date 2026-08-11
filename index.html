@@ -1005,6 +1005,66 @@
             width: 0 !important;
             height: 0 !important;
         }
+
+        /* Watchlist star / reminder bell micro-feedback (see toggleFavorite/toggleReminder).
+           Purely cosmetic - a small "pop" so pressing these two icon buttons reads as an
+           action taken, not just a color swap. */
+        @keyframes bell-ring {
+            0%, 100% { transform: rotate(0deg); }
+            15% { transform: rotate(-16deg); }
+            30% { transform: rotate(13deg); }
+            45% { transform: rotate(-10deg); }
+            60% { transform: rotate(6deg); }
+            75% { transform: rotate(-4deg); }
+            90% { transform: rotate(2deg); }
+        }
+        .animate-bell-ring {
+            display: inline-block;
+            transform-origin: top center;
+            animation: bell-ring 0.6s ease-in-out;
+        }
+
+        @keyframes star-pop {
+            0% { transform: scale(1) rotate(0deg); }
+            40% { transform: scale(1.45) rotate(-12deg); }
+            65% { transform: scale(0.92) rotate(6deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .animate-star-pop {
+            display: inline-block;
+            animation: star-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes star-sparkle-flash {
+            0% { opacity: 0.9; transform: scale(0.3); }
+            100% { opacity: 0; transform: scale(2.1); }
+        }
+        /* Hero skeleton -> real content: a crossfade instead of an instant swap (both
+           #hero-skeleton and #hero-banner already carry Tailwind's transition-all duration-300,
+           so this only needs to give them something to actually transition between). See
+           setupHeroBanner() for the class choreography. */
+        #hero-banner {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        #hero-banner.hero-reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #hero-skeleton.skel-fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sparkle-burst::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(circle, rgba(251, 191, 36, 0.6) 0%, rgba(251, 191, 36, 0) 70%);
+            animation: star-sparkle-flash 0.5s ease-out forwards;
+            pointer-events: none;
+        }
     </style>
 
     <script>
@@ -3647,6 +3707,10 @@
         }
 
         function toggleReminder(id, name, dateStr, event) {
+            // Captured now, synchronously - event.currentTarget is nulled out once the click
+            // event finishes dispatching, which happens well before the async
+            // Notification.requestPermission().then() callback below ever runs.
+            const btn = event ? event.currentTarget : null;
             if (event) {
                 event.stopPropagation();
             }
@@ -3662,6 +3726,17 @@
                     if (permission === "granted") {
                         remindedMissions.push(id);
                         localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
+
+                        // Small "ring" so pressing the bell reads as an action taken, not just
+                        // a color swap. The alert() below blocks synchronously, which gives the
+                        // animation plenty of time to finish before filterMissions() further
+                        // down replaces this card (and this icon with it).
+                        const bellIcon = btn ? btn.querySelector('i') : null;
+                        if (bellIcon) {
+                            bellIcon.classList.remove('animate-bell-ring');
+                            void bellIcon.offsetWidth;
+                            bellIcon.classList.add('animate-bell-ring');
+                        }
 
                         const launchTime = new Date(dateStr).getTime();
                         const notifyTime = launchTime - (10 * 60 * 1000);
@@ -3697,7 +3772,17 @@
 
             if (index === -1) {
                 favoriteMissions.push(id);
-                if (icon) icon.className = 'fa-solid fa-star text-amber-400';
+                if (icon) {
+                    icon.className = 'fa-solid fa-star text-amber-400';
+                    icon.classList.add('animate-star-pop');
+                    icon.addEventListener('animationend', () => icon.classList.remove('animate-star-pop'), { once: true });
+                }
+                // Small radial "sparkle" flash behind the star - same idea as the bell ring,
+                // just a burst instead of a shake since this one has no natural pivot point.
+                btn.classList.remove('sparkle-burst');
+                void btn.offsetWidth;
+                btn.classList.add('sparkle-burst');
+                setTimeout(() => btn.classList.remove('sparkle-burst'), 500);
             } else {
                 favoriteMissions.splice(index, 1);
                 if (icon) icon.className = 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400';
@@ -6461,13 +6546,32 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, sanitizeForInlineAttr(nextLaunch.name), nextLaunch.date, event);
                 }
 
-                heroBanner.classList.remove('hidden');
+                // Only animate the reveal the first time - setupHeroBanner() re-runs on every
+                // periodic refresh and reminder toggle, and re-playing the fade/slide-in on an
+                // already-visible banner would just be an annoying flicker.
+                if (!heroBanner.classList.contains('hero-reveal')) {
+                    heroBanner.classList.remove('hidden');
+                    void heroBanner.offsetWidth; // force layout so opacity:0 registers before hero-reveal flips it, or the browser coalesces both into one frame and skips the transition
+                    // A plain deferred tick rather than requestAnimationFrame - rAF gets
+                    // throttled/paused on a backgrounded tab, which would leave the hero stuck
+                    // invisible if this fires while the tab isn't focused (e.g. loaded in a
+                    // background tab).
+                    setTimeout(() => heroBanner.classList.add('hero-reveal'), 20);
+                } else {
+                    heroBanner.classList.remove('hidden');
+                }
                 updateHeroCountdown(nextLaunch.date, nextLaunch.status);
             } else {
                 heroBanner.classList.add('hidden');
+                heroBanner.classList.remove('hero-reveal');
             }
             const heroSkel = document.getElementById('hero-skeleton');
-            if (heroSkel) heroSkel.classList.add('hidden');
+            if (heroSkel && !heroSkel.classList.contains('hidden') && !heroSkel.classList.contains('skel-fade-out')) {
+                heroSkel.classList.add('skel-fade-out');
+                setTimeout(() => heroSkel.classList.add('hidden'), 320);
+            } else if (heroSkel) {
+                heroSkel.classList.add('hidden');
+            }
         }
 
         async function fetchLiveWeather(siteLower, probability) {
@@ -6634,7 +6738,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                                 <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
-                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
                                 <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
@@ -6714,7 +6818,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
                             <button class="text-sm text-left text-emerald-400 hover:underline font-medium notranslate" translate="no" data-i18n-past-details="1" data-has-video="${hasVideo ? '1' : '0'}">${detailsLabel}</button>
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
+                                <button onclick="toggleFavorite('${m.id}', event)" class="group/fav relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
                                 <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
