@@ -6397,7 +6397,10 @@
             }
 
             if (nextLaunch) {
-    document.getElementById('hero-name').innerText = nextLaunch.name;
+    const heroNameEl = document.getElementById('hero-name');
+    heroNameEl.innerText = nextLaunch.name;
+    // Protect "Starship" synchronously - see the matching comment in openMissionModal().
+    localizeStarshipTerm(heroNameEl);
 
     // מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
     requestAnimationFrame(() => {
@@ -7032,7 +7035,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
         function openMissionModal(m) {
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
-            document.getElementById('modal-name').innerText = m.name;
+            const modalNameEl = document.getElementById('modal-name');
+            modalNameEl.innerText = m.name;
+            // Protect "Starship" synchronously, before this tick ends - Google Translate's
+            // MutationObserver only fires once the current script finishes, so wrapping it here
+            // (same as the card templates already do before insertion) reliably wins the race.
+            // Waiting for the 500ms "Bulletproof Timer" sweep is too late: by the time it runs,
+            // Google may have already replaced the word with its own mistranslation, and merely
+            // wrapping the word afterward can't undo damage that's already been done.
+            localizeStarshipTerm(modalNameEl);
 
             const modalPatchEl = document.getElementById('modal-patch');
             if (modalPatchEl) {
@@ -7538,7 +7549,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const rocketModalContentEl = document.getElementById('rocket-modal-content');
             if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0;
 
-            document.getElementById('rocket-modal-name').innerText = data.name;
+            const rocketModalNameEl = document.getElementById('rocket-modal-name');
+            rocketModalNameEl.innerText = data.name;
+            // Protect "Starship" synchronously - see the matching comment in openMissionModal().
+            localizeStarshipTerm(rocketModalNameEl);
 
             const imgEl = document.getElementById('rocket-modal-img');
             imgEl.src = data.image;
