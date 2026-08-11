@@ -516,8 +516,15 @@
             position: relative !important;
         }
 
-        .VIpgJd-ZVi9od-l4eHX-hSRGPd {
+        /* Google's translate-widget spinner/tooltip components live under an obfuscated
+           "VIpgJd-ZVi9od-*" class family whose exact suffix changes between widget builds
+           (we've seen at least l4eHX-hSRGPd and aZ2wEe-wOHMyf) - matching the shared prefix
+           instead of one hardcoded full class name survives Google shipping a new build. */
+        [class*="VIpgJd-ZVi9od"] {
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
 
         #goog-gt-tt {
@@ -766,6 +773,14 @@
             color: #f59e0b !important;
         }
 
+        /* Mission patch hover glow: same md:-free restriction as the star icon above. Without
+           this, body.light-theme .border-zinc-800's !important (the patch's idle border color)
+           beats the plain (non-!important) Tailwind hover:border-emerald-500/50 utility, so the
+           hover feedback silently only worked in dark mode. */
+        body.light-theme .hover\:border-emerald-500\/50:hover {
+            border-color: rgba(16, 185, 129, 0.5) !important;
+        }
+
         /* "Watch the Launch" / "Open on YouTube" buttons (launch modal): their hover states
            were too subtle to notice in both themes — a one-shade background shift with no
            other visual cue. Restored here with the same !important pattern as the block
@@ -990,7 +1005,6 @@
             width: 0 !important;
             height: 0 !important;
         }
-    }
     </style>
 
     <script>
