@@ -1715,6 +1715,49 @@
             unlockBodyScroll();
         }
 
+        // Opens a large view of a mission patch badge. Always stops propagation - patch
+        // badges sit inside clickable mission cards (and the mission modal's own header),
+        // so without this a click here would also trigger openMissionModal()/closeModal().
+        function openPatchLightbox(url, name, event) {
+            if (event) {
+                event.stopPropagation();
+                if (event.preventDefault) event.preventDefault();
+            }
+            if (!url) return;
+            const modal = document.getElementById('patch-lightbox');
+            const img = document.getElementById('patch-lightbox-photo');
+            const spinner = document.getElementById('patch-lightbox-spinner');
+            const nameEl = document.getElementById('patch-lightbox-name');
+            if (!modal || !img) return;
+
+            if (nameEl) nameEl.textContent = name || '';
+            img.classList.add('hidden');
+            if (spinner) {
+                spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl';
+                spinner.classList.remove('hidden');
+            }
+            img.onload = () => {
+                img.classList.remove('hidden');
+                if (spinner) spinner.classList.add('hidden');
+            };
+            img.onerror = () => {
+                if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl';
+            };
+            img.src = url;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lockBodyScroll();
+        }
+
+        function closePatchLightbox() {
+            const modal = document.getElementById('patch-lightbox');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            unlockBodyScroll();
+        }
+
         // Runs on every tick (see the interval below) so it covers both a language switch
         // (re-localizes spans already tagged .starship-term) and freshly-rendered content
         // that still contains the raw English word — mission cards/descriptions pulled from
@@ -2772,16 +2815,41 @@
         </div>
     </div>
 
+    <!-- Mission patch lightbox: opened by clicking any patch badge (hero / card / modal) -->
+    <div id="patch-lightbox" onclick="if (event.target.id === 'patch-lightbox') closePatchLightbox()"
+        class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[110]">
+        <div class="relative max-w-xs sm:max-w-sm w-full">
+            <button onclick="closePatchLightbox()"
+                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div class="w-full aspect-square bg-zinc-900 flex items-center justify-center overflow-hidden p-8">
+                    <i id="patch-lightbox-spinner" class="fa-solid fa-spinner fa-spin text-zinc-600 text-2xl"></i>
+                    <img id="patch-lightbox-photo" src="" alt="" class="hidden w-full h-full object-contain">
+                </div>
+                <div id="patch-lightbox-name" class="p-4 sm:p-5 pt-0 font-semibold text-white text-base sm:text-lg text-center"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="mission-modal" onclick="if (event.target.id === 'mission-modal') closeModal()"
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-2 sm:p-3 animate-fade-in overflow-y-auto z-[100]">
         <div id="mission-modal-content" onclick="event.stopImmediatePropagation()"
             class="card-modal-scroll bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
-                <div>
-                    <div id="modal-name" class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                <div class="flex items-center gap-6 min-w-0">
+                    <div class="min-w-0">
+                        <div id="modal-name" class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                        </div>
+                        <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
                     </div>
-                    <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
+                    <img id="modal-patch" src="" alt=""
+                        class="hidden shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full object-contain bg-zinc-900 border border-zinc-800 cursor-pointer hover:border-emerald-500/50 transition-colors"
+                        onclick="openPatchLightbox(this.src, this.alt, event)"
+                        onerror="this.classList.add('hidden')">
                 </div>
                 <button onclick="closeModal()"
                     class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
@@ -5949,6 +6017,18 @@
                 }
             }
 
+            // Official mission patch art - LL2 returns "mission_patches", sorted by priority
+            // (lower number = more official/higher quality, same convention as vidURLs above).
+            // Most routine Starlink batches simply don't have one; that's expected, not a bug.
+            let patchUrl = "";
+            const rawPatches = launch.mission_patches || [];
+            const patchList = Array.isArray(rawPatches) ? rawPatches : [];
+            if (patchList.length > 0) {
+                const sortedPatches = [...patchList].sort((a, b) => ((a && a.priority) || 99) - ((b && b.priority) || 99));
+                const bestPatch = sortedPatches.find(p => p && p.image_url);
+                if (bestPatch) patchUrl = bestPatch.image_url;
+            }
+
             const details = generateDetailedMissionPurpose(launch.name || "SpaceX Mission", category, missionDesc, vehicleName);
 
             // בנייה מדויקת של נתוני מנחתים ובוסטרים
@@ -6094,6 +6174,7 @@
                 detailedAnalysis: details.analysis,
                 objectives: details.objectives,
                 image: launchImage,
+                patch: patchUrl,
                 liveUrl: liveStreamUrl,
                 hasLiveVideo: hasLiveVideo,
                 liveVideoUrl: liveVideoUrl,
@@ -6882,6 +6963,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
             document.getElementById('modal-name').innerText = m.name;
+
+            const modalPatchEl = document.getElementById('modal-patch');
+            if (modalPatchEl) {
+                if (m.patch) {
+                    modalPatchEl.src = m.patch;
+                    modalPatchEl.alt = m.name;
+                    modalPatchEl.classList.remove('hidden');
+                } else {
+                    modalPatchEl.removeAttribute('src');
+                    modalPatchEl.classList.add('hidden');
+                }
+            }
 
             let dateStr = '';
             try {
@@ -7935,33 +8028,6 @@ const observer = new MutationObserver((mutations) => {
 
 // התחלת האזנה לשינויים בגוף העמוד
 observer.observe(document.body, { childList: true, subtree: true });
-</script>
-<script>
-// פונקציה שרצה מיידית ותופסת שינויים בעמוד ברמת המילי-שניה
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                if (node.nodeValue.includes("Block 5")) {
-                    node.nodeValue = node.nodeValue.replace(/Block 5/gi, "");
-                }
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                // סריקה מהירה של הילדים בתוך האלמנט שנוסף
-                if (node.innerHTML && node.innerHTML.includes("Block 5")) {
-                    node.innerHTML = node.innerHTML.replace(/Block\s*5/gi, "");
-                }
-            }
-        });
-    });
-});
-
-// התחלת האזנה לשינויים בגוף העמוד
-observer.observe(document.body, { childList: true, subtree: true });
-</script>
-
-// הרצה של הפונקציה לאחר טעינת הדף וכל פעם שהתוכן מתעדכן
-window.addEventListener('load', removeBlock5FromPage);
-setInterval(removeBlock5FromPage, 2000); 
 </script>
     <script type="text/javascript"
         src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
