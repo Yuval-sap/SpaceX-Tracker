@@ -8061,22 +8061,25 @@ fitTitleOneLine(document.getElementById('hero-name'));
         // viewport, and hides it again once the user scrolls back up past it — so there's
         // never a moment with two countdowns visible, and never a moment with zero.
         function initStickyCountdown() {
-            const target = document.getElementById('countdown-box');
+            // Watch the countdown CLOCK itself (#hero-countdown), not the whole #countdown-box
+            // card - that card also contains the Launch Window line below the clock, which
+            // stays visible well after the clock has scrolled out, so the card's own visibility
+            // ratio was a poor proxy for "can the user still see the clock".
+            const target = document.getElementById('hero-countdown');
             const wrap = document.getElementById('sticky-countdown-wrap');
             if (!target || !wrap || !('IntersectionObserver' in window)) return;
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    // Fires once the hero countdown is about half covered by the sticky nav,
-                    // rather than waiting for it to disappear completely - noticeably snappier.
-                    // Still guarded by boundingClientRect.top < 0 so it only counts as "scrolled
-                    // past" when the box is actually leaving via the TOP of the viewport — not
-                    // before it has ever appeared, which also reports a low intersection ratio
-                    // but with top > 0.
-                    const showSticky = entry.intersectionRatio < 0.5 && entry.boundingClientRect.top < 0;
+                    // Fires the moment the clock starts being covered at all - not once it's
+                    // half gone, not once it's fully gone. Still guarded by
+                    // boundingClientRect.top < 0 so it only counts as "scrolled past" when the
+                    // clock is actually leaving via the TOP of the viewport — not before it has
+                    // ever appeared, which also reports a low intersection ratio but with top > 0.
+                    const showSticky = entry.intersectionRatio < 1 && entry.boundingClientRect.top < 0;
                     wrap.classList.toggle('is-visible', showSticky);
                 });
-            }, { threshold: [0, 0.5, 1] });
+            }, { threshold: [0, 1] });
             observer.observe(target);
         }
 
