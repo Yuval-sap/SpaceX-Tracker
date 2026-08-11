@@ -2262,6 +2262,14 @@
                                 <i class="fa-solid fa-xmark text-sm text-red-500"></i>
                             </button>
                         </div>
+                        <div id="hero-video-fallback-note"
+                            class="hidden mt-2 text-[11px] sm:text-xs text-zinc-500 items-center justify-between gap-3 w-full sm:max-w-md mx-auto lg:mx-0">
+                            <span id="hero-video-fallback-text">If the stream doesn't load yet, the broadcast
+                                hasn't started - try again in a few minutes.</span>
+                            <a id="hero-video-fallback-yt-link" href="#" target="_blank" rel="noopener"
+                                class="text-emerald-400 md:hover:underline whitespace-nowrap shrink-0 notranslate"
+                                translate="no">Open on YouTube</a>
+                        </div>
                     </div>
                 </div>
 
@@ -6442,10 +6450,35 @@
 
         // Spaceflight Now's YouTube channel reliably starts a live launch broadcast roughly
         // 30 minutes before liftoff, independent of whether the Launch Library API has flagged
-        // a SpaceX-specific video as live yet. Embedding the channel in "live_stream" mode makes
-        // YouTube itself show whatever is currently live there - no video-ID lookup needed, and
-        // unlike an external link, this plays right inside the site.
+        // a SpaceX-specific video as live yet.
         const SFN_YT_CHANNEL_ID = 'UCoLdERT4-TJ82PJOHSrsZLQ';
+
+        // YouTube's "embed/live_stream?channel=X" trick turns out to not reliably play even
+        // when the channel genuinely IS live (confirmed directly - YouTube's own oEmbed API
+        // says the actual current live video embeds fine, only the channel-based shortcut
+        // doesn't). This resolves the real, current video ID instead and embeds that directly.
+        // YouTube's page has no CORS header, so it's fetched through the same allorigins.win
+        // proxy already used elsewhere in this file (see updateStarlinkStats).
+        let sfnLiveVideoIdCache = { id: null, fetchedAt: 0 };
+        async function resolveSfnLiveVideoId() {
+            if (sfnLiveVideoIdCache.id && Date.now() - sfnLiveVideoIdCache.fetchedAt < 2 * 60 * 1000) {
+                return sfnLiveVideoIdCache.id;
+            }
+            try {
+                const res = await fetchWithTimeout(
+                    'https://api.allorigins.win/get?url=' + encodeURIComponent(`https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`),
+                    { timeout: 6000 }
+                );
+                if (!res.ok) return null;
+                const data = await res.json();
+                const match = (data.contents || '').match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+                if (match) {
+                    sfnLiveVideoIdCache = { id: match[1], fetchedAt: Date.now() };
+                    return match[1];
+                }
+            } catch (e) { }
+            return null;
+        }
 
         function renderHeroLiveButton(nextLaunch) {
             const watchLiveBtn = document.getElementById('hero-watch-live-btn');
@@ -6454,6 +6487,8 @@
             const heroVideoSection = document.getElementById('hero-video-section');
             const heroVideoIframe = document.getElementById('hero-video-iframe');
             const heroVideoCloseBtn = document.getElementById('hero-video-close-btn');
+            const heroVideoFallbackNote = document.getElementById('hero-video-fallback-note');
+            const heroVideoFallbackLink = document.getElementById('hero-video-fallback-yt-link');
             if (!watchLiveBtn) return;
 
             // Don't tear down a player that's already open and playing just because this
@@ -6465,24 +6500,63 @@
 
             const launchTimeMs = new Date(nextLaunch.date).getTime();
             const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
-            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 25 && minutesToLaunch >= -180;
+            // Narrowed from 25 to 15 minutes - Spaceflight Now's broadcast usually isn't live
+            // yet much earlier than that, and opening the embed before it starts just shows
+            // YouTube's own bare "video unavailable" message instead of anything useful.
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 15 && minutesToLaunch >= -180;
 
-            const embedSrc = heroYoutubeId
-                ? 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1'
-                : `https://www.youtube.com/embed/live_stream?channel=${SFN_YT_CHANNEL_ID}&autoplay=1`;
+            const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
 
             if (heroYoutubeId || withinLiveWindow) {
-                // heroYoutubeId: the API confirmed a specific, real SpaceX video - most precise.
-                // Otherwise: no confirmed video yet, but we're inside the pre-launch window -
-                // embed Spaceflight Now's channel live right here on the site.
+                // heroYoutubeId: the API confirmed a specific, real SpaceX video - most precise,
+                // embed it directly. Otherwise: no confirmed video yet, but we're inside the
+                // pre-launch window - resolve Spaceflight Now's actual current live video ID
+                // first (see resolveSfnLiveVideoId) and embed THAT directly. The old
+                // "embed/live_stream?channel=X" shortcut is kept only as a last-resort fallback
+                // if that resolution fails - confirmed directly that it doesn't reliably play
+                // even while the channel genuinely is live, so it's not trustworthy on its own.
                 watchLiveBtn.classList.remove('hidden');
                 if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
                 if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
                 watchLiveBtn.onclick = function () {
                     if (!heroVideoIframe || !heroVideoSection) return;
-                    heroVideoIframe.src = embedSrc;
                     heroVideoSection.classList.remove('hidden');
                     resetVideoControlsOverlay('hero');
+
+                    if (heroYoutubeId) {
+                        heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                        if (heroVideoFallbackLink) heroVideoFallbackLink.href = `https://www.youtube.com/watch?v=${heroYoutubeId}`;
+                        if (heroVideoFallbackNote) {
+                            heroVideoFallbackNote.classList.add('hidden');
+                            heroVideoFallbackNote.classList.remove('flex');
+                        }
+                        return;
+                    }
+
+                    // Show the guessed-channel embed immediately - waiting on the resolver
+                    // (a CORS-proxied fetch, which can itself be slow or unavailable) would make
+                    // the button feel unresponsive. The fallback note/link stay visible since we
+                    // don't yet know whether this embed will actually play.
+                    heroVideoIframe.src = `https://www.youtube.com/embed/live_stream?channel=${SFN_YT_CHANNEL_ID}&autoplay=1`;
+                    if (heroVideoFallbackLink) heroVideoFallbackLink.href = youtubeOpenUrlFallback;
+                    if (heroVideoFallbackNote) {
+                        heroVideoFallbackNote.classList.remove('hidden');
+                        heroVideoFallbackNote.classList.add('flex');
+                    }
+
+                    // In the background, try to resolve the real current video ID and silently
+                    // upgrade to it if it arrives in time and the player is still open - more
+                    // reliable than the channel trick, confirmed directly via YouTube's own
+                    // oEmbed API, but too slow/unreliable itself to block the initial display on.
+                    resolveSfnLiveVideoId().then(resolvedId => {
+                        if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) return;
+                        heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                        if (heroVideoFallbackLink) heroVideoFallbackLink.href = `https://www.youtube.com/watch?v=${resolvedId}`;
+                        if (heroVideoFallbackNote) {
+                            heroVideoFallbackNote.classList.add('hidden');
+                            heroVideoFallbackNote.classList.remove('flex');
+                        }
+                    });
                 };
             } else {
                 watchLiveBtn.classList.add('hidden');
@@ -6492,6 +6566,10 @@
                 heroVideoCloseBtn.onclick = function () {
                     if (heroVideoIframe) heroVideoIframe.src = '';
                     if (heroVideoSection) heroVideoSection.classList.add('hidden');
+                    if (heroVideoFallbackNote) {
+                        heroVideoFallbackNote.classList.add('hidden');
+                        heroVideoFallbackNote.classList.remove('flex');
+                    }
                     resetVideoControlsOverlay('hero');
                 };
             }
