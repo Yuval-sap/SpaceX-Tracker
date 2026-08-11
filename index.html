@@ -2308,7 +2308,7 @@
             <div class="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
                 <div class="relative w-full sm:w-64 md:w-72">
                     <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-500"></i>
-                    <input id="search-input" type="text" placeholder="Search missions..." onkeyup="filterMissions(event)"
+                    <input id="search-input" type="text" placeholder="Search missions..."
                         class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
                 </div>
                 <div
@@ -7087,19 +7087,52 @@ fitTitleOneLine(document.getElementById('hero-name'));
             });
         }
 
-        function filterMissions(e) {
+        // Hebrew keyword groups used both for exact-word smart search (translate a full typed
+        // word to its English equivalent) and for live-as-you-type prefix matching below (e.g.
+        // typing "סטא" - a prefix of "סטארשיפ" but not yet the full word - already surfaces
+        // Starship results, narrowing down as more letters make the word unambiguous). Kept as
+        // one list so both behaviors always stay in sync with the same word set.
+        const HEBREW_SEARCH_KEYWORDS = [
+            { words: ['צוות'], en: 'crew' },
+            { words: ['סטארשיפ', 'סטרשיפ'], en: 'starship' },
+            { words: ['פלקון'], en: 'falcon' },
+            { words: ['דרגון', 'דראגון'], en: 'dragon' },
+            { words: ['סטארלינק', 'סטרלינק', 'סטארפול', 'סטארפאל'], en: 'starlink' },
+        ];
+
+        function filterMissions() {
             let rawTerm = document.getElementById('search-input').value.toLowerCase();
             let term = rawTerm;
 
-            // תרגום חכם לחיפוש עברי 
-            term = term.replace(/צוות/g, 'crew');
-            term = term.replace(/סטארשיפ|סטרשיפ/g, 'starship');
-            term = term.replace(/פלקון/g, 'falcon');
-            term = term.replace(/דרגון|דראגון/g, 'dragon');
-            term = term.replace(/סטארלינק|סטרלינק|סטארפול|סטארפאל/g, 'starlink');
+            // תרגום חכם לחיפוש עברי - מילה מלאה
+            HEBREW_SEARCH_KEYWORDS.forEach(({ words, en }) => {
+                words.forEach(w => { term = term.split(w).join(en); });
+            });
 
             // נרמול חיפוש - החלפת מקפים ברווחים כדי ש"crew 12" ימצא "Crew-12"
             let cleanSearchTerm = term.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+
+            // חיפוש חי תוך כדי הקלדה: אם המילה האחרונה שהוקלדה היא רק תחילת מילת מפתח בעברית
+            // (למשל "סטא" מתוך "סטארשיפ") ועדיין לא המילה השלמה, כבר מציגים תוצאות לפי התרגום
+            // שלה - בנוסף לחיפוש הרגיל - כדי שהתוצאות יתעדכנו תוך כדי ההקלדה במקום לחכות למילה
+            // המלאה. מצטמצם/מתחלף אוטומטית ברגע שההקלדה הבאה מבהירה שהכוונה הייתה למשהו אחר.
+            const lastToken = rawTerm.trim().split(/\s+/).pop() || '';
+            let extraCandidateTerms = [];
+            if (lastToken.length >= 2) {
+                HEBREW_SEARCH_KEYWORDS.forEach(({ words, en }) => {
+                    const isPartialMatch = words.some(w => w.startsWith(lastToken) && lastToken.length < w.length);
+                    if (isPartialMatch) extraCandidateTerms.push(en);
+                });
+            }
+
+            const matchesMission = (m) => {
+                let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
+                const desc = m.description.toLowerCase();
+                const vehicle = m.vehicle.toLowerCase();
+                if (cleanName.includes(cleanSearchTerm) || desc.includes(term) || vehicle.includes(term)) return true;
+                return extraCandidateTerms.some(t => cleanName.includes(t) || desc.includes(t) || vehicle.includes(t));
+            };
+            const hasActiveSearch = !!cleanSearchTerm || extraCandidateTerms.length > 0;
 
             let filteredUpcoming;
             if (currentFilter === 'favorites') {
@@ -7110,11 +7143,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 filteredUpcoming = upcomingForGrid.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
             }
 
-            if (cleanSearchTerm) {
-                filteredUpcoming = filteredUpcoming.filter(m => {
-                    let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
-                    return cleanName.includes(cleanSearchTerm) || m.description.toLowerCase().includes(term) || m.vehicle.toLowerCase().includes(term);
-                });
+            if (hasActiveSearch) {
+                filteredUpcoming = filteredUpcoming.filter(matchesMission);
             }
             renderMissions(filteredUpcoming);
 
@@ -7125,20 +7155,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 filteredPast = filteredPast.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
             }
 
-            if (cleanSearchTerm) {
-                filteredPast = filteredPast.filter(m => {
-                    let cleanName = m.name.toLowerCase().replace(/-/g, ' ');
-                    return cleanName.includes(cleanSearchTerm) || m.description.toLowerCase().includes(term) || m.vehicle.toLowerCase().includes(term);
-                });
+            if (hasActiveSearch) {
+                filteredPast = filteredPast.filter(matchesMission);
             }
             renderPastMissions(filteredPast);
-
-            // Only dismiss the (mobile) keyboard when the user is actually done typing
-            // (Enter) - blurring on every keyup, as this used to do, closed the keyboard
-            // after each character since this function runs on every keystroke.
-            if (e && e.key === 'Enter') {
-                document.activeElement.blur();
-            }
         }
 
         function filterByCategory(cat) {
@@ -8486,7 +8506,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const searchIn = document.getElementById('search-input');
             if (searchIn) {
+                // 'input' (not 'keyup') so live filtering also reacts to paste/autocomplete/
+                // voice dictation, not just physical key presses.
                 searchIn.addEventListener('input', filterMissions);
+                // Dismissing the (mobile) keyboard is handled separately from filtering, and
+                // only on Enter - filterMissions() itself must never blur the field, or every
+                // keystroke would close the keyboard mid-word.
+                searchIn.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') searchIn.blur();
+                });
             }
 
             const filterAll = document.getElementById('filter-all');
