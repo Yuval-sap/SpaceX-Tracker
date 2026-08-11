@@ -2057,9 +2057,9 @@
         class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
             <div class="flex items-center shrink min-w-0 pr-2">
-                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>location.reload(), 400);"
+                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'});"
                     class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate"
-                    translate="no" title="Refresh Tracker">SPACEX FANS TRACKER</span>
+                    translate="no">SPACEX FANS TRACKER</span>
                 <span
                     class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
                     TELEMETRY</span>
@@ -5799,6 +5799,7 @@
 
                 if (combinedData.length > 0) {
                     localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
+                    localStorage.setItem(CACHE_KEY + '_timestamp', Date.now().toString());
                     processLaunchData(combinedData);
                 } else {
                     throw new Error("No data returned from APIs");
@@ -8244,7 +8245,26 @@ fitTitleOneLine(document.getElementById('hero-name'));
             updateClock();
             initDidYouKnow();
             initStickyCountdown();
-            fetchLiveLaunches();
+
+            // A browser refresh (F5 / the reload button) shouldn't cost an API call if we
+            // already fetched moments ago - that's the exact same LL2 request budget the
+            // tiered scheduling above is protecting, and reloading the page doesn't create any
+            // new need for fresher data than what a refresh a couple minutes ago already gave
+            // us. Only skip the network fetch when there's a recent, valid cache to fall back
+            // on - anything else (first visit, stale cache, corrupt cache) still fetches live.
+            const CACHE_KEY = 'spacex_launches_cache';
+            const RELOAD_CACHE_GRACE_MS = 2 * 60 * 1000;
+            const cachedTimestamp = parseInt(localStorage.getItem(CACHE_KEY + '_timestamp') || '0', 10);
+            const cachedLaunchData = localStorage.getItem(CACHE_KEY);
+            if (cachedLaunchData && (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS) {
+                try {
+                    processLaunchData(JSON.parse(cachedLaunchData));
+                } catch (e) {
+                    fetchLiveLaunches();
+                }
+            } else {
+                fetchLiveLaunches();
+            }
 
             const currentLang = document.documentElement.lang.toLowerCase() || 'en';
             window.currentUnitSystem = currentLang.startsWith('en') ? 'imperial' : 'metric';
