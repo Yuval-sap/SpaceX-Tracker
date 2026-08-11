@@ -8067,13 +8067,16 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    // Only count it as "scrolled past" when the box left via the TOP of the
-                    // viewport (boundingClientRect.top < 0) — not before it has ever appeared,
-                    // which also reports isIntersecting:false but with top > 0.
-                    const showSticky = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+                    // Fires once the hero countdown is about half covered by the sticky nav,
+                    // rather than waiting for it to disappear completely - noticeably snappier.
+                    // Still guarded by boundingClientRect.top < 0 so it only counts as "scrolled
+                    // past" when the box is actually leaving via the TOP of the viewport — not
+                    // before it has ever appeared, which also reports a low intersection ratio
+                    // but with top > 0.
+                    const showSticky = entry.intersectionRatio < 0.5 && entry.boundingClientRect.top < 0;
                     wrap.classList.toggle('is-visible', showSticky);
                 });
-            }, { threshold: 0 });
+            }, { threshold: [0, 0.5, 1] });
             observer.observe(target);
         }
 
