@@ -3816,8 +3816,8 @@
         // get a fixed generic patch instead of relying on the API - see mapLaunchToSchema.
         // Every other category keeps using whatever LL2 actually returns.
         const GENERIC_PATCH_IMAGES = {
-            starlink: "https://thespacedevs-dev.nyc3.digitaloceanspaces.com/media/mission_patch_images/space2520x252_mission_patch_20221011205756.png",
-            starship: "https://thespacedevs-dev.nyc3.digitaloceanspaces.com/media/mission_patch_images/starship2520if_mission_patch_20230414221655.png"
+            starlink: "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/mission_patch_images/space2520x252_mission_patch_20221011205756.png",
+            starship: "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/mission_patch_images/starship2520if_mission_patch_20230414221655.png"
         };
 
         // Remembers every real, API-sourced patch we've ever seen for a given mission (keyed by
@@ -6209,6 +6209,12 @@
                 const bestPatch = sortedPatches.find(p => p && p.image_url);
                 if (bestPatch) patchUrl = bestPatch.image_url;
             }
+            // lldev.thespacedevs.com (our previous/upcoming fallback) returns image_url values
+            // pointing at thespacedevs' "-dev" storage bucket, which isn't reliably kept in sync
+            // with the "-prod" bucket the real site's own image links use - confirmed directly:
+            // a mission whose "-dev" URL 404'd loaded fine from the identical path on "-prod".
+            // Same file, same path, just the more complete bucket - safe to always prefer it.
+            if (patchUrl) patchUrl = patchUrl.replace('thespacedevs-dev.', 'thespacedevs-prod.');
             const patchCacheKey = normalizePatchCacheKey(launch.name);
             if (patchUrl) {
                 if (missionPatchCache[patchCacheKey] !== patchUrl) {
