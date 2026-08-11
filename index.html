@@ -3735,6 +3735,27 @@
             starship: "https://thespacedevs-dev.nyc3.digitaloceanspaces.com/media/mission_patch_images/starship2520if_mission_patch_20230414221655.png"
         };
 
+        // Remembers every real, API-sourced patch we've ever seen for a given mission (keyed by
+        // normalized name, since spacelaunch.dev - the degraded fallback API - uses its own id
+        // space that doesn't line up with thespacedevs'). mapLaunchToSchema below writes to this
+        // on every successful lookup and reads from it whenever the current fetch pass came back
+        // without one, so a mission that got its patch once keeps showing it even on a day the
+        // API/fallback chain can't supply it again - without ever inventing one that was never real.
+        const MISSION_PATCH_CACHE_KEY = 'spacex_mission_patch_cache_v1';
+        let missionPatchCache = {};
+        try { missionPatchCache = JSON.parse(localStorage.getItem(MISSION_PATCH_CACHE_KEY)) || {}; } catch (e) { missionPatchCache = {}; }
+        let missionPatchCacheDirty = false;
+
+        function normalizePatchCacheKey(name) {
+            return String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function persistMissionPatchCacheIfDirty() {
+            if (!missionPatchCacheDirty) return;
+            try { localStorage.setItem(MISSION_PATCH_CACHE_KEY, JSON.stringify(missionPatchCache)); } catch (e) { }
+            missionPatchCacheDirty = false;
+        }
+
         const masterFacts = [
             "More than 300 times, Falcon 9 boosters have been landed by SpaceX. Reusability is no longer experimental — it is the standard.",
             "The Falcon rocket family is named after the 'Millennium Falcon' from Star Wars.",
@@ -5584,19 +5605,24 @@
                         }
                     } catch (e) { }
 
+                    // Try the LL2 dev mirror before spacelaunch.dev: it's the same throttled
+                    // service's dev environment, but it carries the FULL LL2 schema (crew,
+                    // booster, orbit, and - notably - mission_patches). spacelaunch.dev's schema
+                    // is missing several of those fields entirely, so it's kept as the last
+                    // resort rather than the first fallback.
+                    try {
+                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
+                        if (fb2Res.ok) {
+                            const fb2Data = await fb2Res.json();
+                            if (fb2Data.results && fb2Data.results.length > 0) return fb2Data.results;
+                        }
+                    } catch (e) { }
+
                     try {
                         const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', { timeout: 12000 });
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
                             if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
-                        }
-                    } catch (e) { }
-
-                    try {
-                        const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
-                        if (fb2Res.ok) {
-                            const fb2Data = await fb2Res.json();
-                            return fb2Data.results || [];
                         }
                     } catch (e) { }
 
@@ -5737,6 +5763,7 @@
                     }
                 });
             }
+            persistMissionPatchCacheIfDirty();
 
             dbMissions = [];
             rawPastMissions = [];
@@ -6058,6 +6085,17 @@
                 const sortedPatches = [...patchList].sort((a, b) => ((a && a.priority) || 99) - ((b && b.priority) || 99));
                 const bestPatch = sortedPatches.find(p => p && p.image_url);
                 if (bestPatch) patchUrl = bestPatch.image_url;
+            }
+            const patchCacheKey = normalizePatchCacheKey(launch.name);
+            if (patchUrl) {
+                if (missionPatchCache[patchCacheKey] !== patchUrl) {
+                    missionPatchCache[patchCacheKey] = patchUrl;
+                    missionPatchCacheDirty = true;
+                }
+            } else if (missionPatchCache[patchCacheKey]) {
+                // Today's source (or fallback) didn't carry a patch for this mission - fall back
+                // to the last real one we saw for it, rather than showing nothing.
+                patchUrl = missionPatchCache[patchCacheKey];
             }
             if (GENERIC_PATCH_IMAGES[category]) patchUrl = GENERIC_PATCH_IMAGES[category];
 
