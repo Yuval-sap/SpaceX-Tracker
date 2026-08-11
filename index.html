@@ -1422,6 +1422,33 @@
             hi: "स्टारशिप", ar: "ستارشيب", tr: "Starship"
         };
 
+        // Same fix, same rationale, for the other three vehicle/program brand names - "Falcon"
+        // and "Dragon" are ordinary dictionary words in most languages (the bird and the mythical
+        // creature), so Google Translate readily translates them there too, and inconsistently:
+        // some cards ending up as e.g. "Halcón 9" and others staying "Falcon 9" in the very same
+        // language, depending on exactly when each card happened to get scanned by Google's
+        // translator. Same convention as STARSHIP_I18N: Latin-alphabet languages keep the name
+        // as-is, other scripts get the standard transliteration (or, for Chinese, the term
+        // actually used in the press).
+        const FALCON_I18N = {
+            en: "Falcon", he: "פלקון", iw: "פלקון", es: "Falcon", fr: "Falcon",
+            de: "Falcon", ru: "Фалькон", zh: "猎鹰", it: "Falcon", cs: "Falcon",
+            sv: "Falcon", nl: "Falcon", da: "Falcon", pt: "Falcon", pl: "Falcon",
+            hi: "फाल्कन", ar: "فالكون", tr: "Falcon"
+        };
+        const DRAGON_I18N = {
+            en: "Dragon", he: "דרגון", iw: "דרגון", es: "Dragon", fr: "Dragon",
+            de: "Dragon", ru: "Дракон", zh: "龙飞船", it: "Dragon", cs: "Dragon",
+            sv: "Dragon", nl: "Dragon", da: "Dragon", pt: "Dragon", pl: "Dragon",
+            hi: "ड्रैगन", ar: "دراغون", tr: "Dragon"
+        };
+        const STARLINK_I18N = {
+            en: "Starlink", he: "סטארלינק", iw: "סטארלינק", es: "Starlink", fr: "Starlink",
+            de: "Starlink", ru: "Старлинк", zh: "星链", it: "Starlink", cs: "Starlink",
+            sv: "Starlink", nl: "Starlink", da: "Starlink", pt: "Starlink", pl: "Starlink",
+            hi: "स्टारलिंक", ar: "ستارلينك", tr: "Starlink"
+        };
+
         // The Milestones list used to rely on Google Translate for every language, but
         // Google would frequently mistranslate rocket/mission terminology (the same
         // "Starship" issue as elsewhere, plus mangled word order in longer sentences).
@@ -1900,6 +1927,73 @@
             });
         }
 
+        // Generalizes the fix above (localizeStarshipTerm) to "Falcon", "Dragon", and
+        // "Starlink" - same symptom (Google Translate inconsistently mistranslating a brand
+        // name mid-sentence, differently from one already-rendered card to the next), same
+        // fix (wrap the word in a notranslate span holding the correct per-language term from
+        // FALCON_I18N/DRAGON_I18N/STARLINK_I18N, so Google never gets a chance to touch it).
+        // Kept as its own function, called alongside localizeStarshipTerm everywhere that one
+        // is already called, rather than merged into it, so the original - already carefully
+        // tuned against several real Google Translate bugs - stays untouched.
+        function protectBrandTerm(root, word, i18nDict, cssClass) {
+            const currentLang = (document.documentElement.lang || 'en').toLowerCase();
+            let key = currentLang.split('-')[0];
+            if (key === 'iw') key = 'he';
+            const term = i18nDict[key] || i18nDict.en;
+
+            root.querySelectorAll('.' + cssClass).forEach(el => {
+                const before = el.dataset.spaceBefore === '1' ? ' ' : '';
+                const after = el.dataset.spaceAfter === '1' ? ' ' : '';
+                const wanted = before + term + after;
+                if (el.textContent !== wanted) el.textContent = wanted;
+            });
+
+            const presenceRegex = new RegExp(word, 'i');
+            if (!presenceRegex.test(root.textContent || '')) return;
+            const splitRegex = new RegExp('(\\s?(?<![a-zA-Z])' + word + '(?![a-zA-Z])\\s?)', 'i');
+            const wholeMatchRegex = new RegExp('^\\s?' + word + '\\s?$', 'i');
+
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    if (!node.nodeValue || !presenceRegex.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+                    const p = node.parentElement;
+                    if (!p || p.closest('.' + cssClass) || p.closest('.lang-en-lock') || p.closest('.no-starship-protect') || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            let n;
+            while ((n = walker.nextNode())) nodes.push(n);
+            nodes.forEach(node => {
+                const frag = document.createDocumentFragment();
+                node.nodeValue.split(splitRegex).forEach(part => {
+                    if (!part) return;
+                    if (wholeMatchRegex.test(part)) {
+                        const hasBefore = /^\s/.test(part);
+                        const hasAfter = /\s$/.test(part);
+                        const span = document.createElement('span');
+                        span.className = cssClass + ' notranslate';
+                        span.setAttribute('translate', 'no');
+                        span.dataset.spaceBefore = hasBefore ? '1' : '0';
+                        span.dataset.spaceAfter = hasAfter ? '1' : '0';
+                        span.textContent = (hasBefore ? ' ' : '') + term + (hasAfter ? ' ' : '');
+                        frag.appendChild(span);
+                    } else {
+                        frag.appendChild(document.createTextNode(part));
+                    }
+                });
+                node.parentNode.replaceChild(frag, node);
+            });
+        }
+
+        function protectOtherBrandTerms(root) {
+            root = root || document.body;
+            if (!root) return;
+            protectBrandTerm(root, 'Falcon', FALCON_I18N, 'falcon-term');
+            protectBrandTerm(root, 'Dragon', DRAGON_I18N, 'dragon-term');
+            protectBrandTerm(root, 'Starlink', STARLINK_I18N, 'starlink-term');
+        }
+
         // Bulletproof Timer for Google Translate RTL
         setInterval(() => {
             const htmlEl = document.documentElement;
@@ -1985,6 +2079,7 @@
             }
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
+            protectOtherBrandTerms(document.body);
             fitAllTitlesOneLine(document);
 
             // Unit system follows the resolved language only. Google Translate's
@@ -2013,6 +2108,7 @@
         // as soon as the DOM is ready, protects that static content before Google gets to it.
         document.addEventListener('DOMContentLoaded', () => {
             localizeStarshipTerm(document.body);
+            protectOtherBrandTerms(document.body);
         });
 
     </script>
@@ -5648,6 +5744,7 @@
                 // observer will translate it on the fly, so this must run synchronously,
                 // right now, before that has a chance to run and mangle "Starship".
                 localizeStarshipTerm(tickerTrack);
+                protectOtherBrandTerms(tickerTrack);
                 tickerWrap.classList.remove('hidden');
 
                 // Keep scroll speed consistent (~55px/sec) no matter how much content
@@ -6700,6 +6797,7 @@
     heroNameEl.innerText = nextLaunch.name;
     // Protect "Starship" synchronously - see the matching comment in openMissionModal().
     localizeStarshipTerm(heroNameEl);
+    protectOtherBrandTerms(heroNameEl);
 
     // מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
     requestAnimationFrame(() => {
@@ -6976,6 +7074,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // word in its protected notranslate span first, so Google never sees the
                 // raw English text to mistranslate in the first place.
                 localizeStarshipTerm(card);
+                protectOtherBrandTerms(card);
                 grid.appendChild(card);
             });
 
@@ -7062,6 +7161,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // into the live document, so Google Translate's mutation-watching never
                 // gets a chance to mistranslate it first.
                 localizeStarshipTerm(card);
+                protectOtherBrandTerms(card);
                 pastGrid.appendChild(card);
             });
 
@@ -7565,6 +7665,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // Google may have already replaced the word with its own mistranslation, and merely
             // wrapping the word afterward can't undo damage that's already been done.
             localizeStarshipTerm(modalNameEl);
+            protectOtherBrandTerms(modalNameEl);
 
             const modalPatchEl = document.getElementById('modal-patch');
             if (modalPatchEl) {
@@ -8063,6 +8164,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             rocketModalNameEl.innerText = data.name;
             // Protect "Starship" synchronously - see the matching comment in openMissionModal().
             localizeStarshipTerm(rocketModalNameEl);
+            protectOtherBrandTerms(rocketModalNameEl);
 
             const imgEl = document.getElementById('rocket-modal-img');
             imgEl.src = data.image;
