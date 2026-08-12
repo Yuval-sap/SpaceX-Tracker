@@ -246,6 +246,27 @@
             pointer-events: auto;
         }
 
+        /* Mobile counterpart of the reveal above (see #sticky-countdown-wrap-mobile) - same
+           scale/ease-out-back drop-in, minus the emerald glow (no box-shadow here on purpose -
+           removed per explicit request to keep the mobile version glow-free while desktop
+           keeps it) and without the -50% vertical centering term (this one hangs off <nav>'s
+           bottom edge, tracked in JS now that it's position:fixed - see
+           syncMobileStickyCountdownTop), so it drops down out from under the header instead of
+           dropping into the middle of it. */
+        #sticky-countdown-wrap-mobile {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -8px) scale(0.85);
+            transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #sticky-countdown-wrap-mobile.is-visible {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
+            pointer-events: auto;
+        }
+
         .countdown-small {
             font-family: 'Space Grotesk', monospace;
             font-feature-settings: "tnum";
@@ -595,7 +616,16 @@
 
         @media (max-width: 640px) {
             .goog-te-gadget .goog-te-combo {
-                max-width: 95px !important;
+                /* A native <select> sizes itself to its WIDEST <option> (e.g. "Chinese
+                   (Simplified)"), not the currently selected one - so even "Hebrew" or
+                   "Select Language" would otherwise render ~135px wide and blow the mobile
+                   header row's budget. A fixed width + ellipsis keeps every language name
+                   readable up to that width and gracefully truncates the rest. */
+                width: 92px !important;
+                max-width: 92px !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
                 padding: 1px 4px !important;
                 font-size: 10px !important;
                 height: 24px !important;
@@ -707,6 +737,10 @@
 
         body.light-theme .border-zinc-900 {
             border-color: #e2e8f0 !important;
+        }
+
+        body.light-theme .border-zinc-900\/80 {
+            border-color: rgba(226, 232, 240, 0.8) !important;
         }
 
         body.light-theme .border-zinc-850 {
@@ -1292,6 +1326,7 @@
                 const map = {
                     'i18n-next-launch': dict.nextLaunch,
                     'i18n-next-launch-sticky': dict.nextLaunch,
+                    'i18n-next-launch-sticky-mobile': dict.nextLaunch,
                     'i18n-upcoming-launches': dict.upcomingLaunches,
                     'i18n-launch-window': dict.launchWindow,
                     'i18n-countdown-to-launch': dict.countdownToLaunch,
@@ -2030,6 +2065,8 @@
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
             }
 
+            shortenGoogleTranslatePlaceholder();
+            if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
             applyPastLaunchDetailsLabels(currentLang);
@@ -2186,13 +2223,13 @@
                  the hero's own countdown box scrolls out of view (see initStickyCountdown),
                  so there's always exactly one countdown visible on screen, never both. -->
             <div id="sticky-countdown-wrap"
-                class="hidden md:flex absolute left-1/2 top-1/2 items-center gap-x-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-2xl notranslate"
+                class="hidden md:flex absolute left-1/2 top-1/2 w-max items-center gap-x-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-zinc-950/70 backdrop-blur-lg border border-zinc-900/80 rounded-2xl notranslate"
                 translate="no">
                 <span id="i18n-next-launch-sticky"
-                    class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold notranslate"
+                    class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold notranslate whitespace-nowrap"
                     translate="no" lang="en">NEXT LAUNCH</span>
                 <span id="sticky-countdown" dir="ltr"
-                    class="font-space text-sm sm:text-base font-bold tabular-nums tracking-tight text-emerald-400 notranslate"
+                    class="font-space text-sm sm:text-base font-bold tabular-nums tracking-tight text-emerald-400 notranslate whitespace-nowrap"
                     translate="no">--:--:--</span>
             </div>
 
@@ -2214,6 +2251,48 @@
             </div>
         </div>
     </nav>
+
+    <!-- Mobile-only counterpart to #sticky-countdown-wrap above: that one is absolutely
+         positioned to sit centered *within* the single header row, which only works once
+         there's enough spare width in that row (md and up) - on mobile the row is already
+         full (logo + theme toggle + language + clock), so it's just hidden there entirely
+         (see its own `hidden md:flex`) rather than overlapping something. This one is a
+         SIBLING of <nav> now (not its child) - deliberately NOT nested inside <nav>, because a
+         backdrop-filter element nested inside another backdrop-filter element (<nav> has one
+         too) is a known Chromium rendering quirk that can affect blur fidelity. It's
+         position:fixed (viewport-relative) rather than absolute, with `top` synced in JS (see
+         syncMobileStickyCountdownTop in initStickyCountdown) to <nav>'s live
+         getBoundingClientRect().bottom - since that already reflects <nav>'s real on-screen
+         position whether it's sitting in its natural flow spot or currently stuck to the
+         viewport top, this hangs directly off <nav>'s bottom edge in both states without
+         needing to be <nav>'s own positioned descendant. z-50 (not z-40) is load-bearing here,
+         not cosmetic: body::before (see its own comment near the top of this stylesheet) is
+         the page's full-viewport CRT-scanline overlay, sitting at z-50 itself - <nav> is also
+         z-50 and paints after it in DOM order, which is what hides the scanline over <nav>'s
+         own surface; anything under z-50 (like this used to be, at z-40) has the scanline
+         painted visibly on top of it instead, which is exactly the "horizontal stripes on the
+         countdown" that was reported. Kept out of <nav>'s normal document flow as a real
+         second row on purpose too - that would add its own height to <nav> and grow the whole
+         header's box every time this shows/hides; this way <nav> itself always stays exactly
+         its original single-row size, and the pill visually overlaps the content below it
+         instead. Always display:flex (within the mobile breakpoint) and shown/hidden purely
+         via the .is-visible opacity/transform transition below (same technique as
+         #sticky-countdown-wrap) rather than toggling display - swapping display:none in and
+         out would skip the transition entirely. Horizontal centering lives in that same
+         transform instead of a separate -translate-x-1/2 utility, since both have to animate
+         together. Shown/hidden by the exact same #hero-countdown IntersectionObserver in
+         initStickyCountdown() and kept in sync by the exact same update() in
+         updateHeroCountdown(). -->
+    <div id="sticky-countdown-wrap-mobile"
+        class="flex md:hidden fixed left-1/2 w-max items-center gap-x-2 px-3 py-1.5 bg-zinc-950/70 backdrop-blur-lg border border-zinc-900/80 rounded-2xl notranslate z-50"
+        translate="no">
+        <span id="i18n-next-launch-sticky-mobile"
+            class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold notranslate whitespace-nowrap"
+            translate="no" lang="en">NEXT LAUNCH</span>
+        <span id="sticky-countdown-mobile" dir="ltr"
+            class="font-space text-sm font-bold tabular-nums tracking-tight text-emerald-400 notranslate whitespace-nowrap"
+            translate="no">--:--:--</span>
+    </div>
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
 
@@ -2944,9 +3023,23 @@
                 </span>
             </div>
 
-            <div class="relative">
+            <div class="relative bg-zinc-900 border border-zinc-800/80 rounded-3xl p-4 sm:p-6 transition-colors duration-500">
+                <!-- No fixed/max height here on purpose: a flex row with no height constraint
+                     of its own sizes to its tallest child automatically, so once a tile's name
+                     wraps past one line (see the line-clamp removal below), the whole card just
+                     grows taller to fit it instead of clipping it or needing a vertical
+                     scrollbar - only the horizontal axis (overflow-x-auto) actually scrolls.
+                     py-4 here (this element's OWN padding, not the outer card's p-4/p-6 above -
+                     that's a separate box and doesn't help) matters for a different reason: per
+                     spec, setting overflow-x to anything but visible forces overflow-y to
+                     compute as auto too, even though it's never set explicitly - which means
+                     THIS element is the actual clipping boundary for each tile's hover glow
+                     (an absolutely-positioned, blurred div that visually bleeds past its own
+                     box - see the tile markup below). Without vertical breathing room inside
+                     that boundary, the glow blur gets clipped flush against this element's own
+                     top/bottom edge. -->
                 <div id="mission-patches-strip"
-                    class="flex items-start gap-3 sm:gap-4 overflow-x-auto pt-4 pb-4 -mx-4 px-8 md:mx-0 md:px-8 hide-scrollbar snap-x snap-mandatory">
+                    class="flex items-start gap-3 sm:gap-4 overflow-x-auto py-4 hide-scrollbar snap-x snap-mandatory">
                     <div class="flex flex-col items-center gap-1 shrink-0 snap-start w-28 sm:w-32">
                         <div class="skel w-20 h-20 sm:w-24 sm:h-24 rounded-full"></div>
                         <div class="skel h-3 w-14 rounded"></div>
@@ -3095,7 +3188,7 @@
             </button>
             <div id="patch-mission-modal-content"
                 class="card-modal-scroll bg-zinc-950 border border-zinc-800 rounded-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden p-7 sm:p-9 text-center">
-                <div class="w-40 h-40 sm:w-48 sm:h-48 mx-auto mb-5 flex items-center justify-center">
+                <div class="w-48 h-48 sm:w-[230px] sm:h-[230px] mx-auto mb-5 flex items-center justify-center">
                     <i id="patch-mission-modal-spinner" class="fa-solid fa-spinner fa-spin text-zinc-600 text-2xl"></i>
                     <img id="patch-mission-modal-photo" src="" alt="" class="hidden w-full h-full object-contain">
                 </div>
@@ -6727,7 +6820,7 @@
                             class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain transition-transform duration-300 md:group-hover/patch:-translate-y-1 md:group-hover/patch:scale-105"
                             loading="lazy" onerror="this.closest('button').remove()">
                     </div>
-                    <span class="text-[11px] text-zinc-400 text-center leading-tight line-clamp-2 md:group-hover/patch:text-white transition-colors">${m.name}</span>
+                    <span class="text-[11px] text-zinc-400 text-center leading-tight md:group-hover/patch:text-white transition-colors">${m.name}</span>
                 `;
                 tile.onclick = () => openPatchMissionCard(m);
                 localizeStarshipTerm(tile);
@@ -8715,7 +8808,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
         function updateHeroCountdown(targetDate, currentStatus) {
             if (heroInterval) clearInterval(heroInterval);
             const el = document.getElementById('hero-countdown');
-            const stickyEl = document.getElementById('sticky-countdown');
+            // Both the desktop pill (absolutely centered in the header row) and the mobile
+            // row below it (see #sticky-countdown-wrap-mobile) show the exact same value -
+            // updated together everywhere below instead of duplicating each branch per element.
+            const stickyEls = [document.getElementById('sticky-countdown'), document.getElementById('sticky-countdown-mobile')].filter(Boolean);
 
             const tlProgress = document.getElementById('timeline-progress');
             const n24 = document.getElementById('node-24h');
@@ -8825,27 +8921,27 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         // since the old target - the source's own updated status is the truth.
                         el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
                         el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
-                        if (stickyEl) {
-                            stickyEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
-                            stickyEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
-                        }
+                        stickyEls.forEach(stEl => {
+                            stEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
+                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
+                        });
                     } else if (diff > -3 * 60 * 1000) {
                         // First 3 minutes after T-0: "LAUNCH" - after that, "MISSION IN PROGRESS"
                         // takes over (below) until the mission is evicted from the hero per
                         // setupHeroBanner's grace-period rules.
                         el.innerHTML = el.dataset.launchNowText || 'LAUNCH';
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
-                        if (stickyEl) {
-                            stickyEl.innerText = el.dataset.launchNowText || 'LAUNCH';
-                            stickyEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
-                        }
+                        stickyEls.forEach(stEl => {
+                            stEl.innerText = el.dataset.launchNowText || 'LAUNCH';
+                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
+                        });
                     } else {
                         el.innerHTML = el.dataset.inProgressText || 'MISSION IN PROGRESS';
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
-                        if (stickyEl) {
-                            stickyEl.innerText = el.dataset.inProgressText || 'MISSION IN PROGRESS';
-                            stickyEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
-                        }
+                        stickyEls.forEach(stEl => {
+                            stEl.innerText = el.dataset.inProgressText || 'MISSION IN PROGRESS';
+                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
+                        });
                     }
                     return;
                 }
@@ -8884,19 +8980,19 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">s</span>
                 `;
 
-                if (stickyEl) {
-                    // Mirrors #hero-countdown's own two-tone treatment above (colored digits,
-                    // muted unit letters) - this used to just be one plain innerText string
-                    // with timeColor on the whole span, which made the "d"/"h"/"m"/"s" letters
-                    // the same bright color as the numbers instead of the intended quieter gray.
-                    stickyEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
-                    stickyEl.innerHTML = `
+                // Mirrors #hero-countdown's own two-tone treatment above (colored digits,
+                // muted unit letters) - this used to just be one plain innerText string with
+                // timeColor on the whole span, which made the "d"/"h"/"m"/"s" letters the same
+                // bright color as the numbers instead of the intended quieter gray.
+                stickyEls.forEach(stEl => {
+                    stEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
+                    stEl.innerHTML = `
                         <span class="${timeColor}">${d}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">d</span>
                         <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">h</span>
                         <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">m</span>
                         <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">s</span>
                     `;
-                }
+                });
             };
 
             update();
@@ -8907,6 +9003,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
         // own countdown box (#countdown-box) has scrolled out of view above the top of the
         // viewport, and hides it again once the user scrolls back up past it — so there's
         // never a moment with two countdowns visible, and never a moment with zero.
+        // #sticky-countdown-wrap-mobile is position:fixed and lives outside <nav> (see the
+        // comment on that element), so its `top` has to be kept in sync with <nav>'s actual
+        // on-screen bottom edge in JS instead of a CSS top-full percentage. Cheap enough to
+        // call on every scroll tick and every Bulletproof Timer tick.
+        function syncMobileStickyCountdownTop() {
+            const nav = document.querySelector('nav');
+            const wrapMobile = document.getElementById('sticky-countdown-wrap-mobile');
+            if (!nav || !wrapMobile) return;
+            const newTop = Math.round(nav.getBoundingClientRect().bottom) + 'px';
+            if (wrapMobile.style.top !== newTop) wrapMobile.style.top = newTop;
+        }
+
         function initStickyCountdown() {
             // Watch the countdown CLOCK itself (#hero-countdown), not the whole #countdown-box
             // card - that card also contains the Launch Window line below the clock, which
@@ -8914,7 +9022,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // ratio was a poor proxy for "can the user still see the clock".
             const target = document.getElementById('hero-countdown');
             const wrap = document.getElementById('sticky-countdown-wrap');
+            const wrapMobile = document.getElementById('sticky-countdown-wrap-mobile');
             if (!target || !wrap || !('IntersectionObserver' in window)) return;
+
+            syncMobileStickyCountdownTop();
+            window.addEventListener('scroll', syncMobileStickyCountdownTop, { passive: true });
+            window.addEventListener('resize', syncMobileStickyCountdownTop);
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
@@ -8925,6 +9038,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     // ever appeared, which also reports a low intersection ratio but with top > 0.
                     const showSticky = entry.intersectionRatio < 1 && entry.boundingClientRect.top < 0;
                     wrap.classList.toggle('is-visible', showSticky);
+                    if (wrapMobile) {
+                        syncMobileStickyCountdownTop();
+                        wrapMobile.classList.toggle('is-visible', showSticky);
+                    }
                 });
             }, { threshold: [0, 1] });
             observer.observe(target);
@@ -9066,6 +9183,25 @@ if (heroNameEl) {
                 pageLanguage: 'en',
                 includedLanguages: 'en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr'
             }, 'google_translate_element');
+        }
+
+        // A native <select> sizes itself to its widest <option> ("Chinese (Simplified)",
+        // "Portuguese (Brazil)"...), not the current selection - the placeholder Google ships,
+        // "Select Language", is itself one of the widest entries, and it's what every
+        // untranslated (default English) visitor sees permanently, not a rare edge case.
+        // There's only ~90px of real budget for this control on mobile before it collides with
+        // its neighbors, so shorten just that placeholder label. Google rebuilds this <select>
+        // (fresh "Select Language" option and all) more than once during its own async init -
+        // a one-shot rename gets clobbered - so this re-applies itself continuously on the same
+        // "Bulletproof Timer" interval already used to fight Google Translate's other DOM
+        // rewrites (see applyLaunchLabelTranslations) rather than relying on a single observer.
+        function shortenGoogleTranslatePlaceholder() {
+            const combo = document.querySelector('#google_translate_element select.goog-te-combo');
+            if (!combo) return;
+            const placeholderOption = combo.querySelector('option[value=""]');
+            if (placeholderOption && placeholderOption.textContent !== 'Language') {
+                placeholderOption.textContent = 'Language';
+            }
         }
     </script>
     <script>
