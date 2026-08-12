@@ -13,7 +13,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpaceX Fans Tracker • Mission Control</title>
+    <title>SpaceX Launch Tracker • Mission Control</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
@@ -2155,7 +2155,7 @@
             <div class="flex items-center shrink min-w-0 pr-2">
                 <span onclick="window.scrollTo({top: 0, behavior: 'smooth'});"
                     class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate"
-                    translate="no">SPACEX FANS TRACKER</span>
+                    translate="no">SPACEX LAUNCH TRACKER</span>
                 <span
                     class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
                     TELEMETRY</span>
@@ -3009,7 +3009,7 @@
             </a>
         </div>
 
-        <div class="pt-2">© 2026 SpaceX Fans Tracker. All Rights Reserved.</div>
+        <div class="pt-2">© 2026 SpaceX Launch Tracker. All Rights Reserved.</div>
         <div class="text-[10px] text-zinc-600 max-w-3xl mx-auto italic font-sans px-4">
             Disclaimer: This website is not affiliated with, authorized, or endorsed by SpaceX (Space Exploration
             Technologies Corp). All trademarks belong to their respective owners.
@@ -8857,15 +8857,24 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 el.classList.toggle('animate-pulse-calm', pulseOuter);
 
                 el.innerHTML = `
-                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">d</span>
-                    <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">h</span>
-                    <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">m</span>
-                    <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal opacity-50 mx-1.5 text-zinc-400">s</span>
+                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">d</span>
+                    <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">h</span>
+                    <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">m</span>
+                    <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">s</span>
                 `;
 
                 if (stickyEl) {
-                    stickyEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight ${timeColor} notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
-                    stickyEl.innerText = `${d}d ${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+                    // Mirrors #hero-countdown's own two-tone treatment above (colored digits,
+                    // muted unit letters) - this used to just be one plain innerText string
+                    // with timeColor on the whole span, which made the "d"/"h"/"m"/"s" letters
+                    // the same bright color as the numbers instead of the intended quieter gray.
+                    stickyEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
+                    stickyEl.innerHTML = `
+                        <span class="${timeColor}">${d}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">d</span>
+                        <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">h</span>
+                        <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">m</span>
+                        <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">s</span>
+                    `;
                 }
             };
 
