@@ -43,6 +43,27 @@
            and anything neither covers falls through to the plain system font as before. */
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
 
+        /* Font weight LABELS aren't visually equivalent across typefaces - Rubik's "600" is a
+           notably rounder/heavier cut than Space Grotesk's "600", so in a mixed-script line
+           (Latin rendered in Space Grotesk, Hebrew falling through to Rubik - see the @import
+           comment above) the Hebrew words ended up looking more emphasized/bold than the
+           English or numeric parts of the exact same title, purely from the font pairing, not
+           from any actual weight difference in the markup. This redefines just the Hebrew-range
+           weight-600 face to load Rubik's own medium (500) file instead of its real semi-bold
+           (600) one, so anything asking for weight 600 that resolves to Rubik's Hebrew glyphs
+           renders visually closer to Space Grotesk's actual 600. Placed after a same-weight,
+           same-range @font-face, the later rule wins - standard font-matching behavior, not a
+           hack. Every other script Rubik covers (Arabic, Cyrillic, etc.) is untouched, since
+           this unicode-range only matches Hebrew codepoints. */
+        @font-face {
+            font-family: 'Rubik';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url(https://fonts.gstatic.com/s/rubik/v31/iJWZBXyIfDnIV5PNhY1KTN7Z-Yh-NYiFVUU1Z4Y.woff2) format('woff2');
+            unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+        }
+
 @media (max-width: 640px) {
     #hero-name {
         display: block !important;
