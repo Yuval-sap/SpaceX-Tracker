@@ -2069,6 +2069,7 @@
             if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
+            if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
             applyPollTranslations(currentLang);
@@ -3104,6 +3105,50 @@
                     <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
                     <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
                     <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXPERIMENTAL: SpaceX AI compute-rental section. Figures come from a manually-
+             curated snapshot (AI_COMPUTE_* in the script below), not a live feed - there's no
+             public structured API for deal-specific $/GW numbers the way there is for
+             launches, so this only updates when someone edits those values by hand after real
+             news breaks. The stacked bar breaks Google/Reflection AI's GW figures out from
+             Anthropic's disclosed one via a same-hardware rate comparison rather than
+             inventing numbers - see the comment above AI_COMPUTE_DEALS in the script for the
+             methodology, and the "~" markers in the bar's legend/list for which figures are
+             estimates versus officially disclosed. Marked notranslate here (whole section) and
+             translated by hand instead via AI_COMPUTE_I18N/applyAIComputeTranslations, same
+             pattern as the Milestones section - Google Translate tends to mangle financial/
+             technical prose like this. -->
+        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500 notranslate"
+            translate="no">
+            <div class="mb-6">
+                <h3
+                    class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    <i class="fa-solid fa-microchip text-emerald-400"></i>
+                    <span id="i18n-ai-compute-title" lang="en">SpaceX AI Compute Deals</span>
+                </h3>
+                <p id="i18n-ai-compute-subtitle" class="text-sm text-zinc-400 transition-colors duration-500"
+                    lang="en">Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal</p>
+            </div>
+
+            <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 transition-colors duration-500">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="i18n-ai-compute-current-capacity" class="text-sm font-semibold text-white"
+                        lang="en">Current Capacity</span>
+                    <span id="ai-compute-goal-label" class="text-sm font-bold font-space text-white"></span>
+                </div>
+                <div id="ai-compute-goal-bar" class="h-8 sm:h-10 bg-zinc-800 rounded-full overflow-hidden flex"></div>
+                <div id="ai-compute-goal-legend"
+                    class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[11px] text-zinc-500"></div>
+
+                <div id="ai-compute-customer-list" class="mt-6 pt-6 border-t border-zinc-800/80 space-y-4"></div>
+
+                <div class="flex items-center justify-between mt-5 pt-4 border-t border-zinc-800/80">
+                    <span id="i18n-ai-compute-total-label"
+                        class="text-xs font-bold text-zinc-400 uppercase tracking-widest" lang="en">Total</span>
+                    <span id="ai-compute-total-revenue" class="text-sm font-bold font-space text-emerald-400"></span>
                 </div>
             </div>
         </div>
@@ -6324,6 +6369,7 @@
             updateStarlinkStats();
             renderBoosterLeaderboard();
             renderMissionPatchesStrip();
+            renderAIComputeSection();
             loadNewsTicker();
             // The RSS sources behind the ticker (Teslarati, NASA, SpaceNews, ESA) each
             // publish at their own pace — some multiple times an hour during a launch
@@ -6826,6 +6872,150 @@
                 localizeStarshipTerm(tile);
                 strip.appendChild(tile);
             });
+        }
+
+        // Manually-curated snapshot of SpaceX/xAI's Colossus AI-compute buildout - see the
+        // comment above the "SpaceX AI Compute Deals" section in the HTML for why this can't
+        // be a live feed. Update these by hand when real news breaks.
+        //
+        // AI_COMPUTE_GOAL_GW: Musk told SpaceX staff the company is targeting 10GW of AI
+        // compute online by the end of 2027 (reported by SemiAnalysis, Yahoo Finance/Memeburn,
+        // Aug 2026).
+        //
+        // Per-customer power figures, in order of confidence (gwConfidence controls the "~"
+        // prefix shown next to non-official numbers):
+        //  - Anthropic: 300MW is DISCLOSED directly (Tom's Hardware, CNBC) - it's all of
+        //    Colossus 1's capacity.
+        //  - Google: 220MW is also effectively DISCLOSED - SpaceX's S-1 filing describes "a
+        //    second cluster of 110,000 GB300 processors and 220 megawatts of compute power",
+        //    and 110,000 GPUs is exactly Google's publicly reported deal size, so this is very
+        //    likely the same cluster.
+        //  - Reflection AI: no GPU count or power figure has ever been reported for their deal
+        //    specifically, so this is an ESTIMATE - derived from Google's disclosed rate
+        //    (220MW for $920M/mo = ~$4.18M per MW per month) applied to Reflection's $150M/mo,
+        //    since both run the same GB300-class chips at Colossus 2 (unlike Anthropic's
+        //    Colossus 1, which is a different, presumably older chip generation - using
+        //    Anthropic's MW/GPU ratio for a GB300 deal would actually be LESS accurate than
+        //    this same-hardware comparison).
+        // "Other customers & internal use" is whatever's left of current total capacity after
+        // subtracting the three named deals - xAI's own Grok training plus any uncommitted
+        // capacity, lumped together since it isn't broken out anywhere public - so it's always
+        // treated as non-official (~) too.
+        const AI_COMPUTE_GOAL_GW = 10;
+        const AI_COMPUTE_TOTAL_GW = 2; // current total Colossus capacity, ~year-end 2026 estimate
+        const AI_COMPUTE_DEALS = [
+            // Colors matched to each company's real brand color where confidently known:
+            // Anthropic's is #d97757 (their official clay/orange accent). Google's is #4285F4
+            // (their primary "Google Blue"). Reflection AI's dark forest green (#2d4a30) is
+            // per the user's own reference screenshot of their site's brand green.
+            { name: 'Anthropic', monthlyUsd: 1250, gw: 0.3, gwConfidence: 'disclosed', color: 'bg-[#d97757]', mw: '300 MW', extra: '220,000+ GPUs · May 2029' },
+            { name: 'Google', monthlyUsd: 920, gw: 0.22, gwConfidence: 'disclosed', color: 'bg-[#4285F4]', mw: '220 MW', extra: '110,000 GPUs · Oct 2026–Jun 2029' },
+            { name: 'Reflection AI', monthlyUsd: 150, gw: 0.036, gwConfidence: 'estimated', color: 'bg-[#2d4a30]', mw: '36 MW', extra: 'GB300 chips · Jul 2026–2029 · up to 6.3B$' },
+        ];
+
+        // This whole section is marked notranslate in the HTML (see the comment there) and
+        // translated by hand instead, same approach as MILESTONES_I18N/POLL_I18N above -
+        // financial/technical prose like this is exactly what Google Translate tends to
+        // mangle. Company names, units (MW/GW/GPU) and dates stay untranslated on purpose -
+        // those are the same in every language on this site already.
+        const AI_COMPUTE_I18N = {
+            en: { title: 'SpaceX AI Compute Deals', subtitle: "Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal", currentCapacity: 'Current Capacity', total: 'Total', otherCustomers: 'Other customers & internal use', remainingToBuild: 'Remaining to build', disclosed: 'disclosed', estimated: 'estimated', combined: 'combined', annualized: 'annualized', month: 'month' },
+            he: { title: 'עסקאות מחשוב ה-AI של SpaceX', subtitle: "הקיבולת הנוכחית של Colossus מול היעד המוצהר של מאסק — 10 ג'יגה-ואט עד סוף 2027", currentCapacity: 'קיבולת נוכחית', total: 'סה״כ', otherCustomers: 'לקוחות נוספים ושימוש פנימי', remainingToBuild: 'נותר לבנייה', disclosed: 'מוצהר', estimated: 'משוער', combined: 'במצטבר', annualized: 'בשנה', month: 'חודש' },
+            iw: { title: 'עסקאות מחשוב ה-AI של SpaceX', subtitle: "הקיבולת הנוכחית של Colossus מול היעד המוצהר של מאסק — 10 ג'יגה-ואט עד סוף 2027", currentCapacity: 'קיבולת נוכחית', total: 'סה״כ', otherCustomers: 'לקוחות נוספים ושימוש פנימי', remainingToBuild: 'נותר לבנייה', disclosed: 'מוצהר', estimated: 'משוער', combined: 'במצטבר', annualized: 'בשנה', month: 'חודש' },
+            es: { title: 'Acuerdos de Computación de IA de SpaceX', subtitle: 'Capacidad actual de Colossus frente al objetivo declarado de Musk de 10GW para fines de 2027', currentCapacity: 'Capacidad Actual', total: 'Total', otherCustomers: 'Otros clientes y uso interno', remainingToBuild: 'Por construir', disclosed: 'declarado', estimated: 'estimado', combined: 'combinado', annualized: 'anualizado', month: 'mes' },
+            fr: { title: 'Accords de Calcul IA de SpaceX', subtitle: "Capacité actuelle de Colossus par rapport à l'objectif déclaré de Musk de 10GW d'ici fin 2027", currentCapacity: 'Capacité Actuelle', total: 'Total', otherCustomers: 'Autres clients et usage interne', remainingToBuild: 'Reste à construire', disclosed: 'déclaré', estimated: 'estimé', combined: 'combiné', annualized: 'annualisé', month: 'mois' },
+            de: { title: 'SpaceX KI-Rechenleistungs-Deals', subtitle: "Aktuelle Colossus-Kapazität im Vergleich zu Musks erklärtem Ziel von 10GW bis Ende 2027", currentCapacity: 'Aktuelle Kapazität', total: 'Gesamt', otherCustomers: 'Weitere Kunden & interne Nutzung', remainingToBuild: 'Verbleibend zu bauen', disclosed: 'offengelegt', estimated: 'geschätzt', combined: 'kombiniert', annualized: 'auf Jahresbasis', month: 'Monat' },
+            ru: { title: 'Сделки SpaceX по ИИ-вычислениям', subtitle: 'Текущая мощность Colossus относительно заявленной Маском цели в 10 ГВт к концу 2027 года', currentCapacity: 'Текущая мощность', total: 'Итого', otherCustomers: 'Другие клиенты и внутреннее использование', remainingToBuild: 'Осталось построить', disclosed: 'раскрыто', estimated: 'оценка', combined: 'суммарно', annualized: 'в год', month: 'месяц' },
+            zh: { title: 'SpaceX AI 算力交易', subtitle: 'Colossus 当前容量 对比 马斯克宣布的到2027年底达到10吉瓦的目标', currentCapacity: '当前容量', total: '总计', otherCustomers: '其他客户和内部使用', remainingToBuild: '待建设', disclosed: '已公开', estimated: '估计', combined: '合计', annualized: '年化', month: '月' },
+            it: { title: 'Accordi di Calcolo IA di SpaceX', subtitle: "Capacità attuale di Colossus rispetto all'obiettivo dichiarato da Musk di 10GW entro fine 2027", currentCapacity: 'Capacità Attuale', total: 'Totale', otherCustomers: 'Altri clienti e uso interno', remainingToBuild: 'Rimanente da costruire', disclosed: 'dichiarato', estimated: 'stimato', combined: 'combinato', annualized: 'annualizzato', month: 'mese' },
+            cs: { title: 'Dohody SpaceX o AI výpočetním výkonu', subtitle: 'Aktuální kapacita Colossus vůči Muskem deklarovanému cíli 10GW do konce roku 2027', currentCapacity: 'Aktuální kapacita', total: 'Celkem', otherCustomers: 'Další zákazníci a interní využití', remainingToBuild: 'Zbývá vybudovat', disclosed: 'zveřejněno', estimated: 'odhad', combined: 'celkem', annualized: 'ročně', month: 'měsíc' },
+            sv: { title: 'SpaceX AI-datorkraftsavtal', subtitle: "Nuvarande Colossus-kapacitet jämfört med Musks uttalade mål om 10GW till slutet av 2027", currentCapacity: 'Nuvarande kapacitet', total: 'Totalt', otherCustomers: 'Övriga kunder & intern användning', remainingToBuild: 'Kvar att bygga', disclosed: 'offentliggjort', estimated: 'uppskattat', combined: 'kombinerat', annualized: 'på årsbasis', month: 'månad' },
+            nl: { title: 'SpaceX AI-rekenkracht-deals', subtitle: "Huidige Colossus-capaciteit versus Musks aangekondigde doel van 10GW eind 2027", currentCapacity: 'Huidige Capaciteit', total: 'Totaal', otherCustomers: 'Overige klanten & intern gebruik', remainingToBuild: 'Nog te bouwen', disclosed: 'bekendgemaakt', estimated: 'geschat', combined: 'gecombineerd', annualized: 'op jaarbasis', month: 'maand' },
+            da: { title: 'SpaceX AI-computeraftaler', subtitle: 'Nuværende Colossus-kapacitet i forhold til Musks erklærede mål om 10GW inden udgangen af 2027', currentCapacity: 'Nuværende Kapacitet', total: 'I alt', otherCustomers: 'Andre kunder & internt brug', remainingToBuild: 'Resterende at bygge', disclosed: 'offentliggjort', estimated: 'estimeret', combined: 'kombineret', annualized: 'årligt', month: 'måned' },
+            pt: { title: 'Acordos de Computação de IA da SpaceX', subtitle: 'Capacidade atual da Colossus em relação à meta declarada de Musk de 10GW até o fim de 2027', currentCapacity: 'Capacidade Atual', total: 'Total', otherCustomers: 'Outros clientes e uso interno', remainingToBuild: 'Restante a construir', disclosed: 'divulgado', estimated: 'estimado', combined: 'combinado', annualized: 'anualizado', month: 'mês' },
+            pl: { title: 'Umowy SpaceX na moc obliczeniową AI', subtitle: 'Obecna moc Colossus w porównaniu z deklarowanym przez Muska celem 10GW do końca 2027', currentCapacity: 'Obecna Moc', total: 'Razem', otherCustomers: 'Pozostali klienci i użycie wewnętrzne', remainingToBuild: 'Pozostało do zbudowania', disclosed: 'ujawnione', estimated: 'szacowane', combined: 'łącznie', annualized: 'w skali roku', month: 'miesiąc' },
+            hi: { title: 'SpaceX AI कंप्यूट सौदे', subtitle: 'वर्तमान Colossus क्षमता बनाम मस्क का 2027 के अंत तक 10GW का घोषित लक्ष्य', currentCapacity: 'वर्तमान क्षमता', total: 'कुल', otherCustomers: 'अन्य ग्राहक और आंतरिक उपयोग', remainingToBuild: 'बनाना शेष', disclosed: 'घोषित', estimated: 'अनुमानित', combined: 'संयुक्त रूप से', annualized: 'वार्षिक', month: 'महीना' },
+            ar: { title: 'صفقات الحوسبة للذكاء الاصطناعي لدى SpaceX', subtitle: 'السعة الحالية لـ Colossus مقابل هدف ماسك المعلن بـ10 جيجاواط بحلول نهاية 2027', currentCapacity: 'السعة الحالية', total: 'الإجمالي', otherCustomers: 'عملاء آخرون واستخدام داخلي', remainingToBuild: 'المتبقي للبناء', disclosed: 'معلن عنه', estimated: 'تقديري', combined: 'مجتمعة', annualized: 'سنويًا', month: 'شهر' },
+            tr: { title: 'SpaceX AI Hesaplama Anlaşmaları', subtitle: "Mevcut Colossus kapasitesi, Musk'ın 2027 sonuna kadar 10GW hedefine göre", currentCapacity: 'Mevcut Kapasite', total: 'Toplam', otherCustomers: 'Diğer müşteriler ve iç kullanım', remainingToBuild: 'İnşa edilecek kalan', disclosed: 'açıklanan', estimated: 'tahmini', combined: 'toplamda', annualized: 'yıllık', month: 'ay' },
+        };
+
+        let lastAppliedAIComputeLang = null;
+
+        function applyAIComputeTranslations(currentLang) {
+            let key = currentLang.split('-')[0];
+            if (lastAppliedAIComputeLang === key) return;
+            lastAppliedAIComputeLang = key;
+            const dict = AI_COMPUTE_I18N[key] || AI_COMPUTE_I18N.en;
+
+            const titleEl = document.getElementById('i18n-ai-compute-title');
+            if (titleEl) titleEl.textContent = dict.title;
+            const subtitleEl = document.getElementById('i18n-ai-compute-subtitle');
+            if (subtitleEl) subtitleEl.textContent = dict.subtitle;
+            const currentCapEl = document.getElementById('i18n-ai-compute-current-capacity');
+            if (currentCapEl) currentCapEl.textContent = dict.currentCapacity;
+            const totalLabelEl = document.getElementById('i18n-ai-compute-total-label');
+            if (totalLabelEl) totalLabelEl.textContent = dict.total;
+
+            renderAIComputeSection(dict);
+        }
+
+        function renderAIComputeSection(dict) {
+            dict = dict || AI_COMPUTE_I18N[lastAppliedAIComputeLang] || AI_COMPUTE_I18N.en;
+            const bar = document.getElementById('ai-compute-goal-bar');
+            const legend = document.getElementById('ai-compute-goal-legend');
+            const goalLabel = document.getElementById('ai-compute-goal-label');
+            const list = document.getElementById('ai-compute-customer-list');
+            const totalEl = document.getElementById('ai-compute-total-revenue');
+            if (!bar || !legend || !goalLabel || !list || !totalEl) return;
+
+            // Every numeric/currency string in this section gets an explicit dir="ltr" span -
+            // "$1.25B", "2.0 GW / 10 GW", etc. are LTR content by nature (digits + Latin
+            // symbols), but embedded in an RTL-language paragraph without that isolation the
+            // browser's bidi algorithm can visually misplace weakly-directional characters
+            // like "$" or reorder the whole run (this is what broke in Hebrew/Arabic).
+            const namedGw = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.gw, 0);
+            const otherGw = AI_COMPUTE_TOTAL_GW - namedGw;
+            goalLabel.setAttribute('dir', 'ltr');
+            goalLabel.textContent = `${AI_COMPUTE_TOTAL_GW.toFixed(1)} GW / ${AI_COMPUTE_GOAL_GW} GW goal`;
+
+            const segments = [...AI_COMPUTE_DEALS.map(d => ({ name: d.name, gw: d.gw, color: d.color, confidence: d.gwConfidence })),
+                { name: dict.otherCustomers, gw: otherGw, color: 'bg-zinc-500', confidence: 'estimated' }];
+            bar.innerHTML = segments.map(s =>
+                `<div class="h-full ${s.color} transition-all duration-700" style="width: ${(s.gw / AI_COMPUTE_GOAL_GW * 100).toFixed(2)}%" title="${s.name} — ${s.gw.toFixed(2)} GW"></div>`
+            ).join('');
+
+            const remainingGw = (AI_COMPUTE_GOAL_GW - AI_COMPUTE_TOTAL_GW).toFixed(1);
+            legend.innerHTML = segments.map(s => {
+                const tilde = s.confidence === 'disclosed' ? '' : '~';
+                return `<span class="inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2.5 h-2.5 rounded-full ${s.color} shrink-0"></span>${s.name} <span dir="ltr">(${tilde}${s.gw.toFixed(2)} GW)</span></span>`;
+            }).join('') + `<span class="inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700 shrink-0"></span>${dict.remainingToBuild} <span dir="ltr">(~${remainingGw} GW)</span></span>`;
+
+            const maxUsd = Math.max(...AI_COMPUTE_DEALS.map(d => d.monthlyUsd));
+            list.innerHTML = AI_COMPUTE_DEALS.map(d => {
+                const pct = (d.monthlyUsd / maxUsd * 100).toFixed(1);
+                const usdAmount = d.monthlyUsd >= 1000
+                    ? (d.monthlyUsd / 1000).toFixed(2) + 'B$'
+                    : d.monthlyUsd + 'M$';
+                const tilde = d.gwConfidence === 'disclosed' ? '' : '~';
+                const confidenceWord = d.gwConfidence === 'disclosed' ? dict.disclosed : dict.estimated;
+                return `
+                    <div>
+                        <div class="flex items-center justify-between text-sm mb-1.5">
+                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span>${d.name}</span>
+                            <span class="text-emerald-400 font-bold font-space"><span class="notranslate" translate="no" dir="ltr">${usdAmount}</span>/${dict.month}</span>
+                        </div>
+                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
+                        </div>
+                        <div class="text-[11px] text-zinc-500 mt-1.5"><span class="notranslate" translate="no" dir="ltr">${tilde}${d.mw}</span> (${confidenceWord}) <span class="notranslate" translate="no" dir="ltr">· ${d.extra}</span></div>
+                    </div>
+                `;
+            }).join('');
+
+            const totalUsd = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.monthlyUsd, 0);
+            const totalMonthlyAmount = (totalUsd / 1000).toFixed(2) + 'B$';
+            const totalYearly = '≈ ' + (totalUsd * 12 / 1000).toFixed(1) + 'B$/yr';
+            totalEl.innerHTML = `<span dir="ltr">${totalMonthlyAmount}</span>/${dict.month} ${dict.combined} (<span dir="ltr">${totalYearly}</span> ${dict.annualized})`;
         }
 
         window.latestWeather = null;
