@@ -26,6 +26,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        /* @import MUST be the first rule in the stylesheet (only @charset may precede it) -
+           per spec, browsers silently ignore an @import that comes after any other rule.
+           This one used to sit after the @media block below, which quietly disabled it
+           entirely - "Space Grotesk" was never actually loading, so every font-family
+           referencing it (body, .font-space, etc.) was silently falling back to the plain
+           system sans-serif the whole time. Keep this literally the first thing here.
+
+           Space Grotesk only covers Latin script - it has no Hebrew glyphs at all, so Hebrew
+           text (i.e. most of the site's actual text for a Hebrew-speaking user) was always
+           going to fall through to the generic system sans-serif regardless of this fix, since
+           font-family fallback happens per-character, not per-page. Rubik is added as the
+           Hebrew-supporting fallback in between - a modern geometric sans-serif that's a
+           common, well-matched pairing for exactly this look. Net effect: Latin text (English
+           mission designators, etc.) renders in Space Grotesk, Hebrew text renders in Rubik,
+           and anything neither covers falls through to the plain system font as before. */
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
+
 @media (max-width: 640px) {
     #hero-name {
         display: block !important;
@@ -44,7 +61,6 @@
         direction: rtl !important;
     }
 }
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
         * {
             -webkit-tap-highlight-color: transparent;
@@ -55,7 +71,7 @@
         }
 
         body {
-            font-family: 'Space Grotesk', system_ui, sans-serif;
+            font-family: 'Space Grotesk', 'Rubik', system_ui, sans-serif;
             position: relative;
             overflow-x: hidden;
         }
@@ -77,7 +93,7 @@
         }
 
         .font-space {
-            font-family: 'Space Grotesk', system_ui, sans-serif;
+            font-family: 'Space Grotesk', 'Rubik', system_ui, sans-serif;
             font-weight: 600;
         }
 
@@ -1050,6 +1066,20 @@
         #hero-banner.hero-reveal {
             opacity: 1;
             transform: translateY(0);
+        }
+        /* In light mode, #hero-banner's own shadow-xl utility does all the work of making
+           the card read as "lifted off the page" - the card (forced to white by
+           body.light-theme .bg-zinc-900) and the page background (#f8fafc) are nearly the
+           same lightness, so there's no color-contrast depth cue on its own; the dark
+           drop-shadow is what creates the entire 3D pop effect. In dark mode, a dark shadow
+           can't do the same job - the page background is already almost pure black
+           (.stars-container's radial-gradient bottoms out at #020204), so darkening it
+           further is imperceptible. This replaces it, for dark mode only, with a soft LIGHT
+           gray glow instead (visible precisely because it's lighter than the near-black
+           backdrop, not darker) plus a subtle inset highlight along the top edge - the
+           standard way to sell "elevated card" depth on a dark background. */
+        body:not(.light-theme) #hero-banner {
+            box-shadow: 0 25px 50px -10px rgba(148, 163, 184, 0.18), 0 10px 20px -8px rgba(148, 163, 184, 0.12), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
         }
         #hero-skeleton.skel-fade-out {
             opacity: 0;
