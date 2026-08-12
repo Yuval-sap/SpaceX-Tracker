@@ -1449,6 +1449,68 @@
             hi: "स्टारलिंक", ar: "ستارلينك", tr: "Starlink"
         };
 
+        // Mission TITLES (card titles, hero name, mission-modal name, rocket-modal name) turned
+        // out to need a different fix from protectBrandTerm above: a title like "Falcon 9 |
+        // Starlink Group 17-50" commonly names TWO protected brand terms plus numbers and a "|"
+        // separator in one short string. Splicing notranslate spans around each brand word and
+        // leaving the rest (" | ", "Group", the numbers) for Google to translate around them
+        // works for a single term (that's what protectBrandTerm/localizeStarshipTerm already do
+        // for the ticker and the free-flowing mission-purpose paragraph), but with two immovable
+        // spans pinned at their ORIGINAL English positions, Google can translate the remaining
+        // words but can't reorder them the way Hebrew (and other languages) grammatically want -
+        // producing visibly scrambled output like "פלקון | 9 סטארלינק" (word order broken)
+        // instead of "פלקון 9 | סטארלינק". Titles are short structured designators rather than
+        // free-flowing sentences, so instead they're translated entirely by hand here (own
+        // substitution of just the brand words, via the *_I18N dicts above, plus the couple of
+        // recurring connector words below) and marked notranslate so Google never touches them
+        // at all - trading "a couple of English connector words stay English" for "never
+        // scrambled", which is the same tradeoff MISSION_PURPOSE_I18N already makes elsewhere.
+        const MISSION_TITLE_WORDS_I18N = {
+            group: {
+                en: "Group", he: "קבוצה", iw: "קבוצה", es: "Grupo", fr: "Groupe",
+                de: "Gruppe", ru: "Группа", zh: "组", it: "Gruppo", cs: "Skupina",
+                sv: "Grupp", nl: "Groep", da: "Gruppe", pt: "Grupo", pl: "Grupa",
+                hi: "समूह", ar: "مجموعة", tr: "Grup"
+            },
+            flight: {
+                en: "Flight", he: "טיסה", iw: "טיסה", es: "Vuelo", fr: "Vol",
+                de: "Flug", ru: "Полёт", zh: "飞行", it: "Volo", cs: "Let",
+                sv: "Flygning", nl: "Vlucht", da: "Flyvning", pt: "Voo", pl: "Lot",
+                hi: "उड़ान", ar: "رحلة", tr: "Uçuş"
+            }
+        };
+
+        // Returns rawName with just its brand/connector words swapped for the current
+        // language's term - everything else (numbers, "|", payload/customer names) stays as
+        // the original English from the launch API. Callers are expected to also mark the
+        // element notranslate so Google Translate doesn't try (and fail) to translate the rest.
+        function localizeMissionTitleText(rawName) {
+            if (!rawName) return rawName;
+            const currentLang = (document.documentElement.lang || 'en').toLowerCase();
+            let key = currentLang.split('-')[0];
+            if (key === 'iw') key = 'he';
+            let result = rawName;
+            result = result.replace(/\bStarship\b/gi, STARSHIP_I18N[key] || STARSHIP_I18N.en);
+            result = result.replace(/\bFalcon\b/gi, FALCON_I18N[key] || FALCON_I18N.en);
+            result = result.replace(/\bDragon\b/gi, DRAGON_I18N[key] || DRAGON_I18N.en);
+            result = result.replace(/\bStarlink\b/gi, STARLINK_I18N[key] || STARLINK_I18N.en);
+            result = result.replace(/\bGroup\b/gi, MISSION_TITLE_WORDS_I18N.group[key] || MISSION_TITLE_WORDS_I18N.group.en);
+            result = result.replace(/\bFlight\b/gi, MISSION_TITLE_WORDS_I18N.flight[key] || MISSION_TITLE_WORDS_I18N.flight.en);
+            return result;
+        }
+
+        // Re-applies localizeMissionTitleText to every already-rendered title (identified by
+        // data-raw-mission-name, set once at render time to the original English name) so a
+        // language switch updates them in place, the same way Google Translate would have if
+        // these weren't marked notranslate - without needing to rebuild any cards.
+        function refreshLocalizedMissionTitles(root) {
+            root = root || document.body;
+            if (!root) return;
+            root.querySelectorAll('[data-raw-mission-name]').forEach(el => {
+                el.textContent = localizeMissionTitleText(el.dataset.rawMissionName);
+            });
+        }
+
         // The Milestones list used to rely on Google Translate for every language, but
         // Google would frequently mistranslate rocket/mission terminology (the same
         // "Starship" issue as elsewhere, plus mangled word order in longer sentences).
@@ -2080,6 +2142,7 @@
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
             protectOtherBrandTerms(document.body);
+            refreshLocalizedMissionTitles(document.body);
             fitAllTitlesOneLine(document);
 
             // Unit system follows the resolved language only. Google Translate's
@@ -2109,6 +2172,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             localizeStarshipTerm(document.body);
             protectOtherBrandTerms(document.body);
+            refreshLocalizedMissionTitles(document.body);
         });
 
     </script>
@@ -6794,10 +6858,10 @@
 
             if (nextLaunch) {
     const heroNameEl = document.getElementById('hero-name');
-    heroNameEl.innerText = nextLaunch.name;
-    // Protect "Starship" synchronously - see the matching comment in openMissionModal().
-    localizeStarshipTerm(heroNameEl);
-    protectOtherBrandTerms(heroNameEl);
+    heroNameEl.classList.add('notranslate');
+    heroNameEl.setAttribute('translate', 'no');
+    heroNameEl.dataset.rawMissionName = nextLaunch.name;
+    heroNameEl.innerText = localizeMissionTitleText(nextLaunch.name);
 
     // מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
     requestAnimationFrame(() => {
@@ -7042,7 +7106,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between relative z-20 bg-zinc-900">
                         <div>
-                            <div class="mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
+                            <div class="mission-title-fit notranslate font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" translate="no" title="${m.name}" data-raw-mission-name="${m.name}">${localizeMissionTitleText(m.name)}</div>
                             <div class="text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
                             <div class="text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
                         </div>
@@ -7065,16 +7129,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 card.onclick = () => openMissionModal(m);
                 // Protect "Starship" in the mission title (and anywhere else in the card,
                 // e.g. the description) before this card ever touches the live document.
-                // Google Translate's own MutationObserver watches document.body and can
-                // translate freshly-inserted text within milliseconds — faster than our
-                // 500ms "Bulletproof Timer" tick can catch up — which is exactly how a
-                // filtered/re-rendered card (built after the page was already translated)
-                // ends up with "Starship" mistranslated before localizeStarshipTerm() gets
-                // a chance to wrap it. Running it here, on the detached card, wraps the
-                // word in its protected notranslate span first, so Google never sees the
-                // raw English text to mistranslate in the first place.
-                localizeStarshipTerm(card);
-                protectOtherBrandTerms(card);
+                // The title itself is already brand-localized and marked notranslate above
+                // (see localizeMissionTitleText) - Google Translate's own MutationObserver
+                // still handles the rest of the card (description etc.) as free-flowing
+                // sentences, same as everywhere else in this file.
                 grid.appendChild(card);
             });
 
@@ -7138,7 +7196,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
                         <div>
-                            <div class="mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
+                            <div class="mission-title-fit notranslate font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" translate="no" title="${m.name}" data-raw-mission-name="${m.name}">${localizeMissionTitleText(m.name)}</div>
                             <div class="text-xs text-zinc-500 mb-3"><span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
@@ -7156,12 +7214,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 `;
 
                 card.onclick = () => openMissionModal(m);
-                // Same fix as renderMissions() above: protect "Starship" in the title
-                // before this (re-rendered, e.g. from a filter change) card is inserted
-                // into the live document, so Google Translate's mutation-watching never
-                // gets a chance to mistranslate it first.
-                localizeStarshipTerm(card);
-                protectOtherBrandTerms(card);
+                // Same as renderMissions() above: the title is already brand-localized and
+                // marked notranslate (see localizeMissionTitleText).
                 pastGrid.appendChild(card);
             });
 
@@ -7657,15 +7711,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
             const modalNameEl = document.getElementById('modal-name');
-            modalNameEl.innerText = m.name;
-            // Protect "Starship" synchronously, before this tick ends - Google Translate's
-            // MutationObserver only fires once the current script finishes, so wrapping it here
-            // (same as the card templates already do before insertion) reliably wins the race.
-            // Waiting for the 500ms "Bulletproof Timer" sweep is too late: by the time it runs,
-            // Google may have already replaced the word with its own mistranslation, and merely
-            // wrapping the word afterward can't undo damage that's already been done.
-            localizeStarshipTerm(modalNameEl);
-            protectOtherBrandTerms(modalNameEl);
+            modalNameEl.classList.add('notranslate');
+            modalNameEl.setAttribute('translate', 'no');
+            modalNameEl.dataset.rawMissionName = m.name;
+            modalNameEl.innerText = localizeMissionTitleText(m.name);
 
             const modalPatchEl = document.getElementById('modal-patch');
             if (modalPatchEl) {
@@ -8161,10 +8210,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0;
 
             const rocketModalNameEl = document.getElementById('rocket-modal-name');
-            rocketModalNameEl.innerText = data.name;
-            // Protect "Starship" synchronously - see the matching comment in openMissionModal().
-            localizeStarshipTerm(rocketModalNameEl);
-            protectOtherBrandTerms(rocketModalNameEl);
+            rocketModalNameEl.classList.add('notranslate');
+            rocketModalNameEl.setAttribute('translate', 'no');
+            rocketModalNameEl.dataset.rawMissionName = data.name;
+            rocketModalNameEl.innerText = localizeMissionTitleText(data.name);
 
             const imgEl = document.getElementById('rocket-modal-img');
             imgEl.src = data.image;
