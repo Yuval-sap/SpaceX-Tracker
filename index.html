@@ -7293,6 +7293,17 @@
                 if (!seg) return;
                 seg.classList.toggle('scale-y-125', on);
                 seg.classList.toggle('z-10', on);
+                // Elevation shadow while popped - sells the "risen above its neighbors" 3D feel
+                // instead of just a flat vertical scale. Offset/blur values modeled on the same
+                // "lifted card" shadow language already used for #hero-banner elsewhere in this
+                // file (see that rule's own comment) - but as a plain dark shadow in BOTH themes
+                // here, not the light-mode-only glow used there: that hero-banner glow exists
+                // specifically because it sits on the page's own near-black background (#020204)
+                // where a dark shadow is imperceptible, while this bar sits on bg-zinc-800/900 -
+                // light enough that an ordinary dark shadow still reads as real depth.
+                seg.style.boxShadow = on
+                    ? '0 10px 15px -5px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.4)'
+                    : '';
                 popCount += on ? 1 : -1;
                 bar.classList.toggle('overflow-hidden', popCount <= 0);
                 bar.classList.toggle('overflow-visible', popCount > 0);
@@ -7400,7 +7411,7 @@
                 const roundedStart = i === 0 ? ' rounded-s-full' : '';
                 const roundedEnd = i === segments.length - 1 ? ' rounded-e-full' : '';
                 const overlapStyle = i > 0 ? ' margin-inline-start: -1px;' : '';
-                return `<div class="relative h-full ${s.color}${roundedStart}${roundedEnd} origin-bottom transition-transform duration-200"${wireAttr} style="width: ${(s.gw / AI_COMPUTE_TOTAL_GW * 100).toFixed(2)}%;${overlapStyle}" title="${s.name} — ${s.gw.toFixed(2)} GW"></div>`;
+                return `<div class="relative h-full ${s.color}${roundedStart}${roundedEnd} origin-bottom transition-all duration-200"${wireAttr} style="width: ${(s.gw / AI_COMPUTE_TOTAL_GW * 100).toFixed(2)}%;${overlapStyle}" title="${s.name} — ${s.gw.toFixed(2)} GW"></div>`;
             }).join('');
 
             legend.innerHTML = segments.map((s) => {
