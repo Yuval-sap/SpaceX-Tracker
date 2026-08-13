@@ -7284,7 +7284,17 @@
         // listeners along with the old elements.
         function wireAIComputeHoverLinks(bar, list, legend) {
             const segmentEls = bar.querySelectorAll('[data-ai-segment]');
-            const nameEls = list.querySelectorAll('[data-ai-segment]');
+            // data-ai-segment lives on each customer's WHOLE block (name row + $ amount + mini
+            // bar + caption), not on the name span alone - wiring the trigger to only the name
+            // (or the name + the mini bar as two separate elements) left a real gap between them
+            // (the row's own mb-1.5, plus the $ amount sitting next to the name): moving the
+            // cursor from the name straight down toward the mini bar crossed that gap, firing a
+            // mouseleave-then-mouseenter pair and making the bar segment visibly drop and pop
+            // back up mid-motion instead of staying risen the whole time. One continuous hover
+            // target for the entire block removes the gap entirely. The name itself still needs
+            // its own separate lookup for setNameEnlarged below - that's data-ai-name now,
+            // kept distinct from this block-level data-ai-segment on purpose.
+            const customerBlockEls = list.querySelectorAll('[data-ai-segment]');
             const byIndex = (root, i) => root.querySelector(`[data-ai-segment="${i}"]`);
             let popCount = 0;
 
@@ -7323,7 +7333,7 @@
                 bar.classList.toggle('overflow-visible', popCount > 0);
             };
             const setNameEnlarged = (i, on) => {
-                const name = byIndex(list, i);
+                const name = list.querySelector(`[data-ai-name="${i}"]`);
                 if (!name) return;
                 // scale (not text-base/font-size): a font-size bump triggers real layout
                 // reflow, which was growing this row's own flex height and shoving every
@@ -7364,7 +7374,7 @@
                 el.addEventListener('touchend', () => setNameEnlarged(i, false));
                 el.addEventListener('touchcancel', () => setNameEnlarged(i, false));
             });
-            nameEls.forEach(el => {
+            customerBlockEls.forEach(el => {
                 const i = el.getAttribute('data-ai-segment');
                 el.addEventListener('mouseenter', () => setSegmentPopped(i, true));
                 el.addEventListener('mouseleave', () => setSegmentPopped(i, false));
@@ -7481,12 +7491,12 @@
                 const tilde = d.gwConfidence === 'disclosed' ? '' : '~';
                 const confidenceWord = d.gwConfidence === 'disclosed' ? dict.disclosed : dict.estimated;
                 return `
-                    <div>
+                    <div data-ai-segment="${i}">
                         <div class="flex items-center justify-between text-sm mb-1.5">
-                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-segment="${i}" class="inline-block ${nameOrigin} transition-all duration-200">${d.name}</span></span>
+                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-name="${i}" class="inline-block ${nameOrigin} transition-all duration-200">${d.name}</span></span>
                             <span class="text-emerald-400 font-bold font-space"><span class="notranslate" translate="no" dir="ltr">${usdAmount}</span>/${dict.month}</span>
                         </div>
-                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden" data-ai-segment="${i}">
+                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
                             <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
                         </div>
                         <div class="text-[11px] text-zinc-500 mt-1.5"><span class="notranslate" translate="no" dir="ltr">${tilde}${d.mw}</span> (${confidenceWord}) <span class="notranslate" translate="no" dir="ltr">· ${d.extra}</span></div>
