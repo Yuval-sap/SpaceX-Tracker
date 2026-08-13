@@ -6106,6 +6106,7 @@
         // or rate limit is doing at the moment.
         const LAUNCH_COUNT_BASE = 95;
         const LAUNCH_COUNT_BASE_DATE = '2026-08-10T00:00:00Z';
+        const LAUNCH_COUNT_FLOOR_KEY = 'spacex_launch_count_floor';
 
         function computeYearToDateLaunchCount() {
             const baseMs = new Date(LAUNCH_COUNT_BASE_DATE).getTime();
@@ -6113,7 +6114,31 @@
                 const t = new Date(m.date).getTime();
                 return t >= baseMs && m.launchSuccess !== null;
             }).length;
-            return LAUNCH_COUNT_BASE + confirmedSinceBase;
+            const computed = LAUNCH_COUNT_BASE + confirmedSinceBase;
+
+            // This count can visibly regress (97 -> 95) even with the fetchLiveLaunches
+            // persistence fix in place, because "previous launches" only ever gets *re-fetched
+            // live* on the very first page load or the eviction-triggered refresh in
+            // setupHeroBanner() - every other periodic poll only refreshes upcoming and
+            // backfills previous straight from whatever's already cached (see
+            // fetchLiveLaunches). So the one live previous-launches fetch that DOES happen is a
+            // single point of failure: if LL2 returns a "successful" but slightly-stale response
+            // right then (eventual-consistency lag on their end, or partial rate-limit
+            // degradation) that's just missing the 1-2 most recent launches - not enough to trip
+            // the existing "returned less than half of what's cached" sanity guard in
+            // fetchLiveLaunches - that slightly-worse count overwrites the cache and every
+            // subsequent poll then keeps re-affirming it, with no mechanism to ever self-correct
+            // back up. A launch that this app already confirmed as flown can't un-fly, so the
+            // fix is to never let the number *shown* go backwards: persist the highest count
+            // legitimately computed so far and floor every future computation at that value,
+            // regardless of what any single fetch returns.
+            let floor = 0;
+            try { floor = parseInt(localStorage.getItem(LAUNCH_COUNT_FLOOR_KEY) || '0', 10) || 0; } catch (e) { }
+            const final = Math.max(computed, floor);
+            if (final > floor) {
+                try { localStorage.setItem(LAUNCH_COUNT_FLOOR_KEY, final.toString()); } catch (e) { }
+            }
+            return final;
         }
 
         function updateYearToDateLaunchCount() {
