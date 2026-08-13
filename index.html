@@ -7097,13 +7097,18 @@
                 const tile = document.createElement('button');
                 tile.type = 'button';
                 // The glow lives inside a box notably bigger than the patch image itself
-                // (w-28/w-32 vs the w-20/w-24 image) so the whole blurred effect is contained
+                // (w-28/w-32 vs the w-24/w-28 image) so the whole blurred effect is contained
                 // within this one tile's own box instead of needing to bleed into the strip's
                 // shared gap/edge padding - the edge tile (rightmost in RTL, leftmost in LTR)
                 // was still getting clipped by the scroll container's boundary even with very
                 // generous container-level padding, since that padding only helps the true
                 // first/last tile and does nothing for two tiles' glows meeting in the gap
                 // between them.
+                // The image itself is sized to match the glow div's own footprint exactly
+                // (w-24/w-28, same as the glow's box-minus-inset-2 size) rather than the box -
+                // that's the most the image can grow to while still leaving the glow's blur
+                // room to bloom out past the image's edge as a visible halo, without changing
+                // the box/strip geometry the clipping-margin math above depends on at all.
                 // group-active/patch (no md: prefix) gives mobile taps the same glow as
                 // desktop's md:group-hover - :active fires on touch-down and releases on
                 // touch-up, the closest touch equivalent to :hover. Harmless on desktop too
@@ -7121,7 +7126,7 @@
                              the one tile actually being touched ever pays that cost. -->
                         <div class="absolute inset-2 rounded-full bg-emerald-500/0 transition-all duration-300 group-active/patch:blur-md group-active/patch:bg-emerald-500/50 md:group-hover/patch:blur-md md:group-hover/patch:bg-emerald-500/50 pointer-events-none"></div>
                         <img src="${m.patch}" alt="${m.name}" draggable="false"
-                            class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain transition-transform duration-300 group-active/patch:-translate-y-1 group-active/patch:scale-105 md:group-hover/patch:-translate-y-1 md:group-hover/patch:scale-105"
+                            class="relative w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform duration-300 group-active/patch:-translate-y-1 group-active/patch:scale-105 md:group-hover/patch:-translate-y-1 md:group-hover/patch:scale-105"
                             style="-webkit-user-drag: none;"
                             loading="lazy" onerror="this.closest('button').remove()">
                     </div>
