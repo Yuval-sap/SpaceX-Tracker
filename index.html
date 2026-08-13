@@ -6208,9 +6208,23 @@
                 const combinedData = [...(upcomingRaw || []), ...(previousRaw || [])];
 
                 if (combinedData.length > 0) {
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
-                    localStorage.setItem(CACHE_KEY + '_timestamp', Date.now().toString());
+                    // Render first, persist second - and persisting can never undo the render.
+                    // Previously the two setItem calls ran BEFORE processLaunchData and weren't
+                    // wrapped in try/catch: if either threw (this app keeps a lot in localStorage
+                    // - patch archive, crew cache, weather, currency rates, favorites, reminders,
+                    // poll votes... a QuotaExceededError here is a real risk), the exception
+                    // skipped processLaunchData(combinedData) entirely and fell into the outer
+                    // catch below, which re-renders from whatever was last cached successfully.
+                    // A perfectly good live fetch - e.g. one that would've shown 97 launches -
+                    // could silently downgrade to a stale cached count (e.g. 95), indistinguishable
+                    // from the API actually being unreachable. Persisting is a nice-to-have for
+                    // the *next* failed fetch, not a prerequisite for showing what's already in
+                    // hand, so it's now isolated in its own try/catch after the render.
                     processLaunchData(combinedData);
+                    try {
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
+                        localStorage.setItem(CACHE_KEY + '_timestamp', Date.now().toString());
+                    } catch (e) { }
                 } else {
                     throw new Error("No data returned from APIs");
                 }
@@ -7027,13 +7041,19 @@
             const setNameEnlarged = (i, on) => {
                 const name = byIndex(list, i);
                 if (!name) return;
-                // text-base (not scale-125/transform): a transform scales in place and paints
-                // over whatever's next to it without pushing it aside, which was covering the
-                // color dot right before this name - a font-size bump instead triggers real
-                // layout reflow, so the text growing just widens its own box and nothing else
-                // moves into/under it.
-                name.classList.toggle('text-base', on);
+                // scale (not text-base/font-size): a font-size bump triggers real layout
+                // reflow, which was growing this row's own flex height and shoving every
+                // row below it down the page - visible as the whole customer list "jumping"
+                // on every hover. A transform never affects layout, so nothing else moves.
+                // The thing a transform doesn't solve by itself is the color dot right next
+                // to the name - scaling from the box's center would grow half the text
+                // leftward straight over it. Fixed by anchoring transform-origin at whichever
+                // edge is farthest from the dot (origin-left/origin-right, set per-name at
+                // render time below based on current dir) so all the growth points away from
+                // the dot instead of into it.
+                name.classList.toggle('scale-110', on);
                 name.classList.toggle('font-bold', on);
+                name.classList.toggle('z-10', on);
             };
 
             segmentEls.forEach(el => {
@@ -7114,6 +7134,12 @@
             }).join('');
 
             const maxUsd = Math.max(...AI_COMPUTE_DEALS.map(d => d.monthlyUsd));
+            // Which edge of the name's own box is farthest from its color dot flips with
+            // direction: in LTR the dot sits to the name's left (so the pop should grow
+            // rightward, anchored at the name's own left edge); in RTL the flex item order
+            // visually mirrors, putting the dot to the name's right (so the pop should grow
+            // leftward instead, anchored at the name's own right edge).
+            const nameOrigin = document.documentElement.getAttribute('dir') === 'rtl' ? 'origin-right' : 'origin-left';
             list.innerHTML = AI_COMPUTE_DEALS.map((d, i) => {
                 const pct = (d.monthlyUsd / maxUsd * 100).toFixed(1);
                 const usdAmount = d.monthlyUsd >= 1000
@@ -7124,7 +7150,7 @@
                 return `
                     <div>
                         <div class="flex items-center justify-between text-sm mb-1.5">
-                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-segment="${i}" class="inline-block transition-[font-size] duration-200">${d.name}</span></span>
+                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-segment="${i}" class="inline-block ${nameOrigin} transition-transform duration-200">${d.name}</span></span>
                             <span class="text-emerald-400 font-bold font-space"><span class="notranslate" translate="no" dir="ltr">${usdAmount}</span>/${dict.month}</span>
                         </div>
                         <div class="h-2 bg-zinc-800 rounded-full overflow-hidden" data-ai-segment="${i}">
