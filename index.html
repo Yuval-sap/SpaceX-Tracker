@@ -451,6 +451,25 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* Google Translate (Chrome's built-in page translate) auto-wraps every translated
+           sentence in a <font> tag and, on hover, applies a background/box-shadow to visually
+           mark it as machine-translated. .goog-text-highlight is the class name from the older/
+           classic Google Website Translator widget - Chrome's current built-in translate uses
+           its own auto-generated, versioned class instead (confirmed by inspecting a live
+           translated page: .VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q, setting background-color:#c9d7f1
+           and a box-shadow). Kept both selectors since which one applies depends on which
+           translate mechanism the visitor's browser is actually using, and Google could rename
+           the generated one again in a future Chrome release. That's Google's injected
+           stylesheet, not ours - but its rule isn't !important, so a page-level override with
+           !important beats it and removes the highlight while leaving the translation itself
+           untouched. */
+        .goog-text-highlight,
+        .VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q {
+            background: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
         /* Toggled by enableDragScroll (see the JS) for the duration of a mouse drag + its
            momentum glide. Cards sliding under a *stationary* mouse cursor during that glide
            still cross real element boundaries every frame, and heavier cards (border-color
