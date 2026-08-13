@@ -6981,17 +6981,16 @@
 
             el.addEventListener('pointerdown', (e) => {
                 if (e.pointerType !== 'mouse') return; // touch/pen: leave native scrolling alone entirely
-                // Starting the drag gesture is prevented from doing anything ELSE the browser
-                // would normally do with a mousedown - most importantly, focusing/activating
-                // whatever was under the cursor. Without this, starting a drag on top of an
-                // interactive element (the "View Mission Details" button, the favorite/reminder
-                // buttons) let the browser's own press/focus handling for that element run
-                // alongside our drag tracking, which is what made the drag stall completely
-                // whenever the gesture began - or the cursor later landed, mid-glide - on one of
-                // them. click itself still fires normally afterward for an actual tap (verified
-                // below) - this only suppresses the *other* default behaviors that come bundled
-                // with a mousedown, not the click that follows a real, unmoved press+release.
-                e.preventDefault();
+                // Deliberately NOT calling e.preventDefault() here (an earlier version of this
+                // code did, to stop a button under the cursor from grabbing native focus/press
+                // state when a drag started on top of it) - that turned out to suppress the
+                // browser's own click event for EVERY plain tap, not just drags, on both this
+                // strip and past-launches-grid (which share this same function): tapping a card
+                // stopped opening its modal entirely. preventDefault() on pointerdown is
+                // documented to cancel the compatibility mouse-event chain a click depends on,
+                // for mouse pointers too, not just touch. The pointermove-time preventDefault
+                // below (only once an actual drag is detected) plus the click-capture
+                // suppression further down already handle drag-vs-tap correctly without it.
                 stopMomentum();
                 isDown = true;
                 moved = false;
@@ -7003,7 +7002,6 @@
                 el.style.scrollSnapType = 'none';
                 el.style.cursor = 'grabbing';
                 el.style.userSelect = 'none';
-                el.classList.add('drag-scroll-active'); // cards stop reacting to hover while dragging/gliding
             });
 
             window.addEventListener('pointermove', (e) => {
@@ -7012,6 +7010,20 @@
                 if (Math.abs(dx) > 5) moved = true;
                 if (moved) {
                     e.preventDefault();
+                    // drag-scroll-active (children get pointer-events:none - see that CSS rule's
+                    // own comment) only turns on here, once we're SURE this is an actual drag -
+                    // not in pointerdown, where it used to be. That was the real cause of the
+                    // "clicking cards/tiles does nothing" regression (not the earlier
+                    // preventDefault removal, which fixed a real but different problem): a class
+                    // added in pointerdown is still active by the time pointerup fires even for a
+                    // perfectly still click, and pointer-events:none on the children means the
+                    // BROWSER'S OWN hit-testing for that pointerup/click resolves to this
+                    // container itself instead of the button/card actually under the cursor -
+                    // confirmed by logging real clicks: pointerdown correctly targeted the
+                    // button, but pointerup/click landed on #past-launches-grid directly. A tap
+                    // never reaches this branch at all (moved never becomes true), so the class
+                    // no longer touches plain clicks in any way.
+                    el.classList.add('drag-scroll-active');
                     el.scrollLeft = startScrollLeft - dx;
 
                     const now = performance.now();
