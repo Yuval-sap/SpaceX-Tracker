@@ -451,6 +451,22 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* Toggled by enableDragScroll (see the JS) for the duration of a mouse drag + its
+           momentum glide. Cards sliding under a *stationary* mouse cursor during that glide
+           still cross real element boundaries every frame, and heavier cards (border-color
+           transition on hover, two buttons with their own hover backgrounds, etc. - see the
+           past-launches cards) mean the browser keeps re-hit-testing and re-triggering hover
+           transitions for whichever card happens to be under the cursor as they fly past. That
+           per-frame hover work was competing with the scroll itself and reads as the glide
+           stalling/stopping early. Disabling pointer-events on the children (not the strip
+           itself, which still needs to receive the mouse events driving the drag) removes them
+           from hit-testing entirely for the duration, so nothing hover-related fires while
+           content is flying past the cursor. Restored the moment the gesture is fully settled.
+        */
+        .drag-scroll-active> * {
+            pointer-events: none;
+        }
+
         .stars-container {
             position: fixed;
             top: 0;
@@ -6840,6 +6856,183 @@
             try { localStorage.setItem(PATCH_ARCHIVE_STORAGE_KEY, JSON.stringify(archive)); } catch (e) { }
         }
 
+        // Click-and-drag horizontal scrolling for mouse users only - touch keeps scrolling the
+        // strip 100% natively, completely untouched by any of this. Grab anywhere on the strip,
+        // including a tile, and drag to pan it, complete with inertia after release instead of
+        // stopping dead the instant the mouse is let go.
+        //
+        // Four separate problems had to be solved, not just one:
+        //
+        // 0. The first version listened for plain mousedown/mousemove/mouseup, which mobile
+        //    browsers also fire as *synthetic compatibility events* for real touch gestures (for
+        //    sites that only know about mouse events). That meant every one of the fixes below -
+        //    disabling scroll-snap, calling preventDefault() on move, toggling inline styles -
+        //    was ALSO firing on real touch scrolling and fighting the native gesture, which is
+        //    exactly why "great on desktop" turned into "bad on mobile". Switched to Pointer
+        //    Events (pointerdown/pointermove/pointerup) and gate everything on
+        //    `e.pointerType === 'mouse'` - a touch or pen pointer bails out on the very first
+        //    line of the pointerdown handler, before any state changes or preventDefault calls,
+        //    so native touch scroll behavior is now fully unaffected no matter what this code does.
+        //
+        // 1. Telling a drag apart from an actual tap on a tile: tile.onclick (set in
+        //    renderMissionPatchesStrip below) would otherwise fire right after the pointerup that
+        //    ends a drag, opening that tile's mission card even though the user only meant to
+        //    scroll past it. Fixed by tracking whether the pointer moved past a small threshold
+        //    during the pointerdown->pointerup span, and swallowing the click (in the capture
+        //    phase, so it never reaches the tile's own onclick) only when it did.
+        //
+        // 2. Dragging felt like it was "pulling the patch image out of its box": browsers make
+        //    <img> elements natively draggable by default, so a mouse-drag starting on top of one
+        //    kicks off the browser's own built-in image-drag (the ghost-image-follows-cursor
+        //    gesture meant for dragging a picture onto the desktop or another tab), which fights
+        //    our scrollLeft-based drag for the same mouse gesture. draggable="false" is on the
+        //    <img> now (plus -webkit-user-drag:none for Safari, which doesn't always honor the
+        //    attribute the same way), and dragstart is preventDefault'd here as a catch-all in
+        //    case anything else in the tile is ever made draggable later.
+        //
+        // 3. The drag itself felt slow/laggy rather than 1:1 with the cursor, and letting go just
+        //    stopped the scroll dead - the opposite of the fast inertia scroll this was supposed
+        //    to match. Root cause: this strip has scroll-snap-type set (snap-x snap-proximity,
+        //    for the tile-alignment behavor elsewhere), and the snap machinery was fighting every
+        //    scrollLeft assignment made *during* the drag, each one triggering the browser's own
+        //    snap-settle animation mid-gesture. Snap is now turned off for the live-drag JS below
+        //    (`el.style.scrollSnapType = 'none'`) and only turned back on once the gesture (drag
+        //    + momentum) is fully finished, so nothing fights the manual scrollLeft writes while
+        //    they're happening. On top of that, mouse velocity is now sampled on every move and
+        //    carried into a requestAnimationFrame momentum loop after release - a real inertia
+        //    scroll that decays smoothly instead of stopping on the exact pixel the mouse let go.
+        function enableDragScroll(el) {
+            let isDown = false;
+            let moved = false;
+            let startX = 0;
+            let startScrollLeft = 0;
+            let lastX = 0;
+            let lastT = 0;
+            let velocity = 0; // px/ms, +right / -left, in drag-gesture terms (see scrollLeft math below)
+            let momentumFrame = null;
+
+            function stopMomentum() {
+                if (momentumFrame !== null) {
+                    cancelAnimationFrame(momentumFrame);
+                    momentumFrame = null;
+                }
+            }
+
+            function settle() {
+                stopMomentum();
+                el.style.scrollSnapType = ''; // hand snapping back to the stylesheet's snap-proximity
+                el.classList.remove('drag-scroll-active'); // re-enable hover/click on the cards
+            }
+
+            function runMomentum() {
+                const before = el.scrollLeft;
+                el.scrollLeft = before - velocity * 16; // ~16ms/frame at 60fps
+                velocity *= 0.95; // exponential decay - tuned for a quick-but-natural glide
+                if (el.scrollLeft === before || Math.abs(velocity) < 0.02) {
+                    settle();
+                    return;
+                }
+                momentumFrame = requestAnimationFrame(runMomentum);
+            }
+
+            el.addEventListener('pointerdown', (e) => {
+                if (e.pointerType !== 'mouse') return; // touch/pen: leave native scrolling alone entirely
+                // Starting the drag gesture is prevented from doing anything ELSE the browser
+                // would normally do with a mousedown - most importantly, focusing/activating
+                // whatever was under the cursor. Without this, starting a drag on top of an
+                // interactive element (the "View Mission Details" button, the favorite/reminder
+                // buttons) let the browser's own press/focus handling for that element run
+                // alongside our drag tracking, which is what made the drag stall completely
+                // whenever the gesture began - or the cursor later landed, mid-glide - on one of
+                // them. click itself still fires normally afterward for an actual tap (verified
+                // below) - this only suppresses the *other* default behaviors that come bundled
+                // with a mousedown, not the click that follows a real, unmoved press+release.
+                e.preventDefault();
+                stopMomentum();
+                isDown = true;
+                moved = false;
+                startX = e.clientX;
+                lastX = e.clientX;
+                lastT = performance.now();
+                velocity = 0;
+                startScrollLeft = el.scrollLeft;
+                el.style.scrollSnapType = 'none';
+                el.style.cursor = 'grabbing';
+                el.style.userSelect = 'none';
+                el.classList.add('drag-scroll-active'); // cards stop reacting to hover while dragging/gliding
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDown || e.pointerType !== 'mouse') return;
+                const dx = e.clientX - startX;
+                if (Math.abs(dx) > 5) moved = true;
+                if (moved) {
+                    e.preventDefault();
+                    el.scrollLeft = startScrollLeft - dx;
+
+                    const now = performance.now();
+                    const dt = now - lastT;
+                    if (dt > 0) velocity = (e.clientX - lastX) / dt;
+                    lastX = e.clientX;
+                    lastT = now;
+                }
+            });
+
+            function onPointerUp(e) {
+                if (!isDown || (e && e.pointerType && e.pointerType !== 'mouse')) return;
+                isDown = false;
+                el.style.cursor = 'grab';
+                el.style.userSelect = '';
+                if (moved && Math.abs(velocity) > 0.02) {
+                    momentumFrame = requestAnimationFrame(runMomentum);
+                    // Safety net: if rAF never gets a chance to run the momentum loop to
+                    // completion (tab backgrounded mid-glide, etc.), don't leave snap disabled
+                    // forever - force it back on after a generous ceiling no real glide should
+                    // ever take this long to finish on its own.
+                    setTimeout(() => { if (momentumFrame !== null) settle(); }, 3000);
+                } else {
+                    settle();
+                }
+            }
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointercancel', onPointerUp);
+
+            el.addEventListener('click', (e) => {
+                if (moved) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+
+            el.addEventListener('dragstart', (e) => e.preventDefault());
+
+            el.style.cursor = 'grab';
+
+            // Touch's own native momentum scroll (the actual "flick and let it glide" gesture)
+            // was getting cut short after just 2-3 tiles instead of coasting - this strip's
+            // scroll-snap-type is only set to proximity, not mandatory, which is supposed to be
+            // the gentle "only snap if it was already stopping near a point anyway" mode, but iOS/
+            // Android browsers are known to apply it more aggressively in practice, re-targeting
+            // an in-flight momentum scroll toward the nearest snap point well before it would've
+            // naturally decelerated there on its own. Same fix philosophy as the mouse path above
+            // (snap fights the free-flowing motion, so turn it off *during* the motion): snap
+            // turns off the moment a touch begins, and only turns back on once scrolling has
+            // genuinely settled - detected via the standard "no scroll events for a bit" debounce,
+            // since native momentum doesn't give us a start/end callback the way our own
+            // rAF-driven mouse momentum above does.
+            let touchSettleTimer = null;
+            el.addEventListener('touchstart', () => {
+                if (touchSettleTimer) clearTimeout(touchSettleTimer);
+                el.style.scrollSnapType = 'none';
+            }, { passive: true });
+            el.addEventListener('scroll', () => {
+                if (touchSettleTimer) clearTimeout(touchSettleTimer);
+                touchSettleTimer = setTimeout(() => {
+                    el.style.scrollSnapType = '';
+                }, 150);
+            }, { passive: true });
+        }
+
         // Renders the "SpaceX Mission Patches" horizontal strip from the permanent archive
         // above (growing it first with anything new - see loadPatchArchive/savePatchArchive).
         // Each tile opens the real mission detail modal (openMissionModal) for whichever
@@ -6847,6 +7040,14 @@
         function renderMissionPatchesStrip() {
             const strip = document.getElementById('mission-patches-strip');
             if (!strip) return;
+
+            // Guarded so this runs once per page load, not once per re-render (strip.innerHTML
+            // is rebuilt on every data refresh/language switch, but the strip element itself -
+            // and any listeners already attached to it - persists across those rebuilds).
+            if (!strip.dataset.dragEnabled) {
+                enableDragScroll(strip);
+                strip.dataset.dragEnabled = 'true';
+            }
 
             let archive = loadPatchArchive();
             const knownPatchUrls = new Set(archive.map(m => m.patch));
@@ -6910,9 +7111,18 @@
                 tile.className = 'flex flex-col items-center gap-1 shrink-0 snap-start w-28 sm:w-32 group/patch';
                 tile.innerHTML = `
                     <div class="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center">
-                        <div class="absolute inset-2 rounded-full bg-emerald-500/0 blur-md transition-all duration-300 group-active/patch:bg-emerald-500/50 md:group-hover/patch:bg-emerald-500/50 pointer-events-none"></div>
-                        <img src="${m.patch}" alt="${m.name}"
+                        <!-- blur-md only turns on for the active/hovered tile, not unconditionally
+                             like before: a CSS blur filter costs a real GPU compositing layer even
+                             at 0 opacity, and the archive this strip renders from only ever grows -
+                             with 50-100+ tiles all permanently blurred, every one of them had to be
+                             recomposited on every scroll frame, which is exactly the kind of thing
+                             that reads as the strip "stuttering"/not flowing smoothly on mobile
+                             instead of a clean momentum scroll. Toggling the class on/off means only
+                             the one tile actually being touched ever pays that cost. -->
+                        <div class="absolute inset-2 rounded-full bg-emerald-500/0 transition-all duration-300 group-active/patch:blur-md group-active/patch:bg-emerald-500/50 md:group-hover/patch:blur-md md:group-hover/patch:bg-emerald-500/50 pointer-events-none"></div>
+                        <img src="${m.patch}" alt="${m.name}" draggable="false"
                             class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain transition-transform duration-300 group-active/patch:-translate-y-1 group-active/patch:scale-105 md:group-hover/patch:-translate-y-1 md:group-hover/patch:scale-105"
+                            style="-webkit-user-drag: none;"
                             loading="lazy" onerror="this.closest('button').remove()">
                     </div>
                     <span class="text-[11px] text-zinc-400 text-center leading-tight group-active/patch:text-white md:group-hover/patch:text-white transition-colors">${m.name}</span>
@@ -7739,6 +7949,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
         function renderPastMissions(filteredPast) {
             const pastGrid = document.getElementById('past-launches-grid');
             if (!pastGrid) return;
+
+            // Same click-drag-to-scroll (mouse) + momentum-preserving touch scroll (mobile) as
+            // the mission patches strip - see enableDragScroll's own comments for why each part
+            // of it exists. Guarded the same way too: renderPastMissions re-runs on every filter/
+            // search/language change and rebuilds the grid's contents each time, but the grid
+            // element itself - and whatever's already listening on it - persists across that.
+            if (!pastGrid.dataset.dragEnabled) {
+                enableDragScroll(pastGrid);
+                pastGrid.dataset.dragEnabled = 'true';
+            }
+
             pastGrid.innerHTML = '';
 
             if (filteredPast.length === 0) {
@@ -7779,7 +8000,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     : (pastCardDict.viewMissionDetails || LAUNCH_LABEL_I18N.en.viewMissionDetails);
                 card.innerHTML = `
                     <div class="relative h-40 overflow-hidden z-20">
-                        <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover object-[center_21%]" alt="${m.name}">
+                        <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover object-[center_21%]" alt="${m.name}" draggable="false" style="-webkit-user-drag: none;">
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
                         <div>
