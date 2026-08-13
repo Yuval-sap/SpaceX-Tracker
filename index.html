@@ -7264,6 +7264,22 @@
                 name.classList.toggle('scale-110', on);
                 name.classList.toggle('font-bold', on);
                 name.classList.toggle('z-10', on);
+
+                // Glow in that specific customer's own brand color (same hex already used for
+                // its bar segment/dot - AI_COMPUTE_DEALS[i].color is a Tailwind arbitrary-value
+                // class like "bg-[#d97757]", so the hex is pulled back out of it rather than
+                // hand-duplicated here). Both the on/off values keep the exact same two-shadow
+                // shape and only differ in alpha (00 = fully transparent) - text-shadow only
+                // transitions smoothly when the before/after value lists line up structurally,
+                // so toggling between a real shadow and '' (which collapses to "none") would
+                // otherwise just snap instead of fading.
+                const deal = AI_COMPUTE_DEALS[i];
+                const hex = deal && deal.color.match(/#[0-9a-fA-F]{6}/);
+                if (hex) {
+                    name.style.textShadow = on
+                        ? `0 0 6px ${hex[0]}, 0 0 16px ${hex[0]}cc`
+                        : `0 0 6px ${hex[0]}00, 0 0 16px ${hex[0]}00`;
+                }
             };
 
             segmentEls.forEach(el => {
@@ -7360,7 +7376,7 @@
                 return `
                     <div>
                         <div class="flex items-center justify-between text-sm mb-1.5">
-                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-segment="${i}" class="inline-block ${nameOrigin} transition-transform duration-200">${d.name}</span></span>
+                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-segment="${i}" class="inline-block ${nameOrigin} transition-all duration-200">${d.name}</span></span>
                             <span class="text-emerald-400 font-bold font-space"><span class="notranslate" translate="no" dir="ltr">${usdAmount}</span>/${dict.month}</span>
                         </div>
                         <div class="h-2 bg-zinc-800 rounded-full overflow-hidden" data-ai-segment="${i}">
