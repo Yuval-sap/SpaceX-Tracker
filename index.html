@@ -962,6 +962,14 @@
             color: #047857 !important;
         }
 
+        /* Same light-mode green as the hero pills above, applied to the AI Compute Deals
+           section's dollar amounts (per-customer + total) - text-emerald-400 is too light
+           to read comfortably against a light background. */
+        body.light-theme #ai-compute-total-revenue,
+        body.light-theme #ai-compute-customer-list .text-emerald-400 {
+            color: #047857 !important;
+        }
+
         @media (min-width: 768px) {
 
             body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover,
@@ -6992,7 +7000,9 @@
         // below (NOT the legend - only the 3 real deals have a customer-list row to pair with,
         // so "Internal use"/"Remaining to build" simply don't participate). Pointing at (or
         // touching, on mobile) the slice pops the *name* up - not the slice itself - and
-        // pointing at the name pops the *slice* - not the name itself. Keyed by the shared
+        // pointing at the name (or that customer's own $-share mini progress bar, which
+        // carries the same data-ai-segment index) pops the *slice* - not the name itself.
+        // Keyed by the shared
         // data-ai-segment index set in renderAIComputeSection. The bar container's overflow
         // has to flip to visible while a slice is popped - overflow-hidden (needed the rest of
         // the time so the *unpopped* slices keep their clean pill-shaped ends) would otherwise
@@ -7065,25 +7075,43 @@
 
             const segments = [...AI_COMPUTE_DEALS.map(d => ({ name: d.name, gw: d.gw, color: d.color, confidence: d.gwConfidence })),
                 { name: dict.otherCustomers, gw: otherGw, color: 'bg-zinc-500', confidence: 'estimated' }];
-            // relative (for z-10 while popped) and rounded-s-full on the first slice only (the
-            // one true segment that touches the bar's own rounded start edge - the last real
-            // segment never reaches the end edge, since "remaining to build" is just empty
-            // container background after it, not a segment div) - given ALWAYS, not only while
-            // popped, since the bar container's overflow flips to visible during any pop (see
-            // wireAIComputeHoverLinks) and would otherwise leave that end square for the
-            // duration. data-ai-segment on data-driven ones only (0..2) - the 4th "Internal
-            // use" slice has no customer-list row to pair with, so it's left unwired below.
+            // The bar itself is scaled to AI_COMPUTE_TOTAL_GW (what SpaceX actually has live
+            // today), NOT AI_COMPUTE_GOAL_GW - the "remaining to build" gap used to just be
+            // empty container background after the last segment, but the goal-vs-current
+            // comparison is still shown as text via goalLabel above ("2.0 GW / 10 GW goal"),
+            // so nothing is lost by not also drawing it as unfilled bar space.
+            //
+            // Because the segments now always sum to the bar's full 100%, BOTH the first and
+            // last slice touch the bar's own rounded edges (rounded-s-full / rounded-e-full) -
+            // given ALWAYS, not only while popped, since the bar container's overflow flips to
+            // visible during any pop (see wireAIComputeHoverLinks) and would otherwise leave
+            // that edge square for the duration. data-ai-segment on data-driven ones only
+            // (0..2) - the last "Internal use" slice has no customer-list row to pair with, so
+            // it's left unwired below.
+            //
+            // margin-inline-start:-1px on every segment after the first makes it overlap the
+            // previous one by a hairline: without this, Reflection AI's segment (only ~1.8% of
+            // the now-2GW bar - a couple px at most) would occasionally show a bright seam
+            // between it and its neighbors while scale-y-125 is transitioning, because a
+            // transformed element that thin gets promoted to its own compositing layer and can
+            // round its sub-pixel edge differently frame-to-frame, briefly exposing whatever
+            // sits behind the bar. Anthropic/Google's segments are wide enough that the same
+            // rounding is imperceptible, but at Reflection's width it was a large fraction of
+            // its own size. The 1px overlap guarantees full coverage regardless of that
+            // rounding, in both RTL and LTR (logical property follows the segment's own start
+            // edge either way).
             bar.innerHTML = segments.map((s, i) => {
                 const wireAttr = i < AI_COMPUTE_DEALS.length ? ` data-ai-segment="${i}"` : '';
                 const roundedStart = i === 0 ? ' rounded-s-full' : '';
-                return `<div class="relative h-full ${s.color}${roundedStart} origin-bottom transition-transform duration-200"${wireAttr} style="width: ${(s.gw / AI_COMPUTE_GOAL_GW * 100).toFixed(2)}%" title="${s.name} — ${s.gw.toFixed(2)} GW"></div>`;
+                const roundedEnd = i === segments.length - 1 ? ' rounded-e-full' : '';
+                const overlapStyle = i > 0 ? ' margin-inline-start: -1px;' : '';
+                return `<div class="relative h-full ${s.color}${roundedStart}${roundedEnd} origin-bottom transition-transform duration-200"${wireAttr} style="width: ${(s.gw / AI_COMPUTE_TOTAL_GW * 100).toFixed(2)}%;${overlapStyle}" title="${s.name} — ${s.gw.toFixed(2)} GW"></div>`;
             }).join('');
 
-            const remainingGw = (AI_COMPUTE_GOAL_GW - AI_COMPUTE_TOTAL_GW).toFixed(1);
             legend.innerHTML = segments.map((s) => {
                 const tilde = s.confidence === 'disclosed' ? '' : '~';
                 return `<span class="inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2.5 h-2.5 rounded-full ${s.color} shrink-0"></span>${s.name} <span dir="ltr">(${tilde}${s.gw.toFixed(2)} GW)</span></span>`;
-            }).join('') + `<span class="inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700 shrink-0"></span>${dict.remainingToBuild} <span dir="ltr">(~${remainingGw} GW)</span></span>`;
+            }).join('');
 
             const maxUsd = Math.max(...AI_COMPUTE_DEALS.map(d => d.monthlyUsd));
             list.innerHTML = AI_COMPUTE_DEALS.map((d, i) => {
@@ -7099,7 +7127,7 @@
                             <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-segment="${i}" class="inline-block transition-[font-size] duration-200">${d.name}</span></span>
                             <span class="text-emerald-400 font-bold font-space"><span class="notranslate" translate="no" dir="ltr">${usdAmount}</span>/${dict.month}</span>
                         </div>
-                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden" data-ai-segment="${i}">
                             <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
                         </div>
                         <div class="text-[11px] text-zinc-500 mt-1.5"><span class="notranslate" translate="no" dir="ltr">${tilde}${d.mw}</span> (${confidenceWord}) <span class="notranslate" translate="no" dir="ltr">· ${d.extra}</span></div>
