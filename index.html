@@ -2720,7 +2720,7 @@
         </div>
 
         <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-start sm:items-center mb-6">
                 <div>
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
@@ -2738,11 +2738,11 @@
                      mobile-only "Scroll" hint rather than as a third flex child of the row
                      itself, so justify-between still only ever has to balance two things (this
                      title block vs. this whole right-side group) instead of unevenly spacing
-                     three. -->
+                     three. items-start on the row (rather than items-center) keeps the counter
+                     top-aligned with the title instead of being centered against its full
+                     two-line height; the counter comes before the Scroll hint in this column so
+                     it's the one that lines up with the title, with Scroll underneath it. -->
                 <div class="flex flex-col items-end gap-2">
-                    <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
-                        Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
-                    </span>
                     <div
                         class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
                         <div id="i18n-upcoming-launches"
@@ -2751,6 +2751,9 @@
                         <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-orbitron notranslate leading-none"
                             id="upcoming-count" translate="no">0</div>
                     </div>
+                    <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
+                        Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
+                    </span>
                 </div>
             </div>
 
@@ -2781,7 +2784,7 @@
 
         <!-- Official Documentary Section -->
         <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900 transition-colors duration-500">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-2">
+            <div class="flex justify-between items-start sm:items-center mb-6 gap-y-2">
                 <div>
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
@@ -2792,14 +2795,19 @@
                             class="starship-term notranslate" translate="no" data-space-after="1">Starship
                         </span>documentary series</p>
                 </div>
-                <div class="flex items-center gap-x-4 self-end sm:self-auto">
-                    <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
-                        Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
-                    </span>
+                <!-- Row on mobile too (not stacked below the title) so "Watch on YouTube" lines
+                     up with the title's height, same idea as the counter chip in the Recent
+                     Past Launches header above. order-* decouples visual order from source
+                     order per breakpoint: mobile stacks the button on top with Scroll under it,
+                     while sm+ keeps the original left-to-right order (Scroll, then button). -->
+                <div class="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-x-4">
                     <a href="https://www.youtube.com/@SpaceX" target="_blank"
-                        class="text-xs sm:text-sm flex items-center gap-x-2 text-zinc-400 hover:text-emerald-400 transition-colors">
+                        class="order-1 sm:order-2 text-xs sm:text-sm flex items-center gap-x-2 text-zinc-400 hover:text-emerald-400 transition-colors">
                         Watch on YouTube <i class="fa-solid fa-arrow-up-right-from-square ml-1 text-[10px]"></i>
                     </a>
+                    <span class="order-2 sm:order-1 text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
+                        Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
+                    </span>
                 </div>
             </div>
 
