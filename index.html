@@ -3731,7 +3731,7 @@
                     </div>
                 </div>
 
-                <div>
+                <div id="modal-milestones-section">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                         <button id="modal-trajectory-btn"
                             class="order-1 sm:order-2 hidden items-center justify-center gap-2 px-4 py-2 bg-zinc-800/80 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-xl text-xs font-semibold tracking-wide text-zinc-200 transition-all duration-300 shadow-sm">
@@ -3740,7 +3740,7 @@
                         <h4
                             class="order-2 sm:order-1 font-space text-sm sm:text-base font-semibold text-emerald-400 flex items-center gap-x-2">
                             <i class="fa-solid fa-gears text-sm text-zinc-500"></i>
-                            Key Flight Milestones & Payload Data
+                            Key Flight Milestones
                         </h4>
                     </div>
                     <div id="modal-includes"
@@ -3752,7 +3752,7 @@
                     <h4
                         class="font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
                         <i class="fa-solid fa-crosshairs text-sm"></i>
-                        Mission Objectives & Strategic Significance
+                        <span id="modal-objectives-title-text">Mission Objectives and Payload Information</span>
                     </h4>
                     <p id="modal-description-detailed"
                         class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500">
@@ -8956,6 +8956,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
             window.currentActiveMissionDescription = m.description;
             document.getElementById('modal-description-detailed').innerHTML = renderMissionPurposeHtml(m.category, m.description, document.documentElement.lang);
             document.getElementById('modal-includes').innerHTML = m.objectives.map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${i}</span></div>`).join('');
+
+            // Falcon missions drop the separate "Key Flight Milestones" checklist section -
+            // Starship missions keep it. The "Mission Objectives and Payload Information"
+            // title (see HTML) is the same either way, so only visibility toggles here.
+            const isStarshipMission = m.category === 'starship' || (m.vehicle || '').toLowerCase().includes('starship') || (m.name || '').toLowerCase().includes('starship');
+            document.getElementById('modal-milestones-section').classList.toggle('hidden', !isStarshipMission);
 
             document.getElementById('modal-share-btn').onclick = () => shareMission(m);
             document.getElementById('modal-calendar-btn').onclick = () => saveToCalendar(m);
