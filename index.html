@@ -1849,6 +1849,16 @@
             const subtitleEl = document.getElementById('i18n-milestones-subtitle');
             if (subtitleEl) subtitleEl.innerText = dict.subtitle;
 
+            // Guarded so this wires up once, not once per language switch - the scrollbox
+            // itself (unlike the patches strip / past-launches grid) is static markup, never
+            // rebuilt via innerHTML, so there's no risk of duplicate listeners piling up even
+            // without the guard, but it's kept consistent with the other two sections anyway.
+            const scrollbox = document.querySelector('.milestones-scrollbox');
+            if (scrollbox && !scrollbox.dataset.dragEnabled) {
+                enableVerticalDragScroll(scrollbox);
+                scrollbox.dataset.dragEnabled = 'true';
+            }
+
             const cards = document.querySelectorAll('.milestones-scrollbox > div');
             cards.forEach((card, idx) => {
                 const item = dict.items[idx];
@@ -7087,6 +7097,112 @@
                     el.style.scrollSnapType = '';
                 }, 150);
             }, { passive: true });
+        }
+
+        // Vertical counterpart of enableDragScroll above, for the Milestones box - same
+        // mouse-drag + momentum-glide behavior, adapted to scrollTop/clientY instead of
+        // scrollLeft/clientX. Deliberately a separate function rather than parameterizing the
+        // horizontal one: that one already went through several rounds of hard-won fixes this
+        // session (native image-drag conflicts, scroll-snap fighting the drag, a click-breaking
+        // pointer-events regression...), and refactoring it to share code risked reintroducing
+        // one of those. This box has no scroll-snap at all (unlike the two horizontal ones), so
+        // none of the snap-disabling logic applies here - it's simpler by construction, not a
+        // trimmed-down copy missing something it needs.
+        function enableVerticalDragScroll(el) {
+            let isDown = false;
+            let moved = false;
+            let startY = 0;
+            let startScrollTop = 0;
+            let lastY = 0;
+            let lastT = 0;
+            let velocity = 0; // px/ms, +down / -up
+            let momentumFrame = null;
+
+            function stopMomentum() {
+                if (momentumFrame !== null) {
+                    cancelAnimationFrame(momentumFrame);
+                    momentumFrame = null;
+                }
+            }
+
+            function settle() {
+                stopMomentum();
+                el.classList.remove('drag-scroll-active');
+            }
+
+            function runMomentum() {
+                const before = el.scrollTop;
+                el.scrollTop = before - velocity * 16; // ~16ms/frame at 60fps
+                velocity *= 0.95; // same decay as the horizontal version - quick but natural glide
+                if (el.scrollTop === before || Math.abs(velocity) < 0.02) {
+                    settle();
+                    return;
+                }
+                momentumFrame = requestAnimationFrame(runMomentum);
+            }
+
+            el.addEventListener('pointerdown', (e) => {
+                if (e.pointerType !== 'mouse') return; // touch/pen: leave native scrolling alone entirely
+                stopMomentum();
+                isDown = true;
+                moved = false;
+                startY = e.clientY;
+                lastY = e.clientY;
+                lastT = performance.now();
+                velocity = 0;
+                startScrollTop = el.scrollTop;
+                el.style.cursor = 'grabbing';
+                el.style.userSelect = 'none';
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDown || e.pointerType !== 'mouse') return;
+                const dy = e.clientY - startY;
+                if (Math.abs(dy) > 5) moved = true;
+                if (moved) {
+                    e.preventDefault();
+                    // drag-scroll-active only turns on here (once a real drag is confirmed),
+                    // not in pointerdown - see the horizontal version's own pointermove comment
+                    // for exactly why: adding it in pointerdown broke plain clicks on both
+                    // horizontal sections earlier this session (pointer-events:none on the
+                    // children made the browser's own hit-testing resolve pointerup/click to
+                    // this container instead of the card/button actually under the cursor).
+                    el.classList.add('drag-scroll-active');
+                    el.scrollTop = startScrollTop - dy;
+
+                    const now = performance.now();
+                    const dt = now - lastT;
+                    if (dt > 0) velocity = (e.clientY - lastY) / dt;
+                    lastY = e.clientY;
+                    lastT = now;
+                }
+            });
+
+            function onPointerUp(e) {
+                if (!isDown || (e && e.pointerType && e.pointerType !== 'mouse')) return;
+                isDown = false;
+                el.style.cursor = 'grab';
+                el.style.userSelect = '';
+                if (moved && Math.abs(velocity) > 0.02) {
+                    momentumFrame = requestAnimationFrame(runMomentum);
+                    setTimeout(() => { if (momentumFrame !== null) settle(); }, 3000);
+                } else {
+                    settle();
+                }
+            }
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointercancel', onPointerUp);
+
+            el.addEventListener('click', (e) => {
+                if (moved) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+
+            el.addEventListener('dragstart', (e) => e.preventDefault());
+
+            el.style.cursor = 'grab';
         }
 
         // Renders the "SpaceX Mission Patches" horizontal strip from the permanent archive
