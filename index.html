@@ -1635,6 +1635,47 @@
             hi: "स्टारशिप", ar: "ستارشيب", tr: "Starship"
         };
 
+        // "{{STARSHIP}} documentary series" subtitle under the Starship section heading -
+        // used to rely on Google Translate for "documentary series" alone (with the
+        // protected {{STARSHIP}} term spliced in front of it), which kept the English word
+        // order regardless of language and read as ungrammatical/backwards once translated.
+        // Hand-translated as a full sentence per language instead, same {{STARSHIP}}
+        // placeholder mechanism as MILESTONES_I18N above.
+        const STARSHIP_DOC_SUBTITLE_I18N = {
+            en: "{{STARSHIP}} documentary series",
+            he: "סדרה דוקומנטרית על {{STARSHIP}}",
+            iw: "סדרה דוקומנטרית על {{STARSHIP}}",
+            es: "Serie documental sobre {{STARSHIP}}",
+            fr: "Série documentaire sur {{STARSHIP}}",
+            de: "Dokumentationsserie über {{STARSHIP}}",
+            ru: "Документальный сериал о {{STARSHIP}}",
+            zh: "关于{{STARSHIP}}的纪录片系列",
+            it: "Serie documentaristica su {{STARSHIP}}",
+            cs: "Dokumentární seriál o {{STARSHIP}}",
+            sv: "Dokumentärserie om {{STARSHIP}}",
+            nl: "Documentaireserie over {{STARSHIP}}",
+            da: "Dokumentarserie om {{STARSHIP}}",
+            pt: "Série documental sobre {{STARSHIP}}",
+            pl: "Serial dokumentalny o {{STARSHIP}}",
+            hi: "{{STARSHIP}} पर वृत्तचित्र श्रृंखला",
+            ar: "سلسلة وثائقية عن {{STARSHIP}}",
+            tr: "{{STARSHIP}} belgesel dizisi"
+        };
+
+        let lastAppliedStarshipDocSubtitleLang = null;
+        function applyStarshipDocSubtitleTranslation(currentLang) {
+            let key = (currentLang || 'en').split('-')[0];
+            if (key === 'zh') key = 'zh';
+            if (lastAppliedStarshipDocSubtitleLang === key) return;
+            lastAppliedStarshipDocSubtitleLang = key;
+
+            const el = document.getElementById('starship-doc-subtitle');
+            if (!el) return;
+            const template = STARSHIP_DOC_SUBTITLE_I18N[key] || STARSHIP_DOC_SUBTITLE_I18N.en;
+            const starshipTerm = STARSHIP_I18N[key] || STARSHIP_I18N.en;
+            el.textContent = template.replace(/\{\{STARSHIP\}\}/g, starshipTerm);
+        }
+
         // The Milestones list used to rely on Google Translate for every language, but
         // Google would frequently mistranslate rocket/mission terminology (the same
         // "Starship" issue as elsewhere, plus mangled word order in longer sentences).
@@ -2204,6 +2245,7 @@
             if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
+            applyStarshipDocSubtitleTranslation(currentLang);
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
@@ -2749,9 +2791,8 @@
                         <i class="fa-solid fa-film text-red-400 shrink-0"></i>
                         <span class="starship-term notranslate section-title-fit" translate="no">Starship</span>
                     </h3>
-                    <p class="text-sm text-zinc-400 transition-colors duration-500"><span
-                            class="starship-term notranslate" translate="no" data-space-after="1">Starship
-                        </span>documentary series</p>
+                    <p id="starship-doc-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate"
+                        translate="no">Starship documentary series</p>
                 </div>
                 <!-- Row on mobile too (not stacked below the title) so "Watch on YouTube" lines
                      up with the title's height, same idea as the counter chip in the Recent
