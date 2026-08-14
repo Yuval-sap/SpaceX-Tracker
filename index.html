@@ -116,17 +116,27 @@
             pointer-events: none;
             opacity: 0.35;
             transition: opacity 0.5s ease;
-            /* --crt-hole punches a rectangular gap in this full-viewport overlay so it doesn't
-               paint over the AI Compute donut - see updateAIComputeCrtHole() in the script,
-               which keeps it synced to the donut's on-screen position on scroll/resize. A plain
+            /* --crt-hole fades this overlay out in a soft circle around the AI Compute donut so
+               it doesn't paint over it - see updateAIComputeCrtHole() in the script, which
+               keeps it synced to the donut's on-screen position on scroll/resize. A plain
                higher z-index on the donut CANNOT achieve this: the donut lives inside the
                page's main content wrapper, which is itself z-index:10 and a stacking context
                of its own - <nav> escapes this overlay by being a z-50 DIRECT sibling of body
                (outside that wrapper entirely), but the donut can't be hoisted out of the page's
                normal content flow the same way, so no z-index set on it or its ancestors up to
-               that wrapper can ever outrank this overlay. Defaults to `none` (no hole) whenever
-               the donut isn't on screen or JS hasn't run yet. */
-            clip-path: var(--crt-hole, none);
+               that wrapper can ever outrank this overlay.
+               First attempt used clip-path with a hard-edged rectangle, matching the donut's
+               square viewport exactly - technically worked (verified via computed clip-path)
+               but LOOKED wrong: it created a visible sharp-edged square where this overlay's
+               scanline texture abruptly stops, standing out against the donut's round shape
+               (a user screenshot showed it plainly). mask-image with a radial-gradient instead
+               - a circle roughly matching the donut's own visible radius, fading smoothly back
+               to fully-opaque over ~36px - removes both problems at once: round instead of
+               square, and no hard edge to notice. Defaults to `none` (mask-image:none = fully
+               opaque = overlay unaffected) whenever the donut isn't on screen or JS hasn't run
+               yet - same fallback semantics the clip-path version had. */
+            -webkit-mask-image: var(--crt-hole, none);
+            mask-image: var(--crt-hole, none);
         }
 
         .font-space {
@@ -8388,11 +8398,13 @@
             scheduleAIComputeCrtHoleUpdate();
         }
 
-        // Punches a rectangular gap in the page's fixed CRT-scanline overlay (body::before,
-        // see its own comment for why a z-index on the donut can't do this) exactly where the
-        // donut viewport currently sits on screen, so the overlay reads as behind it instead of
-        // painted across it. Has to be kept in sync on scroll/resize since the donut moves with
-        // the page (it's normal in-flow content) while the overlay it's cut out of is fixed.
+        // Fades the page's fixed CRT-scanline overlay (body::before, see its own comment for
+        // why a z-index on the donut can't do this) out in a soft circle around the donut
+        // viewport's current on-screen position, so the overlay reads as behind it instead of
+        // painted across it - a hard-edged rectangular cutout (the first version of this) LOOKED
+        // wrong, a visible square against the round donut (see body::before's own comment). Has
+        // to be kept in sync on scroll/resize since the donut moves with the page (it's normal
+        // in-flow content) while the overlay it's masked around is fixed.
         let aiComputeCrtHoleRafPending = false;
         function updateAIComputeCrtHole() {
             const viewport = document.querySelector('.ai3d-viewport-3d');
@@ -8404,10 +8416,23 @@
                 root.style.setProperty('--crt-hole', 'none');
                 return;
             }
-            // Outer full-viewport rectangle + inner donut rectangle, evenodd fill-rule turns
-            // the inner rectangle into a hole instead of a second filled shape.
-            const path = `M0 0H${w}V${h}H0Z M${r.left} ${r.top}H${r.right}V${r.bottom}H${r.left}Z`;
-            root.style.setProperty('--crt-hole', `path(evenodd, "${path}")`);
+            const cx = (r.left + r.right) / 2;
+            const cy = (r.top + r.bottom) / 2;
+            const halfSize = Math.min(r.width, r.height) / 2;
+            // radius+feather is deliberately kept well under halfSize (a ~25px margin at the
+            // viewport's default 330px size) - a first attempt at 0.92*halfSize + 36px feather
+            // put the fade's outer edge PAST the viewport's own bounds, spilling a visible soft
+            // halo out into the surrounding card's still-textured area instead of staying
+            // contained within the viewport - which read as even more obvious than the original
+            // hard-edged square (confirmed from a user screenshot). 0.72x leaves room for the
+            // full feather to complete before reaching that boundary.
+            const radius = halfSize * 0.72;
+            const feather = 20;
+            // mask-image: fully masked out (transparent, overlay hidden) up to `radius`, eased
+            // back to fully opaque (overlay shown) by `radius + feather`, then held opaque out
+            // to an arbitrarily large stop so the overlay is unaffected everywhere else on the
+            // page regardless of viewport size.
+            root.style.setProperty('--crt-hole', `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, transparent 0px, transparent ${radius.toFixed(1)}px, black ${(radius + feather).toFixed(1)}px, black ${(radius + feather + 4000).toFixed(1)}px)`);
         }
         function scheduleAIComputeCrtHoleUpdate() {
             if (aiComputeCrtHoleRafPending) return;
