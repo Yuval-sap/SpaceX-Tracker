@@ -2436,6 +2436,47 @@
             });
         }
 
+        // The "Nice to Know" row (SpaceX Trivia + Starlink Deployment cards) section title and
+        // the trivia card's own mini-label - both used to be left to Google Translate (plain
+        // text, no notranslate), which is why an earlier fix had to correct their font-size
+        // specifically in Hebrew (GT-rendered Rubik text measures differently than the
+        // Orbitron/English source). Hand-translated instead now, same pattern as
+        // MILESTONES_I18N/AI_COMPUTE_I18N above - "SpaceX" itself stays untranslated per that
+        // same established convention (proper noun, same in every language on this site).
+        const NICE_TO_KNOW_I18N = {
+            en: { sectionTitle: 'Nice to Know', factLabel: 'SpaceX Trivia' },
+            he: { sectionTitle: 'טוב לדעת', factLabel: 'טריוויית SpaceX' },
+            iw: { sectionTitle: 'טוב לדעת', factLabel: 'טריוויית SpaceX' },
+            es: { sectionTitle: 'Vale la Pena Saberlo', factLabel: 'Trivia de SpaceX' },
+            fr: { sectionTitle: 'Bon à Savoir', factLabel: 'Anecdotes SpaceX' },
+            de: { sectionTitle: 'Gut zu Wissen', factLabel: 'SpaceX-Trivia' },
+            ru: { sectionTitle: 'Полезно Знать', factLabel: 'Факты SpaceX' },
+            zh: { sectionTitle: '值得了解', factLabel: 'SpaceX 小知识' },
+            it: { sectionTitle: 'Buono a Sapersi', factLabel: 'Curiosità SpaceX' },
+            cs: { sectionTitle: 'Dobré Vědět', factLabel: 'Zajímavosti SpaceX' },
+            sv: { sectionTitle: 'Bra att Veta', factLabel: 'SpaceX-trivia' },
+            nl: { sectionTitle: 'Goed om te Weten', factLabel: 'SpaceX-trivia' },
+            da: { sectionTitle: 'Godt at Vide', factLabel: 'SpaceX-trivia' },
+            pt: { sectionTitle: 'Bom Saber', factLabel: 'Curiosidades da SpaceX' },
+            pl: { sectionTitle: 'Warto Wiedzieć', factLabel: 'Ciekawostki SpaceX' },
+            hi: { sectionTitle: 'जानने योग्य', factLabel: 'SpaceX ट्रिविया' },
+            ar: { sectionTitle: 'جدير بالمعرفة', factLabel: 'معلومات SpaceX' },
+            tr: { sectionTitle: 'Faydalı Bilgi', factLabel: 'SpaceX Bilgileri' },
+        };
+
+        let lastAppliedNiceToKnowLang = null;
+        function applyNiceToKnowTranslations(currentLang) {
+            const key = currentLang.split('-')[0];
+            if (lastAppliedNiceToKnowLang === key) return;
+            lastAppliedNiceToKnowLang = key;
+            const dict = NICE_TO_KNOW_I18N[key] || NICE_TO_KNOW_I18N.en;
+
+            const titleEl = document.getElementById('i18n-nice-to-know-title');
+            if (titleEl) titleEl.textContent = dict.sectionTitle;
+            const labelEl = document.getElementById('i18n-fact-label');
+            if (labelEl) labelEl.textContent = dict.factLabel;
+        }
+
         // Real photos for each milestone, sourced from Wikimedia Commons (same order as
         // the cards in the milestones list). Special:FilePath resolves to the current
         // full file regardless of the underlying storage path, so these links stay valid
@@ -2691,6 +2732,7 @@
             if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
+            applyNiceToKnowTranslations(currentLang);
             applyStarshipDocSubtitleTranslation(currentLang);
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             applyPastLaunchDetailsLabels(currentLang);
@@ -3336,6 +3378,13 @@
         </div>
 
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="mb-6">
+                <h3
+                    class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    <i class="fa-solid fa-circle-info text-cyan-400 shrink-0"></i>
+                    <span id="i18n-nice-to-know-title" class="section-title-fit" lang="en">Nice to Know</span>
+                </h3>
+            </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div
                     class="lg:col-span-2 bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between gap-4 transition-colors duration-500 h-full">
@@ -3346,8 +3395,9 @@
                         </div>
                         <div class="flex-1 min-w-0 pt-1">
                             <div
-                                class="did-you-know-label font-orbitron text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">
-                                Did You Know</div>
+                                class="did-you-know-label font-orbitron text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2 notranslate"
+                                translate="no">
+                                <span id="i18n-fact-label" lang="en">SpaceX Trivia</span></div>
                             <div id="fact-text" dir="auto" translate="no"
                                 class="text-base sm:text-lg text-zinc-200 leading-relaxed font-medium transition-colors duration-500 min-h-[60px] notranslate">
                                 <div class="space-y-2.5">
