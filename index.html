@@ -134,6 +134,19 @@
             font-family: 'Orbitron', 'Rubik', system_ui, sans-serif;
         }
 
+        /* Section headings (Scheduled Launches, Milestones, etc.) sit in a flex row with their
+           icon (icon gets shrink-0 so it never gives up its own size) - min-width:0 lets this
+           span actually shrink below its intrinsic text width instead of forcing the row wider
+           than the viewport, which is what makes it possible for fitTitleOneLine() to detect
+           scrollWidth > clientWidth and shrink the font instead of wrapping to a second line. */
+        .section-title-fit {
+            white-space: nowrap;
+            overflow: hidden;
+            display: inline-block;
+            max-width: 100%;
+            min-width: 0;
+        }
+
         /* .font-space marks numeric/technical readouts (stat values, countdowns, spec labels)
            throughout the site, and by default follows the site's base Space Grotesk/Rubik font
            above - but inside the mission detail modals specifically (the "go into a launch
@@ -1404,68 +1417,6 @@
             tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son Fırlatmalar", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX'in En Çok Uçan İlk 10 Boosterı", boosterSubtitle: "Canlı görev verilerinden Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" , missionInProgress: "GÖREV DEVAM EDİYOR", holdDelayed: "BEKLEME / GECİKME", countdownToLaunch: "Fırlatmaya geri sayım", launchNow: "FIRLATMA", patchesTitle: "SpaceX Görev Rozetleri", patchesSubtitle: "Görev detayları için bir rozete dokunun" },
         };
 
-        // Manual translations for the "Will this launch succeed?" prediction poll (see the
-        // notranslate/translate="no" prediction-poll block in the HTML). Same rationale as
-        // LAUNCH_LABEL_I18N above: Google Translate's word choice for "launch" in several
-        // languages (e.g. Hebrew "השקה") is the "product launch" sense, not the correct
-        // spaceflight term ("שיגור"), so this section is translated ourselves instead.
-        const POLL_I18N = {
-            en: { question: "Will this launch succeed?", yes: "Yes", no: "No", votes: "{n} votes", loading: "Loading...", error: "Error loading votes" },
-            he: { question: "האם השיגור הזה יצליח?", yes: "כן", no: "לא", votes: "{n} הצבעות", loading: "טוען...", error: "שגיאה בטעינת ההצבעות" },
-            iw: { question: "האם השיגור הזה יצליח?", yes: "כן", no: "לא", votes: "{n} הצבעות", loading: "טוען...", error: "שגיאה בטעינת ההצבעות" },
-            es: { question: "¿Tendrá éxito este lanzamiento?", yes: "Sí", no: "No", votes: "{n} votos", loading: "Cargando...", error: "Error al cargar los votos" },
-            fr: { question: "Ce lancement réussira-t-il ?", yes: "Oui", no: "Non", votes: "{n} votes", loading: "Chargement...", error: "Erreur de chargement des votes" },
-            de: { question: "Wird dieser Start erfolgreich sein?", yes: "Ja", no: "Nein", votes: "{n} Stimmen", loading: "Wird geladen...", error: "Fehler beim Laden der Stimmen" },
-            ru: { question: "Будет ли этот запуск успешным?", yes: "Да", no: "Нет", votes: "{n} голосов", loading: "Загрузка...", error: "Ошибка загрузки голосов" },
-            zh: { question: "此次发射会成功吗？", yes: "会", no: "不会", votes: "{n} 票", loading: "加载中...", error: "加载投票失败" },
-            it: { question: "Questo lancio avrà successo?", yes: "Sì", no: "No", votes: "{n} voti", loading: "Caricamento...", error: "Errore nel caricamento dei voti" },
-            cs: { question: "Bude tento start úspěšný?", yes: "Ano", no: "Ne", votes: "{n} hlasů", loading: "Načítání...", error: "Chyba při načítání hlasů" },
-            sv: { question: "Kommer denna uppskjutning att lyckas?", yes: "Ja", no: "Nej", votes: "{n} röster", loading: "Laddar...", error: "Fel vid inläsning av röster" },
-            nl: { question: "Zal deze lancering slagen?", yes: "Ja", no: "Nee", votes: "{n} stemmen", loading: "Laden...", error: "Fout bij laden van stemmen" },
-            da: { question: "Vil denne opsendelse lykkes?", yes: "Ja", no: "Nej", votes: "{n} stemmer", loading: "Indlæser...", error: "Fejl ved indlæsning af stemmer" },
-            pt: { question: "Este lançamento será bem-sucedido?", yes: "Sim", no: "Não", votes: "{n} votos", loading: "Carregando...", error: "Erro ao carregar os votos" },
-            pl: { question: "Czy ten start się powiedzie?", yes: "Tak", no: "Nie", votes: "{n} głosów", loading: "Ładowanie...", error: "Błąd wczytywania głosów" },
-            hi: { question: "क्या यह प्रक्षेपण सफल होगा?", yes: "हां", no: "नहीं", votes: "{n} वोट", loading: "लोड हो रहा है...", error: "वोट लोड करने में त्रुटि" },
-            ar: { question: "هل سينجح هذا الإطلاق؟", yes: "نعم", no: "لا", votes: "{n} صوت", loading: "جارٍ التحميل...", error: "خطأ في تحميل الأصوات" },
-            tr: { question: "Bu fırlatma başarılı olacak mı?", yes: "Evet", no: "Hayır", votes: "{n} oy", loading: "Yükleniyor...", error: "Oylar yüklenirken hata oluştu" },
-        };
-
-        function getPollDict(currentLang) {
-            let key = (currentLang || 'en').split('-')[0];
-            if (key === 'zh') key = 'zh'; // zh-cn, zh-tw, etc. all fall back to the same entry
-            return POLL_I18N[key] || POLL_I18N.en;
-        }
-
-        let lastAppliedPollLang = null;
-        function applyPollTranslations(currentLang) {
-            const key = (currentLang || 'en').split('-')[0];
-            if (lastAppliedPollLang === key) return;
-            lastAppliedPollLang = key;
-            const dict = getPollDict(currentLang);
-
-            const map = {
-                'modal-poll-question': dict.question,
-                'modal-poll-yes-btn': dict.yes,
-                'modal-poll-no-btn': dict.no,
-                'modal-poll-yes-label': dict.yes,
-                'modal-poll-no-label': dict.no,
-            };
-            Object.keys(map).forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = map[id];
-            });
-
-            // The votes-count line is written dynamically by renderPollForMission (loading /
-            // error / "N votes"), so just re-render it now with the freshly-changed language
-            // rather than duplicating that formatting logic here.
-            if (window.currentModalMissionId && typeof renderPollForMission === 'function') {
-                const pollSection = document.getElementById('modal-poll-section');
-                if (pollSection && !pollSection.classList.contains('hidden')) {
-                    renderPollForMission(window.currentModalMissionId);
-                }
-            }
-        }
-
         let lastAppliedLaunchLabelLang = null;
         function applyLaunchLabelTranslations(currentLang) {
             let key = currentLang.split('-')[0];
@@ -1637,6 +1588,10 @@
 
         function fitAllTitlesOneLine(root) {
             (root || document).querySelectorAll('.mission-title-fit').forEach(fitTitleOneLine);
+        }
+
+        function fitAllSectionTitles(root) {
+            (root || document).querySelectorAll('.section-title-fit').forEach(fitTitleOneLine);
         }
 
         function applyPhraseFixes(currentLang) {
@@ -2233,7 +2188,6 @@
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
-            applyPollTranslations(currentLang);
             applyDocEpisodeTranslations(currentLang);
             if (lastAppliedWeatherLang !== currentLang.split('-')[0]) {
                 lastAppliedWeatherLang = currentLang.split('-')[0];
@@ -2301,6 +2255,7 @@
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
             fitAllTitlesOneLine(document);
+            fitAllSectionTitles(document);
 
             // Unit system follows the resolved language only. Google Translate's
             // translated-ltr/translated-rtl classes are internal bookkeeping (it adds
@@ -2330,22 +2285,6 @@
             localizeStarshipTerm(document.body);
         });
 
-    </script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script>
-        const firebaseConfig = {
-    apiKey: "AIzaSyACAE-CK7a9w4e3bmr3rCjKVUYnyICQn9o",
-    authDomain: "spacex-tracker-4a165.firebaseapp.com",
-    projectId: "spacex-tracker-4a165",
-    storageBucket: "spacex-tracker-4a165.firebasestorage.app",
-    messagingSenderId: "357378828042",
-    appId: "1:357378828042:web:f7bd376e1910879d86fcf3",
-    measurementId: "G-T7CKXLKQFV"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
     </script>
 </head>
 
@@ -2699,8 +2638,8 @@
                 <div>
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
-                        <i class="fa-solid fa-rocket text-emerald-400 text-base"></i> <span id="i18n-launches-section"
-                            class="notranslate" translate="no" lang="en">Scheduled Launches</span>
+                        <i class="fa-solid fa-rocket text-emerald-400 text-base shrink-0"></i> <span id="i18n-launches-section"
+                            class="notranslate section-title-fit" translate="no" lang="en">Scheduled Launches</span>
                     </h3>
                     <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Next scheduled upcoming
                         missions</p>
@@ -2720,12 +2659,12 @@
         </div>
 
         <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900">
-            <div class="flex justify-between items-start sm:items-center mb-6">
+            <div class="flex justify-between items-start sm:items-center mb-2 sm:mb-6">
                 <div>
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
-                        <i class="fa-solid fa-history text-zinc-400 text-base"></i> <span
-                            id="i18n-past-launches-section" class="notranslate" translate="no" lang="en">Recent Past
+                        <i class="fa-solid fa-history text-zinc-400 text-base shrink-0"></i> <span
+                            id="i18n-past-launches-section" class="notranslate section-title-fit" translate="no" lang="en">Recent Past
                             Launches</span>
                     </h3>
                     <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing the most recent
@@ -2784,12 +2723,12 @@
 
         <!-- Official Documentary Section -->
         <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900 transition-colors duration-500">
-            <div class="flex justify-between items-start sm:items-center mb-6 gap-y-2">
+            <div class="flex justify-between items-start sm:items-center mb-2 sm:mb-6 gap-y-2">
                 <div>
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
-                        <i class="fa-solid fa-film text-red-400"></i>
-                        <span class="starship-term notranslate" translate="no">Starship</span>
+                        <i class="fa-solid fa-film text-red-400 shrink-0"></i>
+                        <span class="starship-term notranslate section-title-fit" translate="no">Starship</span>
                     </h3>
                     <p class="text-sm text-zinc-400 transition-colors duration-500"><span
                             class="starship-term notranslate" translate="no" data-space-after="1">Starship
@@ -2976,8 +2915,8 @@
             <div class="mb-4">
                 <h3
                     class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
-                    <i class="fa-solid fa-timeline text-emerald-400"></i>
-                    <span id="i18n-milestones-title" class="notranslate" translate="no" lang="en">SpaceX
+                    <i class="fa-solid fa-timeline text-emerald-400 shrink-0"></i>
+                    <span id="i18n-milestones-title" class="notranslate section-title-fit" translate="no" lang="en">SpaceX
                         Milestones</span>
                 </h3>
                 <p id="i18n-milestones-subtitle"
@@ -3196,12 +3135,12 @@
         </div>
 
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-center mb-2 sm:mb-6">
                 <div>
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
-                        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-                        <span id="i18n-patches-title" class="notranslate" translate="no" lang="en">SpaceX Mission
+                        <i class="fa-solid fa-shield-halved text-emerald-400 shrink-0"></i>
+                        <span id="i18n-patches-title" class="notranslate section-title-fit" translate="no" lang="en">SpaceX Mission
                             Patches</span>
                     </h3>
                     <p id="i18n-patches-subtitle"
@@ -3265,8 +3204,8 @@
             <div class="mb-6">
                 <h3
                     class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
-                    <i class="fa-solid fa-trophy text-amber-400"></i>
-                    <span id="i18n-booster-title" class="notranslate" translate="no" lang="en">Booster Flight
+                    <i class="fa-solid fa-trophy text-amber-400 shrink-0"></i>
+                    <span id="i18n-booster-title" class="notranslate section-title-fit" translate="no" lang="en">Booster Flight
                         Leaderboard</span>
                 </h3>
                 <p id="i18n-booster-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate"
@@ -3325,8 +3264,8 @@
             <div class="mb-6">
                 <h3
                     class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
-                    <i class="fa-solid fa-microchip text-emerald-400"></i>
-                    <span id="i18n-ai-compute-title" lang="en">SpaceX AI Compute Deals</span>
+                    <i class="fa-solid fa-microchip text-emerald-400 shrink-0"></i>
+                    <span id="i18n-ai-compute-title" class="section-title-fit" lang="en">SpaceX AI Compute Deals</span>
                 </h3>
                 <p id="i18n-ai-compute-subtitle" class="text-sm text-zinc-400 transition-colors duration-500"
                     lang="en">Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal</p>
@@ -3622,40 +3561,6 @@
                     </div>
                 </div>
 
-                <!-- Prediction Poll -->
-                <!-- This section is marked notranslate/translate="no" (Google Translate's automatic
-                     wording for "launch" in several languages, e.g. Hebrew "השקה", means "product
-                     launch" rather than the correct spaceflight term "שיגור") and is fully translated
-                     ourselves instead, via POLL_I18N + applyPollTranslations() below. -->
-                <div id="modal-poll-section"
-                    class="bg-zinc-950 border border-zinc-800/50 p-4 sm:p-5 rounded-2xl space-y-3 notranslate"
-                    translate="no" lang="en">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-square-poll-vertical text-emerald-400"></i>
-                        <span id="modal-poll-question" class="text-sm sm:text-base font-semibold text-zinc-200">Will this launch succeed?</span>
-                    </div>
-                    <div id="modal-poll-vote-buttons" class="flex gap-3">
-                        <button onclick="voteOnMission('yes')"
-                            class="flex-1 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black md:hover:border-emerald-500 text-sm font-semibold text-zinc-200 transition-colors">
-                            <i class="fa-solid fa-check mr-1.5"></i><span id="modal-poll-yes-btn">Yes</span>
-                        </button>
-                        <button onclick="voteOnMission('no')"
-                            class="flex-1 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 md:hover:bg-red-500 md:hover:text-black md:hover:border-red-500 text-sm font-semibold text-zinc-200 transition-colors">
-                            <i class="fa-solid fa-xmark mr-1.5"></i><span id="modal-poll-no-btn">No</span>
-                        </button>
-                    </div>
-                    <div id="modal-poll-results" class="hidden space-y-2">
-                        <div class="flex items-center justify-between text-xs sm:text-sm font-semibold">
-                            <span class="text-emerald-400"><span id="modal-poll-yes-label">Yes</span> <span id="modal-poll-yes-pct">0%</span></span>
-                            <span class="text-red-400"><span id="modal-poll-no-pct">0%</span> <span id="modal-poll-no-label">No</span></span>
-                        </div>
-                        <div class="w-full h-2.5 bg-red-500/30 rounded-full overflow-hidden">
-                            <div id="modal-poll-bar-yes" class="h-full bg-emerald-500 transition-all duration-500"
-                                style="width: 50%"></div>
-                        </div>
-                        <div class="text-[10px] sm:text-[11px] text-zinc-500" id="modal-poll-total-votes">0 votes</div>
-                    </div>
-                </div>
 
                 <!-- Crew Members Section -->
                 <div id="modal-crew-section" class="hidden space-y-3 pt-2">
@@ -6412,8 +6317,8 @@
                     // Render first, persist second - and persisting can never undo the render.
                     // Previously the two setItem calls ran BEFORE processLaunchData and weren't
                     // wrapped in try/catch: if either threw (this app keeps a lot in localStorage
-                    // - patch archive, crew cache, weather, currency rates, favorites, reminders,
-                    // poll votes... a QuotaExceededError here is a real risk), the exception
+                    // - patch archive, crew cache, weather, currency rates, favorites, reminders...
+                    // a QuotaExceededError here is a real risk), the exception
                     // skipped processLaunchData(combinedData) entirely and fell into the outer
                     // catch below, which re-renders from whatever was last cached successfully.
                     // A perfectly good live fetch - e.g. one that would've shown 97 launches -
@@ -8676,71 +8581,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
         }
 
-        // --- Prediction Poll (Firebase) ---
-        window.currentModalMissionId = null;
-        function getStoredPollVotes() {
-            try { return JSON.parse(localStorage.getItem('spacex_poll_votes')) || {}; }
-            catch (e) { return {}; }
-        }
-
-        async function voteOnMission(choice) {
-            const missionId = window.currentModalMissionId;
-            if (!missionId) return;
-            
-            const votes = getStoredPollVotes();
-            if (votes[missionId]) return;
-            
-            votes[missionId] = choice;
-            try { localStorage.setItem('spacex_poll_votes', JSON.stringify(votes)); } catch (e) { }
-            
-            const docRef = db.collection('polls').doc(missionId);
-            const increment = firebase.firestore.FieldValue.increment(1);
-            await docRef.set({ [choice]: increment }, { merge: true });
-
-            renderPollForMission(missionId);
-        }
-
-        async function renderPollForMission(missionId) {
-            const btns = document.getElementById('modal-poll-vote-buttons');
-            const results = document.getElementById('modal-poll-results');
-            const pollDict = getPollDict(document.documentElement.lang);
-
-            document.getElementById('modal-poll-total-votes').textContent = pollDict.loading;
-            
-            const userChoice = getStoredPollVotes()[missionId];
-            const docRef = db.collection('polls').doc(missionId);
-            
-            try {
-                const docSnap = await docRef.get();
-                let yesVotes = 0;
-                let noVotes = 0;
-
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    yesVotes = data.yes || 0;
-                    noVotes = data.no || 0;
-                }
-
-                const total = yesVotes + noVotes;
-                const yesPct = total > 0 ? Math.round((yesVotes / total) * 100) : 50;
-
-                document.getElementById('modal-poll-yes-pct').textContent = yesPct + '%';
-                document.getElementById('modal-poll-no-pct').textContent = (100 - yesPct) + '%';
-                document.getElementById('modal-poll-bar-yes').style.width = yesPct + '%';
-                document.getElementById('modal-poll-total-votes').textContent = pollDict.votes.replace('{n}', total.toLocaleString());
-            } catch (e) {
-                document.getElementById('modal-poll-total-votes').textContent = pollDict.error;
-            }
-
-            if (userChoice) {
-                btns.classList.add('hidden');
-                results.classList.remove('hidden');
-            } else {
-                btns.classList.remove('hidden');
-                results.classList.add('hidden');
-            }
-        }
-
         // Single source of truth for "which real-world launch site is this mission
         // flying from" (Boca Chica / Vandenberg / Cape Canaveral). Previously the
         // "LAUNCH SITE" button (targetSiteKey, used for openLaunchSiteSpecs) and the
@@ -9069,17 +8909,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
 
             handleModalFeatures(m);
-
-            window.currentModalMissionId = m.id;
-            const pollSection = document.getElementById('modal-poll-section');
-            if (pollSection) {
-                if ((m.status || '').toLowerCase().includes('completed')) {
-                    pollSection.classList.add('hidden');
-                } else {
-                    pollSection.classList.remove('hidden');
-                    renderPollForMission(m.id);
-                }
-            }
 
             const modalEl = document.getElementById('mission-modal');
             modalEl.classList.remove('hidden');
@@ -10060,7 +9889,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             let resizeFitTimer;
             window.addEventListener('resize', () => {
                 clearTimeout(resizeFitTimer);
-                resizeFitTimer = setTimeout(() => fitAllTitlesOneLine(document), 150);
+                resizeFitTimer = setTimeout(() => { fitAllTitlesOneLine(document); fitAllSectionTitles(document); }, 150);
             });
 
             // On mobile, flipping the device to landscape can leave the sticky nav
@@ -10091,6 +9920,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     nav.style.position = prevPosition;
                 }
                 fitAllTitlesOneLine(document);
+            fitAllSectionTitles(document);
             };
             window.addEventListener('orientationchange', () => {
                 settleLayoutAfterRotation();
