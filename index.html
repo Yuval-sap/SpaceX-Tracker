@@ -25,6 +25,9 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Three.js: 3D AI Compute Deals donut only (see initAIComputeScene) - guarded with
+         typeof checks there so the rest of the page still works if this CDN fails to load. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         /* @import MUST be the first rule in the stylesheet (only @charset may precede it) -
            per spec, browsers silently ignore an @import that comes after any other rule.
@@ -113,6 +116,17 @@
             pointer-events: none;
             opacity: 0.35;
             transition: opacity 0.5s ease;
+            /* --crt-hole punches a rectangular gap in this full-viewport overlay so it doesn't
+               paint over the AI Compute donut - see updateAIComputeCrtHole() in the script,
+               which keeps it synced to the donut's on-screen position on scroll/resize. A plain
+               higher z-index on the donut CANNOT achieve this: the donut lives inside the
+               page's main content wrapper, which is itself z-index:10 and a stacking context
+               of its own - <nav> escapes this overlay by being a z-50 DIRECT sibling of body
+               (outside that wrapper entirely), but the donut can't be hoisted out of the page's
+               normal content flow the same way, so no z-index set on it or its ancestors up to
+               that wrapper can ever outrank this overlay. Defaults to `none` (no hole) whenever
+               the donut isn't on screen or JS hasn't run yet. */
+            clip-path: var(--crt-hole, none);
         }
 
         .font-space {
@@ -1076,12 +1090,417 @@
             color: #047857 !important;
         }
 
-        /* Same light-mode green as the hero pills above, applied to the AI Compute Deals
-           section's dollar amounts (per-customer + total) - text-emerald-400 is too light
-           to read comfortably against a light background. */
-        body.light-theme #ai-compute-total-revenue,
-        body.light-theme #ai-compute-customer-list .text-emerald-400 {
-            color: #047857 !important;
+        /* AI Compute Deals v2 (glass-panel 3D dashboard, ai3d-* prefixed) keeps its own
+           self-contained dark palette regardless of the site's light/dark toggle - no
+           light-theme remap needed since nothing here uses the site's shared zinc-* classes.
+           Ported from a standalone reference file the user supplied. All class names prefixed
+           ai3d- specifically to avoid colliding with any other .header/.bullet/.tooltip-style
+           generic class elsewhere on the page.
+           v6: the reference file's decorative ::before/::after (radial-gradient color wash +
+           faint grid texture) were dropped entirely - user reported the dark-mode card didn't
+           read as identical to the site's other bg-zinc-900 cards, and those overlays were
+           exactly the difference (a plain zinc-900/white card has neither). Card is now a flat
+           solid color like every other card on the page. */
+        /* Solid, theme-matched background (site's own zinc-900/white per theme) instead of the
+           reference file's translucent blue-tinted glass + backdrop-filter blur - the blur was
+           picking up the page's own background through the transparency, reading as "black in
+           light mode, blue in dark mode" instead of matching the site.
+
+           Every theme-dependent color below is hardcoded per-selector in dark mode here, with a
+           matching body.light-theme override further down - deliberately NOT routed through
+           shared CSS custom properties (--ai3d-text etc). A custom-property-based version of
+           this (--ai3d-text defined on .ai3d-card, redefined in body.light-theme .ai3d-card,
+           consumed via var(--ai3d-text) in child rules) measured as correctly updating the
+           custom property itself but NOT the properties consuming it via var() in this specific
+           environment during verification - a "should work per spec but didn't" case, so this
+           uses direct per-selector overrides instead, matching every other light-theme override
+           already proven working elsewhere in this file (see e.g. .bg-zinc-900's own remap). */
+        .ai3d-card {
+            position: relative;
+            overflow: hidden;
+            background: #18181b;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            padding: 28px 24px 24px;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+                0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            color: #f1f5f9;
+            transition: border-color 0.5s;
+        }
+
+        body.light-theme .ai3d-card {
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.08);
+            color: #0f172a;
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.03) inset,
+                0 15px 45px -12px rgba(0, 0, 0, 0.1);
+        }
+
+        body.light-theme .ai3d-legend-row {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        body.light-theme .ai3d-legend-row:hover,
+        body.light-theme .ai3d-legend-row.ai3d-active {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: rgba(0, 0, 0, 0.1);
+            /* Plain dark shadow only, no colored glow layer - light mode's depth already
+               looked right before the dark-mode fix above added that second layer. */
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        }
+
+        body.light-theme .ai3d-center-hud .ai3d-unit,
+        body.light-theme .ai3d-client-name,
+        body.light-theme .ai3d-monthly-price,
+        body.light-theme .ai3d-annual-value {
+            color: #0f172a;
+        }
+
+        body.light-theme .ai3d-client-power,
+        body.light-theme .ai3d-period-label,
+        body.light-theme .ai3d-annual-label,
+        body.light-theme .ai3d-legend-heading {
+            color: #64748b;
+        }
+
+        body.light-theme .ai3d-center-hud .ai3d-sub-year,
+        body.light-theme .ai3d-client-specs,
+        body.light-theme .ai3d-footer-note {
+            color: #94a3b8;
+        }
+
+        body.light-theme .ai3d-annual-summary {
+            border-top-color: rgba(0, 0, 0, 0.08);
+        }
+
+        /* .ai3d-value uses a gradient text-fill (background-clip:text), not a plain color, so
+           a plain `color` override does nothing to it - has to redefine the gradient itself.
+           The dark-mode gradient (white fading to slate) is unreadable on this card's light-mode
+           white background; this swaps it for the site's usual dark-text gradient instead. */
+        body.light-theme .ai3d-center-hud .ai3d-value {
+            background: linear-gradient(180deg, #0f172a 20%, #475569 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            text-shadow: none;
+        }
+
+
+        body.light-theme .ai3d-footer-note {
+            border-top-color: rgba(0, 0, 0, 0.08);
+        }
+
+        @media (min-width: 640px) {
+            .ai3d-card {
+                padding: 32px 40px 28px;
+            }
+        }
+
+        .ai3d-main-layout {
+            display: grid;
+            grid-template-columns: 1fr 330px;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .ai3d-legend-col {
+            min-width: 0;
+        }
+
+        @media (max-width: 820px) {
+            .ai3d-main-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .ai3d-viewport-3d {
+                margin: 0 auto;
+                order: -1;
+            }
+        }
+
+        .ai3d-viewport-3d {
+            position: relative;
+            /* Keeping the CRT scanline overlay off the donut is handled by body::before's own
+               clip-path (see its comment) - a z-index here can't do it, since this element
+               lives inside the page's main content wrapper, itself a lower stacking context
+               that traps any z-index set in here no matter how high. */
+            width: 100%;
+            max-width: 330px;
+            aspect-ratio: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ai3d-viewport-3d canvas {
+            width: 100%;
+            height: 100%;
+            outline: none;
+            cursor: grab;
+            border-radius: 20px;
+        }
+
+        .ai3d-viewport-3d canvas:active {
+            cursor: grabbing;
+        }
+
+        .ai3d-center-hud {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            user-select: none;
+            z-index: 2;
+            width: 80%;
+        }
+
+        .ai3d-center-hud .ai3d-value {
+            font-size: 2.15rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(180deg, #ffffff 20%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(255, 255, 255, 0.15);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+
+        @media (min-width: 640px) {
+            .ai3d-center-hud .ai3d-value {
+                font-size: 2.55rem;
+            }
+        }
+
+        .ai3d-center-hud .ai3d-unit {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-top: 6px;
+            transition: opacity 0.22s ease;
+        }
+
+        .ai3d-center-hud .ai3d-sub-year {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 3px;
+            opacity: 0.85;
+            transition: opacity 0.22s ease;
+        }
+
+        .ai3d-center-hud.ai3d-switching .ai3d-value,
+        .ai3d-center-hud.ai3d-switching .ai3d-unit,
+        .ai3d-center-hud.ai3d-switching .ai3d-sub-year {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+
+        /* Matches .ai3d-annual-label's size/color exactly (per the user's request) and its
+           18px inset matches .ai3d-legend-row's own left/right padding, so this heading's text
+           starts flush with the bullets' vertical line below it instead of floating with its
+           own unrelated margin. */
+        .ai3d-legend-heading {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            margin: 0 0 10px;
+            padding: 0 18px;
+        }
+
+        .ai3d-legend-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai3d-legend-row {
+            display: grid;
+            /* 3rd column is a FIXED width (not auto) specifically so it lines up with
+               .ai3d-annual-summary's own identical grid below: an "auto" column sizes itself to
+               that row's own content, so three rows with different-length price strings (e.g.
+               "1.25B$" vs "150M$") would each get a differently-sized column and the $/B signs
+               would land in different spots row to row - a fixed width both rows share removes
+               that dependency on string length. 76px comfortably fits the longest value used
+               here ("≈27.8B$") with margin. */
+            grid-template-columns: 15px 1fr 82px;
+            align-items: center;
+            gap: 16px;
+            padding: 15px 18px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Per-customer color fade on hover/active - reads --ai3d-glow-rgb, an "R,G,B" triplet
+           set inline per-row from that deal's own brand color (see renderAIComputeSection).
+           Custom properties inherit into a pseudo-element from their originating real element,
+           so this doesn't need a separate rule per company. 90deg = color at the physical left
+           edge, fading right - matches where the bullet/color dot sits in LTR; mirrored to
+           270deg under RTL below so the glow still originates from the bullet's side. */
+        .ai3d-legend-row::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(var(--ai3d-glow-rgb, 255, 255, 255), 0.16), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        html[dir="rtl"] .ai3d-legend-row::before {
+            background: linear-gradient(270deg, rgba(var(--ai3d-glow-rgb, 255, 255, 255), 0.16), transparent 60%);
+        }
+
+        .ai3d-legend-row:hover,
+        .ai3d-legend-row.ai3d-active {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(-4px);
+            /* A plain dark drop-shadow reads as depth on the light-mode white card (dark on
+               light = visible edge) but is nearly invisible on this dark card (dark on dark) -
+               the second layer adds a colored glow using the row's own --ai3d-glow-rgb (same
+               brand-color variable the hover fade uses) so the "lift" is visible in dark mode
+               too. body.light-theme overrides box-shadow back to just the plain dark version
+               below, unchanged from before this - light mode's depth already read fine. */
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 26px -2px rgba(var(--ai3d-glow-rgb, 148, 163, 184), 0.45);
+        }
+
+        html[dir="rtl"] .ai3d-legend-row:hover,
+        html[dir="rtl"] .ai3d-legend-row.ai3d-active {
+            transform: translateX(4px);
+        }
+
+        .ai3d-legend-row:hover::before,
+        .ai3d-legend-row.ai3d-active::before {
+            opacity: 1;
+        }
+
+        .ai3d-bullet {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .ai3d-client-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .ai3d-client-title-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ai3d-client-name {
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .ai3d-client-power {
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .ai3d-client-specs {
+            font-size: 0.72rem;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ai3d-financials {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        html[dir="rtl"] .ai3d-financials {
+            text-align: left;
+        }
+
+        .ai3d-monthly-price {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #f1f5f9;
+        }
+
+        .ai3d-period-label {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            margin-top: 1px;
+        }
+
+        /* Same 15px/1fr/82px column layout, gap and left/right padding as .ai3d-legend-row
+           above (same fixed 3rd-column width too, for the same reason - see that rule's
+           comment) so the value column lines up exactly with the monthly price column in the
+           rows above it, instead of just being centered on its own. */
+        .ai3d-annual-summary {
+            display: grid;
+            grid-template-columns: 15px 1fr 82px;
+            align-items: center;
+            gap: 16px;
+            margin-top: 10px;
+            padding: 15px 18px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Spans columns 1+2 (not just 2) so its text starts flush with column 1's edge - the
+           same vertical line the legend rows' bullets sit on - instead of starting one column
+           (15px + 16px gap) further in. */
+        .ai3d-annual-label {
+            grid-column: 1 / span 2;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        /* Wraps the value + its "annualized" sub-label the same way .ai3d-financials wraps
+           .ai3d-monthly-price + .ai3d-period-label in the legend rows above - reuses
+           .ai3d-period-label directly for that sub-label rather than a new class. */
+        .ai3d-annual-financials {
+            grid-column: 3;
+            text-align: right;
+        }
+
+        html[dir="rtl"] .ai3d-annual-financials {
+            text-align: left;
+        }
+
+        .ai3d-annual-value {
+            font-size: 1.12rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #f1f5f9;
+        }
+
+        .ai3d-footer-note {
+            margin-top: 14px;
+            padding-top: 0;
+            border-top: 0;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #64748b;
+            text-align: center;
+            opacity: 0.85;
         }
 
         @media (min-width: 768px) {
@@ -3344,35 +3763,50 @@
                     <i class="fa-solid fa-microchip text-emerald-400 shrink-0"></i>
                     <span id="i18n-ai-compute-title" class="section-title-fit" lang="en">SpaceX AI Compute Deals</span>
                 </h3>
-                <p id="i18n-ai-compute-subtitle" class="text-sm text-zinc-400 transition-colors duration-500"
-                    lang="en">Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal</p>
+                <div class="flex items-center justify-between gap-x-3">
+                    <p id="i18n-ai-compute-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 min-w-0"
+                        lang="en">Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal</p>
+                    <span id="ai-compute-capacity-caption"
+                        class="font-space text-xs sm:text-sm font-semibold text-zinc-400 shrink-0 notranslate"
+                        translate="no" dir="ltr"></span>
+                </div>
             </div>
 
-            <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 transition-colors duration-500">
-                <!-- mb-4, not mb-2: a highlighted bar slice below pops up via scale-y(1.25)
-                     origin-bottom, which extends ~8-10px above the bar's own top edge (see
-                     wireAIComputeHoverLinks) - mb-2 (8px) let that popped edge reach up into
-                     this label row; mb-4 (16px) leaves it enough clearance not to. -->
-                <div class="flex items-center justify-between mb-4">
-                    <span id="i18n-ai-compute-current-capacity" class="text-sm font-semibold text-white"
-                        lang="en">Current Capacity</span>
-                    <span id="ai-compute-goal-label" class="text-sm font-bold font-space text-white"></span>
-                </div>
-                <div id="ai-compute-goal-bar" class="h-8 sm:h-10 bg-zinc-800 rounded-full overflow-hidden flex"></div>
-                <div id="ai-compute-goal-legend"
-                    class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[11px] text-zinc-400"></div>
+            <!-- EXPERIMENTAL v2: glass-panel 3D dashboard (donut + legend + capacity footer),
+                 replacing the v1 donut+separate-customer-list layout - the legend rows below
+                 already carry each customer's $/GW/specs, so that duplicate list is gone per
+                 the user's request. ai3d-* prefixed classes (see the big block in <style>
+                 above) so nothing here collides with the rest of the site. Same
+                 AI_COMPUTE_DEALS/AI_COMPUTE_TOTAL_GW/AI_COMPUTE_GOAL_GW/AI_COMPUTE_I18N data as
+                 before - see initAIComputeScene/buildAIComputeDonut/renderAIComputeSection. -->
+            <div class="ai3d-card">
+                <div class="ai3d-main-layout">
+                    <!-- Legend rows + the annual-total row share this wrapper (not just the
+                         main-layout grid's raw 1fr column) so the annual row's own grid is
+                         exactly as wide as the legend rows above it - it used to be a sibling of
+                         .ai3d-main-layout instead, spanning the FULL card width (legend column
+                         + the 300px donut column together), which put its right-aligned value
+                         under the donut instead of under the legend's price column. -->
+                    <div class="ai3d-legend-col">
+                        <div id="ai-compute-legend-heading" class="ai3d-legend-heading"></div>
+                        <div id="ai-compute-goal-legend" class="ai3d-legend-list"></div>
+                        <div class="ai3d-annual-summary" id="ai-compute-annual-summary"></div>
+                    </div>
 
-                <div class="mt-6 pt-6 border-t border-zinc-800/80">
-                    <span id="i18n-ai-compute-customer-label"
-                        class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest" lang="en">Customer</span>
-                    <div id="ai-compute-customer-list" class="mt-3 space-y-4"></div>
+                    <div class="ai3d-viewport-3d">
+                        <canvas id="ai-compute-canvas"></canvas>
+                        <div class="ai3d-center-hud" id="ai-compute-hud">
+                            <div id="ai-compute-hud-value" class="ai3d-value notranslate" translate="no" dir="ltr">
+                            </div>
+                            <div id="ai-compute-hud-unit" class="ai3d-unit notranslate" translate="no" dir="ltr">
+                            </div>
+                            <div id="ai-compute-hud-sub" class="ai3d-sub-year notranslate" translate="no" dir="ltr">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="flex items-center justify-between mt-5 pt-4 border-t border-zinc-800/80">
-                    <span id="i18n-ai-compute-total-label"
-                        class="text-xs font-bold text-zinc-400 uppercase tracking-widest" lang="en">Total</span>
-                    <span id="ai-compute-total-revenue" class="text-sm font-bold font-space text-emerald-400"></span>
-                </div>
+                <div class="ai3d-footer-note" id="ai-compute-footnote"></div>
             </div>
         </div>
 
@@ -7469,24 +7903,24 @@
         // mangle. Company names, units (MW/GW/GPU) and dates stay untranslated on purpose -
         // those are the same in every language on this site already.
         const AI_COMPUTE_I18N = {
-            en: { title: 'SpaceX AI Compute Deals', subtitle: "Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal", currentCapacity: 'Current Capacity Utilization', total: 'Total', otherCustomers: 'Internal use', remainingToBuild: 'Remaining to build', disclosed: 'disclosed', estimated: 'estimated', combined: 'combined', annualized: 'annualized', month: 'month', customer: 'Customer' },
-            he: { title: 'עסקאות מחשוב ה-AI של SpaceX', subtitle: "הקיבולת הנוכחית של Colossus מול היעד המוצהר של מאסק — 10 ג'יגה-ואט עד סוף 2027", currentCapacity: 'ניצול קיבולת נוכחית', total: 'סה״כ', otherCustomers: 'שימוש פנימי', remainingToBuild: 'נותר לבנייה', disclosed: 'מוצהר', estimated: 'משוער', combined: 'במצטבר', annualized: 'בשנה', month: 'חודש', customer: 'לקוח' },
-            iw: { title: 'עסקאות מחשוב ה-AI של SpaceX', subtitle: "הקיבולת הנוכחית של Colossus מול היעד המוצהר של מאסק — 10 ג'יגה-ואט עד סוף 2027", currentCapacity: 'ניצול קיבולת נוכחית', total: 'סה״כ', otherCustomers: 'שימוש פנימי', remainingToBuild: 'נותר לבנייה', disclosed: 'מוצהר', estimated: 'משוער', combined: 'במצטבר', annualized: 'בשנה', month: 'חודש', customer: 'לקוח' },
-            es: { title: 'Acuerdos de Computación de IA de SpaceX', subtitle: 'Capacidad actual de Colossus frente al objetivo declarado de Musk de 10GW para fines de 2027', currentCapacity: 'Utilización de Capacidad Actual', total: 'Total', otherCustomers: 'Uso interno', remainingToBuild: 'Por construir', disclosed: 'declarado', estimated: 'estimado', combined: 'combinado', annualized: 'anualizado', month: 'mes', customer: 'Cliente' },
-            fr: { title: 'Accords de Calcul IA de SpaceX', subtitle: "Capacité actuelle de Colossus par rapport à l'objectif déclaré de Musk de 10GW d'ici fin 2027", currentCapacity: 'Utilisation de la Capacité Actuelle', total: 'Total', otherCustomers: 'Usage interne', remainingToBuild: 'Reste à construire', disclosed: 'déclaré', estimated: 'estimé', combined: 'combiné', annualized: 'annualisé', month: 'mois', customer: 'Client' },
-            de: { title: 'SpaceX KI-Rechenleistungs-Deals', subtitle: "Aktuelle Colossus-Kapazität im Vergleich zu Musks erklärtem Ziel von 10GW bis Ende 2027", currentCapacity: 'Aktuelle Kapazitätsauslastung', total: 'Gesamt', otherCustomers: 'Interne Nutzung', remainingToBuild: 'Verbleibend zu bauen', disclosed: 'offengelegt', estimated: 'geschätzt', combined: 'kombiniert', annualized: 'auf Jahresbasis', month: 'Monat', customer: 'Kunde' },
-            ru: { title: 'Сделки SpaceX по ИИ-вычислениям', subtitle: 'Текущая мощность Colossus относительно заявленной Маском цели в 10 ГВт к концу 2027 года', currentCapacity: 'Текущее использование мощности', total: 'Итого', otherCustomers: 'Внутреннее использование', remainingToBuild: 'Осталось построить', disclosed: 'раскрыто', estimated: 'оценка', combined: 'суммарно', annualized: 'в год', month: 'месяц', customer: 'Клиент' },
-            zh: { title: 'SpaceX AI 算力交易', subtitle: 'Colossus 当前容量 对比 马斯克宣布的到2027年底达到10吉瓦的目标', currentCapacity: '当前容量利用率', total: '总计', otherCustomers: '内部使用', remainingToBuild: '待建设', disclosed: '已公开', estimated: '估计', combined: '合计', annualized: '年化', month: '月', customer: '客户' },
-            it: { title: 'Accordi di Calcolo IA di SpaceX', subtitle: "Capacità attuale di Colossus rispetto all'obiettivo dichiarato da Musk di 10GW entro fine 2027", currentCapacity: 'Utilizzo della Capacità Attuale', total: 'Totale', otherCustomers: 'Uso interno', remainingToBuild: 'Rimanente da costruire', disclosed: 'dichiarato', estimated: 'stimato', combined: 'combinato', annualized: 'annualizzato', month: 'mese', customer: 'Cliente' },
-            cs: { title: 'Dohody SpaceX o AI výpočetním výkonu', subtitle: 'Aktuální kapacita Colossus vůči Muskem deklarovanému cíli 10GW do konce roku 2027', currentCapacity: 'Aktuální využití kapacity', total: 'Celkem', otherCustomers: 'Interní využití', remainingToBuild: 'Zbývá vybudovat', disclosed: 'zveřejněno', estimated: 'odhad', combined: 'celkem', annualized: 'ročně', month: 'měsíc', customer: 'Zákazník' },
-            sv: { title: 'SpaceX AI-datorkraftsavtal', subtitle: "Nuvarande Colossus-kapacitet jämfört med Musks uttalade mål om 10GW till slutet av 2027", currentCapacity: 'Nuvarande kapacitetsutnyttjande', total: 'Totalt', otherCustomers: 'Intern användning', remainingToBuild: 'Kvar att bygga', disclosed: 'offentliggjort', estimated: 'uppskattat', combined: 'kombinerat', annualized: 'på årsbasis', month: 'månad', customer: 'Kund' },
-            nl: { title: 'SpaceX AI-rekenkracht-deals', subtitle: "Huidige Colossus-capaciteit versus Musks aangekondigde doel van 10GW eind 2027", currentCapacity: 'Huidige capaciteitsbenutting', total: 'Totaal', otherCustomers: 'Intern gebruik', remainingToBuild: 'Nog te bouwen', disclosed: 'bekendgemaakt', estimated: 'geschat', combined: 'gecombineerd', annualized: 'op jaarbasis', month: 'maand', customer: 'Klant' },
-            da: { title: 'SpaceX AI-computeraftaler', subtitle: 'Nuværende Colossus-kapacitet i forhold til Musks erklærede mål om 10GW inden udgangen af 2027', currentCapacity: 'Nuværende kapacitetsudnyttelse', total: 'I alt', otherCustomers: 'Internt brug', remainingToBuild: 'Resterende at bygge', disclosed: 'offentliggjort', estimated: 'estimeret', combined: 'kombineret', annualized: 'årligt', month: 'måned', customer: 'Kunde' },
-            pt: { title: 'Acordos de Computação de IA da SpaceX', subtitle: 'Capacidade atual da Colossus em relação à meta declarada de Musk de 10GW até o fim de 2027', currentCapacity: 'Utilização Atual da Capacidade', total: 'Total', otherCustomers: 'Uso interno', remainingToBuild: 'Restante a construir', disclosed: 'divulgado', estimated: 'estimado', combined: 'combinado', annualized: 'anualizado', month: 'mês', customer: 'Cliente' },
-            pl: { title: 'Umowy SpaceX na moc obliczeniową AI', subtitle: 'Obecna moc Colossus w porównaniu z deklarowanym przez Muska celem 10GW do końca 2027', currentCapacity: 'Obecne wykorzystanie mocy', total: 'Razem', otherCustomers: 'Użycie wewnętrzne', remainingToBuild: 'Pozostało do zbudowania', disclosed: 'ujawnione', estimated: 'szacowane', combined: 'łącznie', annualized: 'w skali roku', month: 'miesiąc', customer: 'Klient' },
-            hi: { title: 'SpaceX AI कंप्यूट सौदे', subtitle: 'वर्तमान Colossus क्षमता बनाम मस्क का 2027 के अंत तक 10GW का घोषित लक्ष्य', currentCapacity: 'वर्तमान क्षमता उपयोग', total: 'कुल', otherCustomers: 'आंतरिक उपयोग', remainingToBuild: 'बनाना शेष', disclosed: 'घोषित', estimated: 'अनुमानित', combined: 'संयुक्त रूप से', annualized: 'वार्षिक', month: 'महीना', customer: 'ग्राहक' },
-            ar: { title: 'صفقات الحوسبة للذكاء الاصطناعي لدى SpaceX', subtitle: 'السعة الحالية لـ Colossus مقابل هدف ماسك المعلن بـ10 جيجاواط بحلول نهاية 2027', currentCapacity: 'استخدام السعة الحالية', total: 'الإجمالي', otherCustomers: 'استخدام داخلي', remainingToBuild: 'المتبقي للبناء', disclosed: 'معلن عنه', estimated: 'تقديري', combined: 'مجتمعة', annualized: 'سنويًا', month: 'شهر', customer: 'العميل' },
-            tr: { title: 'SpaceX AI Hesaplama Anlaşmaları', subtitle: "Mevcut Colossus kapasitesi, Musk'ın 2027 sonuna kadar 10GW hedefine göre", currentCapacity: 'Mevcut Kapasite Kullanımı', total: 'Toplam', otherCustomers: 'İç kullanım', remainingToBuild: 'İnşa edilecek kalan', disclosed: 'açıklanan', estimated: 'tahmini', combined: 'toplamda', annualized: 'yıllık', month: 'ay', customer: 'Müşteri' },
+            en: { title: 'SpaceX AI Compute Deals', subtitle: "Current Colossus capacity vs. Musk's stated 10GW-by-end-of-2027 goal", currentCapacity: 'Current Capacity Utilization', total: 'Total', otherCustomers: 'Internal use', remainingToBuild: 'Remaining to build', disclosed: 'disclosed', estimated: 'estimated', combined: 'combined', annualized: 'annualized', month: 'month', customer: 'Customer', customers: 'Customers', dragHint: 'Drag to rotate', footnote: 'Estimated figures · Colossus Supercluster · Memphis / future sites', colossusGoal: 'Colossus goal: {{GW}}GW by end of 2027', monthly: 'Monthly' },
+            he: { title: 'עסקאות מחשוב ה-AI של SpaceX', subtitle: "הקיבולת הנוכחית של Colossus מול היעד המוצהר של מאסק — 10 ג'יגה-ואט עד סוף 2027", currentCapacity: 'ניצול קיבולת נוכחית', total: 'סה״כ', otherCustomers: 'שימוש פנימי', remainingToBuild: 'נותר לבנייה', disclosed: 'מוצהר', estimated: 'משוער', combined: 'במצטבר', annualized: 'בשנה', month: 'חודש', customer: 'לקוח', customers: 'לקוחות', dragHint: 'גרור לסיבוב', footnote: "נתונים משוערים · Colossus Supercluster · ממפיס / אתרים עתידיים", colossusGoal: "יעד Colossus: {{GW}} ג'יגה-ואט עד סוף 2027", monthly: 'חודשי' },
+            iw: { title: 'עסקאות מחשוב ה-AI של SpaceX', subtitle: "הקיבולת הנוכחית של Colossus מול היעד המוצהר של מאסק — 10 ג'יגה-ואט עד סוף 2027", currentCapacity: 'ניצול קיבולת נוכחית', total: 'סה״כ', otherCustomers: 'שימוש פנימי', remainingToBuild: 'נותר לבנייה', disclosed: 'מוצהר', estimated: 'משוער', combined: 'במצטבר', annualized: 'בשנה', month: 'חודש', customer: 'לקוח', customers: 'לקוחות', dragHint: 'גרור לסיבוב', footnote: "נתונים משוערים · Colossus Supercluster · ממפיס / אתרים עתידיים", colossusGoal: "יעד Colossus: {{GW}} ג'יגה-ואט עד סוף 2027", monthly: 'חודשי' },
+            es: { title: 'Acuerdos de Computación de IA de SpaceX', subtitle: 'Capacidad actual de Colossus frente al objetivo declarado de Musk de 10GW para fines de 2027', currentCapacity: 'Utilización de Capacidad Actual', total: 'Total', otherCustomers: 'Uso interno', remainingToBuild: 'Por construir', disclosed: 'declarado', estimated: 'estimado', combined: 'combinado', annualized: 'anualizado', month: 'mes', customer: 'Cliente', customers: 'Clientes', dragHint: 'Arrastra para girar', footnote: 'Cifras estimadas · Colossus Supercluster · Memphis / futuros sitios', colossusGoal: 'Objetivo Colossus: {{GW}}GW para fines de 2027', monthly: 'Mensual' },
+            fr: { title: 'Accords de Calcul IA de SpaceX', subtitle: "Capacité actuelle de Colossus par rapport à l'objectif déclaré de Musk de 10GW d'ici fin 2027", currentCapacity: 'Utilisation de la Capacité Actuelle', total: 'Total', otherCustomers: 'Usage interne', remainingToBuild: 'Reste à construire', disclosed: 'déclaré', estimated: 'estimé', combined: 'combiné', annualized: 'annualisé', month: 'mois', customer: 'Client', customers: 'Clients', dragHint: 'Glisser pour pivoter', footnote: 'Chiffres estimés · Colossus Supercluster · Memphis / futurs sites', colossusGoal: 'Objectif Colossus : {{GW}}GW d’ici fin 2027', monthly: 'Mensuel' },
+            de: { title: 'SpaceX KI-Rechenleistungs-Deals', subtitle: "Aktuelle Colossus-Kapazität im Vergleich zu Musks erklärtem Ziel von 10GW bis Ende 2027", currentCapacity: 'Aktuelle Kapazitätsauslastung', total: 'Gesamt', otherCustomers: 'Interne Nutzung', remainingToBuild: 'Verbleibend zu bauen', disclosed: 'offengelegt', estimated: 'geschätzt', combined: 'kombiniert', annualized: 'auf Jahresbasis', month: 'Monat', customer: 'Kunde', customers: 'Kunden', dragHint: 'Ziehen zum Drehen', footnote: 'Geschätzte Zahlen · Colossus Supercluster · Memphis / zukünftige Standorte', colossusGoal: 'Colossus-Ziel: {{GW}}GW bis Ende 2027', monthly: 'Monatlich' },
+            ru: { title: 'Сделки SpaceX по ИИ-вычислениям', subtitle: 'Текущая мощность Colossus относительно заявленной Маском цели в 10 ГВт к концу 2027 года', currentCapacity: 'Текущее использование мощности', total: 'Итого', otherCustomers: 'Внутреннее использование', remainingToBuild: 'Осталось построить', disclosed: 'раскрыто', estimated: 'оценка', combined: 'суммарно', annualized: 'в год', month: 'месяц', customer: 'Клиент', customers: 'Клиенты', dragHint: 'Потяните для вращения', footnote: 'Оценочные данные · Colossus Supercluster · Мемфис / будущие площадки', colossusGoal: 'Цель Colossus: {{GW}} ГВт к концу 2027 года', monthly: 'Ежемесячно' },
+            zh: { title: 'SpaceX AI 算力交易', subtitle: 'Colossus 当前容量 对比 马斯克宣布的到2027年底达到10吉瓦的目标', currentCapacity: '当前容量利用率', total: '总计', otherCustomers: '内部使用', remainingToBuild: '待建设', disclosed: '已公开', estimated: '估计', combined: '合计', annualized: '年化', month: '月', customer: '客户', customers: '客户', dragHint: '拖动以旋转', footnote: '估计数据 · Colossus 超级集群 · 孟菲斯 / 未来选址', colossusGoal: 'Colossus 目标：到2027年底达到{{GW}}吉瓦', monthly: '每月' },
+            it: { title: 'Accordi di Calcolo IA di SpaceX', subtitle: "Capacità attuale di Colossus rispetto all'obiettivo dichiarato da Musk di 10GW entro fine 2027", currentCapacity: 'Utilizzo della Capacità Attuale', total: 'Totale', otherCustomers: 'Uso interno', remainingToBuild: 'Rimanente da costruire', disclosed: 'dichiarato', estimated: 'stimato', combined: 'combinato', annualized: 'annualizzato', month: 'mese', customer: 'Cliente', customers: 'Clienti', dragHint: 'Trascina per ruotare', footnote: 'Cifre stimate · Colossus Supercluster · Memphis / siti futuri', colossusGoal: 'Obiettivo Colossus: {{GW}}GW entro fine 2027', monthly: 'Mensile' },
+            cs: { title: 'Dohody SpaceX o AI výpočetním výkonu', subtitle: 'Aktuální kapacita Colossus vůči Muskem deklarovanému cíli 10GW do konce roku 2027', currentCapacity: 'Aktuální využití kapacity', total: 'Celkem', otherCustomers: 'Interní využití', remainingToBuild: 'Zbývá vybudovat', disclosed: 'zveřejněno', estimated: 'odhad', combined: 'celkem', annualized: 'ročně', month: 'měsíc', customer: 'Zákazník', customers: 'Zákazníci', dragHint: 'Táhnutím otočíte', footnote: 'Odhadované údaje · Colossus Supercluster · Memphis / budoucí lokality', colossusGoal: 'Cíl Colossus: {{GW}}GW do konce roku 2027', monthly: 'Měsíčně' },
+            sv: { title: 'SpaceX AI-datorkraftsavtal', subtitle: "Nuvarande Colossus-kapacitet jämfört med Musks uttalade mål om 10GW till slutet av 2027", currentCapacity: 'Nuvarande kapacitetsutnyttjande', total: 'Totalt', otherCustomers: 'Intern användning', remainingToBuild: 'Kvar att bygga', disclosed: 'offentliggjort', estimated: 'uppskattat', combined: 'kombinerat', annualized: 'på årsbasis', month: 'månad', customer: 'Kund', customers: 'Kunder', dragHint: 'Dra för att rotera', footnote: 'Uppskattade siffror · Colossus Supercluster · Memphis / framtida platser', colossusGoal: 'Colossus-mål: {{GW}}GW till slutet av 2027', monthly: 'Månadsvis' },
+            nl: { title: 'SpaceX AI-rekenkracht-deals', subtitle: "Huidige Colossus-capaciteit versus Musks aangekondigde doel van 10GW eind 2027", currentCapacity: 'Huidige capaciteitsbenutting', total: 'Totaal', otherCustomers: 'Intern gebruik', remainingToBuild: 'Nog te bouwen', disclosed: 'bekendgemaakt', estimated: 'geschat', combined: 'gecombineerd', annualized: 'op jaarbasis', month: 'maand', customer: 'Klant', customers: 'Klanten', dragHint: 'Sleep om te draaien', footnote: 'Geschatte cijfers · Colossus Supercluster · Memphis / toekomstige locaties', colossusGoal: 'Colossus-doel: {{GW}}GW eind 2027', monthly: 'Maandelijks' },
+            da: { title: 'SpaceX AI-computeraftaler', subtitle: 'Nuværende Colossus-kapacitet i forhold til Musks erklærede mål om 10GW inden udgangen af 2027', currentCapacity: 'Nuværende kapacitetsudnyttelse', total: 'I alt', otherCustomers: 'Internt brug', remainingToBuild: 'Resterende at bygge', disclosed: 'offentliggjort', estimated: 'estimeret', combined: 'kombineret', annualized: 'årligt', month: 'måned', customer: 'Kunde', customers: 'Kunder', dragHint: 'Træk for at rotere', footnote: 'Estimerede tal · Colossus Supercluster · Memphis / fremtidige lokationer', colossusGoal: 'Colossus-mål: {{GW}}GW inden udgangen af 2027', monthly: 'Månedligt' },
+            pt: { title: 'Acordos de Computação de IA da SpaceX', subtitle: 'Capacidade atual da Colossus em relação à meta declarada de Musk de 10GW até o fim de 2027', currentCapacity: 'Utilização Atual da Capacidade', total: 'Total', otherCustomers: 'Uso interno', remainingToBuild: 'Restante a construir', disclosed: 'divulgado', estimated: 'estimado', combined: 'combinado', annualized: 'anualizado', month: 'mês', customer: 'Cliente', customers: 'Clientes', dragHint: 'Arraste para girar', footnote: 'Valores estimados · Colossus Supercluster · Memphis / futuros locais', colossusGoal: 'Meta Colossus: {{GW}}GW até o fim de 2027', monthly: 'Mensal' },
+            pl: { title: 'Umowy SpaceX na moc obliczeniową AI', subtitle: 'Obecna moc Colossus w porównaniu z deklarowanym przez Muska celem 10GW do końca 2027', currentCapacity: 'Obecne wykorzystanie mocy', total: 'Razem', otherCustomers: 'Użycie wewnętrzne', remainingToBuild: 'Pozostało do zbudowania', disclosed: 'ujawnione', estimated: 'szacowane', combined: 'łącznie', annualized: 'w skali roku', month: 'miesiąc', customer: 'Klient', customers: 'Klienci', dragHint: 'Przeciągnij, aby obrócić', footnote: 'Szacunkowe dane · Colossus Supercluster · Memphis / przyszłe lokalizacje', colossusGoal: 'Cel Colossus: {{GW}}GW do końca 2027', monthly: 'Miesięcznie' },
+            hi: { title: 'SpaceX AI कंप्यूट सौदे', subtitle: 'वर्तमान Colossus क्षमता बनाम मस्क का 2027 के अंत तक 10GW का घोषित लक्ष्य', currentCapacity: 'वर्तमान क्षमता उपयोग', total: 'कुल', otherCustomers: 'आंतरिक उपयोग', remainingToBuild: 'बनाना शेष', disclosed: 'घोषित', estimated: 'अनुमानित', combined: 'संयुक्त रूप से', annualized: 'वार्षिक', month: 'महीना', customer: 'ग्राहक', customers: 'ग्राहक', dragHint: 'घुमाने के लिए खींचें', footnote: 'अनुमानित आंकड़े · Colossus Supercluster · मेम्फिस / भविष्य के स्थान', colossusGoal: 'Colossus लक्ष्य: 2027 के अंत तक {{GW}}GW', monthly: 'मासिक' },
+            ar: { title: 'صفقات الحوسبة للذكاء الاصطناعي لدى SpaceX', subtitle: 'السعة الحالية لـ Colossus مقابل هدف ماسك المعلن بـ10 جيجاواط بحلول نهاية 2027', currentCapacity: 'استخدام السعة الحالية', total: 'الإجمالي', otherCustomers: 'استخدام داخلي', remainingToBuild: 'المتبقي للبناء', disclosed: 'معلن عنه', estimated: 'تقديري', combined: 'مجتمعة', annualized: 'سنويًا', month: 'شهر', customer: 'العميل', customers: 'العملاء', dragHint: 'اسحب للتدوير', footnote: 'أرقام تقديرية · Colossus Supercluster · ممفيس / مواقع مستقبلية', colossusGoal: 'هدف Colossus: {{GW}} جيجاواط بحلول نهاية 2027', monthly: 'شهريًا' },
+            tr: { title: 'SpaceX AI Hesaplama Anlaşmaları', subtitle: "Mevcut Colossus kapasitesi, Musk'ın 2027 sonuna kadar 10GW hedefine göre", currentCapacity: 'Mevcut Kapasite Kullanımı', total: 'Toplam', otherCustomers: 'İç kullanım', remainingToBuild: 'İnşa edilecek kalan', disclosed: 'açıklanan', estimated: 'tahmini', combined: 'toplamda', annualized: 'yıllık', month: 'ay', customer: 'Müşteri', customers: 'Müşteriler', dragHint: 'Döndürmek için sürükleyin', footnote: 'Tahmini rakamlar · Colossus Supercluster · Memphis / gelecekteki tesisler', colossusGoal: 'Colossus hedefi: 2027 sonuna kadar {{GW}}GW', monthly: 'Aylık' },
         };
 
         let lastAppliedAIComputeLang = null;
@@ -7501,258 +7935,487 @@
             if (titleEl) titleEl.textContent = dict.title;
             const subtitleEl = document.getElementById('i18n-ai-compute-subtitle');
             if (subtitleEl) subtitleEl.textContent = dict.subtitle;
-            const currentCapEl = document.getElementById('i18n-ai-compute-current-capacity');
-            if (currentCapEl) currentCapEl.textContent = dict.currentCapacity;
-            const totalLabelEl = document.getElementById('i18n-ai-compute-total-label');
-            if (totalLabelEl) totalLabelEl.textContent = dict.total;
-            const customerLabelEl = document.getElementById('i18n-ai-compute-customer-label');
-            if (customerLabelEl) customerLabelEl.textContent = dict.customer;
 
             renderAIComputeSection(dict);
         }
 
-        // One-way-at-a-time highlight between a bar slice and its name in the customer list
-        // below (NOT the legend - only the 3 real deals have a customer-list row to pair with,
-        // so "Internal use"/"Remaining to build" simply don't participate). Pointing at (or
-        // touching, on mobile) the slice pops the *name* up - not the slice itself - and
-        // pointing at the name (or that customer's own $-share mini progress bar, which
-        // carries the same data-ai-segment index) pops the *slice* - not the name itself.
-        // Keyed by the shared
-        // data-ai-segment index set in renderAIComputeSection. The bar container's overflow
-        // has to flip to visible while a slice is popped - overflow-hidden (needed the rest of
-        // the time so the *unpopped* slices keep their clean pill-shaped ends) would otherwise
-        // clip the pop-up itself. Re-run every render since bar/list get replaced via
-        // innerHTML each time (language switch, etc.), which drops any previously-attached
-        // listeners along with the old elements.
-        function wireAIComputeHoverLinks(bar, list, legend) {
-            const segmentEls = bar.querySelectorAll('[data-ai-segment]');
-            // data-ai-segment lives on each customer's WHOLE block (name row + $ amount + mini
-            // bar + caption), not on the name span alone - wiring the trigger to only the name
-            // (or the name + the mini bar as two separate elements) left a real gap between them
-            // (the row's own mb-1.5, plus the $ amount sitting next to the name): moving the
-            // cursor from the name straight down toward the mini bar crossed that gap, firing a
-            // mouseleave-then-mouseenter pair and making the bar segment visibly drop and pop
-            // back up mid-motion instead of staying risen the whole time. One continuous hover
-            // target for the entire block removes the gap entirely. The name itself still needs
-            // its own separate lookup for setNameEnlarged below - that's data-ai-name now,
-            // kept distinct from this block-level data-ai-segment on purpose.
-            const customerBlockEls = list.querySelectorAll('[data-ai-segment]');
-            const byIndex = (root, i) => root.querySelector(`[data-ai-segment="${i}"]`);
-            let popCount = 0;
+        // v2: glass-panel 3D dashboard (donut of the 3 NAMED customers only, share relative to
+        // each other - matching the reference file's own sliceData - plus a separate capacity
+        // footer bar for the full current-vs-goal picture including "internal use"). Ported
+        // from a standalone file the user supplied, wired to the site's real AI_COMPUTE_DEALS/
+        // AI_COMPUTE_TOTAL_GW/AI_COMPUTE_GOAL_GW/AI_COMPUTE_I18N instead of its own hardcoded
+        // numbers. Scene built once and kept alive across language switches; buildAIComputeDonut
+        // only reruns when the underlying data changes, not on every language switch. Guarded
+        // with typeof THREE checks so a CDN failure leaves the donut blank, not the whole page.
+        let aiComputeScene = null;
 
-            const setSegmentPopped = (i, on) => {
-                const seg = byIndex(bar, i);
-                if (!seg) return;
-                seg.classList.toggle('scale-y-125', on);
-                seg.classList.toggle('z-10', on);
-                // Elevation shadow while popped - sells the "risen above its neighbors" 3D feel
-                // instead of just a flat vertical scale. Offset/blur values modeled on the same
-                // "lifted card" shadow language already used for #hero-banner elsewhere in this
-                // file (see that rule's own comment) - but as a plain dark shadow in BOTH themes
-                // here, not the light-mode-only glow used there: that hero-banner glow exists
-                // specifically because it sits on the page's own near-black background (#020204)
-                // where a dark shadow is imperceptible, while this bar sits on bg-zinc-800/900 -
-                // light enough that an ordinary dark shadow still reads as real depth.
-                seg.style.boxShadow = on
-                    ? '0 10px 15px -5px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.4)'
-                    : '';
-                // % label: font-size is derived from the segment's own rendered pixel width
-                // (offsetWidth - unaffected by scale-y-125, since a transform never changes the
-                // layout box it's applied to), not a fixed size or the percentage value itself -
-                // Reflection AI's segment is ~20px wide at the widths this bar actually renders
-                // at, nowhere near enough room for a fixed-size label without it spilling badly,
-                // while Anthropic/Google/Internal-use are all wide enough to comfortably share
-                // one normal, larger size. /9 and the 8-13px clamp were picked by hand so only
-                // the genuinely cramped segment(s) shrink at all - everything reasonably wide
-                // lands on the same comfortable 13px rather than continuing to scale up needlessly.
-                const pctLabel = seg.querySelector('.ai-segment-pct');
-                if (pctLabel) {
-                    if (on) pctLabel.style.fontSize = Math.max(8, Math.min(13, seg.offsetWidth / 9)) + 'px';
-                    pctLabel.classList.toggle('opacity-0', !on);
-                }
-                popCount += on ? 1 : -1;
-                bar.classList.toggle('overflow-hidden', popCount <= 0);
-                bar.classList.toggle('overflow-visible', popCount > 0);
-            };
-            const setNameEnlarged = (i, on) => {
-                const name = list.querySelector(`[data-ai-name="${i}"]`);
-                if (!name) return;
-                // scale (not text-base/font-size): a font-size bump triggers real layout
-                // reflow, which was growing this row's own flex height and shoving every
-                // row below it down the page - visible as the whole customer list "jumping"
-                // on every hover. A transform never affects layout, so nothing else moves.
-                // The thing a transform doesn't solve by itself is the color dot right next
-                // to the name - scaling from the box's center would grow half the text
-                // leftward straight over it. Fixed by anchoring transform-origin at whichever
-                // edge is farthest from the dot (origin-left/origin-right, set per-name at
-                // render time below based on current dir) so all the growth points away from
-                // the dot instead of into it.
-                name.classList.toggle('scale-110', on);
-                name.classList.toggle('font-bold', on);
-                name.classList.toggle('z-10', on);
+        function initAIComputeScene() {
+            const canvas = document.getElementById('ai-compute-canvas');
+            if (!canvas || typeof THREE === 'undefined') return null;
+            const container = canvas.parentElement;
 
-                // Glow in that specific customer's own brand color (same hex already used for
-                // its bar segment/dot - AI_COMPUTE_DEALS[i].color is a Tailwind arbitrary-value
-                // class like "bg-[#d97757]", so the hex is pulled back out of it rather than
-                // hand-duplicated here). Both the on/off values keep the exact same two-shadow
-                // shape and only differ in alpha (00 = fully transparent) - text-shadow only
-                // transitions smoothly when the before/after value lists line up structurally,
-                // so toggling between a real shadow and '' (which collapses to "none") would
-                // otherwise just snap instead of fading.
-                const deal = AI_COMPUTE_DEALS[i];
-                const hex = deal && deal.color.match(/#[0-9a-fA-F]{6}/);
-                if (hex) {
-                    name.style.textShadow = on
-                        ? `0 0 6px ${hex[0]}, 0 0 16px ${hex[0]}cc`
-                        : `0 0 6px ${hex[0]}00, 0 0 16px ${hex[0]}00`;
-                }
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+            camera.position.set(0, -7.6, 10.8);
+            camera.lookAt(0, -0.1, 0);
+
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // Deliberately NOT setting outputEncoding/outputColorSpace to sRGB here (the
+            // reference file did, appropriate for its literal PBR MeshStandardMaterial use) -
+            // that applies a gamma curve to every rendered pixel, which was the actual reason
+            // colors still looked pale after the MeshBasicMaterial swap: the material's own
+            // color value was verified exact (checked via material.color.getHexString()), but
+            // the RENDERER was still shifting the final on-screen pixels away from it. Leaving
+            // this unset keeps Three.js r128's default (no gamma curve applied), so a slice's
+            // rendered color matches its hex value directly - the same reason the legend dot,
+            // a plain CSS background-color, needs no such correction either.
+
+            // Kept low - ambient/key light stacks additively with the material's own emissive
+            // (see buildAIComputeDonut), and for a warm high-red color like Anthropic's orange
+            // the combined total was clipping the red channel to 255 (measured via a forced
+            // render + real WebGL readPixels - the rendered pixel came back (255,147,107)
+            // against the true (217,119,87)), which desaturates/washes out exactly the reddish
+            // colors - the visible "still pale" symptom. 0.42/0.25 (nudged up from an earlier
+            // 0.35/0.2 - user found the resting/non-hovered slices a bit too dark) is the
+            // highest this pair goes before that same red-channel clip returns; re-verify with
+            // a forced render + readPixels (see buildAIComputeDonut's animate() baseline
+            // emissiveIntensity too) before raising either further.
+            scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+            const keyLight = new THREE.DirectionalLight(0xffffff, 0.25);
+            keyLight.position.set(4, -6, 12);
+            scene.add(keyLight);
+
+            const pieGroup = new THREE.Group();
+            scene.add(pieGroup);
+
+            aiComputeScene = {
+                scene, camera, renderer, canvas, container, pieGroup,
+                meshes: [], labelSprites: [], activeIdx: -1, lockedIdx: -1,
+                targetRotation: 0, isDragging: false, prevX: 0, dragDistance: 0,
+                raycastWired: false
             };
 
-            segmentEls.forEach(el => {
-                const i = el.getAttribute('data-ai-segment');
-                el.addEventListener('mouseenter', () => setNameEnlarged(i, true));
-                el.addEventListener('mouseleave', () => setNameEnlarged(i, false));
-                el.addEventListener('touchstart', () => setNameEnlarged(i, true), { passive: true });
-                el.addEventListener('touchend', () => setNameEnlarged(i, false));
-                el.addEventListener('touchcancel', () => setNameEnlarged(i, false));
-            });
-            customerBlockEls.forEach(el => {
-                const i = el.getAttribute('data-ai-segment');
-                el.addEventListener('mouseenter', () => setSegmentPopped(i, true));
-                el.addEventListener('mouseleave', () => setSegmentPopped(i, false));
-                el.addEventListener('touchstart', () => setSegmentPopped(i, true), { passive: true });
-                el.addEventListener('touchend', () => setSegmentPopped(i, false));
-                el.addEventListener('touchcancel', () => setSegmentPopped(i, false));
-            });
-
-            // "Internal use" is the one segment with no customer-list row to hover (see the
-            // data-driven-only wiring note above) - its name only exists here, in the legend, so
-            // this is its only possible hover target. Deliberately NOT wiring the other legend
-            // entries the same way: Anthropic/Google/Reflection AI already have their pop trigger
-            // in the customer list below (and its mini progress bar), and the legend is compact/
-            // inline text rather than a dedicated row, no natural place to pop the *name* itself.
-            if (legend) {
-                legend.querySelectorAll('[data-ai-segment]').forEach(el => {
-                    const i = el.getAttribute('data-ai-segment');
-                    el.addEventListener('mouseenter', () => setSegmentPopped(i, true));
-                    el.addEventListener('mouseleave', () => setSegmentPopped(i, false));
-                    el.addEventListener('touchstart', () => setSegmentPopped(i, true), { passive: true });
-                    el.addEventListener('touchend', () => setSegmentPopped(i, false));
-                    el.addEventListener('touchcancel', () => setSegmentPopped(i, false));
-                });
+            function resize() {
+                const w = container.clientWidth, h = container.clientHeight;
+                if (!w || !h) return;
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
             }
+            resize();
+            window.addEventListener('resize', resize);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const s = aiComputeScene;
+
+                if (!s.isDragging) s.targetRotation += 0.00115;
+                s.pieGroup.rotation.z += (s.targetRotation - s.pieGroup.rotation.z) * 0.075;
+
+                const highlightIdx = s.activeIdx !== -1 ? s.activeIdx : s.lockedIdx;
+                s.meshes.forEach((m, idx) => {
+                    const isTarget = highlightIdx === idx;
+                    m.userData.lift += ((isTarget ? 1 : 0) - m.userData.lift) * 0.17;
+                    const p = m.userData.lift;
+                    const mid = m.userData.midAngle;
+                    const pop = p * 0.32;
+                    m.position.x = Math.cos(mid) * pop;
+                    m.position.y = Math.sin(mid) * pop;
+                    m.position.z = p * 0.68;
+                    // Resting (p=0) value is what every slice sits at almost all the time,
+                    // since nothing is hovered/pinned by default - bumped 0.18 -> 0.3 (measured
+                    // clip-free via a forced render + readPixels sweep) so the idle donut reads
+                    // brighter, matching the "too dark at rest" note.
+                    // The p*0.7 hover boost this used to have (peak 0.88, later 0.85) was NEVER
+                    // actually verified against clipping - only the resting state was checked
+                    // before. Testing the actual hover peak the same way turned up a real bug:
+                    // at 0.85 nearly the whole slice clipped (99%+ of Anthropic's pixels pinned
+                    // their red channel to 255 - the material's own emissive color adds flatly
+                    // on top of the lit diffuse term regardless of view angle, so raising it far
+                    // enough blows out virtually every pixel at once, not just a specular spot).
+                    // A sweep at 0.03 steps found clipping starts appearing past ~0.33 and Anthropic's
+                    // saturated red/Google's near-maxed blue leave almost no further headroom -
+                    // kept the hover bump small (peak 0.37) to stay clip-free in practice.
+                    m.material.emissiveIntensity = 0.3 + p * 0.07;
+                    s.labelSprites[idx].material.opacity = p * 0.98;
+                    s.labelSprites[idx].position.z = m.userData.depth + 0.5 + p * 0.4;
+                });
+
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            return aiComputeScene;
+        }
+
+        function createAIComputeLabelTexture(text) {
+            const c = document.createElement('canvas');
+            c.width = 256;
+            c.height = 128;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.shadowColor = 'rgba(0,0,0,0.45)';
+            ctx.shadowBlur = 16;
+            ctx.beginPath();
+            ctx.roundRect(28, 28, 200, 72, 36);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 38px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 66);
+            const tex = new THREE.CanvasTexture(c);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        // Rebuilds the donut's 3D geometry from the 3 named AI_COMPUTE_DEALS entries (share is
+        // relative to their own sum, NOT AI_COMPUTE_TOTAL_GW - "internal use" isn't a donut
+        // slice here, only a segment in the separate capacity footer bar below). Only needs to
+        // run when the underlying data actually changes, not on every language switch.
+        function buildAIComputeDonut(deals) {
+            if (!aiComputeScene) return;
+            const { pieGroup } = aiComputeScene;
+            aiComputeScene.meshes.forEach(m => pieGroup.remove(m));
+            aiComputeScene.meshes = [];
+            aiComputeScene.labelSprites = [];
+
+            const innerR = 2.15, outerR = 3.5, depth = 0.65, gap = 0.032;
+            const stepCount = 64;
+            const total = deals.reduce((s, d) => s + d.gw, 0) || 1;
+            let currentAngle = Math.PI / 2;
+
+            deals.forEach((d, i) => {
+                const share = d.gw / total;
+                const totalAngle = share * Math.PI * 2;
+                const start = currentAngle - gap / 2;
+                const end = currentAngle - totalAngle + gap / 2;
+                const mid = (start + end) / 2;
+
+                const shape = new THREE.Shape();
+                for (let s = 0; s <= stepCount; s++) {
+                    const a = start - (s / stepCount) * (start - end);
+                    const x = Math.cos(a) * outerR, y = Math.sin(a) * outerR;
+                    if (s === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+                }
+                for (let s = stepCount; s >= 0; s--) {
+                    const a = start - (s / stepCount) * (start - end);
+                    shape.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
+                }
+                shape.closePath();
+
+                const geom = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.06, bevelThickness: 0.06 });
+                // Back to a LIT material (MeshStandardMaterial) - a plain unlit MeshBasicMaterial
+                // guaranteed color accuracy but flattened the slices completely, losing the
+                // bevel/rotation shading that reads as "3D". The actual cause of the earlier
+                // washed-out look was the renderer's sRGB output encoding (removed above), not
+                // the material type - with that fixed, a low-metalness, same-color-emissive
+                // material keeps the true hue dominant (the emissive component ignores external
+                // lights entirely) while still picking up enough real shading from the scene's
+                // ambient/key light to look properly three-dimensional.
+                const mat = new THREE.MeshStandardMaterial({
+                    color: d.colorHex, roughness: 0.45, metalness: 0.04,
+                    // Overwritten every frame by animate()'s own emissiveIntensity formula -
+                    // this initial value only matters for the single frame before that first
+                    // runs, so it's set to match animate()'s resting value (0.3).
+                    emissive: d.colorHex, emissiveIntensity: 0.3
+                });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.userData = { index: i, midAngle: mid, lift: 0, depth };
+                pieGroup.add(mesh);
+                aiComputeScene.meshes.push(mesh);
+
+                // Percentage label shows this deal's share of AI_COMPUTE_TOTAL_GW (current live
+                // capacity), NOT its share of the 3 named deals summed together - the slice
+                // ANGLES are still sized relative to each other (so 3 meaningfully-sized slices
+                // make a legible donut), but the printed number needs to answer "how much of
+                // the ~2GW total is this", which is what a viewer actually expects, not an
+                // internal-only ratio among just the named customers.
+                const pct = (d.gw / AI_COMPUTE_TOTAL_GW * 100).toFixed(1) + '%';
+                const spriteMat = new THREE.SpriteMaterial({ map: createAIComputeLabelTexture(pct), transparent: true, opacity: 0, depthTest: false });
+                const sprite = new THREE.Sprite(spriteMat);
+                sprite.scale.set(1.55, 0.78, 1);
+                const labelR = (innerR + outerR) / 2 + 0.05;
+                sprite.position.set(Math.cos(mid) * labelR, Math.sin(mid) * labelR, depth + 0.7);
+                mesh.add(sprite);
+                aiComputeScene.labelSprites.push(sprite);
+
+                currentAngle -= totalAngle;
+            });
+
+            // Ambient particle ring around the donut - purely decorative, matches the reference.
+            const particleCount = 90;
+            const pGeo = new THREE.BufferGeometry();
+            const pPos = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const r = outerR + 0.35 + Math.random() * 1.4;
+                pPos[i * 3] = Math.cos(a) * r;
+                pPos[i * 3 + 1] = Math.sin(a) * r;
+                pPos[i * 3 + 2] = (Math.random() - 0.5) * 1.8;
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            const pMat = new THREE.PointsMaterial({ color: 0xa5b4c8, size: 0.05, transparent: true, opacity: 0.5, depthWrite: false });
+            pieGroup.add(new THREE.Points(pGeo, pMat));
+
+            if (!aiComputeScene.raycastWired) wireAIComputeCanvasInteractions();
+        }
+
+        // Hover (mouse), tooltip, drag-to-rotate, and click-to-pin on the canvas itself - wired
+        // once (the canvas element is never recreated, unlike the legend/HUD text below it).
+        function wireAIComputeCanvasInteractions() {
+            aiComputeScene.raycastWired = true;
+            const s = aiComputeScene;
+            const { canvas, camera } = s;
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            function updateMouse(e) {
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            }
+
+            canvas.addEventListener('mousemove', (e) => {
+                updateMouse(e);
+                if (s.isDragging) {
+                    const dx = e.clientX - s.prevX;
+                    s.targetRotation += dx * 0.008;
+                    s.dragDistance += Math.abs(dx);
+                    s.prevX = e.clientX;
+                    return;
+                }
+                raycaster.setFromCamera(mouse, camera);
+                const hits = raycaster.intersectObjects(s.meshes);
+                if (hits.length > 0) {
+                    const idx = hits[0].object.userData.index;
+                    if (s.activeIdx !== idx) setAIComputeActive(idx);
+                } else {
+                    if (s.activeIdx !== -1) setAIComputeActive(-1);
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                setAIComputeActive(-1);
+                s.isDragging = false;
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                s.isDragging = true;
+                s.dragDistance = 0;
+                s.prevX = e.clientX;
+                canvas.style.cursor = 'grabbing';
+            });
+            window.addEventListener('mouseup', () => {
+                s.isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+
+            canvas.addEventListener('click', (e) => {
+                if (s.dragDistance > 4) { s.dragDistance = 0; return; }
+                updateMouse(e);
+                raycaster.setFromCamera(mouse, camera);
+                const hits = raycaster.intersectObjects(s.meshes);
+                if (hits.length > 0) {
+                    const idx = hits[0].object.userData.index;
+                    s.lockedIdx = (s.lockedIdx === idx) ? -1 : idx;
+                    setAIComputeActive(s.lockedIdx);
+                } else {
+                    s.lockedIdx = -1;
+                    setAIComputeActive(-1);
+                }
+                s.dragDistance = 0;
+            });
+
+            // Touch: a tap both rotates-if-dragged and can pin a slice, same as a click.
+            canvas.addEventListener('touchstart', (e) => {
+                s.isDragging = true;
+                s.dragDistance = 0;
+                s.prevX = e.touches[0].clientX;
+            }, { passive: true });
+            canvas.addEventListener('touchmove', (e) => {
+                const dx = e.touches[0].clientX - s.prevX;
+                s.targetRotation += dx * 0.008;
+                s.dragDistance += Math.abs(dx);
+                s.prevX = e.touches[0].clientX;
+            }, { passive: true });
+            canvas.addEventListener('touchend', () => { s.isDragging = false; });
+        }
+
+        // Shared highlight state between the donut mesh (popped up in the animate() loop) and
+        // its legend row - both carry the same data-ai-segment index.
+        function setAIComputeActive(idx) {
+            if (!aiComputeScene) return;
+            aiComputeScene.activeIdx = idx;
+            // Hover wins while it's happening, but once the mouse leaves, a pinned (clicked)
+            // slice should stay highlighted rather than dropping back to nothing - same
+            // "effective index" the animate() loop already uses for the 3D pop, applied here
+            // too so the legend row's CSS highlight and the HUD text agree with what's popped.
+            const effectiveIdx = idx !== -1 ? idx : aiComputeScene.lockedIdx;
+            document.querySelectorAll('#ai-compute-goal-legend [data-ai-segment]').forEach(el => {
+                el.classList.toggle('ai3d-active', +el.dataset.aiSegment === effectiveIdx);
+            });
+            updateAIComputeHud(effectiveIdx);
+        }
+
+        // Center HUD: total (default, idx -1) or the hovered/pinned company's own numbers.
+        // Center HUD is deliberately minimal now: just the monthly $ amount and, under it, a
+        // plain "Monthly" label - whether showing the combined total (idx -1) or a single
+        // hovered/pinned company's own monthly figure. No GW/name/annualized info here
+        // anymore (the legend rows already show name+GW, and now their own annualized figure
+        // too - see renderAIComputeSection).
+        function updateAIComputeHud(idx) {
+            const hudValue = document.getElementById('ai-compute-hud-value');
+            const hudUnit = document.getElementById('ai-compute-hud-unit');
+            const hud = document.getElementById('ai-compute-hud');
+            if (!hudValue || !hudUnit) return;
+            const dict = AI_COMPUTE_I18N[lastAppliedAIComputeLang] || AI_COMPUTE_I18N.en;
+
+            if (hud) hud.classList.add('ai3d-switching');
+            setTimeout(() => {
+                const monthlyUsd = (idx === -1 || idx === undefined || !AI_COMPUTE_DEALS[idx])
+                    ? AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.monthlyUsd, 0)
+                    : AI_COMPUTE_DEALS[idx].monthlyUsd;
+                hudValue.textContent = monthlyUsd >= 1000 ? (monthlyUsd / 1000).toFixed(2) + 'B$' : monthlyUsd + 'M$';
+                hudUnit.textContent = dict.monthly;
+                if (hud) hud.classList.remove('ai3d-switching');
+            }, 140);
         }
 
         function renderAIComputeSection(dict) {
             dict = dict || AI_COMPUTE_I18N[lastAppliedAIComputeLang] || AI_COMPUTE_I18N.en;
-            const bar = document.getElementById('ai-compute-goal-bar');
             const legend = document.getElementById('ai-compute-goal-legend');
-            const goalLabel = document.getElementById('ai-compute-goal-label');
-            const list = document.getElementById('ai-compute-customer-list');
-            const totalEl = document.getElementById('ai-compute-total-revenue');
-            if (!bar || !legend || !goalLabel || !list || !totalEl) return;
+            const annualSummary = document.getElementById('ai-compute-annual-summary');
+            const footnote = document.getElementById('ai-compute-footnote');
+            const legendHeading = document.getElementById('ai-compute-legend-heading');
+            const capacityCaption = document.getElementById('ai-compute-capacity-caption');
+            if (!legend) return;
 
-            // Every numeric/currency string in this section gets an explicit dir="ltr" span -
-            // "$1.25B", "2.0 GW / 10 GW", etc. are LTR content by nature (digits + Latin
-            // symbols), but embedded in an RTL-language paragraph without that isolation the
-            // browser's bidi algorithm can visually misplace weakly-directional characters
-            // like "$" or reorder the whole run (this is what broke in Hebrew/Arabic).
-            const namedGw = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.gw, 0);
-            const otherGw = AI_COMPUTE_TOTAL_GW - namedGw;
-            goalLabel.setAttribute('dir', 'ltr');
-            goalLabel.textContent = `${AI_COMPUTE_TOTAL_GW.toFixed(1)} GW / ${AI_COMPUTE_GOAL_GW} GW goal`;
+            if (!aiComputeScene) initAIComputeScene();
 
-            const segments = [...AI_COMPUTE_DEALS.map(d => ({ name: d.name, gw: d.gw, color: d.color, confidence: d.gwConfidence })),
-                { name: dict.otherCustomers, gw: otherGw, color: 'bg-zinc-500', confidence: 'estimated' }];
-            // The bar itself is scaled to AI_COMPUTE_TOTAL_GW (what SpaceX actually has live
-            // today), NOT AI_COMPUTE_GOAL_GW - the "remaining to build" gap used to just be
-            // empty container background after the last segment, but the goal-vs-current
-            // comparison is still shown as text via goalLabel above ("2.0 GW / 10 GW goal"),
-            // so nothing is lost by not also drawing it as unfilled bar space.
-            //
-            // Because the segments now always sum to the bar's full 100%, BOTH the first and
-            // last slice touch the bar's own rounded edges (rounded-s-full / rounded-e-full) -
-            // given ALWAYS, not only while popped, since the bar container's overflow flips to
-            // visible during any pop (see wireAIComputeHoverLinks) and would otherwise leave
-            // that edge square for the duration. Every segment gets data-ai-segment now,
-            // including "Internal use" (index 3) - it has no customer-list row to pair with, but
-            // it IS paired with its own entry in the legend below (the only place its name
-            // appears at all), which is wired to this same index in wireAIComputeHoverLinks.
-            //
-            // margin-inline-start:-1px on every segment after the first makes it overlap the
-            // previous one by a hairline: without this, Reflection AI's segment (only ~1.8% of
-            // the now-2GW bar - a couple px at most) would occasionally show a bright seam
-            // between it and its neighbors while scale-y-125 is transitioning, because a
-            // transformed element that thin gets promoted to its own compositing layer and can
-            // round its sub-pixel edge differently frame-to-frame, briefly exposing whatever
-            // sits behind the bar. Anthropic/Google's segments are wide enough that the same
-            // rounding is imperceptible, but at Reflection's width it was a large fraction of
-            // its own size. The 1px overlap guarantees full coverage regardless of that
-            // rounding, in both RTL and LTR (logical property follows the segment's own start
-            // edge either way).
-            bar.innerHTML = segments.map((s, i) => {
-                const roundedStart = i === 0 ? ' rounded-s-full' : '';
-                const roundedEnd = i === segments.length - 1 ? ' rounded-e-full' : '';
-                const overlapStyle = i > 0 ? ' margin-inline-start: -1px;' : '';
-                const pct = (s.gw / AI_COMPUTE_TOTAL_GW * 100).toFixed(1);
-                // The % label's own font-size is set per-segment at pop time (see
-                // setSegmentPopped), not here - it depends on the segment's actual rendered
-                // pixel width, which isn't known until the browser has laid this out. Starts at
-                // opacity-0 so it's invisible (but already in the DOM, already positioned) until
-                // popped; pointer-events-none so it can never itself become the hover/touch
-                // target instead of the segment underneath it. Color is a plain inline style,
-                // not the text-white utility class - body.light-theme overrides .text-white
-                // globally (dark text for light backgrounds elsewhere on the page), but this
-                // label sits on top of the segment's own saturated brand color, not the page
-                // background, so it needs to stay white in both themes regardless.
-                return `<div class="relative h-full ${s.color}${roundedStart}${roundedEnd} origin-bottom transition-all duration-200" data-ai-segment="${i}" style="width: ${pct}%;${overlapStyle}" title="${s.name} — ${s.gw.toFixed(2)} GW"><span class="ai-segment-pct absolute inset-0 flex items-center justify-center font-bold opacity-0 transition-opacity duration-200 pointer-events-none" style="color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.6);">${pct}%</span></div>`;
-            }).join('');
+            if (legendHeading) legendHeading.textContent = dict.customers;
+            // Stays in English/numeric like the rest of this section's technical readouts
+            // (GPU counts, dates, MW/GW units) - not run through dict, same convention as
+            // AI_COMPUTE_DEALS' own `extra`/`mw` fields.
+            if (capacityCaption) capacityCaption.textContent = `${AI_COMPUTE_TOTAL_GW.toFixed(1)} GW / ${AI_COMPUTE_GOAL_GW} GW goal`;
+            // Replaces the old static "Estimated figures..." footnote (dict.footnote, now
+            // unused dead i18n data - left in place like colossusGoal was) with the GW of
+            // Colossus capacity NOT among the 3 named deals - SpaceX's own internal use -
+            // reusing the existing `otherCustomers` ("Internal use") label rather than adding a
+            // new i18n key. "SpaceX" is named explicitly (user asked for it by name, not just
+            // "Internal use" on its own) via the same "Brand · label" middle-dot pattern this
+            // section's old footnote already used ("Colossus Supercluster · Memphis / ...") -
+            // sidesteps needing a different word order/grammar per language for "of SpaceX".
+            if (footnote) {
+                const namedGw = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.gw, 0);
+                const internalGw = Math.max(0, AI_COMPUTE_TOTAL_GW - namedGw);
+                footnote.textContent = `SpaceX · ${dict.otherCustomers}: ${internalGw.toFixed(2)} GW`;
+            }
 
-            legend.innerHTML = segments.map((s, i) => {
-                const tilde = s.confidence === 'disclosed' ? '' : '~';
-                // Only "Internal use" (the one entry with no customer-list row of its own -
-                // i === AI_COMPUTE_DEALS.length) gets wired to the pop effect here; the other
-                // three already have their trigger down in the customer list, and the legend is
-                // compact inline text with no natural "name" element worth popping for them.
-                const wireAttr = i === AI_COMPUTE_DEALS.length ? ` data-ai-segment="${i}"` : '';
-                return `<span class="inline-flex items-center gap-1.5 notranslate" translate="no"${wireAttr}><span class="w-2.5 h-2.5 rounded-full ${s.color} shrink-0"></span>${s.name} <span dir="ltr">(${tilde}${s.gw.toFixed(2)} GW)</span></span>`;
-            }).join('');
+            const dealsWithHex = AI_COMPUTE_DEALS.map(d => {
+                const m = d.color.match(/#([0-9a-fA-F]{6})/);
+                return { ...d, colorHex: m ? parseInt(m[1], 16) : 0x71717a };
+            });
+            buildAIComputeDonut(dealsWithHex);
 
-            const maxUsd = Math.max(...AI_COMPUTE_DEALS.map(d => d.monthlyUsd));
-            // Which edge of the name's own box is farthest from its color dot flips with
-            // direction: in LTR the dot sits to the name's left (so the pop should grow
-            // rightward, anchored at the name's own left edge); in RTL the flex item order
-            // visually mirrors, putting the dot to the name's right (so the pop should grow
-            // leftward instead, anchored at the name's own right edge).
-            const nameOrigin = document.documentElement.getAttribute('dir') === 'rtl' ? 'origin-right' : 'origin-left';
-            list.innerHTML = AI_COMPUTE_DEALS.map((d, i) => {
-                const pct = (d.monthlyUsd / maxUsd * 100).toFixed(1);
-                const usdAmount = d.monthlyUsd >= 1000
-                    ? (d.monthlyUsd / 1000).toFixed(2) + 'B$'
-                    : d.monthlyUsd + 'M$';
+            legend.innerHTML = dealsWithHex.map((d, i) => {
+                const usdAmount = d.monthlyUsd >= 1000 ? (d.monthlyUsd / 1000).toFixed(2) + 'B$' : d.monthlyUsd + 'M$';
                 const tilde = d.gwConfidence === 'disclosed' ? '' : '~';
-                const confidenceWord = d.gwConfidence === 'disclosed' ? dict.disclosed : dict.estimated;
+                // --ai3d-glow-rgb feeds the .ai3d-legend-row::before hover/active color fade
+                // (see its CSS) - a custom property inherits into a pseudo-element from the
+                // real element it's set on, so this is enough to make the fade match each
+                // customer's own brand color without a class per company.
+                const glowRgb = `${(d.colorHex >> 16) & 255}, ${(d.colorHex >> 8) & 255}, ${d.colorHex & 255}`;
                 return `
-                    <div data-ai-segment="${i}">
-                        <div class="flex items-center justify-between text-sm mb-1.5">
-                            <span class="font-semibold text-white inline-flex items-center gap-1.5 notranslate" translate="no"><span class="w-2 h-2 rounded-full ${d.color} shrink-0"></span><span data-ai-name="${i}" class="inline-block ${nameOrigin} transition-all duration-200">${d.name}</span></span>
-                            <span class="text-emerald-400 font-bold font-space"><span class="notranslate" translate="no" dir="ltr">${usdAmount}</span>/${dict.month}</span>
+                    <div class="ai3d-legend-row" data-ai-segment="${i}" style="--ai3d-glow-rgb: ${glowRgb}">
+                        <div class="ai3d-bullet" style="background:${d.color.match(/#[0-9a-fA-F]{6}/)[0]}"></div>
+                        <div class="ai3d-client-info">
+                            <div class="ai3d-client-title-row">
+                                <span class="ai3d-client-name notranslate" translate="no">${d.name}</span>
+                                <span class="ai3d-client-power notranslate" translate="no" dir="ltr">${tilde}${d.gw.toFixed(2)} GW · ${d.mw}</span>
+                            </div>
+                            <span class="ai3d-client-specs notranslate" translate="no" dir="ltr">${d.extra}</span>
                         </div>
-                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                            <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
+                        <div class="ai3d-financials">
+                            <div class="ai3d-monthly-price notranslate" translate="no" dir="ltr">${usdAmount}</div>
+                            <div class="ai3d-period-label">/ ${dict.month}</div>
                         </div>
-                        <div class="text-[11px] text-zinc-500 mt-1.5"><span class="notranslate" translate="no" dir="ltr">${tilde}${d.mw}</span> (${confidenceWord}) <span class="notranslate" translate="no" dir="ltr">· ${d.extra}</span></div>
                     </div>
                 `;
             }).join('');
 
-            wireAIComputeHoverLinks(bar, list, legend);
+            legend.querySelectorAll('[data-ai-segment]').forEach(el => {
+                const i = +el.dataset.aiSegment;
+                el.addEventListener('mouseenter', () => setAIComputeActive(i));
+                el.addEventListener('mouseleave', () => setAIComputeActive(-1));
+                el.addEventListener('click', () => {
+                    if (!aiComputeScene) return;
+                    aiComputeScene.lockedIdx = (aiComputeScene.lockedIdx === i) ? -1 : i;
+                    aiComputeScene.activeIdx = aiComputeScene.lockedIdx;
+                    setAIComputeActive(aiComputeScene.activeIdx);
+                });
+                el.addEventListener('touchstart', () => setAIComputeActive(i), { passive: true });
+                el.addEventListener('touchend', () => setAIComputeActive(-1));
+            });
 
-            const totalUsd = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.monthlyUsd, 0);
-            const totalMonthlyAmount = (totalUsd / 1000).toFixed(2) + 'B$';
-            const totalYearly = '≈ ' + (totalUsd * 12 / 1000).toFixed(1) + 'B$';
-            totalEl.innerHTML = `<span dir="ltr">${totalMonthlyAmount}</span>/${dict.month} ${dict.combined} (<span dir="ltr">${totalYearly}</span> ${dict.annualized})`;
+            // Single aggregate row across all 3 deals combined (replaces the earlier
+            // per-customer annual line under each price - user asked for one summed row
+            // instead of a duplicate per row). Label side shows the combined GW of the 3 named
+            // deals (not AI_COMPUTE_TOTAL_GW - that includes SpaceX's own internal use, already
+            // called out separately in the footnote); value side keeps the annual $ figure, now
+            // with its own small "annualized" sub-label (reusing .ai3d-period-label, same as
+            // the legend rows' "/ month" under their price) instead of folding that into the
+            // left-side text.
+            if (annualSummary) {
+                const totalUsd = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.monthlyUsd, 0);
+                const totalAnnual = '≈' + (totalUsd * 12 / 1000).toFixed(1) + 'B$';
+                const namedGw = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.gw, 0);
+                annualSummary.innerHTML = `
+                    <div class="ai3d-annual-label">${dict.total}: <span class="notranslate" translate="no" dir="ltr">${namedGw.toFixed(2)} GW</span></div>
+                    <div class="ai3d-annual-financials">
+                        <div class="ai3d-annual-value notranslate" translate="no" dir="ltr">${totalAnnual}</div>
+                        <div class="ai3d-period-label">${dict.annualized}</div>
+                    </div>
+                `;
+            }
+
+            updateAIComputeHud(-1);
+            scheduleAIComputeCrtHoleUpdate();
         }
+
+        // Punches a rectangular gap in the page's fixed CRT-scanline overlay (body::before,
+        // see its own comment for why a z-index on the donut can't do this) exactly where the
+        // donut viewport currently sits on screen, so the overlay reads as behind it instead of
+        // painted across it. Has to be kept in sync on scroll/resize since the donut moves with
+        // the page (it's normal in-flow content) while the overlay it's cut out of is fixed.
+        let aiComputeCrtHoleRafPending = false;
+        function updateAIComputeCrtHole() {
+            const viewport = document.querySelector('.ai3d-viewport-3d');
+            const root = document.documentElement;
+            if (!viewport) { root.style.removeProperty('--crt-hole'); return; }
+            const r = viewport.getBoundingClientRect();
+            const w = window.innerWidth, h = window.innerHeight;
+            if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > h || r.right < 0 || r.left > w) {
+                root.style.setProperty('--crt-hole', 'none');
+                return;
+            }
+            // Outer full-viewport rectangle + inner donut rectangle, evenodd fill-rule turns
+            // the inner rectangle into a hole instead of a second filled shape.
+            const path = `M0 0H${w}V${h}H0Z M${r.left} ${r.top}H${r.right}V${r.bottom}H${r.left}Z`;
+            root.style.setProperty('--crt-hole', `path(evenodd, "${path}")`);
+        }
+        function scheduleAIComputeCrtHoleUpdate() {
+            if (aiComputeCrtHoleRafPending) return;
+            aiComputeCrtHoleRafPending = true;
+            requestAnimationFrame(() => { aiComputeCrtHoleRafPending = false; updateAIComputeCrtHole(); });
+        }
+        window.addEventListener('scroll', scheduleAIComputeCrtHoleUpdate, { passive: true });
+        window.addEventListener('resize', scheduleAIComputeCrtHoleUpdate);
 
         window.latestWeather = null;
 
