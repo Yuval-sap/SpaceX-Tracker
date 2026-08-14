@@ -29,19 +29,21 @@
         /* @import MUST be the first rule in the stylesheet (only @charset may precede it) -
            per spec, browsers silently ignore an @import that comes after any other rule.
            This one used to sit after the @media block below, which quietly disabled it
-           entirely - "Space Grotesk" was never actually loading, so every font-family
-           referencing it (body, .font-space, etc.) was silently falling back to the plain
-           system sans-serif the whole time. Keep this literally the first thing here.
+           entirely - keep this literally the first thing here.
 
            Space Grotesk only covers Latin script - it has no Hebrew glyphs at all, so Hebrew
            text (i.e. most of the site's actual text for a Hebrew-speaking user) was always
-           going to fall through to the generic system sans-serif regardless of this fix, since
-           font-family fallback happens per-character, not per-page. Rubik is added as the
-           Hebrew-supporting fallback in between - a modern geometric sans-serif that's a
-           common, well-matched pairing for exactly this look. Net effect: Latin text (English
-           mission designators, etc.) renders in Space Grotesk, Hebrew text renders in Rubik,
-           and anything neither covers falls through to the plain system font as before. */
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
+           going to fall through to the generic system sans-serif regardless, since font-family
+           fallback happens per-character, not per-page. Rubik is added as the Hebrew-supporting
+           fallback in between. Net effect: Latin text (English mission designators, etc.)
+           renders in Space Grotesk, Hebrew text renders in Rubik, and anything neither covers
+           falls through to the plain system font as before. Orbitron and JetBrains Mono are
+           loaded alongside for two much narrower, deliberately-scoped uses (see .font-orbitron
+           and .font-space's #mission-modal override further down) - an earlier version of this
+           experiment made Orbitron the site-wide default before being scaled back to just those
+           specific spots, which is why it's still loaded here even though body/.font-space no
+           longer reference it directly. */
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
 
         /* Font weight LABELS aren't visually equivalent across typefaces - Rubik's "600" is a
            notably rounder/heavier cut than Space Grotesk's "600", so in a mixed-script line
@@ -116,6 +118,40 @@
         .font-space {
             font-family: 'Space Grotesk', 'Rubik', system_ui, sans-serif;
             font-weight: 600;
+        }
+
+        /* Scaled-back Orbitron experiment, third pass: everything reverted to the original Space
+           Grotesk/Rubik pairing above EXCEPT the hero's mission title + its big countdown (kept
+           here by ID), the mission-detail-modal titles (#modal-name / #patch-mission-modal-name -
+           via .font-orbitron on those elements), the per-card mission title
+           (.mission-title-fit), and every section HEADING (not its subtitle anymore - that
+           reverted too, see each section's markup) across the page. Nav logo and the sticky
+           "NEXT LAUNCH" pill stay reverted. */
+        .font-orbitron,
+        #hero-name,
+        #hero-countdown,
+        .mission-title-fit {
+            font-family: 'Orbitron', 'Rubik', system_ui, sans-serif;
+        }
+
+        /* .font-space marks numeric/technical readouts (stat values, countdowns, spec labels)
+           throughout the site, and by default follows the site's base Space Grotesk/Rubik font
+           above - but inside the mission detail modals specifically (the "go into a launch
+           card" view, packed with orbit/booster/recovery/launch-window data), that same class
+           switches to JetBrains Mono instead: a real monospace face reads as "raw telemetry/
+           data readout" in a way Space Grotesk doesn't, which is the distinction the two fonts
+           are meant to draw here. Scoped to every "drill into details" modal opened from a
+           mission card - the main mission modal plus the secondary rocket/site/orbit/landing/
+           astronaut modals it links out to - not just #mission-modal alone, so the feel doesn't
+           break switching between them. Rubik stays as the Hebrew fallback here too, same as
+           everywhere else - JetBrains Mono has no Hebrew glyphs either. */
+        #mission-modal .font-space,
+        #rocket-modal .font-space,
+        #site-modal .font-space,
+        #orbit-modal .font-space,
+        #landing-modal .font-space,
+        #astronaut-modal .font-space {
+            font-family: 'JetBrains Mono', 'Rubik', monospace;
         }
 
         @keyframes pulse-calm {
@@ -229,10 +265,21 @@
            use elsewhere on this page (cubic-bezier(0.16, 1, 0.3, 1)), plus an emerald glow
            that blooms in alongside it — reads as it "dropping into" the nav bar rather than
            just fading, which a plain opacity transition didn't convey. */
+        /* Used to be absolute + left-1/2 + translate(-50%,...) to center itself over the FULL
+           nav row - that made it truly, blindly centered regardless of how much room the logo
+           (left) and theme/language/clock controls (right) actually left in the middle, so at
+           real-world widths in roughly the 1024-1310px range (a lot of ordinary laptop screens,
+           not some rare edge case) the countdown pill's centered position could genuinely reach
+           left past the "LIVE TELEMETRY" badge and overlap it. Converted to a normal flex child
+           (flex-1, see the HTML) that shares space with its siblings instead of ignoring them -
+           centers itself within whatever room is actually left, which makes overlapping a
+           sibling structurally impossible instead of just unlikely. The -50%/-50% self-centering
+           terms are gone from the transform below for the same reason (flexbox now does that
+           part); only the vertical "drop in" offset and scale remain. */
         #sticky-countdown-wrap {
             opacity: 0;
             pointer-events: none;
-            transform: translate(-50%, calc(-50% - 14px)) scale(0.85);
+            transform: translateY(-14px) scale(0.85);
             box-shadow: 0 0 0px rgba(16, 185, 129, 0);
             transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
                 transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
@@ -241,7 +288,7 @@
 
         #sticky-countdown-wrap.is-visible {
             opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
+            transform: translateY(0) scale(1);
             box-shadow: 0 0 22px rgba(16, 185, 129, 0.3);
             pointer-events: auto;
         }
@@ -268,8 +315,27 @@
         }
 
         .countdown-small {
-            font-family: 'Space Grotesk', monospace;
+            font-family: 'Orbitron', 'Rubik', monospace;
             font-feature-settings: "tnum";
+        }
+
+        /* Only the SECONDS digit span (see the JS templates for #hero-countdown and
+           #sticky-countdown/#sticky-countdown-mobile) gets a fixed width - it's the one field
+           that changes every single second, so it's the one actually responsible for the
+           "constant" jitter feeling. Days/hours/minutes only change once a day/hour/minute,
+           so if the box's total width shifts slightly on one of those (rare, not "constant"),
+           that's an accepted tradeoff rather than something worth fixing at the cost of empty-
+           looking gaps around narrow digits like "1".
+           2ch (the CSS unit literally defined as the width of the font's own "0" glyph) was
+           measured directly in-browser to reproduce the actual widest valid second value
+           ("00", within the real 0-59 range - not some unreachable "88") almost exactly:
+           80.07px measured vs 80.08px for 2ch. Scales correctly with font-size on its own, so
+           the same class is correct at both the hero's large size and the sticky pill's small
+           one. */
+        .cd-digit {
+            display: inline-block;
+            width: 2ch;
+            text-align: center;
         }
 
         .milestones-scrollbox::-webkit-scrollbar {
@@ -529,7 +595,7 @@
 
         /* Custom Google Translate Widget Styling */
         .goog-te-gadget {
-            font-family: 'Space Grotesk', monospace !important;
+            font-family: 'Orbitron', monospace !important;
             font-size: 0px !important;
             color: transparent !important;
             display: flex;
@@ -1086,6 +1152,32 @@
             margin-right: 0 !important;
         }
 
+        /* #hero-countdown is forced to direction:ltr regardless of page language
+           (digit order must stay 1d/09h/54m/42s even in RTL) — so its own mr-2
+           unit-letter spacing must stay physical too, not mirrored by the generic
+           RTL override above, which otherwise doubles the digit-to-letter gap. */
+        html[dir="rtl"] #hero-countdown .mr-2 {
+            margin-right: 0.5rem !important;
+        }
+
+        html[dir="rtl"] #hero-countdown .ml-1.mr-2 {
+            margin-left: 0.25rem !important;
+        }
+
+        /* Days unit letter gets 1px more than the rest (ml-[5px] vs ml-1) to compensate
+           for the optical illusion where the single-digit day number makes the fixed 4px
+           gap look tighter than the same gap next to a wider 2-digit h/m/s block. */
+        html[dir="rtl"] #hero-countdown .ml-\[5px\].mr-2 {
+            margin-left: 5px !important;
+        }
+
+        /* Seconds unit letter is 1px tighter than the rest (ml-[3px] vs ml-1). Still
+           carries .mr-2 (its own after-gap is unchanged), so it still needs this - the
+           generic RTL override two rules up hijacks margin-left on anything with .mr-2. */
+        html[dir="rtl"] #hero-countdown .ml-\[3px\].mr-2 {
+            margin-left: 3px !important;
+        }
+
         html[dir="rtl"] .pr-2 {
             padding-left: 0.5rem !important;
             padding-right: 0 !important;
@@ -1187,6 +1279,17 @@
         #hero-skeleton.skel-fade-out {
             opacity: 0;
             pointer-events: none;
+        }
+
+        /* Both #hero-skeleton and #hero-banner carry lg:flex (for vertical centering at
+           380px height) alongside a plain .hidden that JS toggles at runtime. Tailwind
+           emits breakpoint utilities after the base layer, so at lg+ widths .lg\:flex's
+           display:flex outranks .hidden's display:none even though both are single
+           classes - JS "hiding" the element left it flex-displayed and still taking up
+           380px, which is what caused the double-height gap. Force it here instead. */
+        #hero-skeleton.hidden,
+        #hero-banner.hidden {
+            display: none !important;
         }
 
         .sparkle-burst::after {
@@ -2274,22 +2377,43 @@
                     class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate"
                     translate="no">SPACEX LAUNCH TRACKER</span>
                 <span
-                    class="hidden md:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
+                    class="hidden xl:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
                     TELEMETRY</span>
             </div>
 
             <!-- Mirrors #hero-countdown's live value (see updateHeroCountdown) — hidden until
                  the hero's own countdown box scrolls out of view (see initStickyCountdown),
-                 so there's always exactly one countdown visible on screen, never both. -->
-            <div id="sticky-countdown-wrap"
-                class="hidden md:flex absolute left-1/2 top-1/2 w-max items-center gap-x-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-zinc-950/70 backdrop-blur-lg border border-zinc-900/80 rounded-2xl notranslate"
-                translate="no">
-                <span id="i18n-next-launch-sticky"
-                    class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold notranslate whitespace-nowrap"
-                    translate="no" lang="en">NEXT LAUNCH</span>
-                <span id="sticky-countdown" dir="ltr"
-                    class="font-space text-sm sm:text-base font-bold tabular-nums tracking-tight text-emerald-400 notranslate whitespace-nowrap"
-                    translate="no">--:--:--</span>
+                 so there's always exactly one countdown visible on screen, never both.
+
+                 Outer div (flex-1, no visual styling of its own) exists purely so the pill
+                 centers itself within whatever space is actually left between the logo (start)
+                 and the theme/language/clock controls (end), instead of the pill element itself
+                 being flex-1 - that would have stretched the pill's own background/border to
+                 fill the whole available width instead of staying a compact chip hugging its
+                 own text. -->
+            <!-- lg:flex, not md:flex: measured that at 768-1023px the logo and the theme/
+                 language/clock controls on the right already sit close enough to each other
+                 that there's no real gap left for this pill at all, even at its most compact -
+                 showing it there would just mean it overlaps something no matter what. -->
+            <div class="hidden lg:flex flex-1 justify-center items-center min-w-0 mx-2">
+                <div id="sticky-countdown-wrap"
+                    class="flex items-center gap-x-1 lg:gap-x-2 px-2 py-1 lg:px-4 lg:py-2 bg-zinc-950/70 backdrop-blur-lg border border-zinc-900/80 rounded-2xl notranslate"
+                    translate="no">
+                    <!-- The "NEXT LAUNCH" text label costs more width than anything else in this
+                         pill, and this pill only exists in the narrow gap between the logo (start)
+                         and the theme/language/clock controls (end) - a gap too tight even for
+                         it plus the countdown digits in roughly the md-lg range (real laptop
+                         widths, not a rare edge case - confirmed by measuring both edges at
+                         several real widths). Swapped for a plain clock icon there instead, with
+                         the full text label only coming back once there's proven room at xl. -->
+                    <i class="fa-solid fa-clock text-zinc-500 text-[10px] xl:hidden" aria-hidden="true"></i>
+                    <span id="i18n-next-launch-sticky"
+                        class="hidden xl:inline text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold notranslate whitespace-nowrap"
+                        translate="no" lang="en">NEXT LAUNCH</span>
+                    <span id="sticky-countdown" dir="ltr"
+                        class="font-space text-sm sm:text-base font-bold tabular-nums tracking-tight text-emerald-400 notranslate whitespace-nowrap"
+                        translate="no">--:--:--</span>
+                </div>
             </div>
 
             <div class="flex items-center gap-x-1.5 sm:gap-x-4 shrink-0 ml-1">
@@ -2355,28 +2479,9 @@
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
 
-        <div class="flex flex-row items-center justify-between mb-5 md:mb-6 gap-3">
-            <div class="flex-1 min-w-0">
-                <h1
-                    class="font-space text-[26px] leading-none sm:text-5xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500 transition-colors duration-500">
-                    Mission Control</h1>
-                <p
-                    class="text-[11px] sm:text-xl text-zinc-400 mt-1 sm:mt-2 font-light transition-colors duration-500 truncate sm:whitespace-normal">
-                    Real-time tracking of SpaceX launches</p>
-            </div>
-            <div
-                class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
-                <div id="i18n-upcoming-launches"
-                    class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap notranslate"
-                    translate="no" lang="en">Launches This Year</div>
-                <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-space notranslate leading-none"
-                    id="upcoming-count" translate="no">0</div>
-            </div>
-        </div>
-
         <div id="hero-skeleton"
-            class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 transition-all duration-300">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 transition-all duration-300 lg:min-h-[380px] lg:flex lg:items-center">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 lg:w-full">
                 <div class="space-y-3 flex-1 w-full min-w-0">
                     <div class="skel h-6 w-32 rounded-full"></div>
                     <div class="skel h-9 sm:h-12 w-3/4 rounded-lg"></div>
@@ -2396,11 +2501,11 @@
         </div>
 
         <div id="hero-banner"
-            class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 hidden transition-all duration-300 relative overflow-hidden shadow-xl">
+            class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 hidden transition-all duration-300 relative overflow-hidden shadow-xl lg:min-h-[380px] lg:flex lg:items-center">
             <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-3xl">
                 <img id="hero-image" src="" alt="" class="w-full h-full object-cover object-[center_19%] opacity-30 hero-fade-image">
             </div>
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10 lg:w-full">
                 <!-- On mobile this wrapper is unwrapped (display:contents) so its two children
                      (the info block below, and the buttons/video block further down) become
                      direct items of the flex column above — letting the buttons/video block be
@@ -2435,7 +2540,7 @@
                         </span>
                     </div>
 
-                    <div class="w-full mt-6 mb-3 pr-2 lg:pr-12 block">
+                    <div class="w-full !mt-6 lg:!mt-10 mb-3 pr-2 lg:pr-12 block">
                         <div
                             class="text-[11px] sm:text-xs text-zinc-400 font-extrabold tracking-[2px] uppercase mb-4 milestones-title transition-colors duration-500">
                             MILESTONES</div>
@@ -2593,7 +2698,7 @@
             <div class="flex justify-between items-center mb-3">
                 <div>
                     <h3
-                        class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
+                        class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
                         <i class="fa-solid fa-rocket text-emerald-400 text-base"></i> <span id="i18n-launches-section"
                             class="notranslate" translate="no" lang="en">Scheduled Launches</span>
                     </h3>
@@ -2618,7 +2723,7 @@
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h3
-                        class="font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
+                        class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
                         <i class="fa-solid fa-history text-zinc-400 text-base"></i> <span
                             id="i18n-past-launches-section" class="notranslate" translate="no" lang="en">Recent Past
                             Launches</span>
@@ -2626,9 +2731,27 @@
                     <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Showing the most recent
                         completed SpaceX missions</p>
                 </div>
-                <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
-                    Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
-                </span>
+                <!-- The "Launches This Year" counter used to sit in its own row up top next to a
+                     "Mission Control" heading - that heading was removed from the site, and this
+                     is where the counter moved to instead (opposite side of this row's own
+                     title, same idea as before). Grouped in a column with the existing
+                     mobile-only "Scroll" hint rather than as a third flex child of the row
+                     itself, so justify-between still only ever has to balance two things (this
+                     title block vs. this whole right-side group) instead of unevenly spacing
+                     three. -->
+                <div class="flex flex-col items-end gap-2">
+                    <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
+                        Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
+                    </span>
+                    <div
+                        class="bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-3 py-1.5 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[95px] sm:min-w-[100px] shadow-sm">
+                        <div id="i18n-upcoming-launches"
+                            class="text-[7px] sm:text-[10px] text-zinc-500 tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap notranslate"
+                            translate="no" lang="en">Launches This Year</div>
+                        <div class="text-emerald-400 text-2xl sm:text-4xl font-bold font-orbitron notranslate leading-none"
+                            id="upcoming-count" translate="no">0</div>
+                    </div>
+                </div>
             </div>
 
             <div class="relative">
@@ -2661,7 +2784,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-y-2">
                 <div>
                     <h3
-                        class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                        class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                         <i class="fa-solid fa-film text-red-400"></i>
                         <span class="starship-term notranslate" translate="no">Starship</span>
                     </h3>
@@ -2770,7 +2893,7 @@
                         </div>
                         <div class="flex-1 min-w-0 pt-1">
                             <div
-                                class="text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">
+                                class="font-orbitron text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">
                                 Did You Know</div>
                             <div id="fact-text" dir="auto" translate="no"
                                 class="text-base sm:text-lg text-zinc-200 leading-relaxed font-medium transition-colors duration-500 min-h-[60px] notranslate">
@@ -2801,7 +2924,7 @@
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-globe text-cyan-500"></i>
                             <span
-                                class="text-[10px] sm:text-[11px] font-bold tracking-widest text-cyan-500 uppercase">Starlink
+                                class="font-orbitron text-[10px] sm:text-[11px] font-bold tracking-widest text-cyan-500 uppercase">Starlink
                                 Deployment</span>
                         </div>
                         <a href="https://satellitemap.space/constellation/starlink?utm_source=chatgpt.com"
@@ -2844,7 +2967,7 @@
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
             <div class="mb-4">
                 <h3
-                    class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                     <i class="fa-solid fa-timeline text-emerald-400"></i>
                     <span id="i18n-milestones-title" class="notranslate" translate="no" lang="en">SpaceX
                         Milestones</span>
@@ -3068,7 +3191,7 @@
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h3
-                        class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                        class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                         <i class="fa-solid fa-shield-halved text-emerald-400"></i>
                         <span id="i18n-patches-title" class="notranslate" translate="no" lang="en">SpaceX Mission
                             Patches</span>
@@ -3133,7 +3256,7 @@
             lang="en">
             <div class="mb-6">
                 <h3
-                    class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                     <i class="fa-solid fa-trophy text-amber-400"></i>
                     <span id="i18n-booster-title" class="notranslate" translate="no" lang="en">Booster Flight
                         Leaderboard</span>
@@ -3193,7 +3316,7 @@
             translate="no">
             <div class="mb-6">
                 <h3
-                    class="font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                     <i class="fa-solid fa-microchip text-emerald-400"></i>
                     <span id="i18n-ai-compute-title" lang="en">SpaceX AI Compute Deals</span>
                 </h3>
@@ -3314,7 +3437,7 @@
                     <img id="patch-mission-modal-photo" src="" alt="" class="hidden w-full h-full object-contain">
                 </div>
                 <div id="patch-mission-modal-name"
-                    class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight mb-2"></div>
+                    class="font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight mb-2"></div>
                 <p id="patch-mission-modal-desc" class="text-sm text-zinc-400 leading-relaxed"></p>
                 <div
                     class="flex flex-col items-center gap-1.5 mt-4 pt-4 border-t border-zinc-800/80 text-xs sm:text-sm text-zinc-400">
@@ -3337,7 +3460,7 @@
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3 sm:gap-0 bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div class="flex items-center gap-6 min-w-0">
                     <div class="min-w-0">
-                        <div id="modal-name" class="font-space text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                        <div id="modal-name" class="font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
                         </div>
                         <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
                     </div>
@@ -8166,7 +8289,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         </div>
                         <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
                             <div>
-                                <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1 notranslate" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
+                                <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
                                 <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
@@ -8325,7 +8448,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     const d = Math.floor(diff / 86400000);
                     const h = Math.floor((diff % 86400000) / 3600000);
                     const min = Math.floor((diff % 3600000) / 60000);
-                    el.innerHTML = `${d}d ${h}h ${min}m`;
+                    el.innerHTML = `${d}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">d</span> ${h}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">h</span> ${min}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">m</span>`;
                 };
 
                 update();
@@ -9798,10 +9921,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 el.classList.toggle('animate-pulse-calm', pulseOuter);
 
                 el.innerHTML = `
-                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">d</span>
-                    <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">h</span>
-                    <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">m</span>
-                    <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal mx-1.5 text-zinc-400">s</span>
+                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal ml-[5px] mr-2 text-zinc-400">d</span>
+                    <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal ml-1 mr-2 text-zinc-400">h</span>
+                    <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal ml-1 mr-[7px] text-zinc-400">m</span>
+                    <span class="cd-digit ${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal ml-[3px] mr-2 text-zinc-400">s</span>
                 `;
 
                 // Mirrors #hero-countdown's own two-tone treatment above (colored digits,
@@ -9811,10 +9934,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 stickyEls.forEach(stEl => {
                     stEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
                     stEl.innerHTML = `
-                        <span class="${timeColor}">${d}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">d</span>
-                        <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">h</span>
-                        <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">m</span>
-                        <span class="${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal mx-0.5 text-zinc-400">s</span>
+                        <span class="${timeColor}">${d}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">d</span>
+                        <span class="${timeColor}">${h.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">h</span>
+                        <span class="${timeColor}">${m.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">m</span>
+                        <span class="cd-digit ${timeColor}">${s.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">s</span>
                     `;
                 });
             };
