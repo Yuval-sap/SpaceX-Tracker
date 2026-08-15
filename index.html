@@ -69,17 +69,27 @@
             unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
         }
 
+/* Unconditional (not just mobile) so fitTitleOneLine() - already wired to #hero-name in the
+   script, called on load/mission-change/resize - can actually do its job at every breakpoint:
+   its overflow check is `scrollWidth > clientWidth`, which only ever becomes true for text that
+   CAN'T wrap - without white-space:nowrap here, a long English mission title just wrapped to a
+   second line at tablet/desktop widths instead of shrinking, since wrapped text never grows
+   scrollWidth past clientWidth in the first place. Mobile's own font-size clamp stays scoped to
+   its own media query below - only the nowrap/overflow mechanics needed to apply everywhere. */
+#hero-name {
+    display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
 @media (max-width: 640px) {
     #hero-name {
-        display: block !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: clip !important;
-        max-width: 100% !important;
-        width: 100% !important;                 /* ← הוסף */
         font-size: clamp(14px, 5.8vw, 26px) !important;  /* ← קצת יותר נמוך */
         line-height: 1.15 !important;
-        box-sizing: border-box !important;
     }
 
     html[dir="rtl"] #hero-name {
@@ -116,27 +126,6 @@
             pointer-events: none;
             opacity: 0.35;
             transition: opacity 0.5s ease;
-            /* --crt-hole fades this overlay out in a soft circle around the AI Compute donut so
-               it doesn't paint over it - see updateAIComputeCrtHole() in the script, which
-               keeps it synced to the donut's on-screen position on scroll/resize. A plain
-               higher z-index on the donut CANNOT achieve this: the donut lives inside the
-               page's main content wrapper, which is itself z-index:10 and a stacking context
-               of its own - <nav> escapes this overlay by being a z-50 DIRECT sibling of body
-               (outside that wrapper entirely), but the donut can't be hoisted out of the page's
-               normal content flow the same way, so no z-index set on it or its ancestors up to
-               that wrapper can ever outrank this overlay.
-               First attempt used clip-path with a hard-edged rectangle, matching the donut's
-               square viewport exactly - technically worked (verified via computed clip-path)
-               but LOOKED wrong: it created a visible sharp-edged square where this overlay's
-               scanline texture abruptly stops, standing out against the donut's round shape
-               (a user screenshot showed it plainly). mask-image with a radial-gradient instead
-               - a circle roughly matching the donut's own visible radius, fading smoothly back
-               to fully-opaque over ~36px - removes both problems at once: round instead of
-               square, and no hard edge to notice. Defaults to `none` (mask-image:none = fully
-               opaque = overlay unaffected) whenever the donut isn't on screen or JS hasn't run
-               yet - same fallback semantics the clip-path version had. */
-            -webkit-mask-image: var(--crt-hole, none);
-            mask-image: var(--crt-hole, none);
         }
 
         .font-space {
@@ -1254,6 +1243,16 @@
 
         .ai3d-viewport-3d canvas:active {
             cursor: grabbing;
+        }
+
+        /* Left behind in the viewport's original grid slot once initAIComputeFloatingViewport()
+           pulls the real .ai3d-viewport-3d out to a position:fixed body-level element - keeps
+           the same classes (so it reserves the identical layout footprint/breakpoint behavior)
+           but visibility:hidden instead of display:none, since the grid column still needs this
+           box's size even though nothing about it should be visible or clickable. */
+        .ai3d-viewport-placeholder {
+            visibility: hidden;
+            pointer-events: none;
         }
 
         .ai3d-center-hud {
@@ -8109,6 +8108,80 @@
             return aiComputeScene;
         }
 
+        // Makes the donut viewport (canvas + center $ HUD - NOT the legend/annual-total/
+        // footnote, which stay in normal flow per the user's explicit request) always paint
+        // above the page's fixed CRT-scanline overlay, regardless of scroll position or the
+        // donut's own hover-lift animation state - six earlier rounds (see project memory)
+        // tried to exclude the donut from the overlay by cutting/masking a hole shaped to
+        // match its geometry, and every single shape tried produced some visible artifact,
+        // because the shape kept needing to chase the donut's own animated silhouette.
+        // This instead makes `.ai3d-viewport-3d` itself a `position:fixed`, z-50 element -
+        // the same escape `<nav>` already uses (see body::before's own comment for why a
+        // z-index alone can't do this from inside the page's normal content flow) - so its
+        // OPAQUE pixels (the donut ring, the label sprites, the $ HUD text) always composite
+        // above the CRT layer, no matter where the section is scrolled to or which slice is
+        // popped. A `.ai3d-viewport-placeholder` clone (same classes, so it reserves the exact
+        // same grid-cell footprint, `visibility:hidden` so it takes no visual space of its own)
+        // is left behind in the original spot so the legend column's layout doesn't collapse
+        // once the real viewport is pulled out to the body level.
+        // Trade-off accepted on purpose: the CRT overlay can still show through the canvas's
+        // genuinely TRANSPARENT pixels (the gaps between slices, the space around the ring) -
+        // only the solid/opaque parts of the donut are what needed to stay in front, and that's
+        // exactly what this delivers; a fully opaque backing behind the whole square viewport
+        // was deliberately tried and rejected in earlier rounds (read as "a big white square").
+        let aiComputeFloatingSync = null;
+        let aiComputeFloatingInitDone = false;
+        function initAIComputeFloatingViewport() {
+            // Guarded at the MODULE level, not by re-querying '.ai3d-viewport-3d' and checking
+            // a dataset flag on whatever that matches - the placeholder below is built by
+            // cloning the real viewport's className (so it keeps the same layout/breakpoint
+            // behavior), which means it ALSO carries the .ai3d-viewport-3d class. A later call
+            // to this function (e.g. on a language switch, which re-runs renderAIComputeSection)
+            // would then match the PLACEHOLDER via that selector instead of the real viewport -
+            // it has no `dataset.floating` set, so the old per-element guard let it slip through
+            // and get floated AGAIN, duplicating both elements on every call. A plain module
+            // boolean can't be fooled by which element a selector happens to match.
+            if (aiComputeFloatingInitDone) return;
+            const viewport = document.querySelector('.ai3d-viewport-3d');
+            if (!viewport) return;
+            aiComputeFloatingInitDone = true;
+
+            const placeholder = document.createElement('div');
+            placeholder.className = viewport.className + ' ai3d-viewport-placeholder';
+            viewport.parentNode.insertBefore(placeholder, viewport);
+
+            viewport.classList.add('ai3d-viewport-floating');
+            viewport.style.position = 'fixed';
+            viewport.style.zIndex = '50';
+            viewport.style.margin = '0';
+            document.body.appendChild(viewport);
+
+            function sync() {
+                const r = placeholder.getBoundingClientRect();
+                const w = window.innerWidth, h = window.innerHeight;
+                if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > h || r.right < 0 || r.left > w) {
+                    viewport.style.display = 'none';
+                    return;
+                }
+                viewport.style.display = '';
+                viewport.style.top = r.top.toFixed(1) + 'px';
+                viewport.style.left = r.left.toFixed(1) + 'px';
+                viewport.style.width = r.width.toFixed(1) + 'px';
+                viewport.style.height = r.height.toFixed(1) + 'px';
+            }
+            sync();
+
+            let raf = false;
+            function schedule() {
+                if (raf) return;
+                raf = true;
+                requestAnimationFrame(() => { raf = false; sync(); });
+            }
+            aiComputeFloatingSync = schedule;
+            window.addEventListener('scroll', schedule, { passive: true });
+            window.addEventListener('resize', schedule);
+        }
+
         function createAIComputeLabelTexture(text) {
             const c = document.createElement('canvas');
             c.width = 256;
@@ -8357,6 +8430,8 @@
             if (!legend) return;
 
             if (!aiComputeScene) initAIComputeScene();
+            initAIComputeFloatingViewport();
+            if (aiComputeFloatingSync) aiComputeFloatingSync();
 
             if (legendHeading) legendHeading.textContent = dict.customers;
             // Stays in English/numeric like the rest of this section's technical readouts
@@ -8445,52 +8520,7 @@
             }
 
             updateAIComputeHud(-1);
-            scheduleAIComputeCrtHoleUpdate();
         }
-
-        // Fades the page's fixed CRT-scanline overlay (body::before, see its own comment for
-        // why a z-index on the donut can't do this) out in a soft circle around the donut
-        // viewport's current on-screen position, so the overlay reads as behind it instead of
-        // painted across it - a hard-edged rectangular cutout (the first version of this) LOOKED
-        // wrong, a visible square against the round donut (see body::before's own comment). Has
-        // to be kept in sync on scroll/resize since the donut moves with the page (it's normal
-        // in-flow content) while the overlay it's masked around is fixed.
-        let aiComputeCrtHoleRafPending = false;
-        function updateAIComputeCrtHole() {
-            const viewport = document.querySelector('.ai3d-viewport-3d');
-            const root = document.documentElement;
-            if (!viewport) { root.style.removeProperty('--crt-hole'); return; }
-            const r = viewport.getBoundingClientRect();
-            const w = window.innerWidth, h = window.innerHeight;
-            if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > h || r.right < 0 || r.left > w) {
-                root.style.setProperty('--crt-hole', 'none');
-                return;
-            }
-            const cx = (r.left + r.right) / 2;
-            const cy = (r.top + r.bottom) / 2;
-            const halfSize = Math.min(r.width, r.height) / 2;
-            // radius+feather is deliberately kept well under halfSize (a ~25px margin at the
-            // viewport's default 330px size) - a first attempt at 0.92*halfSize + 36px feather
-            // put the fade's outer edge PAST the viewport's own bounds, spilling a visible soft
-            // halo out into the surrounding card's still-textured area instead of staying
-            // contained within the viewport - which read as even more obvious than the original
-            // hard-edged square (confirmed from a user screenshot). 0.72x leaves room for the
-            // full feather to complete before reaching that boundary.
-            const radius = halfSize * 0.72;
-            const feather = 20;
-            // mask-image: fully masked out (transparent, overlay hidden) up to `radius`, eased
-            // back to fully opaque (overlay shown) by `radius + feather`, then held opaque out
-            // to an arbitrarily large stop so the overlay is unaffected everywhere else on the
-            // page regardless of viewport size.
-            root.style.setProperty('--crt-hole', `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, transparent 0px, transparent ${radius.toFixed(1)}px, black ${(radius + feather).toFixed(1)}px, black ${(radius + feather + 4000).toFixed(1)}px)`);
-        }
-        function scheduleAIComputeCrtHoleUpdate() {
-            if (aiComputeCrtHoleRafPending) return;
-            aiComputeCrtHoleRafPending = true;
-            requestAnimationFrame(() => { aiComputeCrtHoleRafPending = false; updateAIComputeCrtHole(); });
-        }
-        window.addEventListener('scroll', scheduleAIComputeCrtHoleUpdate, { passive: true });
-        window.addEventListener('resize', scheduleAIComputeCrtHoleUpdate);
 
         window.latestWeather = null;
 
@@ -10710,7 +10740,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
             let resizeFitTimer;
             window.addEventListener('resize', () => {
                 clearTimeout(resizeFitTimer);
-                resizeFitTimer = setTimeout(() => { fitAllTitlesOneLine(document); fitAllSectionTitles(document); }, 150);
+                resizeFitTimer = setTimeout(() => {
+                    fitAllTitlesOneLine(document);
+                    fitAllSectionTitles(document);
+                    fitTitleOneLine(document.getElementById('hero-name'));
+                }, 150);
             });
 
             // On mobile, flipping the device to landscape can leave the sticky nav
