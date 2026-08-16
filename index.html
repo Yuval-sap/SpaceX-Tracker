@@ -4612,6 +4612,11 @@
         // Launches" grid without assuming it's always dbMissions[0].
         let currentHeroMissionId = null;
         let heroLiveCheckIntervalId = null;
+        // Which mission's video is currently loaded into the hero's player (#hero-video-iframe),
+        // if it's open. Lets renderHeroLiveButton tell "still the same mission, a periodic
+        // re-check" apart from "the hero switched to a different mission while the player was
+        // open" - the latter needs the stale stream torn down/replaced, not left alone.
+        let heroVideoMissionId = null;
         let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
         let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
 
@@ -8712,9 +8717,16 @@
             const heroVideoUnconfirmedYtBtn = document.getElementById('hero-video-unconfirmed-yt-btn');
             if (!watchLiveBtn) return;
 
+            const heroVideoOpen = heroVideoSection && !heroVideoSection.classList.contains('hidden');
+            // The hero switched to a genuinely different mission (e.g. eviction/grace-period
+            // rules moved a new mission into the hero) while a player was open and playing -
+            // the open stream belongs to whichever mission it was loaded for, not to whatever
+            // is now in the hero, so it needs to be swapped/torn down below instead of left alone.
+            const missionChangedWhileOpen = heroVideoOpen && heroVideoMissionId !== null && heroVideoMissionId !== nextLaunch.id;
+
             // Don't tear down a player that's already open and playing just because this
-            // function got re-invoked by the 20-second ticker or a data refresh.
-            if (heroVideoSection && !heroVideoSection.classList.contains('hidden')) return;
+            // function got re-invoked by the 20-second ticker or a data refresh for the SAME mission.
+            if (heroVideoOpen && !missionChangedWhileOpen) return;
 
             const liveSrcUrl = nextLaunch.hasLiveVideo ? (nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "") : "";
             const heroYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
@@ -8744,6 +8756,7 @@
                 if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
                 watchLiveBtn.onclick = function () {
                     if (!heroVideoIframe || !heroVideoSection) return;
+                    heroVideoMissionId = nextLaunch.id;
                     heroVideoSection.classList.remove('hidden');
                     resetVideoControlsOverlay('hero');
 
@@ -8775,12 +8788,32 @@
                         }
                     });
                 };
+
+                if (missionChangedWhileOpen) {
+                    // Force a fresh lookup instead of trusting the 2-minute SFN cache - it may
+                    // still hold the PREVIOUS mission's video id from just before the switch,
+                    // which would silently keep the stale stream playing for up to 2 more minutes.
+                    sfnLiveVideoIdCache = { id: null, fetchedAt: 0 };
+                    watchLiveBtn.onclick();
+                }
             } else {
                 watchLiveBtn.classList.add('hidden');
+                if (missionChangedWhileOpen) {
+                    // New mission has no live coverage at all (yet) - close the stale player
+                    // instead of leaving the previous mission's stream running underneath it.
+                    if (heroVideoIframe) heroVideoIframe.src = '';
+                    if (heroVideoSection) heroVideoSection.classList.add('hidden');
+                    if (heroVideoUnconfirmedOverlay) {
+                        heroVideoUnconfirmedOverlay.classList.add('hidden');
+                        heroVideoUnconfirmedOverlay.classList.remove('flex');
+                    }
+                    heroVideoMissionId = null;
+                }
             }
 
             if (heroVideoCloseBtn) {
                 heroVideoCloseBtn.onclick = function () {
+                    heroVideoMissionId = null;
                     if (heroVideoIframe) heroVideoIframe.src = '';
                     if (heroVideoSection) heroVideoSection.classList.add('hidden');
                     if (heroVideoUnconfirmedOverlay) {
