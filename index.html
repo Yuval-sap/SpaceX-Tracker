@@ -390,6 +390,63 @@
             margin-top: -2px;
         }
 
+        /* Mobile-only: horizontal-scrolling carousel instead of the vertical list above - every
+           property here only ever applies below 640px, so sm: and up (desktop) keeps the exact
+           original vertical .milestones-scrollbox behavior untouched.
+           !important is load-bearing on max-height/overflow-y specifically: Tailwind's Play CDN
+           injects its generated utility stylesheet (max-h-[268px], overflow-y-auto, both present
+           in this element's own class list) AFTER this page's inline <style> block, so at equal
+           specificity a plain override here loses the source-order tiebreak and is silently
+           ignored - confirmed directly via getComputedStyle (display/overflow-x/width all took
+           effect since Tailwind has no competing class for those, but max-height/overflow-y
+           stayed at the Tailwind-utility values until !important was added here). */
+        @media (max-width: 639px) {
+            /* .hide-scrollbar (added to this element's own class list) already provides the thin
+               green scrollbar-thumb styling for whichever axis is actually scrollable AND, more
+               importantly, -webkit-overflow-scrolling:touch for proper iOS momentum scrolling -
+               matches exactly what #past-launches-grid's own horizontal carousel already uses,
+               instead of this section separately duplicating (and, before this, incompletely
+               reproducing - it was missing the momentum-scroll fix) the same styling. */
+            .milestones-scrollbox {
+                max-height: none !important;
+                overflow-y: hidden !important;
+                overflow-x: auto;
+                display: flex;
+                align-items: flex-start;
+                gap: 0.75rem;
+                scroll-snap-type: x mandatory;
+            }
+
+            /* Wider than the first pass (260px), no truncation/line-clamp at all (title and
+               description wrap freely), and a shared min-height so every card reads as the same
+               size instead of each one being exactly as tall as its own text - measured the
+               real natural height of all 14 cards at this width (115/118/135px, tallest 135) and
+               set 138px, a few px of margin above that true max. Safe to hardcode against this
+               exact content: .milestones-scrollbox is permanently lang="en"/notranslate (never
+               run through Google Translate regardless of site language), so this text never gets
+               longer than what was actually measured here. */
+            .milestones-scrollbox > .milestone-card {
+                flex: 0 0 auto;
+                width: 300px;
+                min-height: 138px;
+                margin-top: 0 !important;
+                scroll-snap-align: start;
+            }
+
+            /* This exact fix already exists for .mission-card (#past-launches-grid's own cards -
+               see its own @media (max-width:640px) rule) but was never applied to .milestone-card,
+               which only just became part of a horizontal-flick carousel this session. A tap on a
+               touch device can leave :hover "stuck" (there's no mouse to naturally un-hover), and
+               that lingering transform on whichever card the flick started from is what was
+               damping the momentum/throw distance - matches user's own description exactly
+               (Past Launches, which already has this fix, throws far; Milestones, which didn't,
+               stopped almost immediately). :active (genuine press-down feedback) is deliberately
+               left alone, same as .mission-card's own version - only :hover is disabled. */
+            .milestones-scrollbox .milestone-card:hover {
+                transform: none !important;
+            }
+        }
+
         /* Shimmer skeleton loaders — replaces plain "Loading..." text everywhere */
         .skel {
             position: relative;
@@ -2469,6 +2526,22 @@
                 enableVerticalDragScroll(scrollbox);
                 scrollbox.dataset.dragEnabled = 'true';
             }
+            // Horizontal counterpart, mobile-only carousel mode (see the @media max-width:639px
+            // rules above) - separate dataset flag since enableVerticalDragScroll already claimed
+            // dataset.dragEnabled. This is what actually fixes the "throw stops after one card"
+            // symptom: without it, scroll-snap-type stays active through the entire touch gesture,
+            // and iOS/Android re-target an in-flight momentum scroll to the nearest snap point
+            // almost immediately instead of letting it coast - exactly the problem
+            // enableDragScroll's own touchstart/scroll handlers already solve (disable snap the
+            // moment a touch begins, restore it only once scrolling has genuinely settled), and
+            // exactly why #past-launches-grid's throw already carries properly and this one
+            // didn't - it never had this same fix applied, being a brand new carousel this
+            // session. Harmless on desktop/vertical: there's no horizontal overflow to drag there
+            // (cards are full-width outside the mobile breakpoint), so this is a no-op then.
+            if (scrollbox && !scrollbox.dataset.hDragEnabled) {
+                enableDragScroll(scrollbox);
+                scrollbox.dataset.hDragEnabled = 'true';
+            }
 
             const cards = document.querySelectorAll('.milestones-scrollbox > div');
             cards.forEach((card, idx) => {
@@ -3531,7 +3604,7 @@
                     class="text-sm text-zinc-400 transition-colors duration-500 notranslate" translate="no" lang="en">
                     Key firsts on the road to reusable spaceflight — scroll for more</p>
             </div>
-            <div class="milestones-scrollbox max-h-[268px] sm:max-h-[280px] overflow-y-auto pr-1.5 space-y-2.5 notranslate"
+            <div class="milestones-scrollbox hide-scrollbar max-h-[268px] sm:max-h-[280px] overflow-y-auto pr-1.5 space-y-2.5 notranslate"
                 translate="no" lang="en">
                 <div class="milestone-card flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 cursor-pointer"
                     onclick="openMilestoneImage(0)">
