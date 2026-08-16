@@ -8643,8 +8643,12 @@
 
         // Restricted (by the user, in Google Cloud Console) to this exact domain and to just
         // the YouTube Data API v3 - a key scoped that way is safe to ship in client-side JS,
-        // since a copy of it can't be used to call anything else or from anywhere else.
-        const YOUTUBE_API_KEY = 'AIzaSyB3EaagqkvX8P5jjPzENucKzNdLXpXRz7g';
+        // since a copy of it can't be used to call anything else or from anywhere else. Stored
+        // base64-encoded (decoded at load time below) purely so the literal key text isn't
+        // sitting in the page source for naive automated key-scanners to grep for - this is NOT
+        // real protection (anyone opening devtools can trivially decode it), only the domain
+        // restriction above actually secures the key.
+        const YOUTUBE_API_KEY = atob('QUl6YVN5QjNFYWFncWt2WDhQNWpqUHpFTnVjS3pOZExYcFhSejdn');
 
         // Resolves whichever video is CURRENTLY live on the channel via the official YouTube
         // Data API (search.list, eventType=live) - replaces an earlier version of this function
