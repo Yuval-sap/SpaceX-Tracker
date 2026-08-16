@@ -1919,6 +1919,137 @@
             animation: star-sparkle-flash 0.5s ease-out forwards;
             pointer-events: none;
         }
+
+        /* ==================================================
+           MAIN CONTENT TABS (Launches / More Info)
+           Full-width segmented control, sticky under the nav.
+           Active state is a soft emerald tint + underline — not a solid green fill —
+           so it reads as "console navigation" instead of competing with the hero pills.
+           ================================================== */
+        #main-tabs-bar {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+            margin-bottom: 1.25rem;
+            padding: 0 0.25rem;
+        }
+        #main-tabs {
+            display: flex;
+            width: 100%;
+            gap: 0.25rem;
+            padding: 0.22rem;
+            background: rgba(24, 24, 27, 0.92);
+            border: 1px solid rgba(39, 39, 42, 0.95);
+            border-radius: 0.85rem;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+        body.light-theme #main-tabs {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .main-tab-btn {
+            position: relative;
+            flex: 1 1 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            min-height: 2.25rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 0.65rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #a1a1aa;
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @media (min-width: 640px) {
+            .main-tab-btn {
+                min-height: 2.4rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.82rem;
+                letter-spacing: 0.06em;
+            }
+        }
+        /* Same neutral gray tint as originally (not the tab's own emerald accent - that's reserved
+           for .is-active, so hovering an inactive tab never looks like it's already selected),
+           just tuned brighter against the dark bar and darker against the light one so it's
+           actually visible instead of barely-there. */
+        .main-tab-btn:hover {
+            color: #d4d4d8;
+            background: rgba(63, 63, 70, 0.65);
+        }
+        body.light-theme .main-tab-btn {
+            color: #64748b;
+        }
+        body.light-theme .main-tab-btn:hover {
+            color: #334155;
+            background: rgba(100, 116, 139, 0.16);
+        }
+        .main-tab-btn.is-active {
+            color: #34d399;
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.22);
+        }
+        body.light-theme .main-tab-btn.is-active {
+            color: #047857;
+            background: rgba(16, 185, 129, 0.14);
+            border-color: rgba(4, 120, 87, 0.28);
+        }
+        /* Soft underline indicator — the primary "this is selected" cue */
+        .main-tab-btn.is-active::after {
+            content: '';
+            position: absolute;
+            left: 18%;
+            right: 18%;
+            bottom: 0.2rem;
+            height: 2px;
+            border-radius: 999px;
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.55);
+            pointer-events: none;
+        }
+        body.light-theme .main-tab-btn.is-active::after {
+            background: #059669;
+            box-shadow: 0 0 8px rgba(5, 150, 105, 0.35);
+        }
+        .main-tab-btn i {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        #tab-panel-launches,
+        #tab-panel-more {
+            transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                        transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform;
+        }
+        #tab-panel-more.hidden,
+        #tab-panel-launches.hidden {
+            display: none !important;
+        }
+        /* Outgoing panel: fade + slide out toward the tab it's yielding to, set via
+           --tab-slide-exit (a signed px value computed per-switch in switchMainTab so the
+           motion always matches the clicked tab's actual on-screen side, LTR or RTL). */
+        #tab-panel-launches.tab-panel-leaving,
+        #tab-panel-more.tab-panel-leaving {
+            opacity: 0;
+            transform: translateX(var(--tab-slide-exit, 0px)) scale(0.97);
+            pointer-events: none;
+        }
+        /* Incoming panel starts invisible (set before removing .hidden) then slides/fades in
+           from the opposite side via --tab-slide-enter. */
+        #tab-panel-launches.tab-panel-preenter,
+        #tab-panel-more.tab-panel-preenter {
+            opacity: 0;
+            transform: translateX(var(--tab-slide-enter, 0px)) scale(0.97);
+        }
+
     </style>
 
     <script>
@@ -1998,24 +2129,24 @@
         // the correct wording ourselves for every language in the translate widget's
         // includedLanguages list ('en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr').
         const LAUNCH_LABEL_I18N = {
-            en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Launches This Year", launchWindow: "LAUNCH WINDOW", launchSite: "LAUNCH SITE", recoveryZone: "RECOVERY ZONE", recoveryZoneInfo: "RECOVERY ZONE INFORMATION", launchesSection: "Scheduled Launches", pastLaunchesSection: "Recent Past Launches", vehicleType: "VEHICLE TYPE", orbitDestination: "ORBIT DESTINATION", asds: "Autonomous Spaceport Drone Ship (ASDS)", filterAll: "All", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX's Top 10 Most-Flown Boosters", boosterSubtitle: "Falcon 9 & Super Heavy boosters, tracked from live mission data", boosterAnalyzing: "Analyzing booster flight data...", boosterNoData: "No booster flight data available yet.", flights: "Flights", boosterRank: "Rank", boosterCol: "Booster", spacexXLink: "Follow @SpaceX on X", systemsGo: "SYSTEMS GO", finalCountdown: "FINAL COUNTDOWN", watchLaunch: "Watch the Launch", openOnYoutube: "Open on YouTube", watchDetailsVideo: "Watch Launch Details and Video", viewMissionDetails: "View Mission Details →" , missionInProgress: "MISSION IN PROGRESS", holdDelayed: "HOLD / DELAYED", countdownToLaunch: "Countdown to launch", launchNow: "LIFTOFF", patchesTitle: "SpaceX Mission Patches", patchesSubtitle: "Tap a patch for mission details" },
-            he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "10 הבוסטרים המוטסים ביותר של SpaceX", boosterSubtitle: "בוסטרים של Falcon 9 ו-Super Heavy, מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה", countdownToLaunch: "ספירה לאחור לשיגור", launchNow: "המראה", patchesTitle: "תגי המשימה של SpaceX", patchesSubtitle: "הקישו על תג לפרטי המשימה" },
-            iw: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "10 הבוסטרים המוטסים ביותר של SpaceX", boosterSubtitle: "בוסטרים של Falcon 9 ו-Super Heavy, מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה", countdownToLaunch: "ספירה לאחור לשיגור", launchNow: "המראה", patchesTitle: "תגי המשימה של SpaceX", patchesSubtitle: "הקישו על תג לפרטי המשימה" },
-            es: { nextLaunch: "PRÓXIMO LANZAMIENTO", upcomingLaunches: "Lanzamientos Este Año", launchWindow: "VENTANA DE LANZAMIENTO", launchSite: "SITIO DE LANZAMIENTO", recoveryZone: "ZONA DE RECUPERACIÓN", recoveryZoneInfo: "INFORMACIÓN DE LA ZONA DE RECUPERACIÓN", launchesSection: "Lanzamientos Programados", pastLaunchesSection: "Lanzamientos Recientes", vehicleType: "TIPO DE COHETE", orbitDestination: "DESTINO ORBITAL", asds: "Nave Dron Autónoma de Aterrizaje (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Los 10 Boosters Más Volados de SpaceX", boosterSubtitle: "Boosters Falcon 9 y Super Heavy, según datos de misión en vivo", boosterAnalyzing: "Analizando datos de vuelos de boosters...", boosterNoData: "Aún no hay datos de vuelos de boosters.", flights: "Vuelos", boosterRank: "Puesto", boosterCol: "Booster", spacexXLink: "Sigue a @SpaceX en X", systemsGo: "TODO LISTO", finalCountdown: "CUENTA REGRESIVA FINAL", watchLaunch: "Ver el lanzamiento", openOnYoutube: "Abrir en YouTube", watchDetailsVideo: "Ver Detalles y Video del Lanzamiento", viewMissionDetails: "Ver Detalles de la Misión →" , missionInProgress: "MISIÓN EN CURSO", holdDelayed: "RETENCIÓN / RETRASO", countdownToLaunch: "Cuenta regresiva para el lanzamiento", launchNow: "DESPEGUE", patchesTitle: "Insignias de Misión de SpaceX", patchesSubtitle: "Toca una insignia para ver los detalles de la misión" },
-            fr: { nextLaunch: "PROCHAIN LANCEMENT", upcomingLaunches: "Lancements Cette Année", launchWindow: "FENÊTRE DE LANCEMENT", launchSite: "SITE DE LANCEMENT", recoveryZone: "ZONE DE RÉCUPÉRATION", recoveryZoneInfo: "INFORMATIONS SUR LA ZONE DE RÉCUPÉRATION", launchesSection: "Lancements Programmés", pastLaunchesSection: "Lancements Récents", vehicleType: "TYPE DE FUSÉE", orbitDestination: "DESTINATION ORBITALE", asds: "Navire-Drone Autonome d'Atterrissage (ASDS)", filterAll: "Tous", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 des Boosters SpaceX les Plus Utilisés", boosterSubtitle: "Boosters Falcon 9 et Super Heavy, selon les données de mission en direct", boosterAnalyzing: "Analyse des données de vol des boosters...", boosterNoData: "Aucune donnée de vol de booster disponible pour le moment.", flights: "Vols", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Suivez @SpaceX sur X", systemsGo: "SYSTÈMES PRÊTS", finalCountdown: "COMPTE À REBOURS FINAL", watchLaunch: "Voir le lancement", openOnYoutube: "Ouvrir sur YouTube", watchDetailsVideo: "Voir les Détails et la Vidéo du Lancement", viewMissionDetails: "Voir les Détails de la Mission →" , missionInProgress: "MISSION EN COURS", holdDelayed: "ATTENTE / RETARD", countdownToLaunch: "Compte à rebours avant le lancement", launchNow: "DÉCOLLAGE", patchesTitle: "Écussons de Mission SpaceX", patchesSubtitle: "Touchez un écusson pour voir les détails de la mission" },
-            de: { nextLaunch: "NÄCHSTER START", upcomingLaunches: "Starts Dieses Jahr", launchWindow: "STARTFENSTER", launchSite: "STARTPLATZ", recoveryZone: "LANDEZONE", recoveryZoneInfo: "INFORMATIONEN ZUR LANDEZONE", launchesSection: "Geplante Starts", pastLaunchesSection: "Letzte Starts", vehicleType: "RAKETENTYP", orbitDestination: "ORBITALES ZIEL", asds: "Autonomes Drohnenschiff (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 der meistgeflogenen Booster von SpaceX", boosterSubtitle: "Falcon 9- und Super Heavy-Booster, erfasst aus Live-Missionsdaten", boosterAnalyzing: "Analysiere Booster-Flugdaten...", boosterNoData: "Noch keine Booster-Flugdaten verfügbar.", flights: "Flüge", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Folge @SpaceX auf X", systemsGo: "SYSTEME BEREIT", finalCountdown: "FINALER COUNTDOWN", watchLaunch: "Start ansehen", openOnYoutube: "Auf YouTube öffnen", watchDetailsVideo: "Startdetails und Video ansehen", viewMissionDetails: "Missionsdetails ansehen →" , missionInProgress: "MISSION LÄUFT", holdDelayed: "HALT / VERZÖGERUNG", countdownToLaunch: "Countdown bis zum Start", launchNow: "ABHEBEN", patchesTitle: "SpaceX-Missionsabzeichen", patchesSubtitle: "Tippen Sie auf ein Abzeichen für Missionsdetails" },
-            ru: { nextLaunch: "СЛЕДУЮЩИЙ ЗАПУСК", upcomingLaunches: "Запуски в этом году", launchWindow: "ОКНО ЗАПУСКА", launchSite: "МЕСТО ЗАПУСКА", recoveryZone: "ЗОНА ПОСАДКИ", recoveryZoneInfo: "ИНФОРМАЦИЯ О ЗОНЕ ПОСАДКИ", launchesSection: "Запланированные запуски", pastLaunchesSection: "Недавние запуски", vehicleType: "ТИП РАКЕТЫ", orbitDestination: "ОРБИТАЛЬНЫЙ ПУНКТ НАЗНАЧЕНИЯ", asds: "Автономный дрон-корабль (ASDS)", filterAll: "Все", filterDragon: "Драгон/экипаж", boosterTitle: "Топ-10 самых летавших бустеров SpaceX", boosterSubtitle: "Бустеры Falcon 9 и Super Heavy по данным миссий в реальном времени", boosterAnalyzing: "Анализ данных полётов бустеров...", boosterNoData: "Данные о полётах бустеров пока недоступны.", flights: "Полёты", boosterRank: "Место", boosterCol: "Бустер", spacexXLink: "Подписывайтесь на @SpaceX в X", systemsGo: "СИСТЕМЫ ГОТОВЫ", finalCountdown: "ФИНАЛЬНЫЙ ОТСЧЁТ", watchLaunch: "Смотреть запуск", openOnYoutube: "Открыть на YouTube", watchDetailsVideo: "Смотреть детали запуска и видео", viewMissionDetails: "Смотреть детали миссии →" , missionInProgress: "МИССИЯ ВЫПОЛНЯЕТСЯ", holdDelayed: "ЗАДЕРЖКА / ОТСРОЧКА", countdownToLaunch: "Обратный отсчёт до запуска", launchNow: "СТАРТ", patchesTitle: "Нашивки миссий SpaceX", patchesSubtitle: "Нажмите на нашивку, чтобы увидеть детали миссии" },
-            zh: { nextLaunch: "下一次发射", upcomingLaunches: "本年度发射", launchWindow: "发射窗口", launchSite: "发射场", recoveryZone: "回收区", recoveryZoneInfo: "回收区信息", launchesSection: "计划发射", pastLaunchesSection: "近期发射记录", vehicleType: "火箭类型", orbitDestination: "轨道目的地", asds: "自主无人驳船 (ASDS)", filterAll: "全部", filterDragon: "龙飞船/载人", boosterTitle: "SpaceX 十大飞行次数最多的助推器", boosterSubtitle: "来自实时任务数据的猎鹰9号与超级重型助推器", boosterAnalyzing: "正在分析助推器飞行数据...", boosterNoData: "暂无助推器飞行数据。", flights: "飞行次数", boosterRank: "排名", boosterCol: "助推器", spacexXLink: "在 X 上关注 @SpaceX", systemsGo: "系统正常", finalCountdown: "最终倒计时", watchLaunch: "观看发射", openOnYoutube: "在 YouTube 打开", watchDetailsVideo: "观看发射详情和视频", viewMissionDetails: "查看任务详情 →" , missionInProgress: "任务进行中", holdDelayed: "暂停 / 延迟", countdownToLaunch: "发射倒计时", launchNow: "起飞", patchesTitle: "SpaceX 任务徽章", patchesSubtitle: "点击徽章查看任务详情" },
-            it: { nextLaunch: "PROSSIMO LANCIO", upcomingLaunches: "Lanci di Quest'Anno", launchWindow: "FINESTRA DI LANCIO", launchSite: "SITO DI LANCIO", recoveryZone: "ZONA DI RECUPERO", recoveryZoneInfo: "INFORMAZIONI SULLA ZONA DI RECUPERO", launchesSection: "Lanci Programmati", pastLaunchesSection: "Lanci Recenti", vehicleType: "TIPO DI RAZZO", orbitDestination: "DESTINAZIONE ORBITALE", asds: "Nave Drone Autonoma (ASDS)", filterAll: "Tutti", filterDragon: "Dragon/Crew", boosterTitle: "La Top 10 dei Booster SpaceX Più Volati", boosterSubtitle: "Booster Falcon 9 e Super Heavy, da dati di missione in tempo reale", boosterAnalyzing: "Analisi dei dati di volo dei booster...", boosterNoData: "Nessun dato di volo booster disponibile ancora.", flights: "Voli", boosterRank: "Posizione", boosterCol: "Booster", spacexXLink: "Segui @SpaceX su X", systemsGo: "SISTEMI PRONTI", finalCountdown: "CONTO ALLA ROVESCIA FINALE", watchLaunch: "Guarda il lancio", openOnYoutube: "Apri su YouTube", watchDetailsVideo: "Guarda Dettagli e Video del Lancio", viewMissionDetails: "Vedi Dettagli della Missione →" , missionInProgress: "MISSIONE IN CORSO", holdDelayed: "ATTESA / RITARDO", countdownToLaunch: "Conto alla rovescia al lancio", launchNow: "DECOLLO", patchesTitle: "Patch delle Missioni SpaceX", patchesSubtitle: "Tocca un patch per i dettagli della missione" },
-            cs: { nextLaunch: "PŘÍŠTÍ START", upcomingLaunches: "Starty v tomto roce", launchWindow: "STARTOVACÍ OKNO", launchSite: "MÍSTO STARTU", recoveryZone: "OBLAST PŘISTÁNÍ", recoveryZoneInfo: "INFORMACE O OBLASTI PŘISTÁNÍ", launchesSection: "Plánované starty", pastLaunchesSection: "Nedávné starty", vehicleType: "TYP RAKETY", orbitDestination: "ORBITÁLNÍ CÍL", asds: "Autonomní robotická loď (ASDS)", filterAll: "Vše", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 nejlétanějších boosterů SpaceX", boosterSubtitle: "Boostery Falcon 9 a Super Heavy podle živých dat z misí", boosterAnalyzing: "Analyzuji data letů boosterů...", boosterNoData: "Zatím nejsou dostupná žádná data o letech boosterů.", flights: "Lety", boosterRank: "Pořadí", boosterCol: "Booster", spacexXLink: "Sledujte @SpaceX na X", systemsGo: "SYSTÉMY PŘIPRAVENY", finalCountdown: "FINÁLNÍ ODPOČET", watchLaunch: "Sledovat start", openOnYoutube: "Otevřít na YouTube", watchDetailsVideo: "Zobrazit podrobnosti startu a video", viewMissionDetails: "Zobrazit podrobnosti mise →" , missionInProgress: "MISE PROBÍHÁ", holdDelayed: "ZDRŽENÍ / ODKLAD", countdownToLaunch: "Odpočet do startu", launchNow: "VZLET", patchesTitle: "Emblémy misí SpaceX", patchesSubtitle: "Klepnutím na emblém zobrazíte podrobnosti mise" },
-            sv: { nextLaunch: "NÄSTA UPPSKJUTNING", upcomingLaunches: "Uppskjutningar i år", launchWindow: "UPPSKJUTNINGSFÖNSTER", launchSite: "UPPSKJUTNINGSPLATS", recoveryZone: "LANDNINGSZON", recoveryZoneInfo: "INFORMATION OM LANDNINGSZON", launchesSection: "Planerade uppskjutningar", pastLaunchesSection: "Senaste uppskjutningar", vehicleType: "RAKETTYP", orbitDestination: "ORBITAL DESTINATION", asds: "Autonomt dronfartyg (ASDS)", filterAll: "Alla", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX Topp 10 Mest Flugna Boosters", boosterSubtitle: "Falcon 9- och Super Heavy-boosters, från live-uppdragsdata", boosterAnalyzing: "Analyserar booster-flygdata...", boosterNoData: "Ingen booster-flygdata tillgänglig ännu.", flights: "Flygningar", boosterRank: "Plats", boosterCol: "Booster", spacexXLink: "Följ @SpaceX på X", systemsGo: "SYSTEM KLARA", finalCountdown: "SISTA NEDRÄKNINGEN", watchLaunch: "Titta på uppskjutningen", openOnYoutube: "Öppna på YouTube", watchDetailsVideo: "Se uppskjutningsdetaljer och video", viewMissionDetails: "Se uppdragsdetaljer →" , missionInProgress: "UPPDRAG PÅGÅR", holdDelayed: "UPPEHÅLL / FÖRSENING", countdownToLaunch: "Nedräkning till uppskjutning", launchNow: "LYFT", patchesTitle: "SpaceX Uppdragsmärken", patchesSubtitle: "Tryck på ett märke för uppdragsdetaljer" },
-            nl: { nextLaunch: "VOLGENDE LANCERING", upcomingLaunches: "Lanceringen Dit Jaar", launchWindow: "LANCEERVENSTER", launchSite: "LANCEERPLAATS", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "INFORMATIE LANDINGSZONE", launchesSection: "Geplande Lanceringen", pastLaunchesSection: "Recente lanceringen", vehicleType: "RAKETTYPE", orbitDestination: "BAANBESTEMMING", asds: "Autonoom droneschip (ASDS)", filterAll: "Alles", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX's Top 10 Meest Gevlogen Boosters", boosterSubtitle: "Falcon 9- en Super Heavy-boosters, uit live missiedata", boosterAnalyzing: "Booster-vluchtdata analyseren...", boosterNoData: "Nog geen booster-vluchtdata beschikbaar.", flights: "Vluchten", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Volg @SpaceX op X", systemsGo: "SYSTEMEN GEREED", finalCountdown: "LAATSTE AFTELLEN", watchLaunch: "Bekijk de lancering", openOnYoutube: "Open op YouTube", watchDetailsVideo: "Bekijk lanceringsdetails en video", viewMissionDetails: "Bekijk missiedetails →" , missionInProgress: "MISSIE BEZIG", holdDelayed: "VERTRAGING / UITSTEL", countdownToLaunch: "Aftellen tot lancering", launchNow: "OPSTIJGEN", patchesTitle: "SpaceX-missiepatches", patchesSubtitle: "Tik op een patch voor missiedetails" },
-            da: { nextLaunch: "NÆSTE OPSENDELSE", upcomingLaunches: "Opsendelser i år", launchWindow: "OPSENDELSESVINDUE", launchSite: "OPSENDELSESSTED", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "OPLYSNINGER OM LANDINGSZONE", launchesSection: "Planlagte Opsendelser", pastLaunchesSection: "Seneste opsendelser", vehicleType: "RAKETTYPE", orbitDestination: "BANEDESTINATION", asds: "Autonomt droneskib (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX' Top 10 Mest Fløjne Boostere", boosterSubtitle: "Falcon 9- og Super Heavy-boostere, fra live missionsdata", boosterAnalyzing: "Analyserer booster-flyvedata...", boosterNoData: "Ingen booster-flyvedata tilgængelige endnu.", flights: "Flyvninger", boosterRank: "Plads", boosterCol: "Booster", spacexXLink: "Følg @SpaceX på X", systemsGo: "SYSTEMER KLAR", finalCountdown: "SIDSTE NEDTÆLLING", watchLaunch: "Se opsendelsen", openOnYoutube: "Åbn på YouTube", watchDetailsVideo: "Se opsendelsesdetaljer og video", viewMissionDetails: "Se missionsdetaljer →" , missionInProgress: "MISSION I GANG", holdDelayed: "OPHOLD / FORSINKELSE", countdownToLaunch: "Nedtælling til opsendelse", launchNow: "LØFT", patchesTitle: "SpaceX Missionsmærker", patchesSubtitle: "Tryk på et mærke for missionsdetaljer" },
-            pt: { nextLaunch: "PRÓXIMO LANÇAMENTO", upcomingLaunches: "Lançamentos Este Ano", launchWindow: "JANELA DE LANÇAMENTO", launchSite: "LOCAL DE LANÇAMENTO", recoveryZone: "ZONA DE RECUPERAÇÃO", recoveryZoneInfo: "INFORMAÇÕES DA ZONA DE RECUPERAÇÃO", launchesSection: "Lançamentos Programados", pastLaunchesSection: "Lançamentos Recentes", vehicleType: "TIPO DE FOGUETE", orbitDestination: "DESTINO ORBITAL", asds: "Navio-Drone Autônomo (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Os 10 Boosters Mais Voados da SpaceX", boosterSubtitle: "Boosters Falcon 9 e Super Heavy, com dados de missão ao vivo", boosterAnalyzing: "Analisando dados de voos de boosters...", boosterNoData: "Ainda não há dados de voos de boosters disponíveis.", flights: "Voos", boosterRank: "Posição", boosterCol: "Booster", spacexXLink: "Siga @SpaceX no X", systemsGo: "SISTEMAS PRONTOS", finalCountdown: "CONTAGEM REGRESSIVA FINAL", watchLaunch: "Assistir ao lançamento", openOnYoutube: "Abrir no YouTube", watchDetailsVideo: "Ver Detalhes e Vídeo do Lançamento", viewMissionDetails: "Ver Detalhes da Missão →" , missionInProgress: "MISSÃO EM ANDAMENTO", holdDelayed: "RETENÇÃO / ATRASO", countdownToLaunch: "Contagem regressiva para o lançamento", launchNow: "DECOLAGEM", patchesTitle: "Emblemas de Missão da SpaceX", patchesSubtitle: "Toque em um emblema para ver os detalhes da missão" },
-            pl: { nextLaunch: "NASTĘPNY START", upcomingLaunches: "Starty w tym roku", launchWindow: "OKNO STARTOWE", launchSite: "MIEJSCE STARTU", recoveryZone: "STREFA LĄDOWANIA", recoveryZoneInfo: "INFORMACJE O STREFIE LĄDOWANIA", launchesSection: "Planowane starty", pastLaunchesSection: "Ostatnie starty", vehicleType: "TYP RAKIETY", orbitDestination: "CEL ORBITALNY", asds: "Autonomiczny statek-dron (ASDS)", filterAll: "Wszystkie", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 najczęściej latających boosterów SpaceX", boosterSubtitle: "Boostery Falcon 9 i Super Heavy, na podstawie danych misji na żywo", boosterAnalyzing: "Analizowanie danych lotów boosterów...", boosterNoData: "Brak jeszcze danych o lotach boosterów.", flights: "Loty", boosterRank: "Pozycja", boosterCol: "Booster", spacexXLink: "Śledź @SpaceX na X", systemsGo: "SYSTEMY GOTOWE", finalCountdown: "OSTATECZNE ODLICZANIE", watchLaunch: "Obejrzyj start", openOnYoutube: "Otwórz na YouTube", watchDetailsVideo: "Obejrzyj szczegóły startu i wideo", viewMissionDetails: "Zobacz szczegóły misji →" , missionInProgress: "MISJA W TOKU", holdDelayed: "WSTRZYMANIE / OPÓŹNIENIE", countdownToLaunch: "Odliczanie do startu", launchNow: "WZLOT", patchesTitle: "Naszywki Misji SpaceX", patchesSubtitle: "Dotknij naszywki, aby zobaczyć szczegóły misji" },
-            hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "इस वर्ष के प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल", recoveryZone: "पुनर्प्राप्ति क्षेत्र", recoveryZoneInfo: "पुनर्प्राप्ति क्षेत्र की जानकारी", launchesSection: "नियोजित प्रक्षेपण", pastLaunchesSection: "हाल के प्रक्षेपण", vehicleType: "रॉकेट प्रकार", orbitDestination: "कक्षा गंतव्य", asds: "स्वायत्त ड्रोन जहाज (ASDS)", filterAll: "सभी", filterDragon: "ड्रैगन/क्रू", boosterTitle: "SpaceX के 10 सबसे अधिक उड़े बूस्टर", boosterSubtitle: "लाइव मिशन डेटा से फाल्कन 9 और सुपर हेवी बूस्टर", boosterAnalyzing: "बूस्टर उड़ान डेटा का विश्लेषण...", boosterNoData: "अभी तक कोई बूस्टर उड़ान डेटा उपलब्ध नहीं।", flights: "उड़ानें", boosterRank: "रैंक", boosterCol: "बूस्टर", spacexXLink: "X पर @SpaceX को फॉलो करें", systemsGo: "सिस्टम तैयार", finalCountdown: "अंतिम उलटी गिनती", watchLaunch: "प्रक्षेपण देखें", openOnYoutube: "YouTube पर खोलें", watchDetailsVideo: "प्रक्षेपण विवरण और वीडियो देखें", viewMissionDetails: "मिशन विवरण देखें →" , missionInProgress: "मिशन जारी है", holdDelayed: "होल्ड / देरी", countdownToLaunch: "प्रक्षेपण तक उलटी गिनती", launchNow: "उड़ान", patchesTitle: "स्पेसएक्स मिशन पैच", patchesSubtitle: "मिशन विवरण के लिए पैच पर टैप करें" },
-            ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق هذا العام", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق", recoveryZone: "منطقة الاسترداد", recoveryZoneInfo: "معلومات منطقة الاسترداد", launchesSection: "عمليات الإطلاق المجدولة", pastLaunchesSection: "عمليات الإطلاق الأخيرة", vehicleType: "نوع الصاروخ", orbitDestination: "الوجهة المدارية", asds: "سفينة الإنزال الذاتية (ASDS)", filterAll: "الكل", filterDragon: "دراغون/طاقم", boosterTitle: "أفضل 10 معززات SpaceX الأكثر تحليقًا", boosterSubtitle: "معززات فالكون 9 وسوبر هيفي، وفق بيانات المهام الحية", boosterAnalyzing: "جاري تحليل بيانات رحلات المعززات...", boosterNoData: "لا تتوفر بيانات رحلات المعززات بعد.", flights: "رحلات", boosterRank: "الترتيب", boosterCol: "المعزز", spacexXLink: "تابع @SpaceX على X", systemsGo: "الأنظمة جاهزة", finalCountdown: "العد التنازلي الأخير", watchLaunch: "شاهد الإطلاق", openOnYoutube: "افتح على YouTube", watchDetailsVideo: "شاهد تفاصيل الإطلاق والفيديو", viewMissionDetails: "عرض تفاصيل المهمة ←" , missionInProgress: "المهمة قيد التنفيذ", holdDelayed: "تعليق / تأخير", countdownToLaunch: "العد التنازلي للإطلاق", launchNow: "الإقلاع", patchesTitle: "شارات مهام سبيس إكس", patchesSubtitle: "انقر على شارة لعرض تفاصيل المهمة" },
-            tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son Fırlatmalar", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX'in En Çok Uçan İlk 10 Boosterı", boosterSubtitle: "Canlı görev verilerinden Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" , missionInProgress: "GÖREV DEVAM EDİYOR", holdDelayed: "BEKLEME / GECİKME", countdownToLaunch: "Fırlatmaya geri sayım", launchNow: "KALKIŞ", patchesTitle: "SpaceX Görev Rozetleri", patchesSubtitle: "Görev detayları için bir rozete dokunun" },
+            en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Launches This Year", launchWindow: "LAUNCH WINDOW", launchSite: "LAUNCH SITE", recoveryZone: "RECOVERY ZONE", recoveryZoneInfo: "RECOVERY ZONE INFORMATION", launchesSection: "Scheduled Launches", pastLaunchesSection: "Recent Past Launches", vehicleType: "VEHICLE TYPE", orbitDestination: "ORBIT DESTINATION", asds: "Autonomous Spaceport Drone Ship (ASDS)", filterAll: "All", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX's Top 10 Most-Flown Boosters", boosterSubtitle: "Falcon 9 & Super Heavy boosters, tracked from live mission data", boosterAnalyzing: "Analyzing booster flight data...", boosterNoData: "No booster flight data available yet.", flights: "Flights", boosterRank: "Rank", boosterCol: "Booster", spacexXLink: "Follow @SpaceX on X", systemsGo: "SYSTEMS GO", finalCountdown: "FINAL COUNTDOWN", watchLaunch: "Watch the Launch", openOnYoutube: "Open on YouTube", watchDetailsVideo: "Watch Launch Details and Video", viewMissionDetails: "View Mission Details →" , missionInProgress: "MISSION IN PROGRESS", holdDelayed: "HOLD / DELAYED", countdownToLaunch: "Countdown to launch", launchNow: "LIFTOFF", patchesTitle: "SpaceX Mission Patches", patchesSubtitle: "Tap a patch for mission details", launchesTab: 'Launches', moreInfoTab: 'Info Station' },
+            he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "10 הבוסטרים המוטסים ביותר של SpaceX", boosterSubtitle: "בוסטרים של Falcon 9 ו-Super Heavy, מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה", countdownToLaunch: "ספירה לאחור לשיגור", launchNow: "המראה", patchesTitle: "תגי המשימה של SpaceX", patchesSubtitle: "הקישו על תג לפרטי המשימה", launchesTab: 'שיגורים', moreInfoTab: 'תחנת מידע' },
+            iw: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורים אחרונים", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", boosterTitle: "10 הבוסטרים המוטסים ביותר של SpaceX", boosterSubtitle: "בוסטרים של Falcon 9 ו-Super Heavy, מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה", countdownToLaunch: "ספירה לאחור לשיגור", launchNow: "המראה", patchesTitle: "תגי המשימה של SpaceX", patchesSubtitle: "הקישו על תג לפרטי המשימה", launchesTab: 'שיגורים', moreInfoTab: 'תחנת מידע' },
+            es: { nextLaunch: "PRÓXIMO LANZAMIENTO", upcomingLaunches: "Lanzamientos Este Año", launchWindow: "VENTANA DE LANZAMIENTO", launchSite: "SITIO DE LANZAMIENTO", recoveryZone: "ZONA DE RECUPERACIÓN", recoveryZoneInfo: "INFORMACIÓN DE LA ZONA DE RECUPERACIÓN", launchesSection: "Lanzamientos Programados", pastLaunchesSection: "Lanzamientos Recientes", vehicleType: "TIPO DE COHETE", orbitDestination: "DESTINO ORBITAL", asds: "Nave Dron Autónoma de Aterrizaje (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Los 10 Boosters Más Volados de SpaceX", boosterSubtitle: "Boosters Falcon 9 y Super Heavy, según datos de misión en vivo", boosterAnalyzing: "Analizando datos de vuelos de boosters...", boosterNoData: "Aún no hay datos de vuelos de boosters.", flights: "Vuelos", boosterRank: "Puesto", boosterCol: "Booster", spacexXLink: "Sigue a @SpaceX en X", systemsGo: "TODO LISTO", finalCountdown: "CUENTA REGRESIVA FINAL", watchLaunch: "Ver el lanzamiento", openOnYoutube: "Abrir en YouTube", watchDetailsVideo: "Ver Detalles y Video del Lanzamiento", viewMissionDetails: "Ver Detalles de la Misión →" , missionInProgress: "MISIÓN EN CURSO", holdDelayed: "RETENCIÓN / RETRASO", countdownToLaunch: "Cuenta regresiva para el lanzamiento", launchNow: "DESPEGUE", patchesTitle: "Insignias de Misión de SpaceX", patchesSubtitle: "Toca una insignia para ver los detalles de la misión", launchesTab: 'Lanzamientos', moreInfoTab: 'Estación Info' },
+            fr: { nextLaunch: "PROCHAIN LANCEMENT", upcomingLaunches: "Lancements Cette Année", launchWindow: "FENÊTRE DE LANCEMENT", launchSite: "SITE DE LANCEMENT", recoveryZone: "ZONE DE RÉCUPÉRATION", recoveryZoneInfo: "INFORMATIONS SUR LA ZONE DE RÉCUPÉRATION", launchesSection: "Lancements Programmés", pastLaunchesSection: "Lancements Récents", vehicleType: "TYPE DE FUSÉE", orbitDestination: "DESTINATION ORBITALE", asds: "Navire-Drone Autonome d'Atterrissage (ASDS)", filterAll: "Tous", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 des Boosters SpaceX les Plus Utilisés", boosterSubtitle: "Boosters Falcon 9 et Super Heavy, selon les données de mission en direct", boosterAnalyzing: "Analyse des données de vol des boosters...", boosterNoData: "Aucune donnée de vol de booster disponible pour le moment.", flights: "Vols", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Suivez @SpaceX sur X", systemsGo: "SYSTÈMES PRÊTS", finalCountdown: "COMPTE À REBOURS FINAL", watchLaunch: "Voir le lancement", openOnYoutube: "Ouvrir sur YouTube", watchDetailsVideo: "Voir les Détails et la Vidéo du Lancement", viewMissionDetails: "Voir les Détails de la Mission →" , missionInProgress: "MISSION EN COURS", holdDelayed: "ATTENTE / RETARD", countdownToLaunch: "Compte à rebours avant le lancement", launchNow: "DÉCOLLAGE", patchesTitle: "Écussons de Mission SpaceX", patchesSubtitle: "Touchez un écusson pour voir les détails de la mission", launchesTab: 'Lancements', moreInfoTab: 'Station Info' },
+            de: { nextLaunch: "NÄCHSTER START", upcomingLaunches: "Starts Dieses Jahr", launchWindow: "STARTFENSTER", launchSite: "STARTPLATZ", recoveryZone: "LANDEZONE", recoveryZoneInfo: "INFORMATIONEN ZUR LANDEZONE", launchesSection: "Geplante Starts", pastLaunchesSection: "Letzte Starts", vehicleType: "RAKETENTYP", orbitDestination: "ORBITALES ZIEL", asds: "Autonomes Drohnenschiff (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 der meistgeflogenen Booster von SpaceX", boosterSubtitle: "Falcon 9- und Super Heavy-Booster, erfasst aus Live-Missionsdaten", boosterAnalyzing: "Analysiere Booster-Flugdaten...", boosterNoData: "Noch keine Booster-Flugdaten verfügbar.", flights: "Flüge", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Folge @SpaceX auf X", systemsGo: "SYSTEME BEREIT", finalCountdown: "FINALER COUNTDOWN", watchLaunch: "Start ansehen", openOnYoutube: "Auf YouTube öffnen", watchDetailsVideo: "Startdetails und Video ansehen", viewMissionDetails: "Missionsdetails ansehen →" , missionInProgress: "MISSION LÄUFT", holdDelayed: "HALT / VERZÖGERUNG", countdownToLaunch: "Countdown bis zum Start", launchNow: "ABHEBEN", patchesTitle: "SpaceX-Missionsabzeichen", patchesSubtitle: "Tippen Sie auf ein Abzeichen für Missionsdetails", launchesTab: 'Starts', moreInfoTab: 'Infostation' },
+            ru: { nextLaunch: "СЛЕДУЮЩИЙ ЗАПУСК", upcomingLaunches: "Запуски в этом году", launchWindow: "ОКНО ЗАПУСКА", launchSite: "МЕСТО ЗАПУСКА", recoveryZone: "ЗОНА ПОСАДКИ", recoveryZoneInfo: "ИНФОРМАЦИЯ О ЗОНЕ ПОСАДКИ", launchesSection: "Запланированные запуски", pastLaunchesSection: "Недавние запуски", vehicleType: "ТИП РАКЕТЫ", orbitDestination: "ОРБИТАЛЬНЫЙ ПУНКТ НАЗНАЧЕНИЯ", asds: "Автономный дрон-корабль (ASDS)", filterAll: "Все", filterDragon: "Драгон/экипаж", boosterTitle: "Топ-10 самых летавших бустеров SpaceX", boosterSubtitle: "Бустеры Falcon 9 и Super Heavy по данным миссий в реальном времени", boosterAnalyzing: "Анализ данных полётов бустеров...", boosterNoData: "Данные о полётах бустеров пока недоступны.", flights: "Полёты", boosterRank: "Место", boosterCol: "Бустер", spacexXLink: "Подписывайтесь на @SpaceX в X", systemsGo: "СИСТЕМЫ ГОТОВЫ", finalCountdown: "ФИНАЛЬНЫЙ ОТСЧЁТ", watchLaunch: "Смотреть запуск", openOnYoutube: "Открыть на YouTube", watchDetailsVideo: "Смотреть детали запуска и видео", viewMissionDetails: "Смотреть детали миссии →" , missionInProgress: "МИССИЯ ВЫПОЛНЯЕТСЯ", holdDelayed: "ЗАДЕРЖКА / ОТСРОЧКА", countdownToLaunch: "Обратный отсчёт до запуска", launchNow: "СТАРТ", patchesTitle: "Нашивки миссий SpaceX", patchesSubtitle: "Нажмите на нашивку, чтобы увидеть детали миссии", launchesTab: 'Запуски', moreInfoTab: 'Инфостанция' },
+            zh: { nextLaunch: "下一次发射", upcomingLaunches: "本年度发射", launchWindow: "发射窗口", launchSite: "发射场", recoveryZone: "回收区", recoveryZoneInfo: "回收区信息", launchesSection: "计划发射", pastLaunchesSection: "近期发射记录", vehicleType: "火箭类型", orbitDestination: "轨道目的地", asds: "自主无人驳船 (ASDS)", filterAll: "全部", filterDragon: "龙飞船/载人", boosterTitle: "SpaceX 十大飞行次数最多的助推器", boosterSubtitle: "来自实时任务数据的猎鹰9号与超级重型助推器", boosterAnalyzing: "正在分析助推器飞行数据...", boosterNoData: "暂无助推器飞行数据。", flights: "飞行次数", boosterRank: "排名", boosterCol: "助推器", spacexXLink: "在 X 上关注 @SpaceX", systemsGo: "系统正常", finalCountdown: "最终倒计时", watchLaunch: "观看发射", openOnYoutube: "在 YouTube 打开", watchDetailsVideo: "观看发射详情和视频", viewMissionDetails: "查看任务详情 →" , missionInProgress: "任务进行中", holdDelayed: "暂停 / 延迟", countdownToLaunch: "发射倒计时", launchNow: "起飞", patchesTitle: "SpaceX 任务徽章", patchesSubtitle: "点击徽章查看任务详情", launchesTab: '发射', moreInfoTab: '信息站' },
+            it: { nextLaunch: "PROSSIMO LANCIO", upcomingLaunches: "Lanci di Quest'Anno", launchWindow: "FINESTRA DI LANCIO", launchSite: "SITO DI LANCIO", recoveryZone: "ZONA DI RECUPERO", recoveryZoneInfo: "INFORMAZIONI SULLA ZONA DI RECUPERO", launchesSection: "Lanci Programmati", pastLaunchesSection: "Lanci Recenti", vehicleType: "TIPO DI RAZZO", orbitDestination: "DESTINAZIONE ORBITALE", asds: "Nave Drone Autonoma (ASDS)", filterAll: "Tutti", filterDragon: "Dragon/Crew", boosterTitle: "La Top 10 dei Booster SpaceX Più Volati", boosterSubtitle: "Booster Falcon 9 e Super Heavy, da dati di missione in tempo reale", boosterAnalyzing: "Analisi dei dati di volo dei booster...", boosterNoData: "Nessun dato di volo booster disponibile ancora.", flights: "Voli", boosterRank: "Posizione", boosterCol: "Booster", spacexXLink: "Segui @SpaceX su X", systemsGo: "SISTEMI PRONTI", finalCountdown: "CONTO ALLA ROVESCIA FINALE", watchLaunch: "Guarda il lancio", openOnYoutube: "Apri su YouTube", watchDetailsVideo: "Guarda Dettagli e Video del Lancio", viewMissionDetails: "Vedi Dettagli della Missione →" , missionInProgress: "MISSIONE IN CORSO", holdDelayed: "ATTESA / RITARDO", countdownToLaunch: "Conto alla rovescia al lancio", launchNow: "DECOLLO", patchesTitle: "Patch delle Missioni SpaceX", patchesSubtitle: "Tocca un patch per i dettagli della missione", launchesTab: 'Lanci', moreInfoTab: 'Stazione Info' },
+            cs: { nextLaunch: "PŘÍŠTÍ START", upcomingLaunches: "Starty v tomto roce", launchWindow: "STARTOVACÍ OKNO", launchSite: "MÍSTO STARTU", recoveryZone: "OBLAST PŘISTÁNÍ", recoveryZoneInfo: "INFORMACE O OBLASTI PŘISTÁNÍ", launchesSection: "Plánované starty", pastLaunchesSection: "Nedávné starty", vehicleType: "TYP RAKETY", orbitDestination: "ORBITÁLNÍ CÍL", asds: "Autonomní robotická loď (ASDS)", filterAll: "Vše", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 nejlétanějších boosterů SpaceX", boosterSubtitle: "Boostery Falcon 9 a Super Heavy podle živých dat z misí", boosterAnalyzing: "Analyzuji data letů boosterů...", boosterNoData: "Zatím nejsou dostupná žádná data o letech boosterů.", flights: "Lety", boosterRank: "Pořadí", boosterCol: "Booster", spacexXLink: "Sledujte @SpaceX na X", systemsGo: "SYSTÉMY PŘIPRAVENY", finalCountdown: "FINÁLNÍ ODPOČET", watchLaunch: "Sledovat start", openOnYoutube: "Otevřít na YouTube", watchDetailsVideo: "Zobrazit podrobnosti startu a video", viewMissionDetails: "Zobrazit podrobnosti mise →" , missionInProgress: "MISE PROBÍHÁ", holdDelayed: "ZDRŽENÍ / ODKLAD", countdownToLaunch: "Odpočet do startu", launchNow: "VZLET", patchesTitle: "Emblémy misí SpaceX", patchesSubtitle: "Klepnutím na emblém zobrazíte podrobnosti mise", launchesTab: 'Starty', moreInfoTab: 'Info stanice' },
+            sv: { nextLaunch: "NÄSTA UPPSKJUTNING", upcomingLaunches: "Uppskjutningar i år", launchWindow: "UPPSKJUTNINGSFÖNSTER", launchSite: "UPPSKJUTNINGSPLATS", recoveryZone: "LANDNINGSZON", recoveryZoneInfo: "INFORMATION OM LANDNINGSZON", launchesSection: "Planerade uppskjutningar", pastLaunchesSection: "Senaste uppskjutningar", vehicleType: "RAKETTYP", orbitDestination: "ORBITAL DESTINATION", asds: "Autonomt dronfartyg (ASDS)", filterAll: "Alla", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX Topp 10 Mest Flugna Boosters", boosterSubtitle: "Falcon 9- och Super Heavy-boosters, från live-uppdragsdata", boosterAnalyzing: "Analyserar booster-flygdata...", boosterNoData: "Ingen booster-flygdata tillgänglig ännu.", flights: "Flygningar", boosterRank: "Plats", boosterCol: "Booster", spacexXLink: "Följ @SpaceX på X", systemsGo: "SYSTEM KLARA", finalCountdown: "SISTA NEDRÄKNINGEN", watchLaunch: "Titta på uppskjutningen", openOnYoutube: "Öppna på YouTube", watchDetailsVideo: "Se uppskjutningsdetaljer och video", viewMissionDetails: "Se uppdragsdetaljer →" , missionInProgress: "UPPDRAG PÅGÅR", holdDelayed: "UPPEHÅLL / FÖRSENING", countdownToLaunch: "Nedräkning till uppskjutning", launchNow: "LYFT", patchesTitle: "SpaceX Uppdragsmärken", patchesSubtitle: "Tryck på ett märke för uppdragsdetaljer", launchesTab: 'Uppskjutningar', moreInfoTab: 'Infostation' },
+            nl: { nextLaunch: "VOLGENDE LANCERING", upcomingLaunches: "Lanceringen Dit Jaar", launchWindow: "LANCEERVENSTER", launchSite: "LANCEERPLAATS", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "INFORMATIE LANDINGSZONE", launchesSection: "Geplande Lanceringen", pastLaunchesSection: "Recente lanceringen", vehicleType: "RAKETTYPE", orbitDestination: "BAANBESTEMMING", asds: "Autonoom droneschip (ASDS)", filterAll: "Alles", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX's Top 10 Meest Gevlogen Boosters", boosterSubtitle: "Falcon 9- en Super Heavy-boosters, uit live missiedata", boosterAnalyzing: "Booster-vluchtdata analyseren...", boosterNoData: "Nog geen booster-vluchtdata beschikbaar.", flights: "Vluchten", boosterRank: "Rang", boosterCol: "Booster", spacexXLink: "Volg @SpaceX op X", systemsGo: "SYSTEMEN GEREED", finalCountdown: "LAATSTE AFTELLEN", watchLaunch: "Bekijk de lancering", openOnYoutube: "Open op YouTube", watchDetailsVideo: "Bekijk lanceringsdetails en video", viewMissionDetails: "Bekijk missiedetails →" , missionInProgress: "MISSIE BEZIG", holdDelayed: "VERTRAGING / UITSTEL", countdownToLaunch: "Aftellen tot lancering", launchNow: "OPSTIJGEN", patchesTitle: "SpaceX-missiepatches", patchesSubtitle: "Tik op een patch voor missiedetails", launchesTab: 'Lanceringen', moreInfoTab: 'Infopunt' },
+            da: { nextLaunch: "NÆSTE OPSENDELSE", upcomingLaunches: "Opsendelser i år", launchWindow: "OPSENDELSESVINDUE", launchSite: "OPSENDELSESSTED", recoveryZone: "LANDINGSZONE", recoveryZoneInfo: "OPLYSNINGER OM LANDINGSZONE", launchesSection: "Planlagte Opsendelser", pastLaunchesSection: "Seneste opsendelser", vehicleType: "RAKETTYPE", orbitDestination: "BANEDESTINATION", asds: "Autonomt droneskib (ASDS)", filterAll: "Alle", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX' Top 10 Mest Fløjne Boostere", boosterSubtitle: "Falcon 9- og Super Heavy-boostere, fra live missionsdata", boosterAnalyzing: "Analyserer booster-flyvedata...", boosterNoData: "Ingen booster-flyvedata tilgængelige endnu.", flights: "Flyvninger", boosterRank: "Plads", boosterCol: "Booster", spacexXLink: "Følg @SpaceX på X", systemsGo: "SYSTEMER KLAR", finalCountdown: "SIDSTE NEDTÆLLING", watchLaunch: "Se opsendelsen", openOnYoutube: "Åbn på YouTube", watchDetailsVideo: "Se opsendelsesdetaljer og video", viewMissionDetails: "Se missionsdetaljer →" , missionInProgress: "MISSION I GANG", holdDelayed: "OPHOLD / FORSINKELSE", countdownToLaunch: "Nedtælling til opsendelse", launchNow: "LØFT", patchesTitle: "SpaceX Missionsmærker", patchesSubtitle: "Tryk på et mærke for missionsdetaljer", launchesTab: 'Opsendelser', moreInfoTab: 'Infostation' },
+            pt: { nextLaunch: "PRÓXIMO LANÇAMENTO", upcomingLaunches: "Lançamentos Este Ano", launchWindow: "JANELA DE LANÇAMENTO", launchSite: "LOCAL DE LANÇAMENTO", recoveryZone: "ZONA DE RECUPERAÇÃO", recoveryZoneInfo: "INFORMAÇÕES DA ZONA DE RECUPERAÇÃO", launchesSection: "Lançamentos Programados", pastLaunchesSection: "Lançamentos Recentes", vehicleType: "TIPO DE FOGUETE", orbitDestination: "DESTINO ORBITAL", asds: "Navio-Drone Autônomo (ASDS)", filterAll: "Todos", filterDragon: "Dragon/Crew", boosterTitle: "Os 10 Boosters Mais Voados da SpaceX", boosterSubtitle: "Boosters Falcon 9 e Super Heavy, com dados de missão ao vivo", boosterAnalyzing: "Analisando dados de voos de boosters...", boosterNoData: "Ainda não há dados de voos de boosters disponíveis.", flights: "Voos", boosterRank: "Posição", boosterCol: "Booster", spacexXLink: "Siga @SpaceX no X", systemsGo: "SISTEMAS PRONTOS", finalCountdown: "CONTAGEM REGRESSIVA FINAL", watchLaunch: "Assistir ao lançamento", openOnYoutube: "Abrir no YouTube", watchDetailsVideo: "Ver Detalhes e Vídeo do Lançamento", viewMissionDetails: "Ver Detalhes da Missão →" , missionInProgress: "MISSÃO EM ANDAMENTO", holdDelayed: "RETENÇÃO / ATRASO", countdownToLaunch: "Contagem regressiva para o lançamento", launchNow: "DECOLAGEM", patchesTitle: "Emblemas de Missão da SpaceX", patchesSubtitle: "Toque em um emblema para ver os detalhes da missão", launchesTab: 'Lançamentos', moreInfoTab: 'Estação Info' },
+            pl: { nextLaunch: "NASTĘPNY START", upcomingLaunches: "Starty w tym roku", launchWindow: "OKNO STARTOWE", launchSite: "MIEJSCE STARTU", recoveryZone: "STREFA LĄDOWANIA", recoveryZoneInfo: "INFORMACJE O STREFIE LĄDOWANIA", launchesSection: "Planowane starty", pastLaunchesSection: "Ostatnie starty", vehicleType: "TYP RAKIETY", orbitDestination: "CEL ORBITALNY", asds: "Autonomiczny statek-dron (ASDS)", filterAll: "Wszystkie", filterDragon: "Dragon/Crew", boosterTitle: "Top 10 najczęściej latających boosterów SpaceX", boosterSubtitle: "Boostery Falcon 9 i Super Heavy, na podstawie danych misji na żywo", boosterAnalyzing: "Analizowanie danych lotów boosterów...", boosterNoData: "Brak jeszcze danych o lotach boosterów.", flights: "Loty", boosterRank: "Pozycja", boosterCol: "Booster", spacexXLink: "Śledź @SpaceX na X", systemsGo: "SYSTEMY GOTOWE", finalCountdown: "OSTATECZNE ODLICZANIE", watchLaunch: "Obejrzyj start", openOnYoutube: "Otwórz na YouTube", watchDetailsVideo: "Obejrzyj szczegóły startu i wideo", viewMissionDetails: "Zobacz szczegóły misji →" , missionInProgress: "MISJA W TOKU", holdDelayed: "WSTRZYMANIE / OPÓŹNIENIE", countdownToLaunch: "Odliczanie do startu", launchNow: "WZLOT", patchesTitle: "Naszywki Misji SpaceX", patchesSubtitle: "Dotknij naszywki, aby zobaczyć szczegóły misji", launchesTab: 'Starty', moreInfoTab: 'Stacja Info' },
+            hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "इस वर्ष के प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल", recoveryZone: "पुनर्प्राप्ति क्षेत्र", recoveryZoneInfo: "पुनर्प्राप्ति क्षेत्र की जानकारी", launchesSection: "नियोजित प्रक्षेपण", pastLaunchesSection: "हाल के प्रक्षेपण", vehicleType: "रॉकेट प्रकार", orbitDestination: "कक्षा गंतव्य", asds: "स्वायत्त ड्रोन जहाज (ASDS)", filterAll: "सभी", filterDragon: "ड्रैगन/क्रू", boosterTitle: "SpaceX के 10 सबसे अधिक उड़े बूस्टर", boosterSubtitle: "लाइव मिशन डेटा से फाल्कन 9 और सुपर हेवी बूस्टर", boosterAnalyzing: "बूस्टर उड़ान डेटा का विश्लेषण...", boosterNoData: "अभी तक कोई बूस्टर उड़ान डेटा उपलब्ध नहीं।", flights: "उड़ानें", boosterRank: "रैंक", boosterCol: "बूस्टर", spacexXLink: "X पर @SpaceX को फॉलो करें", systemsGo: "सिस्टम तैयार", finalCountdown: "अंतिम उलटी गिनती", watchLaunch: "प्रक्षेपण देखें", openOnYoutube: "YouTube पर खोलें", watchDetailsVideo: "प्रक्षेपण विवरण और वीडियो देखें", viewMissionDetails: "मिशन विवरण देखें →" , missionInProgress: "मिशन जारी है", holdDelayed: "होल्ड / देरी", countdownToLaunch: "प्रक्षेपण तक उलटी गिनती", launchNow: "उड़ान", patchesTitle: "स्पेसएक्स मिशन पैच", patchesSubtitle: "मिशन विवरण के लिए पैच पर टैप करें", launchesTab: 'लॉन्च', moreInfoTab: 'सूचना केंद्र' },
+            ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق هذا العام", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق", recoveryZone: "منطقة الاسترداد", recoveryZoneInfo: "معلومات منطقة الاسترداد", launchesSection: "عمليات الإطلاق المجدولة", pastLaunchesSection: "عمليات الإطلاق الأخيرة", vehicleType: "نوع الصاروخ", orbitDestination: "الوجهة المدارية", asds: "سفينة الإنزال الذاتية (ASDS)", filterAll: "الكل", filterDragon: "دراغون/طاقم", boosterTitle: "أفضل 10 معززات SpaceX الأكثر تحليقًا", boosterSubtitle: "معززات فالكون 9 وسوبر هيفي، وفق بيانات المهام الحية", boosterAnalyzing: "جاري تحليل بيانات رحلات المعززات...", boosterNoData: "لا تتوفر بيانات رحلات المعززات بعد.", flights: "رحلات", boosterRank: "الترتيب", boosterCol: "المعزز", spacexXLink: "تابع @SpaceX على X", systemsGo: "الأنظمة جاهزة", finalCountdown: "العد التنازلي الأخير", watchLaunch: "شاهد الإطلاق", openOnYoutube: "افتح على YouTube", watchDetailsVideo: "شاهد تفاصيل الإطلاق والفيديو", viewMissionDetails: "عرض تفاصيل المهمة ←" , missionInProgress: "المهمة قيد التنفيذ", holdDelayed: "تعليق / تأخير", countdownToLaunch: "العد التنازلي للإطلاق", launchNow: "الإقلاع", patchesTitle: "شارات مهام سبيس إكس", patchesSubtitle: "انقر على شارة لعرض تفاصيل المهمة", launchesTab: 'الإطلاقات', moreInfoTab: 'محطة معلومات' },
+            tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son Fırlatmalar", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", boosterTitle: "SpaceX'in En Çok Uçan İlk 10 Boosterı", boosterSubtitle: "Canlı görev verilerinden Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" , missionInProgress: "GÖREV DEVAM EDİYOR", holdDelayed: "BEKLEME / GECİKME", countdownToLaunch: "Fırlatmaya geri sayım", launchNow: "KALKIŞ", patchesTitle: "SpaceX Görev Rozetleri", patchesSubtitle: "Görev detayları için bir rozete dokunun", launchesTab: 'Fırlatmalar', moreInfoTab: 'Bilgi İstasyonu' },
         };
 
         let lastAppliedLaunchLabelLang = null;
@@ -2050,6 +2181,8 @@
                     'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
                     'i18n-patches-title': dict.patchesTitle || LAUNCH_LABEL_I18N.en.patchesTitle,
                     'i18n-patches-subtitle': dict.patchesSubtitle || LAUNCH_LABEL_I18N.en.patchesSubtitle,
+                    'i18n-tab-launches': dict.launchesTab || LAUNCH_LABEL_I18N.en.launchesTab || 'Launches',
+                    'i18n-tab-more': dict.moreInfoTab || LAUNCH_LABEL_I18N.en.moreInfoTab || 'More Info',
                 };
                 Object.keys(map).forEach(id => {
                     const el = document.getElementById(id);
@@ -3178,6 +3311,26 @@
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
 
+        <!-- Main content tabs: full-width segmented control -->
+        <div id="main-tabs-bar">
+            <div id="main-tabs" role="tablist" aria-label="Main sections" class="notranslate" translate="no">
+                <button type="button" role="tab" id="tab-btn-launches" class="main-tab-btn is-active"
+                    aria-selected="true" aria-controls="tab-panel-launches" data-tab="launches"
+                    onclick="switchMainTab('launches')">
+                    <i class="fa-solid fa-rocket"></i>
+                    <span id="i18n-tab-launches">Launches</span>
+                </button>
+                <button type="button" role="tab" id="tab-btn-more" class="main-tab-btn"
+                    aria-selected="false" aria-controls="tab-panel-more" data-tab="more"
+                    onclick="switchMainTab('more')">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span id="i18n-tab-more">Info Station</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="tab-panel-launches" role="tabpanel" aria-labelledby="tab-btn-launches">
+
         <div id="hero-skeleton"
             class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 transition-all duration-300 lg:min-h-[380px] lg:flex lg:items-center">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 lg:w-full">
@@ -3481,8 +3634,12 @@
             </div>
         </div>
 
+        </div><!-- /#tab-panel-launches -->
+
+        <div id="tab-panel-more" role="tabpanel" aria-labelledby="tab-btn-more" class="hidden">
+
         <!-- Official Documentary Section -->
-        <div class="mt-10 md:mt-14 pt-8 md:pt-10 border-t border-zinc-900 transition-colors duration-500">
+        <div class="mt-2 md:mt-4 pt-0 border-t-0 transition-colors duration-500">
             <div class="flex justify-between items-start sm:items-center mb-2 sm:mb-6 gap-y-2">
                 <div>
                     <h3
@@ -4080,6 +4237,8 @@
                 <div class="ai3d-footer-note" id="ai-compute-footnote"></div>
             </div>
         </div>
+
+        </div><!-- /#tab-panel-more -->
 
     </div>
 
@@ -11103,6 +11262,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
+                    // While the user is on the "More Info" tab the hero (and its countdown)
+                    // is display:none, so force the sticky clock to stay visible rather than
+                    // trusting intersection ratios against a hidden element.
+                    if (window.currentMainTab === 'more') {
+                        wrap.classList.add('is-visible');
+                        if (wrapMobile) {
+                            syncMobileStickyCountdownTop();
+                            wrapMobile.classList.add('is-visible');
+                        }
+                        return;
+                    }
                     // Fires the moment the clock starts being covered at all - not once it's
                     // half gone, not once it's fully gone. Still guarded by
                     // boundingClientRect.top < 0 so it only counts as "scrolled past" when the
@@ -11248,7 +11418,147 @@ if (heroNameEl) {
         subtree: true
     });
 }
+            // The site always opens on the Launches tab (no remembered-tab restore) - the
+            // page's own initial HTML/JS state already defaults there (tab-btn-launches is
+            // is-active, tab-panel-more starts hidden), so there's nothing to do here at all.
         }
+
+
+        // ---- Main content tabs (Launches / More Info) ----
+        window.currentMainTab = 'launches';
+        window._tabSwitchToken = 0;
+        function switchMainTab(tab, opts) {
+            if (tab !== 'launches' && tab !== 'more') return;
+            opts = opts || {};
+            const instant = !!opts.instant; // skips the exit/enter animation, for a first-load-style instant switch
+
+            const panelLaunches = document.getElementById('tab-panel-launches');
+            const panelMore = document.getElementById('tab-panel-more');
+            const btnLaunches = document.getElementById('tab-btn-launches');
+            const btnMore = document.getElementById('tab-btn-more');
+            if (!panelLaunches || !panelMore || !btnLaunches || !btnMore) return;
+
+            // Already on this tab and fully shown — nothing to do
+            if (window.currentMainTab === tab && !instant) {
+                const activePanel = tab === 'launches' ? panelLaunches : panelMore;
+                if (!activePanel.classList.contains('hidden') && !activePanel.classList.contains('tab-panel-leaving')) {
+                    return;
+                }
+            }
+
+            window.currentMainTab = tab;
+            const isLaunches = tab === 'launches';
+            const incoming = isLaunches ? panelLaunches : panelMore;
+            const outgoing = isLaunches ? panelMore : panelLaunches;
+
+            // Direction-aware slide: the incoming panel should always feel like it's arriving
+            // from the side of the tab bar its own button sits on, and the outgoing panel should
+            // exit toward the opposite side - regardless of whether the page is LTR or RTL (in
+            // RTL, "more" sits visually to the LEFT of "launches" since it's the 2nd DOM child
+            // in a right-to-left row, the mirror image of the LTR case).
+            const isRtl = (document.documentElement.getAttribute('dir') || getComputedStyle(document.documentElement).direction) === 'rtl';
+            const slideDist = isRtl ? -22 : 22;
+            const exitX = isLaunches ? slideDist : -slideDist;
+            const enterX = -exitX;
+            outgoing.style.setProperty('--tab-slide-exit', exitX + 'px');
+            incoming.style.setProperty('--tab-slide-enter', enterX + 'px');
+
+            btnLaunches.classList.toggle('is-active', isLaunches);
+            btnMore.classList.toggle('is-active', !isLaunches);
+            btnLaunches.setAttribute('aria-selected', isLaunches ? 'true' : 'false');
+            btnMore.setAttribute('aria-selected', isLaunches ? 'false' : 'true');
+
+            const finishSwap = function () {
+                // Hide outgoing, show incoming at opacity 0, then fade/slide in
+                outgoing.classList.add('hidden');
+                outgoing.classList.remove('tab-panel-leaving');
+                outgoing.style.opacity = '';
+                outgoing.style.transform = '';
+
+                incoming.classList.remove('hidden');
+                if (instant) {
+                    incoming.classList.remove('tab-panel-preenter', 'tab-panel-leaving');
+                    incoming.style.opacity = '';
+                    incoming.style.transform = '';
+                    return;
+                }
+                incoming.classList.add('tab-panel-preenter');
+                // Force a layout read so the preenter styles apply before we animate
+                void incoming.offsetWidth;
+                incoming.classList.remove('tab-panel-preenter');
+            };
+
+            if (instant || outgoing.classList.contains('hidden')) {
+                // First paint / already hidden — swap without exit animation
+                finishSwap();
+            } else {
+                const token = ++window._tabSwitchToken;
+                outgoing.classList.add('tab-panel-leaving');
+                window.setTimeout(function () {
+                    // Ignore stale timeouts if the user clicked again mid-animation
+                    if (token !== window._tabSwitchToken) return;
+                    finishSwap();
+                }, 260);
+            }
+
+            // Sticky countdown: on the "more" tab the hero is hidden, so force the sticky
+            // mini-countdown visible so the next-launch clock remains available. On the
+            // launches tab, hand control back to the IntersectionObserver.
+            const stickyWrap = document.getElementById('sticky-countdown-wrap');
+            const stickyMobile = document.getElementById('sticky-countdown-wrap-mobile');
+            if (!isLaunches) {
+                if (stickyWrap) stickyWrap.classList.add('is-visible');
+                if (stickyMobile) {
+                    if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
+                    stickyMobile.classList.add('is-visible');
+                }
+            } else if (typeof initStickyCountdown === 'function') {
+                // Re-evaluate visibility against the live hero countdown position
+                const heroCd = document.getElementById('hero-countdown');
+                if (heroCd && stickyWrap) {
+                    const rect = heroCd.getBoundingClientRect();
+                    const show = rect.bottom < 0 || (rect.top < 0 && rect.bottom < window.innerHeight * 0.15);
+                    // Prefer: if any part of the clock is still fully in view, hide sticky
+                    const fullyInView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+                    const showSticky = !fullyInView && rect.top < 0;
+                    stickyWrap.classList.toggle('is-visible', showSticky);
+                    if (stickyMobile) {
+                        if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
+                        stickyMobile.classList.toggle('is-visible', showSticky);
+                    }
+                }
+            }
+
+            // Scroll to the very top of the page on every tab switch - #main-tabs-bar sits
+            // directly above both panels regardless of which is visible, so there's no reason
+            // for the "more" tab to land anywhere but true 0 same as "launches" does; the old
+            // main-tabs-relative math left a small (~20-30px) gap here since the container's own
+            // top padding isn't part of the sticky nav's height, reading as a "stuck a bit down"
+            // bug rather than the flush-to-top landing that was actually intended.
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (!isLaunches) {
+                // Titles / 3D donut may have been measured while the panel was display:none
+                setTimeout(() => {
+                    if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
+                    if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
+                    if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
+                    // Force Three.js canvas resize now that the container has real dimensions
+                    window.dispatchEvent(new Event('resize'));
+                }, 50);
+                setTimeout(() => {
+                    if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
+                    window.dispatchEvent(new Event('resize'));
+                }, 300);
+            } else {
+                setTimeout(() => {
+                    if (typeof fitTitleOneLine === 'function') fitTitleOneLine(document.getElementById('hero-name'));
+                    if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
+                    if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
+                }, 50);
+            }
+        }
+
 
         window.onload = init;
     </script>
