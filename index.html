@@ -8603,50 +8603,45 @@
             return match ? match[1] : null;
         }
 
-        // Spaceflight Now's YouTube channel reliably starts a live launch broadcast roughly
-        // 30 minutes before liftoff, independent of whether the Launch Library API has flagged
-        // a SpaceX-specific video as live yet.
+        // Spaceflight Now's YouTube channel reliably starts a live launch broadcast well before
+        // liftoff (observed starting more than 30 minutes early), independent of whether the
+        // Launch Library API has flagged a SpaceX-specific video as live yet.
         const SFN_YT_CHANNEL_ID = 'UCoLdERT4-TJ82PJOHSrsZLQ';
 
-        // YouTube's "embed/live_stream?channel=X" trick turns out to not reliably play even
-        // when the channel genuinely IS live (confirmed directly - YouTube's own oEmbed API
-        // says the actual current live video embeds fine, only the channel-based shortcut
-        // doesn't). This resolves the real, current video ID instead and embeds that directly.
-        // YouTube's page has no CORS header, so it's fetched through the same allorigins.win
-        // proxy already used elsewhere in this file (see updateStarlinkStats).
+        // Restricted (by the user, in Google Cloud Console) to this exact domain and to just
+        // the YouTube Data API v3 - a key scoped that way is safe to ship in client-side JS,
+        // since a copy of it can't be used to call anything else or from anywhere else.
+        const YOUTUBE_API_KEY = 'AIzaSyB3EaagqkvX8P5jjPzENucKzNdLXpXRz7g';
+
+        // Resolves whichever video is CURRENTLY live on the channel via the official YouTube
+        // Data API (search.list, eventType=live) - replaces an earlier version of this function
+        // that scraped the channel's /live page through a free, unauthenticated CORS proxy
+        // (api.allorigins.win). That approach was confirmed directly to fail most of the time -
+        // outright connection failures against api.allorigins.win, and every other free proxy
+        // tried alongside it either got network-blocked or hit a response-size limit against
+        // YouTube's (large) channel page - not a timing/window problem, a fundamentally
+        // unreliable dependency. The official API has proper CORS support and doesn't need any
+        // proxy at all, so this is a single, direct, reliable call instead of a proxy + 3-attempt
+        // retry loop trying to paper over a broken dependency.
         let sfnLiveVideoIdCache = { id: null, fetchedAt: 0 };
         async function resolveSfnLiveVideoId() {
             if (sfnLiveVideoIdCache.id && Date.now() - sfnLiveVideoIdCache.fetchedAt < 2 * 60 * 1000) {
                 return sfnLiveVideoIdCache.id;
             }
-            const targetUrl = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
-            // allorigins.win is a free, unauthenticated proxy that measurably errors or times
-            // out on a large fraction of requests (confirmed directly: repeated 500/520/522 and
-            // outright connection failures against this exact URL, even though the underlying
-            // YouTube page loads fine every time) - a "true miss" here used to permanently show
-            // "we haven't confirmed a live stream" for the rest of that click, even during an
-            // actual live broadcast. A few quick retries turn that unreliable single shot into
-            // something the live-launch flow can actually depend on. This runs entirely in the
-            // background (see renderHeroLiveButton / wireModalLiveButton) - nothing visible is
-            // waiting on it, so spending a few extra seconds only improves the odds of a
-            // successful silent upgrade with no UX cost either way.
-            for (let attempt = 0; attempt < 3; attempt++) {
-                try {
-                    const res = await fetchWithTimeout(
-                        'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl),
-                        { timeout: 8000 }
-                    );
-                    if (res.ok) {
-                        const data = await res.json();
-                        const match = (data.contents || '').match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-                        if (match) {
-                            sfnLiveVideoIdCache = { id: match[1], fetchedAt: Date.now() };
-                            return match[1];
-                        }
+            try {
+                const res = await fetchWithTimeout(
+                    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${SFN_YT_CHANNEL_ID}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`,
+                    { timeout: 8000 }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    const videoId = data.items && data.items[0] && data.items[0].id && data.items[0].id.videoId;
+                    if (videoId) {
+                        sfnLiveVideoIdCache = { id: videoId, fetchedAt: Date.now() };
+                        return videoId;
                     }
-                } catch (e) { }
-                if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
-            }
+                }
+            } catch (e) { }
             return null;
         }
 
@@ -8698,7 +8693,11 @@
 
             const launchTimeMs = new Date(nextLaunch.date).getTime();
             const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
-            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 15 && minutesToLaunch >= -180;
+            // Widened from 15 to 60 - Spaceflight Now's coverage has been observed starting
+            // more than 15 (even more than the ~30 the code used to assume) minutes before
+            // liftoff, so the old window was missing real early starts. Kept in sync with the
+            // modal's own copy of this same window below (wireModalLiveButton).
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 && minutesToLaunch >= -180;
 
             const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
 
@@ -9558,7 +9557,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const confirmedYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
             const launchTimeMs = new Date(m.date).getTime();
             const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
-            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 25 && minutesToLaunch >= -180;
+            // Widened to match renderHeroLiveButton's own window (was 25, that one was 15 -
+            // both too narrow, see that function's comment).
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 && minutesToLaunch >= -180;
 
             if (!confirmedYoutubeId && !withinLiveWindow) {
                 setThreeUp(false);
