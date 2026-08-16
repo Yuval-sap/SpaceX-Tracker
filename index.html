@@ -8154,6 +8154,17 @@
             viewport.style.position = 'fixed';
             viewport.style.zIndex = '50';
             viewport.style.margin = '0';
+            // top/left are set ONCE, to 0, and never touched again - every actual reposition
+            // goes through `transform` in sync() below instead. Updating top/left on every
+            // scroll frame forces the browser to re-run layout each time (it's a geometry
+            // property), which is exactly what produced the visible lag/stutter the user
+            // noticed - the floating donut was a frame or more behind where it should be during
+            // an active scroll. `transform: translate()` changes are compositor-only on a
+            // `position:fixed` element like this (no layout, often no paint either), which is
+            // the standard fix for this class of scroll-synced-element jank.
+            viewport.style.top = '0px';
+            viewport.style.left = '0px';
+            viewport.style.willChange = 'transform';
             document.body.appendChild(viewport);
 
             function sync() {
@@ -8164,22 +8175,34 @@
                     return;
                 }
                 viewport.style.display = '';
-                viewport.style.top = r.top.toFixed(1) + 'px';
-                viewport.style.left = r.left.toFixed(1) + 'px';
+                viewport.style.transform = `translate(${r.left.toFixed(1)}px, ${r.top.toFixed(1)}px)`;
                 viewport.style.width = r.width.toFixed(1) + 'px';
                 viewport.style.height = r.height.toFixed(1) + 'px';
             }
             sync();
 
-            let raf = false;
-            function schedule() {
-                if (raf) return;
-                raf = true;
-                requestAnimationFrame(() => { raf = false; sync(); });
+            // Calls sync() DIRECTLY on every scroll event now, no rAF hop in between - the
+            // previous rAF-throttled version (still visible lag even after switching to
+            // transform, per the user's own report) was adding up to one whole extra frame of
+            // latency on top of whatever the transform fix saved: a scroll event could fire
+            // early in a frame, and rAF wouldn't run sync() until the NEXT frame boundary, so
+            // the earliest the floating donut could possibly move was always at least one frame
+            // behind the actual scroll. Safe to call directly now that sync() only does a
+            // single getBoundingClientRect() read plus transform/width/height writes (no
+            // layout-triggering top/left writes left, see the transform change above) - cheap
+            // enough to run on every scroll tick without throttling. Resize keeps a light
+            // rAF-throttle (resize doesn't need the same latency, and dragging a window edge
+            // can fire many resize events per frame).
+            window.addEventListener('scroll', sync, { passive: true });
+
+            let resizeRaf = false;
+            function scheduleResize() {
+                if (resizeRaf) return;
+                resizeRaf = true;
+                requestAnimationFrame(() => { resizeRaf = false; sync(); });
             }
-            aiComputeFloatingSync = schedule;
-            window.addEventListener('scroll', schedule, { passive: true });
-            window.addEventListener('resize', schedule);
+            aiComputeFloatingSync = sync;
+            window.addEventListener('resize', scheduleResize);
         }
 
         function createAIComputeLabelTexture(text) {
@@ -8449,7 +8472,16 @@
             if (footnote) {
                 const namedGw = AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.gw, 0);
                 const internalGw = Math.max(0, AI_COMPUTE_TOTAL_GW - namedGw);
-                footnote.textContent = `SpaceX · ${dict.otherCustomers}: ${internalGw.toFixed(2)} GW`;
+                // Same "% of AI_COMPUTE_TOTAL_GW" convention the donut slices' own labels use
+                // (see buildAIComputeDonut) - keeps this figure directly comparable to theirs.
+                const internalPct = (internalGw / AI_COMPUTE_TOTAL_GW * 100).toFixed(1) + '%';
+                // "1.44 GW (72.2%)" needs an explicit dir="ltr" wrapper in the RTL languages -
+                // plain textContent left the browser's own bidi resolution to reorder the two
+                // separate LTR runs ("SpaceX" and the number/unit/percent group) and scramble
+                // the internal order of the second one once it grew past a single simple run
+                // (adding the parenthesised percent was what tipped it over - the shorter
+                // "1.44 GW" alone, with no parens, rendered fine before this).
+                footnote.innerHTML = `SpaceX · ${dict.otherCustomers}: <span class="notranslate" translate="no" dir="ltr">${internalGw.toFixed(2)} GW (${internalPct})</span>`;
             }
 
             const dealsWithHex = AI_COMPUTE_DEALS.map(d => {
