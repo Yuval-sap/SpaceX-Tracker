@@ -1877,16 +1877,12 @@
             history.scrollRestoration = 'manual';
         }
 
-        if (localStorage.getItem('spacex-theme') === 'light') {
-            document.documentElement.classList.add('light-theme');
-            // document.body doesn't exist yet at this point (this script runs in
-            // <head>, before <body> is parsed) — touching it here silently threw
-            // and skipped applying the theme to <body>, which is what almost all
-            // of the light-theme CSS actually targets. Defer it instead.
-            document.addEventListener('DOMContentLoaded', () => {
-                document.body.classList.add('light-theme');
-            });
-        }
+        // Theme (light/dark) is decided and applied synchronously right after <body> opens -
+        // see the inline <script> there - not here. document.body doesn't exist yet at this
+        // point in <head>, and deferring the body-class application to DOMContentLoaded (the
+        // old approach) meant the page could paint once in the WRONG theme first and visibly
+        // flip once JS caught up. Moving the whole decision to the earliest point body.classList
+        // is actually usable avoids that flash entirely instead of working around it.
 
         // Google Translate stores the chosen language in a "googtrans" cookie and
         // re-applies it automatically on the next visit — but that only works if
@@ -2964,6 +2960,29 @@
 
 <body
     class="text-zinc-200 flex flex-col min-h-screen selection:bg-emerald-500 selection:text-black transition-colors duration-500">
+    <script>
+        // Runs as the very first thing inside <body>, synchronously, before any visible content
+        // is parsed - document.body already exists at this exact point (its opening tag has been
+        // parsed even though none of its children have yet), so both the <html> and <body> classes
+        // land in the same tick, before first paint. That's the whole point: no DOMContentLoaded
+        // deferral, no flash of the wrong theme rendering first and then flipping.
+        //
+        // sessionStorage, not localStorage: a manual choice (the theme toggle button, below) is
+        // meant to last only for this browser session - closing the site (tab/browser closed, not
+        // just refreshed/reloaded) forgets it, so the NEXT visit goes back to the time-of-day
+        // default instead of being stuck on whatever was last picked. sessionStorage already does
+        // exactly this natively (persists across reloads within a session, cleared when the tab/
+        // window is closed) - no manual expiry/timestamp logic needed.
+        const savedTheme = sessionStorage.getItem('spacex-theme');
+        const wantsLight = savedTheme === 'light' || (savedTheme === null && (() => {
+            const hour = new Date().getHours();
+            return hour >= 6 && hour < 18;
+        })());
+        if (wantsLight) {
+            document.documentElement.classList.add('light-theme');
+            document.body.classList.add('light-theme');
+        }
+    </script>
     <div class="stars-container" id="stars-background"></div>
 
     <div id="news-ticker-wrap" dir="ltr"
@@ -4770,13 +4789,16 @@
                         icon.classList.remove('fa-sun');
                         icon.classList.add('fa-moon');
                     }
-                    localStorage.setItem('spacex-theme', 'light');
+                    // sessionStorage, not localStorage - see the theme-init <script> right after
+                    // <body> opens for why: a manual choice should only last until the site is
+                    // actually closed, not persist forever across future visits too.
+                    sessionStorage.setItem('spacex-theme', 'light');
                 } else {
                     if (icon) {
                         icon.classList.remove('fa-moon');
                         icon.classList.add('fa-sun');
                     }
-                    localStorage.setItem('spacex-theme', 'dark');
+                    sessionStorage.setItem('spacex-theme', 'dark');
                 }
 
                 requestAnimationFrame(() => {
