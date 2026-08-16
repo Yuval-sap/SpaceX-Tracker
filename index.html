@@ -88,7 +88,13 @@
 
 @media (max-width: 640px) {
     #hero-name {
-        font-size: clamp(14px, 5.8vw, 26px) !important;  /* ← קצת יותר נמוך */
+        /* NOT !important - fitTitleOneLine() sets a plain (non-!important) inline font-size
+           when the clamp's own size still overflows a long English title; !important here would
+           always beat that inline override and force text-overflow:clip (a visibly cut-off
+           title) instead of letting the shrink-to-fit loop actually shrink it further. Inline
+           style specificity already wins over this ID rule on its own, so dropping !important
+           is enough - the clamp value still applies as the default whenever no override is set. */
+        font-size: clamp(14px, 5.8vw, 26px);  /* ← קצת יותר נמוך */
         line-height: 1.15 !important;
     }
 
@@ -148,7 +154,8 @@
         .font-orbitron,
         #hero-name,
         #hero-countdown,
-        .mission-title-fit {
+        .mission-title-fit,
+        .main-tab-btn {
             font-family: 'Orbitron', 'Rubik', system_ui, sans-serif;
         }
 
@@ -324,25 +331,26 @@
             pointer-events: auto;
         }
 
-        /* Mobile counterpart of the reveal above (see #sticky-countdown-wrap-mobile) - same
-           scale/ease-out-back drop-in, minus the emerald glow (no box-shadow here on purpose -
-           removed per explicit request to keep the mobile version glow-free while desktop
-           keeps it) and without the -50% vertical centering term (this one hangs off <nav>'s
-           bottom edge, tracked in JS now that it's position:fixed - see
-           syncMobileStickyCountdownTop), so it drops down out from under the header instead of
-           dropping into the middle of it. */
+        /* Mobile counterpart of the reveal above (see #sticky-countdown-wrap-mobile) - this one
+           is a genuine in-flow second row of <nav> (not a floating pill), so "revealing" it
+           means actually growing <nav>'s own height rather than just fading/sliding an
+           already-space-reserved element. Collapsed via max-height + padding (both animated,
+           both back to 0 when hidden) instead of display:none so the transition still plays;
+           max-height is deliberately just tall enough for one line of small text, kept small on
+           purpose so the sticky header stays as compact as possible on a phone. */
         #sticky-countdown-wrap-mobile {
+            max-height: 0;
+            padding-bottom: 0;
             opacity: 0;
-            pointer-events: none;
-            transform: translate(-50%, -8px) scale(0.85);
-            transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                padding-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.3s ease;
         }
 
         #sticky-countdown-wrap-mobile.is-visible {
+            max-height: 26px;
+            padding-bottom: 6px;
             opacity: 1;
-            transform: translate(-50%, 0) scale(1);
-            pointer-events: auto;
         }
 
         .countdown-small {
@@ -3027,7 +3035,6 @@
             }
 
             shortenGoogleTranslatePlaceholder();
-            if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
             applyNiceToKnowTranslations(currentLang);
@@ -3265,49 +3272,28 @@
                 </div>
             </div>
         </div>
-    </nav>
 
-    <!-- Mobile-only counterpart to #sticky-countdown-wrap above: that one is absolutely
-         positioned to sit centered *within* the single header row, which only works once
-         there's enough spare width in that row (md and up) - on mobile the row is already
-         full (logo + theme toggle + language + clock), so it's just hidden there entirely
-         (see its own `hidden md:flex`) rather than overlapping something. This one is a
-         SIBLING of <nav> now (not its child) - deliberately NOT nested inside <nav>, because a
-         backdrop-filter element nested inside another backdrop-filter element (<nav> has one
-         too) is a known Chromium rendering quirk that can affect blur fidelity. It's
-         position:fixed (viewport-relative) rather than absolute, with `top` synced in JS (see
-         syncMobileStickyCountdownTop in initStickyCountdown) to <nav>'s live
-         getBoundingClientRect().bottom - since that already reflects <nav>'s real on-screen
-         position whether it's sitting in its natural flow spot or currently stuck to the
-         viewport top, this hangs directly off <nav>'s bottom edge in both states without
-         needing to be <nav>'s own positioned descendant. z-50 (not z-40) is load-bearing here,
-         not cosmetic: body::before (see its own comment near the top of this stylesheet) is
-         the page's full-viewport CRT-scanline overlay, sitting at z-50 itself - <nav> is also
-         z-50 and paints after it in DOM order, which is what hides the scanline over <nav>'s
-         own surface; anything under z-50 (like this used to be, at z-40) has the scanline
-         painted visibly on top of it instead, which is exactly the "horizontal stripes on the
-         countdown" that was reported. Kept out of <nav>'s normal document flow as a real
-         second row on purpose too - that would add its own height to <nav> and grow the whole
-         header's box every time this shows/hides; this way <nav> itself always stays exactly
-         its original single-row size, and the pill visually overlaps the content below it
-         instead. Always display:flex (within the mobile breakpoint) and shown/hidden purely
-         via the .is-visible opacity/transform transition below (same technique as
-         #sticky-countdown-wrap) rather than toggling display - swapping display:none in and
-         out would skip the transition entirely. Horizontal centering lives in that same
-         transform instead of a separate -translate-x-1/2 utility, since both have to animate
-         together. Shown/hidden by the exact same #hero-countdown IntersectionObserver in
-         initStickyCountdown() and kept in sync by the exact same update() in
-         updateHeroCountdown(). -->
-    <div id="sticky-countdown-wrap-mobile"
-        class="flex md:hidden fixed left-1/2 w-max items-center gap-x-2 px-3 py-1.5 bg-zinc-950/70 backdrop-blur-lg border border-zinc-900/80 rounded-2xl notranslate z-50"
-        translate="no">
-        <span id="i18n-next-launch-sticky-mobile"
-            class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold notranslate whitespace-nowrap"
-            translate="no" lang="en">NEXT LAUNCH</span>
-        <span id="sticky-countdown-mobile" dir="ltr"
-            class="font-space text-sm font-bold tabular-nums tracking-tight text-emerald-400 notranslate whitespace-nowrap"
-            translate="no">--:--:--</span>
-    </div>
+        <!-- Mobile-only "next launch" mini countdown - a genuine second row of <nav> itself
+             (not a floating pill overlapping the page below it, which is how this used to work
+             and was explicitly asked to be reverted). There's no spare width for it in the main
+             row above on mobile (see that row's own comment), so it lives here instead,
+             collapsed to zero height via max-height/padding until shown so <nav> doesn't reserve
+             space for it before the hero countdown has actually scrolled out of view - kept
+             deliberately tiny (one line of small text) since growing the sticky header eats real
+             screen space on a phone. Shown/hidden by the same #hero-countdown
+             IntersectionObserver in initStickyCountdown() and kept in sync by the same update()
+             in updateHeroCountdown() as #sticky-countdown-wrap. -->
+        <div id="sticky-countdown-wrap-mobile"
+            class="md:hidden overflow-hidden flex items-center justify-center gap-x-2 px-3 notranslate"
+            translate="no">
+            <span id="i18n-next-launch-sticky-mobile"
+                class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold notranslate whitespace-nowrap"
+                translate="no" lang="en">NEXT LAUNCH</span>
+            <span id="sticky-countdown-mobile" dir="ltr"
+                class="font-space text-sm font-bold tabular-nums tracking-tight text-emerald-400 notranslate whitespace-nowrap"
+                translate="no">--:--:--</span>
+        </div>
+    </nav>
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
 
@@ -11234,18 +11220,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
         // own countdown box (#countdown-box) has scrolled out of view above the top of the
         // viewport, and hides it again once the user scrolls back up past it — so there's
         // never a moment with two countdowns visible, and never a moment with zero.
-        // #sticky-countdown-wrap-mobile is position:fixed and lives outside <nav> (see the
-        // comment on that element), so its `top` has to be kept in sync with <nav>'s actual
-        // on-screen bottom edge in JS instead of a CSS top-full percentage. Cheap enough to
-        // call on every scroll tick and every Bulletproof Timer tick.
-        function syncMobileStickyCountdownTop() {
-            const nav = document.querySelector('nav');
-            const wrapMobile = document.getElementById('sticky-countdown-wrap-mobile');
-            if (!nav || !wrapMobile) return;
-            const newTop = Math.round(nav.getBoundingClientRect().bottom) + 'px';
-            if (wrapMobile.style.top !== newTop) wrapMobile.style.top = newTop;
-        }
-
+        // #sticky-countdown-wrap-mobile is a real in-flow row inside <nav> now, so it needs no
+        // JS-computed position - toggling .is-visible (which animates max-height/padding, see
+        // its CSS) is enough.
         function initStickyCountdown() {
             // Watch the countdown CLOCK itself (#hero-countdown), not the whole #countdown-box
             // card - that card also contains the Launch Window line below the clock, which
@@ -11256,10 +11233,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const wrapMobile = document.getElementById('sticky-countdown-wrap-mobile');
             if (!target || !wrap || !('IntersectionObserver' in window)) return;
 
-            syncMobileStickyCountdownTop();
-            window.addEventListener('scroll', syncMobileStickyCountdownTop, { passive: true });
-            window.addEventListener('resize', syncMobileStickyCountdownTop);
-
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     // While the user is on the "More Info" tab the hero (and its countdown)
@@ -11267,10 +11240,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     // trusting intersection ratios against a hidden element.
                     if (window.currentMainTab === 'more') {
                         wrap.classList.add('is-visible');
-                        if (wrapMobile) {
-                            syncMobileStickyCountdownTop();
-                            wrapMobile.classList.add('is-visible');
-                        }
+                        if (wrapMobile) wrapMobile.classList.add('is-visible');
                         return;
                     }
                     // Fires the moment the clock starts being covered at all - not once it's
@@ -11280,10 +11250,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     // ever appeared, which also reports a low intersection ratio but with top > 0.
                     const showSticky = entry.intersectionRatio < 1 && entry.boundingClientRect.top < 0;
                     wrap.classList.toggle('is-visible', showSticky);
-                    if (wrapMobile) {
-                        syncMobileStickyCountdownTop();
-                        wrapMobile.classList.toggle('is-visible', showSticky);
-                    }
+                    if (wrapMobile) wrapMobile.classList.toggle('is-visible', showSticky);
                 });
             }, { threshold: [0, 1] });
             observer.observe(target);
@@ -11508,10 +11475,7 @@ if (heroNameEl) {
             const stickyMobile = document.getElementById('sticky-countdown-wrap-mobile');
             if (!isLaunches) {
                 if (stickyWrap) stickyWrap.classList.add('is-visible');
-                if (stickyMobile) {
-                    if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
-                    stickyMobile.classList.add('is-visible');
-                }
+                if (stickyMobile) stickyMobile.classList.add('is-visible');
             } else if (typeof initStickyCountdown === 'function') {
                 // Re-evaluate visibility against the live hero countdown position
                 const heroCd = document.getElementById('hero-countdown');
@@ -11522,10 +11486,7 @@ if (heroNameEl) {
                     const fullyInView = rect.top >= 0 && rect.bottom <= window.innerHeight;
                     const showSticky = !fullyInView && rect.top < 0;
                     stickyWrap.classList.toggle('is-visible', showSticky);
-                    if (stickyMobile) {
-                        if (typeof syncMobileStickyCountdownTop === 'function') syncMobileStickyCountdownTop();
-                        stickyMobile.classList.toggle('is-visible', showSticky);
-                    }
+                    if (stickyMobile) stickyMobile.classList.toggle('is-visible', showSticky);
                 }
             }
 
