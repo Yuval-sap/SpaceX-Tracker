@@ -2057,12 +2057,22 @@
       function fitTitleOneLine(el) {
     if (!el) return;
 
+    // אם אין טקסט אמיתי – אל תעשה כלום
+    if (!el.textContent || el.textContent.trim().length < 3) return;
+
+    // דילוג כשכלום לא השתנה מאז ההתאמה המוצלחת האחרונה (טקסט + רוחב הקונטיינר) - הפונקציה
+    // הזו נקראת ללא תנאי על כל כותרת בעמוד כל כשנייה בערך (מתוך ה-setInterval הגדול שמתקן
+    // אחרי גוגל טרנסלייט), ובלי הבדיקה הזו היא כפתה reflow מלא (עד 100 איטרציות של קריאה+כתיבה)
+    // על כל כותרת, כל טעימה, גם כשלא השתנה כלום - אומת ישירות מול קונסולת כרום שהראתה אזהרות
+    // "Forced reflow"/"setInterval handler took Nms" בגלל זה בדיוק. שינוי טקסט אמיתי (תרגום
+    // חדש, שם שיגור חדש) או רוחב (resize) עדיין יגרום להתאמה מחדש כרגיל.
+    const text = el.textContent;
+    const width = el.clientWidth;
+    if (el.dataset.fitForText === text && el.dataset.fitForWidth === String(width)) return;
+
     // איפוס
     el.style.fontSize = '';
     void el.offsetWidth;
-
-    // אם אין טקסט אמיתי – אל תעשה כלום
-    if (!el.textContent || el.textContent.trim().length < 3) return;
 
     const initialSize = parseFloat(getComputedStyle(el).fontSize) || 22;
     let size = initialSize;
@@ -2076,6 +2086,9 @@
         void el.offsetWidth; // כפיית reflow
         guard++;
     }
+
+    el.dataset.fitForText = text;
+    el.dataset.fitForWidth = String(width);
 }
 
         function fitAllTitlesOneLine(root) {
@@ -8233,42 +8246,67 @@
             viewport.style.willChange = 'transform';
             document.body.appendChild(viewport);
 
+            // Skips the actual style writes when nothing has moved since the last frame - the
+            // rAF loop below calls this every ~16ms regardless of whether the page is scrolling,
+            // so this keeps an idle page from doing pointless transform/width/height writes
+            // (each one forces a style recalc) 60 times a second for no visual change.
+            //
+            // Positions/sizes are snapped to whole CSS pixels (Math.round), not left at
+            // getBoundingClientRect()'s native sub-pixel precision - on a display with a
+            // non-integer device pixel ratio (very common on Windows, e.g. 125%/150% scaling),
+            // a `transform: translate()` value that changes by a fraction of a CSS pixel from
+            // one frame to the next can land on a different actual physical pixel each time,
+            // producing a persistent low-level shimmer/vibration independent of how fast (or
+            // whether) the page is actually scrolling - unlike frame-LAG, which only shows up
+            // during fast scrolling, this reads as a constant shake even at slow scroll speeds,
+            // which is exactly what was reported after both the transform switch (v20) and the
+            // scroll-to-rAF switch (v21) - neither touched sub-pixel precision, only timing, so
+            // neither could have fixed this even if it was the real cause all along.
+            let lastSyncRect = null;
             function sync() {
                 const r = placeholder.getBoundingClientRect();
                 const w = window.innerWidth, h = window.innerHeight;
                 if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > h || r.right < 0 || r.left > w) {
-                    viewport.style.display = 'none';
+                    if (viewport.style.display !== 'none') viewport.style.display = 'none';
+                    lastSyncRect = null;
                     return;
                 }
+                const left = Math.round(r.left), top = Math.round(r.top);
+                const width = Math.round(r.width), height = Math.round(r.height);
+                if (lastSyncRect && lastSyncRect.left === left && lastSyncRect.top === top &&
+                    lastSyncRect.width === width && lastSyncRect.height === height) {
+                    return;
+                }
+                lastSyncRect = { left, top, width, height };
                 viewport.style.display = '';
-                viewport.style.transform = `translate(${r.left.toFixed(1)}px, ${r.top.toFixed(1)}px)`;
-                viewport.style.width = r.width.toFixed(1) + 'px';
-                viewport.style.height = r.height.toFixed(1) + 'px';
+                viewport.style.transform = `translate(${left}px, ${top}px)`;
+                viewport.style.width = width + 'px';
+                viewport.style.height = height + 'px';
             }
             sync();
-
-            // Calls sync() DIRECTLY on every scroll event now, no rAF hop in between - the
-            // previous rAF-throttled version (still visible lag even after switching to
-            // transform, per the user's own report) was adding up to one whole extra frame of
-            // latency on top of whatever the transform fix saved: a scroll event could fire
-            // early in a frame, and rAF wouldn't run sync() until the NEXT frame boundary, so
-            // the earliest the floating donut could possibly move was always at least one frame
-            // behind the actual scroll. Safe to call directly now that sync() only does a
-            // single getBoundingClientRect() read plus transform/width/height writes (no
-            // layout-triggering top/left writes left, see the transform change above) - cheap
-            // enough to run on every scroll tick without throttling. Resize keeps a light
-            // rAF-throttle (resize doesn't need the same latency, and dragging a window edge
-            // can fire many resize events per frame).
-            window.addEventListener('scroll', sync, { passive: true });
-
-            let resizeRaf = false;
-            function scheduleResize() {
-                if (resizeRaf) return;
-                resizeRaf = true;
-                requestAnimationFrame(() => { resizeRaf = false; sync(); });
-            }
             aiComputeFloatingSync = sync;
-            window.addEventListener('resize', scheduleResize);
+
+            // Switched from a scroll-event listener (even a direct, un-throttled one - tried
+            // that first, user still saw lag/"dancing") to a continuous requestAnimationFrame
+            // loop instead: `scroll` events are dispatched on the main thread AFTER the browser
+            // has already composited that frame at the new scroll offset, so no matter how fast
+            // the handler runs, the earliest it can move the floating donut is the NEXT frame -
+            // a real, unavoidable one-frame-plus lag inherent to the event itself, not something
+            // any amount of optimizing the handler's own work can close. Polling every rAF tick
+            // (tied to the same paint cycle the browser uses for scroll compositing, instead of
+            // to a discrete, batchable DOM event) is the standard fix for this exact "floating
+            // element trails/dances during scroll" symptom. Runs continuously for the page's
+            // lifetime, same as the old scroll listener did - the lastSyncRect check above keeps
+            // the idle cost to one cheap getBoundingClientRect() read per frame with no style
+            // writes, and rAF itself is automatically paused by the browser whenever the tab
+            // isn't visible, so there's no cost while backgrounded either.
+            function rafTick() {
+                sync();
+                requestAnimationFrame(rafTick);
+            }
+            requestAnimationFrame(rafTick);
+
+            window.addEventListener('resize', sync);
         }
 
         function createAIComputeLabelTexture(text) {
