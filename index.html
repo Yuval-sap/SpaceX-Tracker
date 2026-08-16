@@ -868,28 +868,37 @@
            specificity alone would be enough, without actually checking the competing rule for
            !important first) and the moon rendered white-on-white as a result - fixed by adding
            !important here too, so both rules compete in the same tier, where this one's higher
-           specificity (ID beats two classes) correctly decides it. */
-        #theme-toggle-btn:hover .fa-sun {
-            color: #facc15;
-        }
+           specificity (ID beats two classes) correctly decides it.
+           Wrapped in (hover: hover) - a touch device has no mouse to naturally "unhover" after a
+           tap, so without this, tapping the button on mobile left it permanently stuck showing
+           its hover colors (same root cause .mission-card's own mobile hover-disable, elsewhere
+           in this file, already exists for). (hover: hover) and (pointer: fine) is the direct,
+           purpose-built feature detection for "can this device actually hover" - more precise
+           than guessing from a max-width breakpoint, since it also correctly keeps hover working
+           for e.g. a desktop browser window resized narrow, which still has a real mouse. */
+        @media (hover: hover) and (pointer: fine) {
+            #theme-toggle-btn:hover .fa-sun {
+                color: #facc15;
+            }
 
-        /* Mirrors the moon rule below but inverted: white circle, black outer rim, around the
-           yellow sun. Checked for competing !important rules on both background-color AND
-           border-color before shipping this (unlike the first pass at the moon rule, which
-           assumed specificity alone was enough and shipped white-on-white as a result) - none
-           found for the dark-theme+sun-icon combination this applies in, so no !important needed
-           here, but that's a confirmed finding, not the same unchecked assumption again. */
-        #theme-toggle-btn:hover:has(.fa-sun) {
-            background-color: #fff;
-            border-color: #000;
-        }
+            /* Mirrors the moon rule below but inverted: white circle, black outer rim, around the
+               yellow sun. Checked for competing !important rules on both background-color AND
+               border-color before shipping this (unlike the first pass at the moon rule, which
+               assumed specificity alone was enough and shipped white-on-white as a result) - none
+               found for the dark-theme+sun-icon combination this applies in, so no !important
+               needed here, but that's a confirmed finding, not the same unchecked assumption again. */
+            #theme-toggle-btn:hover:has(.fa-sun) {
+                background-color: #fff;
+                border-color: #000;
+            }
 
-        #theme-toggle-btn:hover:has(.fa-moon) {
-            background-color: #000 !important;
-        }
+            #theme-toggle-btn:hover:has(.fa-moon) {
+                background-color: #000 !important;
+            }
 
-        #theme-toggle-btn:hover .fa-moon {
-            color: #fff;
+            #theme-toggle-btn:hover .fa-moon {
+                color: #fff;
+            }
         }
 
         /* ==================================================
