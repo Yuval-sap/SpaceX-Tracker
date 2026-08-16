@@ -11455,18 +11455,32 @@ if (heroNameEl) {
             btnLaunches.setAttribute('aria-selected', isLaunches ? 'true' : 'false');
             btnMore.setAttribute('aria-selected', isLaunches ? 'false' : 'true');
 
+            // Invalidated on EVERY call (not just the deferred-timer branch below) - a fast
+            // double-click that lands on the synchronous branch (because the panel it's
+            // switching to happens to already be hidden, e.g. the very panel a still-pending
+            // deferred finishSwap from the PREVIOUS click hasn't revealed yet) used to leave
+            // that previous click's token untouched, so its stale finishSwap would still fire
+            // later and re-flip visibility back to the wrong panel even though the tab buttons
+            // themselves already showed the new (correct) selection.
+            const token = ++window._tabSwitchToken;
+
             const finishSwap = function () {
+                // Clear any transition classes/inline styles off BOTH panels first, not just
+                // this call's own `outgoing` - the same fast-double-click race above could leave
+                // 'tab-panel-leaving' (opacity:0, pointer-events:none) stuck on a panel this
+                // call never touches as outgoing/incoming, which would otherwise render it
+                // invisible/unclickable even after 'hidden' is correctly removed from it.
+                panelLaunches.classList.remove('tab-panel-leaving', 'tab-panel-preenter');
+                panelLaunches.style.opacity = '';
+                panelLaunches.style.transform = '';
+                panelMore.classList.remove('tab-panel-leaving', 'tab-panel-preenter');
+                panelMore.style.opacity = '';
+                panelMore.style.transform = '';
+
                 // Hide outgoing, show incoming at opacity 0, then fade/slide in
                 outgoing.classList.add('hidden');
-                outgoing.classList.remove('tab-panel-leaving');
-                outgoing.style.opacity = '';
-                outgoing.style.transform = '';
-
                 incoming.classList.remove('hidden');
                 if (instant) {
-                    incoming.classList.remove('tab-panel-preenter', 'tab-panel-leaving');
-                    incoming.style.opacity = '';
-                    incoming.style.transform = '';
                     return;
                 }
                 incoming.classList.add('tab-panel-preenter');
@@ -11479,13 +11493,12 @@ if (heroNameEl) {
                 // First paint / already hidden — swap without exit animation
                 finishSwap();
             } else {
-                const token = ++window._tabSwitchToken;
                 outgoing.classList.add('tab-panel-leaving');
                 window.setTimeout(function () {
                     // Ignore stale timeouts if the user clicked again mid-animation
                     if (token !== window._tabSwitchToken) return;
                     finishSwap();
-                }, 260);
+                }, 320);
             }
 
             // Sticky countdown: on the "more" tab the hero is hidden, so force the sticky
@@ -11519,7 +11532,12 @@ if (heroNameEl) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
             if (!isLaunches) {
-                // Titles / 3D donut may have been measured while the panel was display:none
+                // Titles / 3D donut may have been measured while the panel was display:none.
+                // The safety-net call must land safely PAST finishSwap's own 320ms deferral
+                // (matching the panel's 0.32s CSS transition, see its own rule) or it risks
+                // measuring/resizing before the panel is actually revealed - was 300ms while
+                // finishSwap fired at 260ms, which stopped being a safe margin once the CSS
+                // transition (and finishSwap's matching delay) grew to 320ms.
                 setTimeout(() => {
                     if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
                     if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
@@ -11530,18 +11548,19 @@ if (heroNameEl) {
                 setTimeout(() => {
                     if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
                     window.dispatchEvent(new Event('resize'));
-                }, 300);
+                }, 380);
             } else {
                 // Same "measured while display:none" race as the branch above: finishSwap()
-                // (which actually un-hides tab-panel-launches) is deferred 260ms whenever the
+                // (which actually un-hides tab-panel-launches) is deferred 320ms whenever the
                 // outgoing "more" panel was visible, so a fit call at only 50ms reads
                 // #hero-name at clientWidth 0, caches that bogus width via
                 // fitTitleOneLine's dataset guard, and - unlike .mission-title-fit elements -
                 // nothing ever re-fits #hero-name again afterwards, leaving it visibly clipped
                 // once the panel is actually shown. Mirrors the other branch's two-call pattern:
                 // one fast attempt for when the panel was already hidden (finishSwap ran
-                // synchronously, no 260ms delay), one safety-net attempt after the transition
-                // has definitely finished.
+                // synchronously, no delay), one safety-net attempt safely past finishSwap's own
+                // 320ms deferral (not equal to it - two timers sharing the same delay would race
+                // in an unspecified order).
                 setTimeout(() => {
                     if (typeof fitTitleOneLine === 'function') fitTitleOneLine(document.getElementById('hero-name'));
                     if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
@@ -11551,7 +11570,7 @@ if (heroNameEl) {
                     if (typeof fitTitleOneLine === 'function') fitTitleOneLine(document.getElementById('hero-name'));
                     if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
                     if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
-                }, 320);
+                }, 380);
             }
         }
 
