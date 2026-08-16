@@ -1255,6 +1255,34 @@
             pointer-events: none;
         }
 
+        /* Left behind in #hero-video-section's original spot once initHeroVideoFloatingPlayer()
+           pulls the real element out to a position:fixed body-level element (same reasoning as
+           .ai3d-viewport-placeholder above) - reserves the small player's layout footprint in the
+           hero card while it's open, invisible either way. */
+        .hero-video-placeholder {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* The floating #hero-video-section itself, once moved to body level. Positioned via
+           top/left transform + width/height, kept in sync with .hero-video-placeholder's live
+           rect (small mode) by initHeroVideoFloatingPlayer's sync function, or pinned full-viewport
+           (fullscreen mode) by enterHeroVideoFullscreen - see both for why this needs to live at
+           body level at all (an ancestor further up establishes a transformed containing block,
+           so plain position:fixed nested in place does NOT resolve relative to the real viewport). */
+        #hero-video-section.hero-video-floating {
+            position: fixed;
+            top: 0;
+            left: 0;
+            margin: 0;
+            z-index: 9999;
+        }
+
+        #hero-video-section.hero-video-fullscreen-active {
+            border-radius: 0 !important;
+            max-width: 100vw !important;
+        }
+
         .ai3d-center-hud {
             position: absolute;
             top: 50%;
@@ -4617,6 +4645,11 @@
         // re-check" apart from "the hero switched to a different mission while the player was
         // open" - the latter needs the stale stream torn down/replaced, not left alone.
         let heroVideoMissionId = null;
+        // True while the hero video player is showing full-viewport instead of its normal small
+        // inline size. See initHeroVideoFloatingPlayer/enterHeroVideoFullscreen/exitHeroVideoFullscreen.
+        let heroVideoFullscreenActive = false;
+        let heroVideoFloatingInitDone = false;
+        let heroVideoSyncSmallPosition = null;
         let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
         let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
 
@@ -8710,7 +8743,126 @@
             setTimeout(attempt, 20000);
         }
 
+        // Moves #hero-video-section to a position:fixed, body-level element exactly once, the
+        // first time it's ever opened - same "floating portal" pattern as
+        // initAIComputeFloatingViewport (see that function's own comment for why plain
+        // position:fixed in place doesn't resolve relative to the real viewport here: an
+        // ancestor further up establishes its own containing block, confirmed directly by
+        // measuring getBoundingClientRect() before/after the move). Doing this ONCE, up front,
+        // before any video src is ever set, is deliberate: reparenting a live <iframe> was
+        // confirmed (via a 'load' event counter) to force it to reload/renavigate, which would
+        // restart playback - moving the empty, not-yet-playing element at init time sidesteps
+        // that entirely, so later fullscreen/small toggles are pure CSS/position changes with no
+        // further DOM moves and no further reload risk.
+        function initHeroVideoFloatingPlayer() {
+            if (heroVideoFloatingInitDone) return;
+            const section = document.getElementById('hero-video-section');
+            if (!section) return;
+            heroVideoFloatingInitDone = true;
+
+            const placeholder = document.createElement('div');
+            placeholder.className = section.className + ' hero-video-placeholder';
+            section.parentNode.insertBefore(placeholder, section);
+
+            section.classList.add('hero-video-floating');
+            document.body.appendChild(section);
+
+            function sync() {
+                if (heroVideoFullscreenActive) return; // fullscreen uses its own inset:0 sizing
+                if (section.classList.contains('hidden')) return;
+                const r = placeholder.getBoundingClientRect();
+                if (r.width < 1 || r.height < 1) {
+                    section.style.display = 'none';
+                    return;
+                }
+                section.style.display = '';
+                section.style.transform = `translate(${r.left.toFixed(1)}px, ${r.top.toFixed(1)}px)`;
+                section.style.width = r.width.toFixed(1) + 'px';
+                section.style.height = r.height.toFixed(1) + 'px';
+            }
+            heroVideoSyncSmallPosition = sync;
+
+            window.addEventListener('scroll', sync, { passive: true });
+            let resizeRaf = false;
+            window.addEventListener('resize', () => {
+                if (resizeRaf) return;
+                resizeRaf = true;
+                requestAnimationFrame(() => { resizeRaf = false; sync(); });
+            });
+        }
+
+        // Swaps the small player's X button between "minimize" (fullscreen) and "close" (small)
+        // so its icon/tooltip always matches what clicking it will actually do right now.
+        function updateHeroVideoCloseBtnIcon() {
+            const btn = document.getElementById('hero-video-close-btn');
+            if (!btn) return;
+            const icon = btn.querySelector('i');
+            if (heroVideoFullscreenActive) {
+                if (icon) icon.className = 'fa-solid fa-down-left-and-up-right-to-center text-sm text-red-500';
+                btn.title = 'Minimize';
+            } else {
+                if (icon) icon.className = 'fa-solid fa-xmark text-sm text-red-500';
+                btn.title = 'Close';
+            }
+        }
+
+        // Expands the (already-open) hero video player to cover the full viewport. Always body-
+        // level by this point (see initHeroVideoFloatingPlayer), so a plain inset:0 genuinely
+        // covers the real viewport instead of some ancestor's smaller transformed box.
+        function enterHeroVideoFullscreen() {
+            const section = document.getElementById('hero-video-section');
+            if (!section || heroVideoFullscreenActive) return;
+            heroVideoFullscreenActive = true;
+            section.classList.add('hero-video-fullscreen-active');
+            section.style.transform = 'none';
+            section.style.width = '100vw';
+            section.style.height = '100vh';
+            lockBodyScroll();
+            updateHeroVideoCloseBtnIcon();
+        }
+
+        // Shrinks the player back down to its normal small size, inline in the hero card - does
+        // NOT close it, playback continues. Actually closing is the small player's own X button.
+        function exitHeroVideoFullscreen() {
+            const section = document.getElementById('hero-video-section');
+            if (!section || !heroVideoFullscreenActive) return;
+            heroVideoFullscreenActive = false;
+            section.classList.remove('hero-video-fullscreen-active');
+            unlockBodyScroll();
+            if (heroVideoSyncSmallPosition) heroVideoSyncSmallPosition();
+            updateHeroVideoCloseBtnIcon();
+        }
+
+        // Fully closes the hero video player (stops playback, hides it, forgets which mission it
+        // belonged to) - shared by the small player's own close button and by renderHeroLiveButton
+        // tearing down a stale player when the hero switches to a mission with no live coverage.
+        function closeHeroVideoPlayer() {
+            const section = document.getElementById('hero-video-section');
+            const iframe = document.getElementById('hero-video-iframe');
+            const unconfirmedOverlay = document.getElementById('hero-video-unconfirmed-overlay');
+            const placeholder = document.querySelector('.hero-video-placeholder');
+            if (heroVideoFullscreenActive) {
+                heroVideoFullscreenActive = false;
+                unlockBodyScroll();
+                updateHeroVideoCloseBtnIcon();
+            }
+            heroVideoMissionId = null;
+            if (iframe) iframe.src = '';
+            if (section) {
+                section.classList.add('hidden');
+                section.classList.remove('hero-video-fullscreen-active');
+            }
+            if (placeholder) placeholder.classList.add('hidden');
+            if (unconfirmedOverlay) {
+                unconfirmedOverlay.classList.add('hidden');
+                unconfirmedOverlay.classList.remove('flex');
+            }
+            resetVideoControlsOverlay('hero');
+        }
+
         function renderHeroLiveButton(nextLaunch) {
+            initHeroVideoFloatingPlayer();
+
             const watchLiveBtn = document.getElementById('hero-watch-live-btn');
             const watchLiveIcon = document.getElementById('hero-watch-live-icon');
             const watchLiveLabel = document.getElementById('hero-watch-live-label');
@@ -8719,6 +8871,7 @@
             const heroVideoCloseBtn = document.getElementById('hero-video-close-btn');
             const heroVideoUnconfirmedOverlay = document.getElementById('hero-video-unconfirmed-overlay');
             const heroVideoUnconfirmedYtBtn = document.getElementById('hero-video-unconfirmed-yt-btn');
+            const heroVideoPlaceholder = document.querySelector('.hero-video-placeholder');
             if (!watchLiveBtn) return;
 
             const heroVideoOpen = heroVideoSection && !heroVideoSection.classList.contains('hidden');
@@ -8745,41 +8898,39 @@
 
             const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
 
-            if (heroYoutubeId || withinLiveWindow) {
-                // heroYoutubeId: the API confirmed a specific, real SpaceX video - most precise,
-                // embed it directly, no overlay needed. Otherwise: no confirmed video yet, but
-                // we're inside the pre-launch window - show the "not confirmed yet" overlay with
-                // a real "Watch on YouTube" button INSTEAD of attempting the unreliable
-                // "embed/live_stream?channel=X" trick, which was confirmed directly to show
-                // YouTube's own bare "video unavailable" even while the channel genuinely is
-                // live. A background lookup (resolveSfnLiveVideoId) tries to resolve the actual
-                // current video ID and, if it succeeds in time, silently swaps in a real,
-                // reliably-embeddable player and hides the overlay.
-                watchLiveBtn.classList.remove('hidden');
-                if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
-                if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
-                watchLiveBtn.onclick = function () {
-                    if (!heroVideoIframe || !heroVideoSection) return;
-                    heroVideoMissionId = nextLaunch.id;
-                    heroVideoSection.classList.remove('hidden');
-                    resetVideoControlsOverlay('hero');
+            // Loads/refreshes the actual video content for `nextLaunch` into the player, without
+            // touching whether it's currently small or fullscreen - shared by a deliberate WATCH
+            // LIVE click (which separately calls enterHeroVideoFullscreen right before this) and
+            // by an automatic mission-switch refresh below (which should keep whatever size the
+            // player already happened to be at, not yank the user into fullscreen on its own).
+            function loadHeroVideoContent() {
+                if (!heroVideoIframe || !heroVideoSection) return;
+                heroVideoMissionId = nextLaunch.id;
+                heroVideoSection.classList.remove('hidden');
+                heroVideoSection.style.display = ''; // clear a stale inline display:none a previous close may have left
+                if (heroVideoPlaceholder) heroVideoPlaceholder.classList.remove('hidden');
+                resetVideoControlsOverlay('hero');
 
-                    if (heroYoutubeId) {
-                        heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
-                        if (heroVideoUnconfirmedOverlay) {
-                            heroVideoUnconfirmedOverlay.classList.add('hidden');
-                            heroVideoUnconfirmedOverlay.classList.remove('flex');
-                        }
-                        return;
+                if (heroYoutubeId) {
+                    // The API confirmed a specific, real video - most precise, embed it directly.
+                    heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                    if (heroVideoUnconfirmedOverlay) {
+                        heroVideoUnconfirmedOverlay.classList.add('hidden');
+                        heroVideoUnconfirmedOverlay.classList.remove('flex');
                     }
-
+                } else {
+                    // No confirmed video yet, but we're inside the pre-launch window - show the
+                    // "not confirmed yet" overlay with a real "Watch on YouTube" button INSTEAD of
+                    // the unreliable "embed/live_stream?channel=X" trick (confirmed directly to
+                    // show YouTube's own bare "video unavailable" even while genuinely live). A
+                    // background lookup silently swaps in a real player and hides the overlay
+                    // once/if it resolves.
                     heroVideoIframe.src = '';
                     if (heroVideoUnconfirmedYtBtn) heroVideoUnconfirmedYtBtn.href = youtubeOpenUrlFallback;
                     if (heroVideoUnconfirmedOverlay) {
                         heroVideoUnconfirmedOverlay.classList.remove('hidden');
                         heroVideoUnconfirmedOverlay.classList.add('flex');
                     }
-
                     resolveSfnLiveVideoId().then(resolvedId => {
                         if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) {
                             pollForConfirmedLiveVideo(heroVideoIframe, heroVideoSection, heroVideoUnconfirmedOverlay);
@@ -8791,6 +8942,19 @@
                             heroVideoUnconfirmedOverlay.classList.remove('flex');
                         }
                     });
+                }
+                if (!heroVideoFullscreenActive && heroVideoSyncSmallPosition) heroVideoSyncSmallPosition();
+            }
+
+            if (heroYoutubeId || withinLiveWindow) {
+                watchLiveBtn.classList.remove('hidden');
+                if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
+                if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
+                watchLiveBtn.onclick = function () {
+                    // A deliberate click always opens fullscreen - only the player's own close
+                    // button (while fullscreen) minimizes it down to the small inline size.
+                    enterHeroVideoFullscreen();
+                    loadHeroVideoContent();
                 };
 
                 if (missionChangedWhileOpen) {
@@ -8798,33 +8962,26 @@
                     // still hold the PREVIOUS mission's video id from just before the switch,
                     // which would silently keep the stale stream playing for up to 2 more minutes.
                     sfnLiveVideoIdCache = { id: null, fetchedAt: 0 };
-                    watchLiveBtn.onclick();
+                    loadHeroVideoContent();
                 }
             } else {
                 watchLiveBtn.classList.add('hidden');
                 if (missionChangedWhileOpen) {
                     // New mission has no live coverage at all (yet) - close the stale player
                     // instead of leaving the previous mission's stream running underneath it.
-                    if (heroVideoIframe) heroVideoIframe.src = '';
-                    if (heroVideoSection) heroVideoSection.classList.add('hidden');
-                    if (heroVideoUnconfirmedOverlay) {
-                        heroVideoUnconfirmedOverlay.classList.add('hidden');
-                        heroVideoUnconfirmedOverlay.classList.remove('flex');
-                    }
-                    heroVideoMissionId = null;
+                    closeHeroVideoPlayer();
                 }
             }
 
             if (heroVideoCloseBtn) {
                 heroVideoCloseBtn.onclick = function () {
-                    heroVideoMissionId = null;
-                    if (heroVideoIframe) heroVideoIframe.src = '';
-                    if (heroVideoSection) heroVideoSection.classList.add('hidden');
-                    if (heroVideoUnconfirmedOverlay) {
-                        heroVideoUnconfirmedOverlay.classList.add('hidden');
-                        heroVideoUnconfirmedOverlay.classList.remove('flex');
+                    // Fullscreen -> small (keeps playing); small -> fully closed. Matches the
+                    // player's own current state at click time, not whatever nextLaunch is now.
+                    if (heroVideoFullscreenActive) {
+                        exitHeroVideoFullscreen();
+                        return;
                     }
-                    resetVideoControlsOverlay('hero');
+                    closeHeroVideoPlayer();
                 };
             }
         }
