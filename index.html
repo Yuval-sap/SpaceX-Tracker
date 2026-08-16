@@ -4606,6 +4606,11 @@
         // setupHeroBanner) - lets that function detect the exact moment a mission stops being
         // shown there (evicted per its grace period), which is when past launches should refresh.
         let lastHeroInProgressId = null;
+        // The id of whichever mission setupHeroBanner() actually put in the hero on its last run -
+        // may be a dbMissions entry OR a rawPastMissions-derived grace-period stand-in (not in
+        // dbMissions at all). Used to correctly exclude the hero's mission from the "Scheduled
+        // Launches" grid without assuming it's always dbMissions[0].
+        let currentHeroMissionId = null;
         let heroLiveCheckIntervalId = null;
         let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
         let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
@@ -6959,7 +6964,26 @@
             }
 
             refreshIntervalId = setTimeout(async () => {
-                await fetchLiveLaunches({ fetchUpcoming: true, fetchPrevious: false });
+                // Normally this tier only ever re-fetches "upcoming" - previous launches only
+                // get refetched once, right when a mission leaves the hero's "in progress"
+                // display (see setupHeroBanner). That one-time fetch can genuinely be too early
+                // to have an official video attached yet, especially for a mission cut short by
+                // the 15-minute-to-next-launch override (see wireModalLiveButton's own comment).
+                // Piggyback a "previous" refetch onto this SAME regular cycle - instead of a
+                // separate timer - for as long as some recently-past mission is still missing
+                // its video: starts 10 minutes after that mission's own 60-minute live window
+                // closes (no point checking Launch Library before then - the SFN live coverage
+                // above still covers that gap on its own), and stops on its own, on whichever
+                // tick first sees `youtubeId` populated for it - satisfies "keep checking every
+                // refresh until found" without polling forever; bounded to missions that
+                // launched within the last 3 hours so a launch that never gets a video attached
+                // (rare, but possible) doesn't add a permanent extra fetch to every future tick.
+                const needsPastVideoRecheck = (rawPastMissions || []).some(m => {
+                    if (m.youtubeId) return false;
+                    const minutesSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 60000;
+                    return minutesSinceLaunch >= 70 && minutesSinceLaunch <= 180;
+                });
+                await fetchLiveLaunches({ fetchUpcoming: true, fetchPrevious: needsPastVideoRecheck });
                 updateRefreshSchedule(); // re-evaluate proximity fresh, so the cadence tightens/loosens as time passes
             }, intervalMs);
         }
@@ -7083,7 +7107,11 @@
 
             setupHeroBanner();
 
-            upcomingForGrid = dbMissions.slice(1, 7);
+            // Exclude whichever mission is ACTUALLY shown in the hero, not just index 0 - when
+            // the hero falls back to a rawPastMissions-derived grace-period stand-in, dbMissions[0]
+            // is a real upcoming mission the hero isn't displaying at all, and must still show
+            // up here instead of being silently dropped.
+            upcomingForGrid = dbMissions.filter(m => m.id !== currentHeroMissionId);
             filterMissions();
 
             updateRefreshSchedule();
@@ -8813,6 +8841,8 @@
                 nextLaunch = dbMissions[0];
             }
 
+            currentHeroMissionId = nextLaunch ? nextLaunch.id : null;
+
             // Past launches only refresh right when a mission actually leaves the hero's
             // "In Progress" display (per the grace-period rules above) - not on any periodic
             // timer. Detected by comparing against whichever mission was showing last time this
@@ -9166,7 +9196,14 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 card.dataset.missionId = m.id;
                 card.dataset.category = m.category;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
-                const hasVideo = !!m.youtubeId;
+                // A mission this recently past can still be genuinely live (see the matching
+                // comment in wireModalLiveButton) - treated the same as "has video" here purely
+                // for THIS label's wording, so the card invites a click during that window
+                // instead of showing the generic "view details" text; wireModalLiveButton is
+                // what actually decides whether the modal opens with a live player or not.
+                const minutesSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 60000;
+                const stillWithinLiveWindow = minutesSinceLaunch >= 0 && minutesSinceLaunch < 60;
+                const hasVideo = !!m.youtubeId || stillWithinLiveWindow;
                 const pastCardLangKey = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
                 const pastCardDict = LAUNCH_LABEL_I18N[pastCardLangKey === 'zh' ? 'zh' : pastCardLangKey] || LAUNCH_LABEL_I18N.en;
                 const detailsLabel = hasVideo
@@ -9345,9 +9382,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
             renderMissions(filteredUpcoming);
 
-            let filteredPast = rawPastMissions;
+            // Exclude whichever mission is currently shown in the hero as an "In Progress"
+            // grace-period stand-in (see setupHeroBanner) - it's still physically present in
+            // rawPastMissions itself, so without this it would render a second time here too.
+            let filteredPast = rawPastMissions.filter(m => m.id !== currentHeroMissionId);
             if (currentFilter === 'favorites') {
-                filteredPast = rawPastMissions.filter(m => favoriteMissions.includes(m.id));
+                filteredPast = filteredPast.filter(m => favoriteMissions.includes(m.id));
             } else if (currentFilter !== 'all') {
                 filteredPast = filteredPast.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
             }
@@ -9548,15 +9588,33 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 });
             };
 
+            const launchTimeMs = new Date(m.date).getTime();
+            const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
+
             if (isPastMission) {
-                setThreeUp(false);
-                return;
+                // A mission can land in "past" well before an hour has passed since it actually
+                // launched - normally that only happens when a fast-following launch takes over
+                // the hero early (setupHeroBanner's 15-minute-to-next-launch override cuts the
+                // previous mission's own 60-min "in progress" grace period short). Coverage of
+                // THAT mission is very likely still genuinely live even though our own status
+                // bookkeeping already calls it "past" - so give a past mission the same
+                // 60-minutes-since-launch live-eligibility window the hero/in-progress display
+                // itself uses, instead of unconditionally hiding the live button the instant
+                // something is classified "past". Past 60 minutes, fall back to the normal
+                // past-mission behavior (archived video if Launch Library has attached one by
+                // then, otherwise the plain "View Mission Details" link - see renderMissions'
+                // own matching 60-minute check on the card label, and updateRefreshSchedule's
+                // periodic re-check for a just-attached archived video starting 10 minutes after
+                // this cutoff).
+                const minutesSinceLaunch = -minutesToLaunch;
+                if (!(minutesSinceLaunch >= 0 && minutesSinceLaunch < 60)) {
+                    setThreeUp(false);
+                    return;
+                }
             }
 
             const liveSrcUrl = m.hasLiveVideo ? (m.liveVideoUrl || m.liveUrl || "") : "";
             const confirmedYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
-            const launchTimeMs = new Date(m.date).getTime();
-            const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
             // Widened to match renderHeroLiveButton's own window (was 25, that one was 15 -
             // both too narrow, see that function's comment).
             const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 && minutesToLaunch >= -180;
