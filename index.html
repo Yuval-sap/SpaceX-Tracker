@@ -852,6 +852,46 @@
             animation-duration: 0s !important;
         }
 
+        /* Theme toggle button: hover recolors the icon itself (and, for the moon specifically,
+           the button's own circular background too) instead of the plain hover:text-emerald-400
+           every other icon-button on the page uses. Sun (shown while the site is in dark/night
+           mode - hover turns it a genuine sun-yellow. Moon (shown while the site is in light/day
+           mode) - hover turns the button's own circle black with a white moon on it, a little
+           "night sky" moment.
+           !important is load-bearing on the background rule specifically: body.light-theme
+           .bg-zinc-900 (below) sets background-color: #ffffff !important - since the moon icon
+           only ever shows while light-theme is active, that rule is a genuine, live competitor
+           every time this one needs to apply, not a hypothetical. #theme-toggle-btn's own ID
+           gives this MORE specificity, but specificity never even gets compared once the other
+           side has !important and this one doesn't - !important rules form their own separate,
+           higher-priority tier entirely. First version shipped without !important here (assumed
+           specificity alone would be enough, without actually checking the competing rule for
+           !important first) and the moon rendered white-on-white as a result - fixed by adding
+           !important here too, so both rules compete in the same tier, where this one's higher
+           specificity (ID beats two classes) correctly decides it. */
+        #theme-toggle-btn:hover .fa-sun {
+            color: #facc15;
+        }
+
+        /* Mirrors the moon rule below but inverted: white circle, black outer rim, around the
+           yellow sun. Checked for competing !important rules on both background-color AND
+           border-color before shipping this (unlike the first pass at the moon rule, which
+           assumed specificity alone was enough and shipped white-on-white as a result) - none
+           found for the dark-theme+sun-icon combination this applies in, so no !important needed
+           here, but that's a confirmed finding, not the same unchecked assumption again. */
+        #theme-toggle-btn:hover:has(.fa-sun) {
+            background-color: #fff;
+            border-color: #000;
+        }
+
+        #theme-toggle-btn:hover:has(.fa-moon) {
+            background-color: #000 !important;
+        }
+
+        #theme-toggle-btn:hover .fa-moon {
+            color: #fff;
+        }
+
         /* ==================================================
            LIGHT THEME OVERRIDES (מצב יום)
            ================================================== */
@@ -2975,8 +3015,26 @@
         // window is closed) - no manual expiry/timestamp logic needed.
         const savedTheme = sessionStorage.getItem('spacex-theme');
         const wantsLight = savedTheme === 'light' || (savedTheme === null && (() => {
-            const hour = new Date().getHours();
-            return hour >= 6 && hour < 18;
+            const now = new Date();
+            const hour = now.getHours();
+            // Evening cutoff depends on whether the visitor's own local timezone is currently
+            // observing daylight saving time - 19:00 during DST (summer clocks), 17:00 during
+            // standard time (winter clocks). Standard, hemisphere-agnostic DST detection: DST
+            // always means the clock was moved FORWARD relative to standard time, which always
+            // means a SMALLER getTimezoneOffset() value (more ahead of / less behind UTC),
+            // regardless of which hemisphere or which direction the offset's sign goes - so
+            // comparing today's offset against Jan 1 and Jul 1 of the same year (six months
+            // apart, guaranteed to straddle any DST transition that exists) and taking whichever
+            // of those two is numerically larger as "standard time" works everywhere, including
+            // locations that don't observe DST at all (Jan and Jul offsets are then equal, so
+            // this always correctly evaluates to "not DST" there).
+            const year = now.getFullYear();
+            const janOffset = new Date(year, 0, 1).getTimezoneOffset();
+            const julOffset = new Date(year, 6, 1).getTimezoneOffset();
+            const standardOffset = Math.max(janOffset, julOffset);
+            const isDST = now.getTimezoneOffset() < standardOffset;
+            const eveningCutoff = isDST ? 19 : 17;
+            return hour >= 6 && hour < eveningCutoff;
         })());
         if (wantsLight) {
             document.documentElement.classList.add('light-theme');
