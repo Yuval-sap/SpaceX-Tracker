@@ -8846,6 +8846,21 @@
             window.addEventListener('resize', resize);
 
             function animate() {
+                // This render loop used to run unconditionally forever, 60fps, regardless of
+                // whether the "more" tab (the only place this canvas is ever visible) was even
+                // the active tab - meaning it was ALSO fully rendering every frame during the
+                // tab-switch CSS transition itself (competing with that transform/opacity
+                // animation for the same frame budget on real hardware) and continuously in the
+                // background the entire time the user sat on the Launches tab. window
+                // ._aiComputeRenderEnabled (default false, flipped by switchMainTab - see its
+                // own comments) gates real work to only when the "more" tab is the current tab
+                // AND its own entrance transition has genuinely finished settling - see
+                // [[project_spacex_tracker_mobile_tab_transition_smoothness]]. While paused,
+                // just check back periodically instead of a full rAF loop - cheap, no GPU work.
+                if (!window._aiComputeRenderEnabled) {
+                    setTimeout(() => requestAnimationFrame(animate), 200);
+                    return;
+                }
                 requestAnimationFrame(animate);
                 const s = aiComputeScene;
 
@@ -12020,6 +12035,9 @@ if (heroNameEl) {
                 const settleAiCompute = () => {
                     if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
                     window.dispatchEvent(new Event('resize'));
+                    // Resume the donut's own render loop (see animate()'s own comment) only once
+                    // this tab's entrance transition has genuinely settled - not a moment before.
+                    window._aiComputeRenderEnabled = true;
                 };
                 if (instant) {
                     // No transition to wait for - the panel is already in its final state.
@@ -12044,6 +12062,12 @@ if (heroNameEl) {
                     }, 750);
                 }
             } else {
+                // Pause the AI Compute donut's render loop immediately - its canvas is about to
+                // be hidden/irrelevant, no reason to keep spending frame budget on it while it's
+                // fading out, and definitely none while the user sits on the Launches tab
+                // afterward (see animate()'s own comment for why this matters for the
+                // tab-switch's own smoothness, not just wasted battery).
+                window._aiComputeRenderEnabled = false;
                 // Same "measured while display:none" race as the branch above: finishSwap()
                 // (which actually un-hides tab-panel-launches) is deferred 320ms whenever the
                 // outgoing "more" panel was visible, so a fit call at only 50ms reads
