@@ -2169,21 +2169,38 @@
         #tab-panel-launches.hidden {
             display: none !important;
         }
-        /* Outgoing panel: fade + slide out toward the tab it's yielding to, set via
-           --tab-slide-exit (a signed px value computed per-switch in switchMainTab so the
-           motion always matches the clicked tab's actual on-screen side, LTR or RTL). */
+        /* Outgoing panel: fade + shrink out. Mobile (below the 640px breakpoint used
+           everywhere else on this page) has NO horizontal translateX - removed 2026-08-18:
+           the user described the whole screen, including the sticky bar above the panel,
+           visibly dragging sideways and snapping back during every switch on mobile
+           specifically - translateX was the only horizontal-motion component anywhere in
+           this transition, and combined with `scale()` inside body's `overflow-x: hidden`
+           it's a known class of mobile-WebKit rendering issue where a transform-animated
+           child can momentarily render outside an ancestor's clip during the animation
+           itself even though the spec says it shouldn't. User confirmed mobile is fixed,
+           but desktop never had this problem and wanted its original slide-in/out effect
+           back - restored below, scoped to >=640px only. */
         #tab-panel-launches.tab-panel-leaving,
         #tab-panel-more.tab-panel-leaving {
             opacity: 0;
-            transform: translateX(var(--tab-slide-exit, 0px)) scale(0.97);
+            transform: scale(0.97);
             pointer-events: none;
         }
-        /* Incoming panel starts invisible (set before removing .hidden) then slides/fades in
-           from the opposite side via --tab-slide-enter. */
+        /* Incoming panel starts invisible (set before removing .hidden) then fades/grows in. */
         #tab-panel-launches.tab-panel-preenter,
         #tab-panel-more.tab-panel-preenter {
             opacity: 0;
-            transform: translateX(var(--tab-slide-enter, 0px)) scale(0.97);
+            transform: scale(0.97);
+        }
+        @media (min-width: 640px) {
+            #tab-panel-launches.tab-panel-leaving,
+            #tab-panel-more.tab-panel-leaving {
+                transform: translateX(var(--tab-slide-exit, 0px)) scale(0.97);
+            }
+            #tab-panel-launches.tab-panel-preenter,
+            #tab-panel-more.tab-panel-preenter {
+                transform: translateX(var(--tab-slide-enter, 0px)) scale(0.97);
+            }
         }
 
     </style>
@@ -3317,8 +3334,18 @@
             }
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
-            fitAllTitlesOneLine(document);
-            fitAllSectionTitles(document);
+            // Skipped while a tab-switch transition is in flight (see switchMainTab's own
+            // settleAfterPanelTransition) - this runs on a fixed 500ms tick regardless of tab
+            // switching, and fitTitleOneLine's forced-reflow path (see its own comment) is
+            // expensive enough, when it actually has real work to do, to visibly stutter the
+            // transition if a tick happens to land inside its ~640ms window - which a 500ms-
+            // period timer against a 640ms window will do on nearly every single switch. Just
+            // a one-tick (≤500ms) delay to the translation-sync work otherwise, well within
+            // this loop's own normal cadence.
+            if (!window._tabTransitionInProgress) {
+                fitAllTitlesOneLine(document);
+                fitAllSectionTitles(document);
+            }
 
             // Unit system follows the resolved language only. Google Translate's
             // translated-ltr/translated-rtl classes are internal bookkeeping (it adds
@@ -11882,6 +11909,45 @@ if (heroNameEl) {
         // ---- Main content tabs (Launches / More Info) ----
         window.currentMainTab = 'launches';
         window._tabSwitchToken = 0;
+
+        // Runs `fn` once `panel`'s own CSS entrance transition has genuinely finished (via a
+        // real `transitionend`, with a 750ms fallback in case one never fires - e.g. the user
+        // switches tabs again mid-animation) instead of a guessed fixed delay. Used for any
+        // per-switch cleanup work that's expensive enough to visibly stutter the transition if
+        // it runs WHILE the transform/opacity animation is still in flight - first needed for
+        // the AI Compute donut's Three.js resize, then again for fitTitleOneLine's forced-reflow
+        // fitting loop (see its own comment: it skips work via a text+width cache guard, so
+        // English titles - usually already correctly cached - mostly no-op here, while any
+        // OTHER language's translated text tends to miss that cache and run the full expensive
+        // loop instead, which is why the shake was reported "only in Hebrew, not English" even
+        // though this exact mid-transition-timing bug was never actually language-specific).
+        // Also clears window._tabTransitionInProgress here (set true by switchMainTab itself,
+        // see its own comment) - this was the actual missing piece: an UNRELATED, independent
+        // 500ms "Bulletproof Timer" tick elsewhere in this file also calls these same expensive
+        // fit functions on its own fixed schedule regardless of any tab switch, and with a
+        // ~640ms transition window vs a 500ms timer period, at least one of its ticks was
+        // essentially guaranteed to land inside almost every single switch - that timer now
+        // checks this same flag and skips its own call while a transition is in flight.
+        function settleAfterPanelTransition(panel, isInstant, fn) {
+            if (isInstant) { fn(); window._tabTransitionInProgress = false; return; }
+            let settled = false;
+            const onEnd = (ev) => {
+                if (ev.target !== panel || settled) return;
+                settled = true;
+                panel.removeEventListener('transitionend', onEnd);
+                fn();
+                window._tabTransitionInProgress = false;
+            };
+            panel.addEventListener('transitionend', onEnd);
+            setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                panel.removeEventListener('transitionend', onEnd);
+                fn();
+                window._tabTransitionInProgress = false;
+            }, 750);
+        }
+
         function switchMainTab(tab, opts) {
             if (tab !== 'launches' && tab !== 'more') return;
             opts = opts || {};
@@ -11900,6 +11966,10 @@ if (heroNameEl) {
                     return;
                 }
             }
+
+            // Set for the whole switch, cleared by settleAfterPanelTransition once things
+            // actually settle - see that function's own comment for what this guards against.
+            window._tabTransitionInProgress = true;
 
             window.currentMainTab = tab;
             const isLaunches = tab === 'launches';
@@ -11957,6 +12027,21 @@ if (heroNameEl) {
                 incoming.classList.remove('tab-panel-preenter');
             };
 
+            // Scroll to the very top of the page BEFORE starting the panel's own fade/slide -
+            // found by extracting actual frames from a video the user sent (2026-08-18): tapping
+            // a tab while scrolled deep into the OTHER tab's content (e.g. the documentary
+            // section) caused the ENTIRE page to instantly snap to the top in the exact same
+            // frame the fade-out began, while the tall outgoing content was still fully present
+            // in the layout - an instant, large scroll jump landing in the same instant as an
+            // opacity/transform animation starting is exactly the kind of collision that reads
+            // as a visible "shake"/jolt, and it's more dramatic the further down the user had
+            // scrolled. Doing the jump FIRST (before `tab-panel-leaving` is even added) means the
+            // browser paints the snap against still-static, fully-opaque content - looks like a
+            // normal, deliberate "jump to top" - and only THEN, from that already-settled
+            // position, does the fade/slide begin as its own clean, isolated motion.
+            const isMobileViewport = window.innerWidth < 640;
+            window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
+
             if (instant || outgoing.classList.contains('hidden')) {
                 // First paint / already hidden — swap without exit animation
                 finishSwap();
@@ -11991,76 +12076,22 @@ if (heroNameEl) {
                 }
             }
 
-            // Scroll to the very top of the page on every tab switch - #main-tabs-bar sits
-            // directly above both panels regardless of which is visible, so there's no reason
-            // for the "more" tab to land anywhere but true 0 same as "launches" does; the old
-            // main-tabs-relative math left a small (~20-30px) gap here since the container's own
-            // top padding isn't part of the sticky nav's height, reading as a "stuck a bit down"
-            // bug rather than the flush-to-top landing that was actually intended.
-            // On narrow (mobile) viewports specifically this used to run 'smooth', animating the
-            // WHOLE PAGE scroll position at the same time as the panel's own opacity/transform
-            // fade-slide (triggered just above via the 'tab-panel-leaving' class) - two
-            // simultaneously-animated motions on different timelines/easings, competing for the
-            // same small viewport. Mobile users also typically have scrolled further down before
-            // switching tabs (taller, narrower layout) than desktop users tend to, so the
-            // competing scroll animation is both longer AND more visually dominant there,
-            // reading as janky/uncoordinated rather than the single clean motion the panel
-            // transition alone is meant to be. Desktop's version of this was left as 'smooth' -
-            // it wasn't reported as a problem there, likely because desktop viewers are more
-            // often already near the top before switching in the first place, so this scroll is
-            // shorter/less noticeable and was never competing hard enough to look bad.
-            const isMobileViewport = window.innerWidth < 640;
-            window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
-
             if (!isLaunches) {
-                setTimeout(() => {
+                // Both the title-fitting pass AND the AI Compute donut's resize/resume are
+                // expensive enough to visibly stutter the transition if they run while it's
+                // still in flight - see settleAfterPanelTransition's own comment for the full
+                // history (two separate guessed-delay bugs, the second one language-dependent).
+                // Bundled into one shared settle callback instead of two separate timers/
+                // listeners doing the same waiting twice.
+                settleAfterPanelTransition(incoming, instant, () => {
                     if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
                     if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
-                }, 50);
-
-                // The AI Compute donut's resize (updateAIComputeCrtHole + a real Three.js canvas
-                // resize via the 'resize' event) is expensive - reallocating WebGL render
-                // targets, not just a style read. The old code fired it at two guessed delays
-                // (50ms/380ms) sized against the panel's own 0.32s CSS transition - and that
-                // guess had ALREADY broken once before (was 300ms/260ms until the transition
-                // grew to 320ms), then broke again in a different way: 380ms lands past
-                // finishSwap's 320ms reveal, but NOT past the INCOMING panel's own separate
-                // 320ms entrance transition (which only starts once finishSwap reveals it, so it
-                // actually runs 320ms-640ms) - meaning the heavy resize was landing squarely
-                // inside that entrance animation, visibly stuttering it on weaker mobile GPUs
-                // (matches the "screen shakes" video from mobile, not reported on desktop).
-                // Waiting for the real `transitionend` event instead of a guessed delay fixes
-                // this permanently rather than re-tuning another magic number that will just
-                // drift out of sync again the next time the transition's duration changes.
-                const settleAiCompute = () => {
                     if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
                     window.dispatchEvent(new Event('resize'));
                     // Resume the donut's own render loop (see animate()'s own comment) only once
                     // this tab's entrance transition has genuinely settled - not a moment before.
                     window._aiComputeRenderEnabled = true;
-                };
-                if (instant) {
-                    // No transition to wait for - the panel is already in its final state.
-                    settleAiCompute();
-                } else {
-                    let settled = false;
-                    const onIncomingTransitionEnd = (ev) => {
-                        if (ev.target !== incoming || settled) return;
-                        settled = true;
-                        incoming.removeEventListener('transitionend', onIncomingTransitionEnd);
-                        settleAiCompute();
-                    };
-                    incoming.addEventListener('transitionend', onIncomingTransitionEnd);
-                    // Fallback in case transitionend never fires for some reason (e.g. the user
-                    // switches tabs again mid-animation) - keeps the donut from getting
-                    // permanently stuck stale/unsized.
-                    setTimeout(() => {
-                        if (settled) return;
-                        settled = true;
-                        incoming.removeEventListener('transitionend', onIncomingTransitionEnd);
-                        settleAiCompute();
-                    }, 750);
-                }
+                });
             } else {
                 // Pause the AI Compute donut's render loop immediately - its canvas is about to
                 // be hidden/irrelevant, no reason to keep spending frame budget on it while it's
@@ -12068,27 +12099,11 @@ if (heroNameEl) {
                 // afterward (see animate()'s own comment for why this matters for the
                 // tab-switch's own smoothness, not just wasted battery).
                 window._aiComputeRenderEnabled = false;
-                // Same "measured while display:none" race as the branch above: finishSwap()
-                // (which actually un-hides tab-panel-launches) is deferred 320ms whenever the
-                // outgoing "more" panel was visible, so a fit call at only 50ms reads
-                // #hero-name at clientWidth 0, caches that bogus width via
-                // fitTitleOneLine's dataset guard, and - unlike .mission-title-fit elements -
-                // nothing ever re-fits #hero-name again afterwards, leaving it visibly clipped
-                // once the panel is actually shown. Mirrors the other branch's two-call pattern:
-                // one fast attempt for when the panel was already hidden (finishSwap ran
-                // synchronously, no delay), one safety-net attempt safely past finishSwap's own
-                // 320ms deferral (not equal to it - two timers sharing the same delay would race
-                // in an unspecified order).
-                setTimeout(() => {
+                settleAfterPanelTransition(incoming, instant, () => {
                     if (typeof fitTitleOneLine === 'function') fitTitleOneLine(document.getElementById('hero-name'));
                     if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
                     if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
-                }, 50);
-                setTimeout(() => {
-                    if (typeof fitTitleOneLine === 'function') fitTitleOneLine(document.getElementById('hero-name'));
-                    if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
-                    if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
-                }, 380);
+                });
             }
         }
 
