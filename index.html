@@ -3075,9 +3075,7 @@
             const modal = document.getElementById('doc-video-modal');
             const iframe = document.getElementById('doc-video-iframe');
             if (!modal || !iframe || !youtubeId) return false;
-            // Documentary episodes are pre-recorded, so resuming where you left off makes sense
-            // here (unlike the live-launch players) - see loadYoutubeIntoPlayer's own comment.
-            loadYoutubeIntoPlayer('doc-video-iframe', youtubeId, { resumable: true });
+            iframe.src = 'https://www.youtube-nocookie.com/embed/' + youtubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             lockBodyScroll();
@@ -3086,10 +3084,11 @@
 
         function closeDocVideoModal() {
             const modal = document.getElementById('doc-video-modal');
+            const iframe = document.getElementById('doc-video-iframe');
             if (!modal) return;
             modal.classList.add('hidden');
             modal.classList.remove('flex');
-            stopYoutubePlayer('doc-video-iframe'); // saves the resume position first
+            if (iframe) iframe.src = ''; // stop playback
             unlockBodyScroll();
         }
 
@@ -9468,139 +9467,6 @@
             return null;
         }
 
-        // ---- Resumable YouTube playback (past-launch archived footage + documentary episodes
-        // ONLY - never the hero's live stream or the modal's own live-launch path, where
-        // "resume where I left off" doesn't make sense for something that's live). A plain
-        // `<iframe src="...">` (what every player on this page used before) has no way to ask
-        // "what second is this at" - only the real YouTube IFrame Player API exposes
-        // getCurrentTime()/seekTo(). Position is kept in localStorage, not sessionStorage - the
-        // user specifically wants it to survive switching to another app/tab on their phone and
-        // coming back (this is a mobile PWA - see [[project_spacex_tracker_mobile_language_persistence]]
-        // for other cases where backgrounding this app has already been observed to kill
-        // sessionStorage/cookies), and only reset when they genuinely leave the site. Cleared
-        // explicitly on the `pagehide` event below instead - fires on a real navigation-away or
-        // tab close, but NOT on simple backgrounding/app-switching, which is exactly the
-        // distinction needed and the standard mobile-reliable way to detect it (unlike
-        // `beforeunload`, which mobile browsers largely ignore). Keyed per real video id so
-        // different episodes/missions never clash.
-
-        let youtubeApiReadyPromise = null;
-        function ensureYoutubeApiReady() {
-            if (youtubeApiReadyPromise) return youtubeApiReadyPromise;
-            youtubeApiReadyPromise = new Promise(resolve => {
-                if (window.YT && window.YT.Player) { resolve(); return; }
-                const prevCallback = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = function () {
-                    if (typeof prevCallback === 'function') prevCallback();
-                    resolve();
-                };
-                const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
-                document.head.appendChild(tag);
-            });
-            return youtubeApiReadyPromise;
-        }
-
-        const YT_RESUME_KEY_PREFIX = 'spacex_video_pos_';
-        const YT_RESUME_SAVE_INTERVAL_MS = 4000;
-        // iframeId -> { player, videoId, resumable, saveTimer, originalClassName }
-        const ytPlayerRegistry = {};
-
-        function saveResumePositionIfNeeded(entry) {
-            if (!entry || !entry.resumable || !entry.player) return;
-            try {
-                const t = entry.player.getCurrentTime();
-                if (t > 3) localStorage.setItem(YT_RESUME_KEY_PREFIX + entry.videoId, String(t));
-            } catch (e) { }
-        }
-
-        // Fires on a genuine navigation-away or tab/app close (not on backgrounding - see the
-        // comment above) - wipes every saved resume position so the NEXT visit starts fresh,
-        // exactly matching "remember until I leave the site, not indefinitely".
-        window.addEventListener('pagehide', function () {
-            try {
-                Object.keys(localStorage)
-                    .filter(k => k.indexOf(YT_RESUME_KEY_PREFIX) === 0)
-                    .forEach(k => localStorage.removeItem(k));
-            } catch (e) { }
-        });
-
-        // Loads `videoId` into the player bound to `iframeId`, creating that player the first
-        // time (replacing the plain placeholder <iframe> already in the HTML) and reusing it on
-        // every later call for the same element - modal-video-iframe in particular is a shared
-        // singleton across BOTH the live-launch path (resumable:false) and the archived-footage
-        // path (resumable:true), so once an element is under Player API control it always stays
-        // that way rather than mixing raw `.src =` writes with the API on the same iframe, which
-        // would desync the Player object's own internal state from reality.
-        async function loadYoutubeIntoPlayer(iframeId, videoId, opts) {
-            opts = opts || {};
-            const resumable = !!opts.resumable;
-            await ensureYoutubeApiReady();
-
-            const applyResumePosition = (player) => {
-                if (!resumable) return;
-                const saved = parseFloat(localStorage.getItem(YT_RESUME_KEY_PREFIX + videoId));
-                if (saved && saved > 3) player.seekTo(saved, true);
-            };
-
-            let entry = ytPlayerRegistry[iframeId];
-            if (entry && entry.player && typeof entry.player.loadVideoById === 'function') {
-                if (entry.saveTimer) { clearInterval(entry.saveTimer); entry.saveTimer = null; }
-                entry.videoId = videoId;
-                entry.resumable = resumable;
-                entry.player.loadVideoById(videoId);
-                applyResumePosition(entry.player);
-                if (resumable) entry.saveTimer = setInterval(() => saveResumePositionIfNeeded(entry), YT_RESUME_SAVE_INTERVAL_MS);
-                return entry.player;
-            }
-
-            // First time this element is used - the API REPLACES the placeholder <iframe> with
-            // its own, which does not inherit our sizing classes (w-full h-full absolute
-            // inset-0 etc.) - reapplied explicitly via player.getIframe() once ready so the
-            // replacement renders exactly where the original placeholder was laid out to.
-            const placeholder = document.getElementById(iframeId);
-            const originalClassName = placeholder ? placeholder.className : '';
-
-            return new Promise(resolveOuter => {
-                const player = new YT.Player(iframeId, {
-                    videoId,
-                    host: 'https://www.youtube-nocookie.com',
-                    playerVars: { rel: 0, modestbranding: 1, playsinline: 1, autoplay: 1 },
-                    events: {
-                        onReady: (e) => {
-                            const iframeEl = e.target.getIframe();
-                            if (iframeEl && originalClassName) iframeEl.className = originalClassName;
-                            applyResumePosition(e.target);
-                            resolveOuter(e.target);
-                        },
-                        onStateChange: (e) => {
-                            const liveEntry = ytPlayerRegistry[iframeId];
-                            if (liveEntry && liveEntry.resumable && e.data === YT.PlayerState.ENDED) {
-                                localStorage.removeItem(YT_RESUME_KEY_PREFIX + liveEntry.videoId);
-                            }
-                        }
-                    }
-                });
-                ytPlayerRegistry[iframeId] = { player, videoId, resumable, saveTimer: null, originalClassName };
-                if (resumable) {
-                    ytPlayerRegistry[iframeId].saveTimer = setInterval(
-                        () => saveResumePositionIfNeeded(ytPlayerRegistry[iframeId]), YT_RESUME_SAVE_INTERVAL_MS
-                    );
-                }
-            });
-        }
-
-        // Stops whichever player owns `iframeId` (if any) - saves one final resume position
-        // first when applicable. Shared by every "close" handler for a Player-API-controlled
-        // video element instead of a raw `iframe.src = ''`.
-        function stopYoutubePlayer(iframeId) {
-            const entry = ytPlayerRegistry[iframeId];
-            if (!entry || !entry.player) return;
-            saveResumePositionIfNeeded(entry);
-            if (entry.saveTimer) { clearInterval(entry.saveTimer); entry.saveTimer = null; }
-            try { entry.player.stopVideo(); } catch (e) { }
-        }
-
         // After a live-launch player opens without a confirmed video ID (the "we haven't
         // confirmed a live stream" overlay), keeps retrying resolveSfnLiveVideoId() every 20s
         // for as long as that player stays open and unconfirmed, instead of giving up after the
@@ -9609,7 +9475,7 @@
         // whole live window rather than needing the user to close and reopen the player to get a
         // fresh attempt. Shared by both the hero and mission-modal players (see prefix pattern
         // used elsewhere in this file).
-        function pollForConfirmedLiveVideo(videoIframe, videoSection, unconfirmedOverlay, playerApiIframeId) {
+        function pollForConfirmedLiveVideo(videoIframe, videoSection, unconfirmedOverlay) {
             if (!videoSection) return;
             // videoIframe/videoSection/unconfirmedOverlay are shared singleton DOM elements
             // re-passed on every open (the modal's own set, or the hero's own set - see the two
@@ -9634,11 +9500,7 @@
                         setTimeout(attempt, 20000);
                         return;
                     }
-                    if (playerApiIframeId) {
-                        loadYoutubeIntoPlayer(playerApiIframeId, resolvedId, { resumable: false });
-                    } else {
-                        videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
-                    }
+                    videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
                     if (unconfirmedOverlay) {
                         unconfirmedOverlay.classList.add('hidden');
                         unconfirmedOverlay.classList.remove('flex');
@@ -10661,10 +10523,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 watchBtn.onclick = function () {
                     if (!window._pendingMissionYoutubeId) return;
                     if (videoIframe && videoSection) {
-                        // The only real caller of this function is the past-mission replay path
-                        // (see its own call site's isPastMission guard) - archived footage, so
-                        // resuming where you left off makes sense here.
-                        loadYoutubeIntoPlayer('modal-video-iframe', window._pendingMissionYoutubeId, { resumable: true });
+                        videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + window._pendingMissionYoutubeId + '?rel=0&modestbranding=1&playsinline=1';
                         videoSection.classList.remove('hidden');
                         const btnRow = document.getElementById('modal-video-btn-row');
                         if (btnRow) btnRow.classList.add('hidden');
@@ -10675,7 +10534,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
             if (videoCloseBtn) {
                 videoCloseBtn.onclick = function () {
-                    stopYoutubePlayer('modal-video-iframe'); // saves the resume position first
+                    if (videoIframe) videoIframe.src = '';
                     if (videoSection) videoSection.classList.add('hidden');
                     const btnRow = document.getElementById('modal-video-btn-row');
                     if (btnRow) btnRow.classList.remove('hidden');
@@ -10757,12 +10616,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                 if (confirmedYoutubeId) {
                     // The API confirmed a specific, real SpaceX video - most precise, embed it
-                    // directly, no overlay needed. Live coverage, not resumable - see
-                    // loadYoutubeIntoPlayer's own comment for why (still routed through the
-                    // Player API rather than a raw `.src =` write, since modal-video-iframe is a
-                    // shared element with the archived-footage path above, which IS resumable
-                    // and needs the API to stay the sole owner of this iframe once adopted).
-                    loadYoutubeIntoPlayer('modal-video-iframe', confirmedYoutubeId, { resumable: false });
+                    // directly, no overlay needed.
+                    videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + confirmedYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
                     if (videoUnconfirmedOverlay) {
                         videoUnconfirmedOverlay.classList.add('hidden');
                         videoUnconfirmedOverlay.classList.remove('flex');
@@ -10777,7 +10632,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // while a background lookup (resolveSfnLiveVideoId) tries to resolve the actual
                 // current video ID and, if it succeeds in time, silently swaps in a real,
                 // reliably-embeddable player and hides the overlay.
-                stopYoutubePlayer('modal-video-iframe');
+                videoIframe.src = '';
                 if (videoUnconfirmedYtBtn) videoUnconfirmedYtBtn.href = youtubeOpenUrlFallback;
                 if (videoUnconfirmedOverlay) {
                     videoUnconfirmedOverlay.classList.remove('hidden');
@@ -10786,10 +10641,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                 resolveSfnLiveVideoId().then(resolvedId => {
                     if (!resolvedId || !videoIframe || videoSection.classList.contains('hidden')) {
-                        pollForConfirmedLiveVideo(videoIframe, videoSection, videoUnconfirmedOverlay, 'modal-video-iframe');
+                        pollForConfirmedLiveVideo(videoIframe, videoSection, videoUnconfirmedOverlay);
                         return;
                     }
-                    loadYoutubeIntoPlayer('modal-video-iframe', resolvedId, { resumable: false });
+                    videoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
                     if (videoUnconfirmedOverlay) {
                         videoUnconfirmedOverlay.classList.add('hidden');
                         videoUnconfirmedOverlay.classList.remove('flex');
@@ -10809,7 +10664,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // every mission modal opened for the rest of the session (it's a shared element,
                 // not per-mission). Now restores everything either open-path can hide.
                 videoCloseBtn.onclick = function () {
-                    stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
+                    if (videoIframe) videoIframe.src = '';
                     if (videoSection) videoSection.classList.add('hidden');
                     if (videoUnconfirmedOverlay) {
                         videoUnconfirmedOverlay.classList.add('hidden');
@@ -10933,7 +10788,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const videoFallbackLink = document.getElementById('modal-video-fallback-link');
             const watchBtn = document.getElementById('modal-watch-launch-btn');
 
-            stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
+            if (videoIframe) videoIframe.src = '';
             if (videoSection) videoSection.classList.add('hidden');
             if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
             if (videoYtLink) videoYtLink.classList.add('hidden');
@@ -11141,9 +10996,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
             modal.style.display = 'none';
             modal.classList.add('hidden');
             unlockBodyScroll();
-            // Stop any playing YouTube embed so audio/video does not continue in background -
-            // saves the resume position first, if the video that was playing is resumable.
-            stopYoutubePlayer('modal-video-iframe');
+            // Stop any playing YouTube embed so audio/video does not continue in background
+            const videoIframe = document.getElementById('modal-video-iframe');
+            if (videoIframe) videoIframe.src = '';
             const videoSection = document.getElementById('modal-video-section');
             if (videoSection) videoSection.classList.add('hidden');
             const videoBtnRow = document.getElementById('modal-video-btn-row');
