@@ -2843,6 +2843,7 @@
         let lastAppliedWeatherLang = null;
         let lastAppliedSpecLang = null;
         let lastPersistedLang = null; // see the localStorage mirror in the Bulletproof Timer below
+        let lastTickerRtlState = null; // see renderNewsTickerTrack() and its Bulletproof Timer hook
         function applyMilestonesTranslations(currentLang) {
             let key = currentLang.split('-')[0];
             if (key === 'zh') key = 'zh';
@@ -3045,6 +3046,35 @@
             unlockBodyScroll();
         }
 
+        // Opens a documentary episode in our own embedded player instead of navigating away to
+        // YouTube - the episode cards keep their real youtube.com href so ctrl/cmd/shift/alt-click
+        // and middle-click still open a real new tab as expected; only a plain left click is
+        // intercepted here.
+        function openDocVideoModal(youtubeId, event) {
+            if (event && (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) {
+                return true;
+            }
+            if (event) event.preventDefault();
+            const modal = document.getElementById('doc-video-modal');
+            const iframe = document.getElementById('doc-video-iframe');
+            if (!modal || !iframe || !youtubeId) return false;
+            iframe.src = 'https://www.youtube-nocookie.com/embed/' + youtubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lockBodyScroll();
+            return false;
+        }
+
+        function closeDocVideoModal() {
+            const modal = document.getElementById('doc-video-modal');
+            const iframe = document.getElementById('doc-video-iframe');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (iframe) iframe.src = ''; // stop playback
+            unlockBodyScroll();
+        }
+
         // Opens the simple patch summary card (#patch-mission-modal) for a mission - used by
         // the "SpaceX Mission Patches" strip instead of the full mission-detail modal
         // (openMissionModal). Takes the same mapLaunchToSchema-shaped mission object.
@@ -3187,6 +3217,14 @@
                 if (htmlEl.getAttribute('dir') !== 'rtl') htmlEl.setAttribute('dir', 'rtl');
             } else {
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
+            }
+
+            // The news ticker's item order depends on isRtl (see renderNewsTickerTrack) - if
+            // the language flips RTL<->LTR after the ticker already rendered, re-render it
+            // from the already-fetched items (no re-fetch) instead of leaving it in the wrong
+            // order until the next scheduled 15-minute refresh.
+            if (window._tickerNewsItems && lastTickerRtlState !== isRtl && typeof renderNewsTickerTrack === 'function') {
+                renderNewsTickerTrack(isRtl);
             }
 
             // Independent backup of the resolved language, since the googtrans cookie Google
@@ -3822,6 +3860,7 @@
                 <div
                     class="flex md:grid md:grid-cols-3 gap-4 md:gap-5 overflow-x-auto pb-4 md:pb-0 hide-scrollbar snap-x snap-mandatory md:overflow-visible">
                     <a href="https://www.youtube.com/watch?v=-a0ecQMq-rM" target="_blank"
+                        onclick="return openDocVideoModal('-a0ecQMq-rM', event)"
                         class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
                         <img src="https://img.youtube.com/vi/-a0ecQMq-rM/maxresdefault.jpg"
                             onerror="this.src='https://img.youtube.com/vi/-a0ecQMq-rM/hqdefault.jpg'"
@@ -3845,6 +3884,7 @@
                     </a>
 
                     <a href="https://www.youtube.com/watch?v=ANe_HW4X8oc" target="_blank"
+                        onclick="return openDocVideoModal('ANe_HW4X8oc', event)"
                         class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
                         <img src="https://img.youtube.com/vi/ANe_HW4X8oc/maxresdefault.jpg"
                             onerror="this.src='https://img.youtube.com/vi/ANe_HW4X8oc/hqdefault.jpg'"
@@ -4454,6 +4494,27 @@
                     <img id="patch-lightbox-photo" src="" alt="" class="hidden w-full h-full object-contain">
                 </div>
                 <div id="patch-lightbox-name" class="p-4 sm:p-5 pt-0 font-semibold text-white text-base sm:text-lg text-center"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentary episode player - opened by clicking a released episode card in the
+         "Starship documentary series" section instead of navigating away to YouTube. -->
+    <div id="doc-video-modal" onclick="if (event.target.id === 'doc-video-modal') closeDocVideoModal()"
+        class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[110]">
+        <div class="relative max-w-4xl w-full">
+            <button onclick="closeDocVideoModal()"
+                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div class="w-full aspect-video bg-zinc-900">
+                    <iframe id="doc-video-iframe" class="w-full h-full" src="" title="SpaceX Documentary Episode"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>
             </div>
         </div>
     </div>
@@ -7233,14 +7294,6 @@
             const tickerTrack = document.getElementById('news-ticker-track');
             if (!tickerWrap || !tickerTrack) return;
 
-            const sourceStyles = {
-                'SpaceX': 'bg-emerald-500/15 text-emerald-400',
-                'NASA': 'bg-blue-500/15 text-blue-400',
-                'Blue Origin': 'bg-orange-500/15 text-orange-400',
-                'Space News': 'bg-violet-500/15 text-violet-400',
-                'ESA': 'bg-sky-500/15 text-sky-400'
-            };
-
             try {
                 // Independent editorial sources — no social platforms involved:
                 // Teslarati's SpaceX category, NASA's official releases, SpaceNews' general
@@ -7272,34 +7325,73 @@
 
                 if (combined.length === 0) throw new Error('No news items found');
 
-                // Build the ticker items once, then duplicate the whole set so the CSS
-                // marquee loops seamlessly with no visible seam.
-                const tickerItems = combined.map(item => `
-                    <a href="${item.link}" target="_blank" class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
-                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${sourceStyles[item.source] || 'bg-zinc-700/30 text-zinc-300'}">${item.source}</span>
-                        <span>${(item.title || '').replace(/</g, '&lt;')}</span>
-                        <span class="text-zinc-600 text-[10px]">${timeAgoLabel(item.pubDate)}</span>
-                    </a>
-                `).join('<span class="text-zinc-700 mx-2">/</span>');
-
-                tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
-                // Dynamic content added long after page load — Google Translate's mutation
-                // observer will translate it on the fly, so this must run synchronously,
-                // right now, before that has a chance to run and mangle "Starship".
-                localizeStarshipTerm(tickerTrack);
-                tickerWrap.classList.remove('hidden');
-
-                // Keep scroll speed consistent (~55px/sec) no matter how much content
-                // loaded — a fixed duration would race through a short feed or crawl
-                // through a long one.
-                requestAnimationFrame(() => {
-                    const contentWidth = tickerTrack.scrollWidth / 2;
-                    const durationSec = Math.max(20, Math.round(contentWidth / 55));
-                    tickerTrack.style.animationDuration = durationSec + 's';
-                });
+                window._tickerNewsItems = combined;
+                renderNewsTickerTrack();
             } catch (e) {
                 tickerWrap.classList.add('hidden');
             }
+        }
+
+        // Builds/rebuilds #news-ticker-track's HTML from the last-fetched news items.
+        // Split out of loadNewsTicker() so both a fresh fetch AND a later RTL/LTR flip (see
+        // the Bulletproof Timer hook) can (re)render without re-fetching all 5 RSS feeds.
+        //
+        // Why item order depends on direction: the marquee's RTL keyframe
+        // (ticker-scroll-rtl) animates the SAME track element but scans it in the opposite
+        // direction from the LTR keyframe (starts at translateX(-50%) and ends at 0%,
+        // instead of 0% to -50%) so it visually scrolls the other way for RTL languages.
+        // But scanning the track backward also reverses the ORDER items are revealed in
+        // over time - with items built newest-first (left to right in the DOM, always, since
+        // #news-ticker-wrap forces direction:ltr regardless of page language), the RTL
+        // keyframe ends up revealing the OLDEST item first and only cycles back to the
+        // newest right at the very end of each 60s loop, which is backwards from the
+        // intended "see the newest news first" experience. Reversing the DOM order itself
+        // for RTL cancels that out: the backward scan then reveals newest-first again, while
+        // the track still visually moves in the (deliberately) opposite screen direction.
+        function renderNewsTickerTrack(isRtl) {
+            const tickerTrack = document.getElementById('news-ticker-track');
+            const tickerWrap = document.getElementById('news-ticker-wrap');
+            if (!tickerTrack || !tickerWrap || !window._tickerNewsItems) return;
+            if (typeof isRtl !== 'boolean') {
+                isRtl = document.documentElement.getAttribute('dir') === 'rtl';
+            }
+            lastTickerRtlState = isRtl;
+
+            const sourceStyles = {
+                'SpaceX': 'bg-emerald-500/15 text-emerald-400',
+                'NASA': 'bg-blue-500/15 text-blue-400',
+                'Blue Origin': 'bg-orange-500/15 text-orange-400',
+                'Space News': 'bg-violet-500/15 text-violet-400',
+                'ESA': 'bg-sky-500/15 text-sky-400'
+            };
+
+            const orderedItems = isRtl ? [...window._tickerNewsItems].reverse() : window._tickerNewsItems;
+
+            // Build the ticker items once, then duplicate the whole set so the CSS
+            // marquee loops seamlessly with no visible seam.
+            const tickerItems = orderedItems.map(item => `
+                <a href="${item.link}" target="_blank" class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${sourceStyles[item.source] || 'bg-zinc-700/30 text-zinc-300'}">${item.source}</span>
+                    <span>${(item.title || '').replace(/</g, '&lt;')}</span>
+                    <span class="text-zinc-600 text-[10px]">${timeAgoLabel(item.pubDate)}</span>
+                </a>
+            `).join('<span class="text-zinc-700 mx-2">/</span>');
+
+            tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
+            // Dynamic content added long after page load — Google Translate's mutation
+            // observer will translate it on the fly, so this must run synchronously,
+            // right now, before that has a chance to run and mangle "Starship".
+            localizeStarshipTerm(tickerTrack);
+            tickerWrap.classList.remove('hidden');
+
+            // Keep scroll speed consistent (~55px/sec) no matter how much content
+            // loaded — a fixed duration would race through a short feed or crawl
+            // through a long one.
+            requestAnimationFrame(() => {
+                const contentWidth = tickerTrack.scrollWidth / 2;
+                const durationSec = Math.max(20, Math.round(contentWidth / 55));
+                tickerTrack.style.animationDuration = durationSec + 's';
+            });
         }
 
         async function fetchWithTimeout(resource, options = {}) {
@@ -11961,7 +12053,19 @@ if (heroNameEl) {
         // reading each close function), so a single generic loop covers all of them.
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
+            // The hero WATCH LIVE fullscreen video player isn't one of the nine `hidden`-class
+            // modals below - it's a separate full-viewport overlay (see enterHeroVideoFullscreen)
+            // that had no keyboard support at all, so Escape did nothing while watching a launch
+            // this way. Checked first since it visually sits above everything else. Mirrors the
+            // player's own close button: while fullscreen, exits back to the small inline player
+            // (keeps playing) rather than closing it outright - matches standard fullscreen-video
+            // Escape behavior (exit fullscreen, don't stop playback).
+            if (typeof heroVideoFullscreenActive !== 'undefined' && heroVideoFullscreenActive) {
+                exitHeroVideoFullscreen();
+                return;
+            }
             const modalCloseOrder = [
+                ['doc-video-modal', closeDocVideoModal],
                 ['milestone-image-modal', closeMilestoneImageModal],
                 ['patch-lightbox', closePatchLightbox],
                 ['patch-mission-modal', closePatchMissionModal],
