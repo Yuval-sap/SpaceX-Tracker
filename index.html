@@ -1484,6 +1484,7 @@
             max-width: 100vw !important;
         }
 
+
         .ai3d-center-hud {
             position: absolute;
             top: 50%;
@@ -3685,8 +3686,12 @@
                                 title="Live Launch Video" frameborder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowfullscreen></iframe>
-                            <div id="hero-video-tap-overlay" onclick="revealMobileVideoControls('hero')"
-                                class="absolute inset-0 z-[5] md:hidden"></div>
+                            <!-- Used to have a #hero-video-tap-overlay here, structurally identical
+                                 to #modal-video-tap-overlay (see project_spacex_tracker_mobile_video_close_double_tap
+                                 memory) - removed 2026-08-18 for the exact same reason: it swallowed
+                                 the first mobile tap for EVERY interaction with the player, and the
+                                 close button below never needed a "reveal" step at all (already
+                                 unconditionally visible/tappable on mobile via its own classes). -->
                             <button type="button" id="hero-video-close-btn" title="Close"
                                 class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
                                 <i class="fa-solid fa-xmark text-sm text-red-500"></i>
@@ -4632,8 +4637,16 @@
                          real iframe (see loadYoutubeIntoPlayer) - must be a plain container, NOT
                          an <iframe> itself, or the replacement never actually loads a video. -->
                     <div id="modal-video-iframe" class="w-full h-full absolute inset-0"></div>
-                    <div id="modal-video-tap-overlay" onclick="revealMobileVideoControls()"
-                        class="absolute inset-0 z-[5] md:hidden"></div>
+                    <!-- Used to have a #modal-video-tap-overlay here (catching the first mobile
+                         tap to "reveal controls" before letting a second tap reach the real
+                         YouTube player) - removed 2026-08-18: it made EVERY interaction with the
+                         player (play/pause/seek, not just the close button) need two taps, since
+                         it unconditionally swallowed the first one everywhere in the video area.
+                         The close button doesn't need a reveal step at all (already unconditionally
+                         visible/tappable on mobile via its own classes below), and the documentary
+                         player - which never had this overlay - works fine with a single tap for
+                         everything, so this was actively causing the exact problem it was meant to
+                         prevent rather than solving anything. -->
                     <button type="button" id="modal-video-close-btn" title="Close"
                         class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
                         <i class="fa-solid fa-xmark text-sm text-red-500"></i>
