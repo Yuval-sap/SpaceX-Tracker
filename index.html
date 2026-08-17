@@ -12041,6 +12041,39 @@ if (heroNameEl) {
         }
 
 
+        // The real bug behind "Esc does nothing while a launch video is playing", found only
+        // after the user confirmed no fullscreen was involved at all: YouTube's embed is a
+        // CROSS-ORIGIN iframe, a separate browsing context with its own document. The instant
+        // the user clicks anywhere on the video itself (to pause it, adjust volume, etc.) real
+        // keyboard focus moves INTO that iframe's document - every keydown after that,
+        // including Escape, is delivered there, never to this page's own `document.addEventListener
+        // ('keydown', ...)` below. No amount of logic inside that handler can fix this, because
+        // the event never reaches it in the first place - this is a hard browser/security
+        // boundary (a parent page cannot read keystrokes typed while focus sits inside another
+        // origin's iframe), not a bug in this codebase's own Escape-handling logic.
+        // Fix: `window.blur` is the one signal a parent page CAN observe here - it fires the
+        // instant focus leaves it, and `document.activeElement` is then the iframe that just
+        // took it. Immediately blurring that iframe and refocusing the page moves keyboard
+        // focus back before the user's next keypress, so Escape reaches our handler normally.
+        // Doesn't affect mouse-driven interaction with the video (play/pause/volume/seek/
+        // YouTube's own fullscreen button all dispatch on click inside the iframe's own
+        // document, independent of which element the PARENT page considers focused) - the only
+        // cost is that keyboard shortcuts aimed at the YouTube player itself (space to pause,
+        // arrow keys to seek) stop working, an acceptable trade for Escape actually working.
+        (function () {
+            const trackedVideoIframeIds = ['hero-video-iframe', 'modal-video-iframe', 'doc-video-iframe'];
+            window.addEventListener('blur', function () {
+                const active = document.activeElement;
+                if (!active || !trackedVideoIframeIds.includes(active.id)) return;
+                setTimeout(function () {
+                    if (document.activeElement === active) {
+                        active.blur();
+                        window.focus();
+                    }
+                }, 0);
+            });
+        })();
+
         // Escape closes whichever modal/lightbox is currently open (Mission Detail, Rocket,
         // Launch Site, Orbit, Landing Zone, Astronaut, Milestone image, Patch lightbox, Patch
         // mission card) - none of them had any keyboard support before this. Checked in a
