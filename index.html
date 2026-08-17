@@ -2099,6 +2099,26 @@
         // flip once JS caught up. Moving the whole decision to the earliest point body.classList
         // is actually usable avoids that flash entirely instead of working around it.
 
+        // Google Translate's own "remember the language" mechanism relies entirely on the
+        // googtrans cookie surviving between visits - but on mobile, when this site is added
+        // to the home screen and opened as an installed app (not a regular browser tab), iOS/
+        // Android WebViews are known to be far more aggressive about evicting cookies than a
+        // normal tab, even though localStorage survives fine there. Independently mirror the
+        // resolved language to localStorage every time it changes (see the Bulletproof Timer
+        // further down) and, if the cookie is ever found missing here but a saved non-English
+        // preference exists, plant a matching cookie ourselves before Google's own script
+        // initializes - it then finds an existing cookie and auto-applies it exactly like an
+        // ordinary returning visit where the cookie survived on its own, so this only ever
+        // kicks in as a fallback and never overrides a cookie that's actually still there.
+        (function () {
+            const hasCookieNow = document.cookie.split('; ').some(c => c.startsWith('googtrans='));
+            if (hasCookieNow) return;
+            let savedLang = null;
+            try { savedLang = localStorage.getItem('spacex_lang_pref'); } catch (e) { }
+            if (!savedLang || savedLang.toLowerCase() === 'en') return;
+            document.cookie = 'googtrans=/en/' + savedLang + '; path=/; max-age=' + (60 * 60 * 24 * 365);
+        })();
+
         // Google Translate stores the chosen language in a "googtrans" cookie and
         // re-applies it automatically on the next visit — but that only works if
         // Google's script finishes initializing before the user starts interacting.
@@ -2721,6 +2741,7 @@
         let lastAppliedMilestonesLang = null;
         let lastAppliedWeatherLang = null;
         let lastAppliedSpecLang = null;
+        let lastPersistedLang = null; // see the localStorage mirror in the Bulletproof Timer below
         function applyMilestonesTranslations(currentLang) {
             let key = currentLang.split('-')[0];
             if (key === 'zh') key = 'zh';
@@ -3065,6 +3086,17 @@
                 if (htmlEl.getAttribute('dir') !== 'rtl') htmlEl.setAttribute('dir', 'rtl');
             } else {
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
+            }
+
+            // Independent backup of the resolved language, since the googtrans cookie Google
+            // Translate itself relies on doesn't reliably survive a mobile "installed app"
+            // relaunch (see the restoration IIFE near the top of <head>) - localStorage does.
+            // Uses htmlEl.lang directly (not the lowercased currentLang above) so the saved
+            // value preserves Google's own original casing (e.g. "zh-CN"), matching exactly
+            // what a real surviving cookie would already contain in the working case.
+            if (lastPersistedLang !== currentLang) {
+                lastPersistedLang = currentLang;
+                try { if (htmlEl.lang) localStorage.setItem('spacex_lang_pref', htmlEl.lang); } catch (e) { }
             }
 
             shortenGoogleTranslatePlaceholder();
