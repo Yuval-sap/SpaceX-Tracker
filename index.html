@@ -1034,8 +1034,15 @@
             color: #475569 !important;
         }
 
+        /* Was #64748b (slate-500) - measured against every light-theme background this text
+           actually appears on: 4.76:1 on white (#ffffff, most cards' bg-zinc-900 remap) and
+           4.55:1 on the page background (#f8fafc) both clear WCAG AA's 4.5:1 for normal text,
+           but 4.34:1 on the #f1f5f9 card background (bg-zinc-950/800's remap) falls just under
+           it - a real, measurable AA failure there, not just a hypothetical. Darkened to
+           #475569 (slate-600, same as .text-zinc-400's own remap just below) - re-measured at
+           6.92-7.58:1 across all three backgrounds, comfortably clearing AA everywhere. */
         body.light-theme .text-zinc-500 {
-            color: #64748b !important;
+            color: #475569 !important;
         }
 
         body.light-theme .text-zinc-600 {
@@ -11795,6 +11802,38 @@ if (heroNameEl) {
             }
         }
 
+
+        // Escape closes whichever modal/lightbox is currently open (Mission Detail, Rocket,
+        // Launch Site, Orbit, Landing Zone, Astronaut, Milestone image, Patch lightbox, Patch
+        // mission card) - none of them had any keyboard support before this. Checked in a
+        // fixed "innermost/most-specific first" order rather than all at once: several of these
+        // can plausibly be opened from within another (e.g. a spec modal opened from inside the
+        // mission detail view), so closing only the FIRST one found open per Escape press behaves
+        // like a normal stacked-dialog UX (one Escape = one layer back) instead of closing
+        // everything in one press or occasionally leaving an inner modal open with its parent
+        // gone. All nine already share the same `hidden`-class toggle convention (confirmed by
+        // reading each close function), so a single generic loop covers all of them.
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            const modalCloseOrder = [
+                ['milestone-image-modal', closeMilestoneImageModal],
+                ['patch-lightbox', closePatchLightbox],
+                ['patch-mission-modal', closePatchMissionModal],
+                ['astronaut-modal', closeAstronautModal],
+                ['landing-modal', closeLandingSpecs],
+                ['orbit-modal', closeOrbitSpecs],
+                ['site-modal', closeLaunchSiteModal],
+                ['rocket-modal', closeRocketModal],
+                ['mission-modal', closeModal],
+            ];
+            for (const [id, closeFn] of modalCloseOrder) {
+                const modal = document.getElementById(id);
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeFn();
+                    return;
+                }
+            }
+        });
 
         window.onload = init;
     </script>
