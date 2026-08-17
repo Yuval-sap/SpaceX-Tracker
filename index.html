@@ -2675,7 +2675,13 @@
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str == null ? '' : String(str);
-            return div.innerHTML;
+            // The textContent->innerHTML round-trip only escapes &/</> (all a browser needs for
+            // safe TEXT-NODE context) - it leaves quotes untouched, since they aren't special
+            // there. That's not enough for a function named/used as a general-purpose escaper:
+            // a caller embedding the result inside an HTML ATTRIBUTE (e.g. title="${escapeHtml(x)}")
+            // could still have it broken out of with a `"` in the input. Escaping quotes too
+            // makes this safe for both text-node and attribute-value contexts.
+            return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function renderMissionPurposeHtml(category, description, currentLang) {
@@ -5099,7 +5105,13 @@
                     el.innerHTML = new Date().toLocaleTimeString('en-US');
                 }
             };
-            setInterval(tick, 1000);
+            // Guarded the same way factIntervalId is elsewhere in this file - updateClock() is
+            // currently only ever called once (from init(), itself only bound once via the
+            // single-slot window.onload = init), so this isn't reachable today, but without the
+            // guard a future second call (e.g. a soft-refresh/re-init path) would stack another
+            // permanent 1s interval on top, each independently writing to #live-clock forever.
+            if (window._liveClockIntervalId) clearInterval(window._liveClockIntervalId);
+            window._liveClockIntervalId = setInterval(tick, 1000);
             tick();
         }
 
@@ -5136,14 +5148,33 @@
 
         // Re-arms a previously-set reminder. setTimeout only lives as long as this tab stays
         // open, so a reminder set days ago and not re-armed since would silently do nothing —
-        // this gets called again for every still-reminded upcoming mission each time the app
-        // loads, so reopening the site before launch re-establishes the timer.
-        function armLaunchReminder(name, dateStr) {
+        // this gets called again for every still-reminded upcoming mission each time
+        // processLaunchData runs, which is NOT just "once per app load" - it also re-runs on
+        // every scheduled poll (every 4-10min, see updateRefreshSchedule) for as long as the
+        // tab stays open. Without the registry below, each of those calls scheduled an
+        // independent scheduleLongTimeout chain for the same mission with no way to cancel the
+        // earlier ones, so a reminder set hours before launch could accumulate a dozen+ separate
+        // timers that all fire the same notification at T-10min. Keyed by mission id (not just
+        // "armed at all") and by dateStr specifically so a real launch-time slip still correctly
+        // cancels the stale chain and reschedules against the new time, instead of being
+        // (wrongly) treated as "already armed, skip".
+        function armLaunchReminder(id, name, dateStr) {
+            window._armedReminderTimers = window._armedReminderTimers || new Map();
+            const existing = window._armedReminderTimers.get(id);
+            if (existing && existing.dateStr === dateStr) return;
+            if (existing) clearTimeout(existing.timeoutId);
+
             const launchTime = new Date(dateStr).getTime();
             const notifyTime = launchTime - (10 * 60 * 1000);
             const delay = notifyTime - Date.now();
             if (delay > 0) {
-                scheduleLongTimeout(() => fireLaunchReminderNotification(name), delay);
+                const timeoutId = scheduleLongTimeout(() => {
+                    fireLaunchReminderNotification(name);
+                    window._armedReminderTimers.delete(id);
+                }, delay);
+                window._armedReminderTimers.set(id, { dateStr, timeoutId });
+            } else {
+                window._armedReminderTimers.delete(id);
             }
         }
 
@@ -5165,6 +5196,14 @@
 
                 Notification.requestPermission().then(permission => {
                     if (permission === "granted") {
+                        // Guards against a fast double-click on the bell: two concurrent calls
+                        // to this function both read `index === -1` before either's
+                        // requestPermission() promise resolves (that promise still resolves on
+                        // a fresh microtask even when permission is already granted), so both
+                        // would otherwise push a duplicate id here. A later un-remind only
+                        // splices ONE occurrence out, leaving a stray duplicate that keeps
+                        // re-arming the reminder every refresh even after the user cancelled it.
+                        if (remindedMissions.includes(id)) return;
                         remindedMissions.push(id);
                         localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
 
@@ -5179,12 +5218,15 @@
                             bellIcon.classList.add('animate-bell-ring');
                         }
 
-                        const launchTime = new Date(dateStr).getTime();
-                        const notifyTime = launchTime - (10 * 60 * 1000);
-                        const delay = notifyTime - Date.now();
+                        // Route through armLaunchReminder (not a second independent
+                        // scheduleLongTimeout call) so this and the periodic re-arm in
+                        // processLaunchData share the same dedup registry - otherwise the very
+                        // next poll cycle would immediately stack a second timer chain for the
+                        // reminder just set here.
+                        armLaunchReminder(id, name, dateStr);
+                        const delay = new Date(dateStr).getTime() - (10 * 60 * 1000) - Date.now();
 
                         if (delay > 0) {
-                            scheduleLongTimeout(() => fireLaunchReminderNotification(name), delay);
                             alert(`✅ תזכורת הוגדרה בהצלחה עבור:\n${name}\n\nהתראה תקפוץ 10 דקות לפני השיגור — אבל רק אם תשאיר את האתר הזה פתוח בדפדפן (בטאב או ברקע) עד אז. אם תסגור את הדפדפן/הטאב, פתח את האתר שוב לפני השיגור כדי שהתזכורת תופעל מחדש.`);
                         } else {
                             alert("השיגור קרוב מדי או שכבר עבר, התזכורת נשמרה אך לא תוקפץ מראש.");
@@ -5199,6 +5241,12 @@
             } else {
                 remindedMissions.splice(index, 1);
                 localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
+                // Cancel any still-pending notification timer for this mission - otherwise
+                // un-reminding wouldn't actually stop the T-10min notification from firing.
+                if (window._armedReminderTimers && window._armedReminderTimers.has(id)) {
+                    clearTimeout(window._armedReminderTimers.get(id).timeoutId);
+                    window._armedReminderTimers.delete(id);
+                }
                 alert(`❌ התזכורת עבור ${name} בוטלה.`);
                 filterMissions();
                 setupHeroBanner();
@@ -5214,7 +5262,10 @@
             if (index === -1) {
                 favoriteMissions.push(id);
                 if (icon) {
-                    icon.className = 'fa-solid fa-star text-amber-400';
+                    // Hollow star (fa-regular), matching the "Watchlist" filter-row button's own
+                    // icon style - was a solid/filled star, per explicit request to make the two
+                    // consistent.
+                    icon.className = 'fa-regular fa-star text-amber-400';
                     icon.classList.add('animate-star-pop');
                     icon.addEventListener('animationend', () => icon.classList.remove('animate-star-pop'), { once: true });
                 }
@@ -6764,7 +6815,17 @@
             if (factEl && weeklyFactIndices.length > 0) {
                 factEl.style.opacity = 0;
                 const factIndex = weeklyFactIndices[currentFactIndex];
+                // A manual click landing within this 250ms fade window (while an earlier call's
+                // own deferred swap is still pending) used to leave two independent setTimeout
+                // callbacks racing to write factEl.innerText, each closed over its OWN
+                // factIndex - the earlier (now-stale) callback still fires and briefly renders
+                // the OLDER fact before the newer callback corrects it a moment later, a visible
+                // flicker to the wrong fact. The generation token makes only the LATEST
+                // scheduled render actually apply its text.
+                factEl._factRenderGeneration = (factEl._factRenderGeneration || 0) + 1;
+                const myGeneration = factEl._factRenderGeneration;
                 setTimeout(() => {
+                    if (factEl._factRenderGeneration !== myGeneration) return; // superseded by a newer render
                     factEl.innerText = getFactText(factIndex, document.documentElement.lang);
                     factEl.style.opacity = 1;
                 }, 250);
@@ -6792,6 +6853,7 @@
                         const count = parseInt(match[1].replace(/,/g, ''));
                         if (!isNaN(count) && count > 5000) {
                             localStorage.setItem(CACHE_KEY, count.toString());
+                            localStorage.setItem(CACHE_KEY + '_ts', Date.now().toString());
                             applyStarlinkCount(count, true);
                             return;
                         }
@@ -6802,11 +6864,43 @@
                     clearTimeout(timeoutId);
                     const cachedCount = localStorage.getItem(CACHE_KEY);
                     if (cachedCount) {
-                        applyStarlinkCount(parseInt(cachedCount), false);
+                        // Was a frozen literal forever if the live source stayed broken for an
+                        // extended period (unlike fallbackStarlinkStats below, only reachable
+                        // when there's NO cache at all, which does extrapolate) - now grows the
+                        // cached count using the same real-launch-based estimation technique,
+                        // anchored to when that count was actually last live-confirmed.
+                        const cachedTs = localStorage.getItem(CACHE_KEY + '_ts');
+                        // Caches written before this fix have no companion timestamp - treat
+                        // those as a week stale rather than assuming they're still fresh.
+                        const baseMs = cachedTs ? parseInt(cachedTs, 10) : (Date.now() - 7 * 24 * 60 * 60 * 1000);
+                        const estimatedCount = parseInt(cachedCount, 10) + estimateStarlinkSatsAddedSince(baseMs).added;
+                        applyStarlinkCount(estimatedCount, false);
                     } else {
                         fallbackStarlinkStats();
                     }
                 });
+        }
+
+        // Shared by fallbackStarlinkStats and updateStarlinkStats' cached-fallback path -
+        // estimates how many Starlink satellites have been added since a cutoff date by scanning
+        // actual completed Starlink missions, instead of leaving a stale count frozen forever.
+        function estimateStarlinkSatsAddedSince(cutoffMs) {
+            let added = 0;
+            let launches = 0;
+            (rawPastMissions || []).forEach(m => {
+                if (m.category === 'starlink' && new Date(m.date).getTime() > cutoffMs) {
+                    launches++;
+                    let a = 22;
+                    if (m.description) {
+                        const match1 = m.description.match(/(\d+)\s+(?:starlink\s+)?satellites/i);
+                        const match2 = m.description.match(/(?:batch|deployment)\s+of\s+(\d+)/i);
+                        if (match1) a = parseInt(match1[1]);
+                        else if (match2) a = parseInt(match2[1]);
+                    }
+                    added += a;
+                }
+            });
+            return { added, launches };
         }
 
         function applyStarlinkCount(currentCount, isLive) {
@@ -6826,41 +6920,11 @@
 
         function fallbackStarlinkStats() {
             const baseDateMs = new Date('2026-07-25T00:00:00Z').getTime();
-            let currentCount = 10852;
+            let currentCount = 10852 + estimateStarlinkSatsAddedSince(baseDateMs).added;
 
-            rawPastMissions.forEach(m => {
-                if (m.category === 'starlink' && new Date(m.date).getTime() > baseDateMs) {
-                    let added = 22;
-                    if (m.description) {
-                        const match1 = m.description.match(/(\d+)\s+(?:starlink\s+)?satellites/i);
-                        const match2 = m.description.match(/(?:batch|deployment)\s+of\s+(\d+)/i);
-                        if (match1) added = parseInt(match1[1]);
-                        else if (match2) added = parseInt(match2[1]);
-                    }
-                    currentCount += added;
-                }
-            });
-
-            let starlinkLaunches30Days = 0;
-            let satsAdded30Days = 0;
-            const now = Date.now();
-            const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-
-            rawPastMissions.forEach(m => {
-                if (m.category === 'starlink' && new Date(m.date).getTime() > thirtyDaysAgo) {
-                    starlinkLaunches30Days++;
-                    let added = 22;
-                    if (m.description) {
-                        const match1 = m.description.match(/(\d+)\s+(?:starlink\s+)?satellites/i);
-                        const match2 = m.description.match(/(?:batch|deployment)\s+of\s+(\d+)/i);
-                        if (match1) added = parseInt(match1[1]);
-                        else if (match2) added = parseInt(match2[1]);
-                    }
-                    satsAdded30Days += added;
-                }
-            });
-
-            if (starlinkLaunches30Days === 0) satsAdded30Days = 88;
+            const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            const last30Days = estimateStarlinkSatsAddedSince(thirtyDaysAgo);
+            let satsAdded30Days = last30Days.launches === 0 ? 88 : last30Days.added;
             const deploymentRatePerWeek = Math.round(satsAdded30Days / 4.33);
 
             const targetGen2 = 12000;
@@ -6893,6 +6957,13 @@
                 // Match "Booster B1062 (15th flight)" or similar patterns from the API mapping
                 let snMatch = boosterText.match(/Booster\s+([A-Z0-9]+)/i);
                 if (!snMatch) snMatch = boosterText.match(/\b(B\d{3,5})\b/i);
+                // "Super Heavy Booster (Not Yet Assigned)" (see mapLaunchToSchema's placeholder
+                // for a Starship mission with no confirmed booster yet) matches the /super\s*
+                // heavy/i fallback below same as a real, genuinely-unlabeled Super Heavy flight
+                // would - without this guard, every in-progress/unconfirmed Starship mission
+                // added a phantom 1-flight "Super Heavy" row to the leaderboard that isn't a
+                // real booster at all, just a placeholder for "we don't know yet".
+                if (!snMatch && /not\s*yet\s*assigned/i.test(boosterText)) return;
                 if (!snMatch && /super\s*heavy/i.test(boosterText)) {
                     // Keep Super Heavy entries under a common key when no serial is present
                     const flightMatchSH = boosterText.match(/(\d+)(?:st|nd|rd|th)\s+flight/i);
@@ -6985,6 +7056,13 @@
 
         function timeAgoLabel(dateInput) {
             const diffMs = Date.now() - new Date(dateInput).getTime();
+            // External RSS feeds (Teslarati/NASA/SpaceNews/ESA) aren't validated before this is
+            // called - a missing/malformed pubDate makes `new Date(...)` produce Invalid Date,
+            // and NaN silently propagates through every arithmetic step below to render the
+            // literal string "NaNd ago" next to that headline. Also guards a negative diff
+            // (clock skew, or a feed item timestamped slightly in the future) the same way,
+            // since that would otherwise show something like "-3m ago".
+            if (!Number.isFinite(diffMs) || diffMs < 0) return 'just now';
             const mins = Math.floor(diffMs / 60000);
             if (mins < 1) return 'just now';
             if (mins < 60) return `${mins}m ago`;
@@ -7120,12 +7198,22 @@
         const LAUNCH_COUNT_FLOOR_KEY = 'spacex_launch_count_floor';
 
         function computeYearToDateLaunchCount() {
-            const baseMs = new Date(LAUNCH_COUNT_BASE_DATE).getTime();
+            // The hardcoded anchor (95 launches as of Aug 10 2026) is only valid for its OWN
+            // calendar year - "launches THIS YEAR" (see the label this feeds, #upcoming-count)
+            // has to restart from 0 the moment the calendar rolls over to a new year, counted
+            // from that new year's Jan 1st instead of from the old anchor date/count forever.
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const baseDate = new Date(LAUNCH_COUNT_BASE_DATE);
+            const isAnchorYear = currentYear === baseDate.getFullYear();
+            const baseMs = isAnchorYear ? baseDate.getTime() : new Date(currentYear, 0, 1).getTime();
+            const base = isAnchorYear ? LAUNCH_COUNT_BASE : 0;
+
             const confirmedSinceBase = (rawPastMissions || []).filter(m => {
                 const t = new Date(m.date).getTime();
                 return t >= baseMs && m.launchSuccess !== null;
             }).length;
-            const computed = LAUNCH_COUNT_BASE + confirmedSinceBase;
+            const computed = base + confirmedSinceBase;
 
             // This count can visibly regress (97 -> 95) even with the fetchLiveLaunches
             // persistence fix in place, because "previous launches" only ever gets *re-fetched
@@ -7143,11 +7231,17 @@
             // fix is to never let the number *shown* go backwards: persist the highest count
             // legitimately computed so far and floor every future computation at that value,
             // regardless of what any single fetch returns.
+            // Namespaced by year so a persisted high-water-mark from a PRIOR year can never
+            // leak into a new year's count - each year gets its own independent floor, and the
+            // very first computation of a new year naturally starts that year's floor at
+            // whatever real (low, near-zero) count is computed then, never at a stale
+            // prior-year value that would otherwise keep the counter stuck high forever.
+            const floorKey = LAUNCH_COUNT_FLOOR_KEY + '_' + currentYear;
             let floor = 0;
-            try { floor = parseInt(localStorage.getItem(LAUNCH_COUNT_FLOOR_KEY) || '0', 10) || 0; } catch (e) { }
+            try { floor = parseInt(localStorage.getItem(floorKey) || '0', 10) || 0; } catch (e) { }
             const final = Math.max(computed, floor);
             if (final > floor) {
-                try { localStorage.setItem(LAUNCH_COUNT_FLOOR_KEY, final.toString()); } catch (e) { }
+                try { localStorage.setItem(floorKey, final.toString()); } catch (e) { }
             }
             return final;
         }
@@ -7490,7 +7584,7 @@
             if (remindedMissions.length && "Notification" in window && Notification.permission === "granted") {
                 dbMissions.forEach(m => {
                     if (remindedMissions.includes(m.id)) {
-                        armLaunchReminder(m.name, m.date);
+                        armLaunchReminder(m.id, m.name, m.date);
                     }
                 });
             }
@@ -7514,7 +7608,14 @@
             // publish at their own pace — some multiple times an hour during a launch
             // campaign, others a few times a day. Re-pulling every 15 minutes keeps the
             // ticker current for all of them without hammering the rss2json proxy.
-            setInterval(loadNewsTicker, 15 * 60 * 1000);
+            // Guarded so this interval is only ever armed once - processLaunchData itself
+            // re-runs on every scheduled poll (every 4-10min, see updateRefreshSchedule), and
+            // without this flag each of those calls stacked another permanent interval on top
+            // of the last, all independently re-fetching the same feeds forever.
+            if (!window._newsTickerIntervalArmed) {
+                window._newsTickerIntervalArmed = true;
+                setInterval(loadNewsTicker, 15 * 60 * 1000);
+            }
         }
 
         // מזהה את יעד המסלול האמיתי של השיגור (LEO / MEO / GEO) במקום להניח תמיד LEO.
@@ -7863,7 +7964,15 @@
             if (crewArr.length > 0) {
                 // אם קיבלנו נתונים תקינים מה-API, נשמור אותם בזיכרון המקומי לפי ה-ID של המשימה
                 crewCache[launch.id] = crewArr;
-                localStorage.setItem('spacex_crew_cache', JSON.stringify(crewCache));
+                // This write is unguarded unlike the read right above it - mapLaunchToSchema
+                // runs unguarded per-launch inside processLaunchData's forEach, so a
+                // QuotaExceededError here (plausible given how much this app caches - patches,
+                // weather, currency, favorites, reminders) would throw out past the forEach,
+                // caught by fetchLiveLaunches' outer catch, which reprocesses cached data and
+                // can throw again on another crew mission - risking a cascade that eventually
+                // blanks all mission data. try/catch matches every other localStorage write
+                // pattern already used elsewhere in this same pipeline.
+                try { localStorage.setItem('spacex_crew_cache', JSON.stringify(crewCache)); } catch (e) { }
             } else if (isCrewMission) {
                 // אם ה-API חזר ריק, נבדוק אם אי פעם בעבר שמרנו את הצוות הזה
                 if (crewCache[launch.id] && crewCache[launch.id].length > 0) {
@@ -7988,6 +8097,7 @@
             let lastT = 0;
             let velocity = 0; // px/ms, +right / -left, in drag-gesture terms (see scrollLeft math below)
             let momentumFrame = null;
+            let momentumGeneration = 0; // see the 3s safety-net setTimeout below
 
             function stopMomentum() {
                 if (momentumFrame !== null) {
@@ -8079,7 +8189,18 @@
                     // completion (tab backgrounded mid-glide, etc.), don't leave snap disabled
                     // forever - force it back on after a generous ceiling no real glide should
                     // ever take this long to finish on its own.
-                    setTimeout(() => { if (momentumFrame !== null) settle(); }, 3000);
+                    // momentumGeneration guards against a second flick within this 3s window: a
+                    // stale timer from THIS glide used to only check "is momentumFrame non-null"
+                    // - true again as soon as a second flick starts its own new glide - so the
+                    // first flick's safety net force-settled the second, unrelated, still
+                    // legitimately-running glide early, cutting it visibly short. Capturing the
+                    // generation this timer belongs to and comparing against the current one
+                    // when it fires makes it only ever act on ITS OWN glide.
+                    momentumGeneration++;
+                    const myGeneration = momentumGeneration;
+                    setTimeout(() => {
+                        if (momentumFrame !== null && myGeneration === momentumGeneration) settle();
+                    }, 3000);
                 } else {
                     settle();
                 }
@@ -8141,6 +8262,7 @@
             let lastT = 0;
             let velocity = 0; // px/ms, +down / -up
             let momentumFrame = null;
+            let momentumGeneration = 0; // see the 3s safety-net setTimeout below (same fix as enableDragScroll)
 
             function stopMomentum() {
                 if (momentumFrame !== null) {
@@ -8209,7 +8331,15 @@
                 el.style.userSelect = '';
                 if (moved && Math.abs(velocity) > 0.02) {
                     momentumFrame = requestAnimationFrame(runMomentum);
-                    setTimeout(() => { if (momentumFrame !== null) settle(); }, 3000);
+                    // See enableDragScroll's own version of this same safety net for why the
+                    // generation guard is needed - without it, a second flick within 3s of the
+                    // first had its own legitimate glide force-stopped early by the first
+                    // flick's stale timer.
+                    momentumGeneration++;
+                    const myGeneration = momentumGeneration;
+                    setTimeout(() => {
+                        if (momentumFrame !== null && myGeneration === momentumGeneration) settle();
+                    }, 3000);
                 } else {
                     settle();
                 }
@@ -8558,9 +8688,34 @@
         function buildAIComputeDonut(deals) {
             if (!aiComputeScene) return;
             const { pieGroup } = aiComputeScene;
-            aiComputeScene.meshes.forEach(m => pieGroup.remove(m));
+            // Rebuilt on every scheduled data refresh AND every real language switch (see
+            // renderAIComputeSection's callers) - removing a mesh from pieGroup only detaches it
+            // from the render tree, it does NOT free its GPU-side geometry/material/texture
+            // buffers (Three.js requires an explicit .dispose() call for that). Without this,
+            // every rebuild leaked a full donut's worth of geometries/materials/label-canvas
+            // textures, unbounded over a long session.
+            aiComputeScene.meshes.forEach(m => {
+                pieGroup.remove(m);
+                m.children.forEach(child => {
+                    if (child.material) {
+                        if (child.material.map) child.material.map.dispose();
+                        child.material.dispose();
+                    }
+                });
+                if (m.geometry) m.geometry.dispose();
+                if (m.material) m.material.dispose();
+            });
             aiComputeScene.meshes = [];
             aiComputeScene.labelSprites = [];
+            // Same leak, separately, for the decorative particle ring below - it was never even
+            // kept a reference to before, so a fresh 90-particle Points object (and its own
+            // geometry/material) just stacked on top of the previous one on every rebuild.
+            if (aiComputeScene.particleRing) {
+                pieGroup.remove(aiComputeScene.particleRing);
+                aiComputeScene.particleRing.geometry.dispose();
+                aiComputeScene.particleRing.material.dispose();
+                aiComputeScene.particleRing = null;
+            }
 
             const innerR = 2.15, outerR = 3.5, depth = 0.65, gap = 0.032;
             const stepCount = 64;
@@ -8638,7 +8793,9 @@
             }
             pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
             const pMat = new THREE.PointsMaterial({ color: 0xa5b4c8, size: 0.05, transparent: true, opacity: 0.5, depthWrite: false });
-            pieGroup.add(new THREE.Points(pGeo, pMat));
+            const particleRing = new THREE.Points(pGeo, pMat);
+            pieGroup.add(particleRing);
+            aiComputeScene.particleRing = particleRing;
 
             if (!aiComputeScene.raycastWired) wireAIComputeCanvasInteractions();
         }
@@ -8874,6 +9031,9 @@
             });
             buildAIComputeDonut(dealsWithHex);
 
+            // d.name/d.mw/d.extra below go through escapeHtml() even though AI_COMPUTE_DEALS is
+            // currently a hardcoded constant, not live API data - defense-in-depth so this stays
+            // safe if this section is ever wired to a dynamic/CMS-driven deals source later.
             legend.innerHTML = dealsWithHex.map((d, i) => {
                 const usdAmount = d.monthlyUsd >= 1000 ? (d.monthlyUsd / 1000).toFixed(2) + 'B$' : d.monthlyUsd + 'M$';
                 const tilde = d.gwConfidence === 'disclosed' ? '' : '~';
@@ -8887,10 +9047,10 @@
                         <div class="ai3d-bullet" style="background:${d.color.match(/#[0-9a-fA-F]{6}/)[0]}"></div>
                         <div class="ai3d-client-info">
                             <div class="ai3d-client-title-row">
-                                <span class="ai3d-client-name notranslate" translate="no">${d.name}</span>
-                                <span class="ai3d-client-power notranslate" translate="no" dir="ltr">${tilde}${d.gw.toFixed(2)} GW · ${d.mw}</span>
+                                <span class="ai3d-client-name notranslate" translate="no">${escapeHtml(d.name)}</span>
+                                <span class="ai3d-client-power notranslate" translate="no" dir="ltr">${tilde}${d.gw.toFixed(2)} GW · ${escapeHtml(d.mw)}</span>
                             </div>
-                            <span class="ai3d-client-specs notranslate" translate="no" dir="ltr">${d.extra}</span>
+                            <span class="ai3d-client-specs notranslate" translate="no" dir="ltr">${escapeHtml(d.extra)}</span>
                         </div>
                         <div class="ai3d-financials">
                             <div class="ai3d-monthly-price notranslate" translate="no" dir="ltr">${usdAmount}</div>
@@ -9042,10 +9202,25 @@
         // fresh attempt. Shared by both the hero and mission-modal players (see prefix pattern
         // used elsewhere in this file).
         function pollForConfirmedLiveVideo(videoIframe, videoSection, unconfirmedOverlay) {
+            if (!videoSection) return;
+            // videoIframe/videoSection/unconfirmedOverlay are shared singleton DOM elements
+            // re-passed on every open (the modal's own set, or the hero's own set - see the two
+            // call sites), not created fresh per call - closing and quickly reopening "Watch
+            // Live" within this poll's 20s cadence used to leave the FIRST chain still alive
+            // alongside a second, independent chain both racing to set the same videoIframe.src,
+            // so a stale resolution from the first could overwrite/restart playback the user is
+            // already watching from the second. Stashing a generation counter directly on the
+            // stable videoSection node (not a module-level variable, since modal vs hero each
+            // have their own section element) lets every new call invalidate any earlier
+            // still-pending chain for that same player.
+            videoSection._livePollGeneration = (videoSection._livePollGeneration || 0) + 1;
+            const myGeneration = videoSection._livePollGeneration;
             const attempt = () => {
+                if (videoSection._livePollGeneration !== myGeneration) return; // superseded by a newer poll
                 if (!videoIframe || !videoSection || videoSection.classList.contains('hidden')) return;
                 if (!unconfirmedOverlay || unconfirmedOverlay.classList.contains('hidden')) return; // already resolved (or closed) elsewhere
                 resolveSfnLiveVideoId().then(resolvedId => {
+                    if (videoSection._livePollGeneration !== myGeneration) return; // superseded while this resolve() was in flight
                     if (!videoSection || videoSection.classList.contains('hidden')) return; // player closed meanwhile
                     if (!resolvedId) {
                         setTimeout(attempt, 20000);
@@ -9344,7 +9519,15 @@
             if (nextLaunch && nextUpcoming) {
                 const minutesToNextUpcoming = (new Date(nextUpcoming.date).getTime() - Date.now()) / 60000;
                 if (minutesToNextUpcoming <= 15) {
-                    nextLaunch = null;
+                    // Promote nextUpcoming directly instead of nulling nextLaunch out - in the
+                    // "In Progress" branch above, nextUpcoming is dbMissions[1] (the mission we
+                    // actually want to promote), while the fallback a few lines down picks
+                    // dbMissions[0] - still the SAME in-progress mission we're trying to evict,
+                    // not dbMissions[1]. Nulling here silently re-picked the mission being
+                    // evicted, making this entire exception a no-op for that branch: a real
+                    // back-to-back launch (~5min apart, same overall window) kept showing the
+                    // wrong mission in the hero for its full remaining in-progress period.
+                    nextLaunch = nextUpcoming;
                 }
             }
 
@@ -9447,6 +9630,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
             } else {
                 heroBanner.classList.add('hidden');
                 heroBanner.classList.remove('hero-reveal');
+                // No mission to show (dbMissions empty) - stop the previous mission's 1s
+                // countdown tick and 20s live-button poll instead of leaving them running
+                // forever against a now-hidden/stale target. updateHeroCountdown's own internal
+                // clearInterval only runs the next time IT is called, which never happens again
+                // once we're in this branch.
+                if (heroInterval) clearInterval(heroInterval);
+                if (heroLiveCheckIntervalId) clearInterval(heroLiveCheckIntervalId);
             }
             const heroSkel = document.getElementById('hero-skeleton');
             if (heroSkel && !heroSkel.classList.contains('hidden') && !heroSkel.classList.contains('skel-fade-out')) {
@@ -9592,7 +9782,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 const statusBadge = `<div class="absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${m.status}</div>`;
 
                 const isFav = favoriteMissions.includes(m.id);
-                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
+                // Hollow star (fa-regular) even when favorited, matching the "Watchlist"
+                // filter-row button's own icon style - was fa-solid (filled) here before.
+                const starClass = isFav ? 'fa-regular fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
 
                 const isReminded = remindedMissions.includes(m.id);
                 const bellClass = isReminded
@@ -9693,7 +9885,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 } catch (e) { }
 
                 const isFav = favoriteMissions.includes(m.id);
-                const starClass = isFav ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
+                // Hollow star (fa-regular) even when favorited, matching the "Watchlist"
+                // filter-row button's own icon style - was fa-solid (filled) here before.
+                const starClass = isFav ? 'fa-regular fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
 
                 const isReminded = remindedMissions.includes(m.id);
                 const bellClass = isReminded
@@ -10184,6 +10378,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 });
             };
             if (videoCloseBtn) {
+                // #modal-video-close-btn is a SINGLETON shared with wireModalYoutubePlayer's own
+                // close handler (this function is always called after that one for a given
+                // mission, so this .onclick assignment always wins when both wire) - a mission
+                // that's both past-but-still-in-the-extended-live-window AND has an attached
+                // YouTube video wires both. This handler used to only reset ITS OWN opened-state
+                // (videoUnconfirmedOverlay) without restoring #modal-video-btn-row/
+                // #modal-watch-launch-btn, which wireModalYoutubePlayer's "Watch the Launch"
+                // button hides when opening the SAME shared player - so closing the video after
+                // opening it via "Watch the Launch" left that button permanently hidden, for
+                // every mission modal opened for the rest of the session (it's a shared element,
+                // not per-mission). Now restores everything either open-path can hide.
                 videoCloseBtn.onclick = function () {
                     if (videoIframe) videoIframe.src = '';
                     if (videoSection) videoSection.classList.add('hidden');
@@ -10191,6 +10396,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         videoUnconfirmedOverlay.classList.add('hidden');
                         videoUnconfirmedOverlay.classList.remove('flex');
                     }
+                    if (videoBtnWrap) videoBtnWrap.classList.remove('hidden');
+                    const btnRow = document.getElementById('modal-video-btn-row');
+                    if (btnRow) btnRow.classList.remove('hidden');
+                    const watchBtn = document.getElementById('modal-watch-launch-btn');
+                    if (watchBtn) watchBtn.classList.remove('hidden');
                     resetVideoControlsOverlay();
                 };
             }
@@ -10199,6 +10409,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
         }
 
         function openMissionModal(m) {
+            // Unlike the sibling rocket/site/orbit/landing modals (which all bail cleanly with
+            // `if (!data) return;`), this had no guard at all - a malformed mission object (e.g.
+            // a future API response missing an expected field) would throw partway through and
+            // leave the modal in a half-populated, possibly-stuck-open state instead of just not
+            // opening. Not observed in practice today since processLaunchData always populates
+            // every mission fully, but defensive here for the same reason the other modals are.
+            if (!m) return;
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
             const modalNameEl = document.getElementById('modal-name');
@@ -10275,9 +10492,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const statusEl = document.getElementById('modal-status');
             statusEl.setAttribute('translate', 'no');
             statusEl.setAttribute('lang', 'en');
-            statusEl.innerText = m.status;
+            statusEl.innerText = m.status || '';
 
-            const mStat = m.status.toLowerCase();
+            const mStat = (m.status || '').toLowerCase();
             if (mStat.includes("tbd") || mStat.includes("tbc") || mStat.includes("determined")) {
                 statusEl.className = "text-sm font-semibold text-zinc-400 mt-0.5 leading-tight notranslate lang-en-lock";
             } else if (mStat.includes("hold") || mStat.includes("review") || mStat.includes("delay")) {
@@ -10325,7 +10542,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             window.currentActiveMissionCategory = m.category;
             window.currentActiveMissionDescription = m.description;
             document.getElementById('modal-description-detailed').innerHTML = renderMissionPurposeHtml(m.category, m.description, document.documentElement.lang);
-            document.getElementById('modal-includes').innerHTML = m.objectives.map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${i}</span></div>`).join('');
+            document.getElementById('modal-includes').innerHTML = (m.objectives || []).map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${i}</span></div>`).join('');
 
             // Falcon missions drop the separate "Key Flight Milestones" checklist section -
             // Starship missions keep it. The "Mission Objectives and Payload Information"
@@ -10543,6 +10760,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
         function saveToCalendar(m) {
             const dateObj = new Date(m.date);
+            // toISOString() throws a RangeError on Invalid Date (missing/malformed m.date) -
+            // not observed in practice today since processLaunchData always populates a real
+            // date, but defensive here the same way the guard added to openMissionModal is.
+            if (isNaN(dateObj.getTime())) return;
             const startStr = dateObj.toISOString().replace(/-|:|\.\d+/g, "");
 
             const endObj = new Date(dateObj.getTime() + 90 * 60 * 1000);
