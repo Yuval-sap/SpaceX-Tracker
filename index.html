@@ -9516,16 +9516,29 @@
             } catch (e) { }
         }
 
-        // Fires on a genuine navigation-away or tab/app close (not on backgrounding - see the
-        // comment above) - wipes every saved resume position so the NEXT visit starts fresh,
-        // exactly matching "remember until I leave the site, not indefinitely".
-        window.addEventListener('pagehide', function () {
+        // Decides whether to wipe every saved resume position, run once per page load. A plain
+        // refresh and a genuine "left the site and came back" both fire the exact same unload
+        // events (pagehide/beforeunload) on the way OUT - there is no way to tell them apart
+        // from the outgoing page at all (confirmed live: a `pagehide`-based version of this
+        // wiped the position on an ordinary refresh too, which the user does NOT consider
+        // "leaving"). The only place that distinction is actually visible is the NEXT load's own
+        // Navigation Timing entry: `type` is `'reload'` for a refresh, and something else
+        // ('navigate' - typing the URL again or reopening a bookmark after having left,
+        // 'back_forward', etc.) for everything that isn't a refresh. Backgrounding/switching
+        // apps and back never even reaches this code at all, since no new page load happens then
+        // - it survives automatically, matching "remembered as long as I'm on the site".
+        (function () {
             try {
-                Object.keys(localStorage)
-                    .filter(k => k.indexOf(YT_RESUME_KEY_PREFIX) === 0)
-                    .forEach(k => localStorage.removeItem(k));
+                const navEntry = performance.getEntriesByType('navigation')[0];
+                const isReload = navEntry ? navEntry.type === 'reload' :
+                    (performance.navigation && performance.navigation.type === 1);
+                if (!isReload) {
+                    Object.keys(localStorage)
+                        .filter(k => k.indexOf(YT_RESUME_KEY_PREFIX) === 0)
+                        .forEach(k => localStorage.removeItem(k));
+                }
             } catch (e) { }
-        });
+        })();
 
         // Loads `videoId` into the player bound to `iframeId`, creating that player the first
         // time (replacing the plain placeholder <iframe> already in the HTML) and reusing it on
