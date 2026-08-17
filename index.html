@@ -9552,28 +9552,32 @@
             const resumable = !!opts.resumable;
             await ensureYoutubeApiReady();
 
-            // Returns the saved position for `videoId` if there is one worth seeking to.
+            // Returns the saved position for `videoId` (whole seconds - YouTube's start/
+            // startSeconds params don't take fractional seconds) if there is one worth
+            // resuming from, else 0.
             const findResumePosition = () => {
-                if (!resumable) return null;
+                if (!resumable) return 0;
                 const saved = parseFloat(localStorage.getItem(YT_RESUME_KEY_PREFIX + videoId));
-                return (saved && saved > 3) ? saved : null;
+                return (saved && saved > 3) ? Math.floor(saved) : 0;
             };
 
             let entry = ytPlayerRegistry[iframeId];
-            if (entry && entry.player && typeof entry.player.loadVideoById === 'function') {
+            if (entry && entry.player) {
                 if (entry.saveTimer) { clearInterval(entry.saveTimer); entry.saveTimer = null; }
                 entry.videoId = videoId;
                 entry.resumable = resumable;
-                // Calling seekTo() immediately after loadVideoById() gets silently dropped -
-                // the newly-loaded video isn't actually seekable yet at that exact instant
-                // (confirmed live: a saved position of 13.3s was completely ignored, playback
-                // just started over from 0 as if no resume had been requested at all). Stashed
-                // here instead and applied by the shared onStateChange handler below once this
-                // reload genuinely reaches PLAYING, which is the actual reliable "now you can
-                // seek" signal - onReady doesn't get called again on a reused player, only on
-                // first creation, so this same handler covers both cases uniformly.
-                entry.pendingResumeSeek = findResumePosition();
-                entry.player.loadVideoById(videoId);
+                if (resumable) {
+                    // Resumable content: cue paused, sitting exactly at the resume point (or
+                    // the start) - the user presses play themselves rather than the video
+                    // starting automatically the moment this loads (explicitly asked for -
+                    // seeking a few seconds into autoplaying playback was rejected in favor of
+                    // a plain "load ready to continue, wait for a real play press").
+                    if (typeof entry.player.cueVideoById === 'function') {
+                        entry.player.cueVideoById({ videoId, startSeconds: findResumePosition() });
+                    }
+                } else if (typeof entry.player.loadVideoById === 'function') {
+                    entry.player.loadVideoById(videoId); // live content - keeps its own autoplay behavior
+                }
                 if (resumable) entry.saveTimer = setInterval(() => saveResumePositionIfNeeded(entry), YT_RESUME_SAVE_INTERVAL_MS);
                 return entry.player;
             }
@@ -9589,7 +9593,12 @@
                 const player = new YT.Player(iframeId, {
                     videoId,
                     host: 'https://www.youtube-nocookie.com',
-                    playerVars: { rel: 0, modestbranding: 1, playsinline: 1, autoplay: 1 },
+                    // Resumable content never autoplays - `start` cues it paused at the resume
+                    // point (0 if there isn't one) instead. Live content keeps the original
+                    // immediate-autoplay behavior untouched, since that's unrelated to resuming.
+                    playerVars: resumable
+                        ? { rel: 0, modestbranding: 1, playsinline: 1, autoplay: 0, start: findResumePosition() }
+                        : { rel: 0, modestbranding: 1, playsinline: 1, autoplay: 1 },
                     events: {
                         onReady: (e) => {
                             const iframeEl = e.target.getIframe();
@@ -9598,21 +9607,13 @@
                         },
                         onStateChange: (e) => {
                             const liveEntry = ytPlayerRegistry[iframeId];
-                            if (!liveEntry) return;
-                            if (liveEntry.pendingResumeSeek != null && e.data === YT.PlayerState.PLAYING) {
-                                e.target.seekTo(liveEntry.pendingResumeSeek, true);
-                                liveEntry.pendingResumeSeek = null;
-                            }
-                            if (liveEntry.resumable && e.data === YT.PlayerState.ENDED) {
+                            if (liveEntry && liveEntry.resumable && e.data === YT.PlayerState.ENDED) {
                                 localStorage.removeItem(YT_RESUME_KEY_PREFIX + liveEntry.videoId);
                             }
                         }
                     }
                 });
-                ytPlayerRegistry[iframeId] = {
-                    player, videoId, resumable, saveTimer: null, originalClassName,
-                    pendingResumeSeek: findResumePosition()
-                };
+                ytPlayerRegistry[iframeId] = { player, videoId, resumable, saveTimer: null, originalClassName };
                 if (resumable) {
                     ytPlayerRegistry[iframeId].saveTimer = setInterval(
                         () => saveResumePositionIfNeeded(ytPlayerRegistry[iframeId]), YT_RESUME_SAVE_INTERVAL_MS
@@ -10688,20 +10689,22 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 videoYtLink.href = ytExternalHref || ('https://www.youtube.com/watch?v=' + youtubeId);
                 videoYtLink.classList.remove('hidden');
             }
+            // The only real caller of this function is the past-mission replay path (see its
+            // own call site's isPastMission guard) - archived footage, so resuming where you
+            // left off makes sense here.
+            const openPlayer = function () {
+                if (!window._pendingMissionYoutubeId) return;
+                if (videoIframe && videoSection) {
+                    loadYoutubeIntoPlayer('modal-video-iframe', window._pendingMissionYoutubeId, { resumable: true });
+                    videoSection.classList.remove('hidden');
+                    const btnRow = document.getElementById('modal-video-btn-row');
+                    if (btnRow) btnRow.classList.add('hidden');
+                    resetVideoControlsOverlay();
+                }
+            };
+
             if (watchBtn) {
-                watchBtn.onclick = function () {
-                    if (!window._pendingMissionYoutubeId) return;
-                    if (videoIframe && videoSection) {
-                        // The only real caller of this function is the past-mission replay path
-                        // (see its own call site's isPastMission guard) - archived footage, so
-                        // resuming where you left off makes sense here.
-                        loadYoutubeIntoPlayer('modal-video-iframe', window._pendingMissionYoutubeId, { resumable: true });
-                        videoSection.classList.remove('hidden');
-                        const btnRow = document.getElementById('modal-video-btn-row');
-                        if (btnRow) btnRow.classList.add('hidden');
-                        resetVideoControlsOverlay();
-                    }
-                };
+                watchBtn.onclick = openPlayer;
                 watchBtn.classList.remove('hidden');
             }
             if (videoCloseBtn) {
@@ -10715,6 +10718,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 };
             }
             if (videoBtnWrap) videoBtnWrap.classList.remove('hidden');
+
+            // Already watched part of this one before - reopen it already expanded instead of
+            // making the user click "Watch the Launch" again every time they revisit this mission.
+            let hasResumePosition = false;
+            try {
+                const saved = parseFloat(localStorage.getItem(YT_RESUME_KEY_PREFIX + youtubeId));
+                hasResumePosition = !!(saved && saved > 3);
+            } catch (e) { }
+            if (hasResumePosition) openPlayer();
         }
 
         function wireModalLiveButton(m, isPastMission) {
