@@ -9529,29 +9529,15 @@
             } catch (e) { }
         }
 
-        // Decides whether to wipe every saved resume position, run once per page load. A plain
-        // refresh and a genuine "left the site and came back" both fire the exact same unload
-        // events (pagehide/beforeunload) on the way OUT - there is no way to tell them apart
-        // from the outgoing page at all (confirmed live: a `pagehide`-based version of this
-        // wiped the position on an ordinary refresh too, which the user does NOT consider
-        // "leaving"). The only place that distinction is actually visible is the NEXT load's own
-        // Navigation Timing entry: `type` is `'reload'` for a refresh, and something else
-        // ('navigate' - typing the URL again or reopening a bookmark after having left,
-        // 'back_forward', etc.) for everything that isn't a refresh. Backgrounding/switching
-        // apps and back never even reaches this code at all, since no new page load happens then
-        // - it survives automatically, matching "remembered as long as I'm on the site".
-        (function () {
-            try {
-                const navEntry = performance.getEntriesByType('navigation')[0];
-                const isReload = navEntry ? navEntry.type === 'reload' :
-                    (performance.navigation && performance.navigation.type === 1);
-                if (!isReload) {
-                    Object.keys(localStorage)
-                        .filter(k => k.indexOf(YT_RESUME_KEY_PREFIX) === 0)
-                        .forEach(k => localStorage.removeItem(k));
-                }
-            } catch (e) { }
-        })();
+        // Resume positions persist indefinitely in localStorage, like YouTube's own "continue
+        // watching" - deliberately NOT cleared on leaving the site (an earlier version tried
+        // exactly that, first via `pagehide` - which turned out to also fire on an ordinary
+        // refresh, wiping progress the user didn't consider "leaving" - then via a page-load-time
+        // Navigation Timing check that correctly told a refresh apart from a real return visit,
+        // but was still clearing on every genuine return visit). The site's own catalog (a
+        // handful of documentary episodes, a bounded past-launch archive) is small enough that
+        // unbounded accumulation was never a real concern, and remembering across a multi-day gap
+        // - not just within one visit - is the actual point of a "continue watching" feature.
 
         // Loads `videoId` into the player bound to `iframeId`, creating that player the first
         // time (replacing the plain placeholder <iframe> already in the HTML) and reusing it on
@@ -10713,6 +10699,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     const btnRow = document.getElementById('modal-video-btn-row');
                     if (btnRow) btnRow.classList.add('hidden');
                     resetVideoControlsOverlay();
+                    // Marks this video as opened THIS SITE VISIT, in sessionStorage (unlike the
+                    // resume position itself, which is in localStorage and persists forever) -
+                    // reopening the mission card again within the same visit auto-expands the
+                    // player, but a later visit (this flag gone, position still remembered)
+                    // starts collapsed again and needs an actual click on "Watch the Launch" -
+                    // explicitly asked for, separate from how long the resume POSITION itself lasts.
+                    try { sessionStorage.setItem('spacex_video_session_opened_' + window._pendingMissionYoutubeId, '1'); } catch (e) { }
                 }
             };
 
@@ -10732,14 +10725,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
             if (videoBtnWrap) videoBtnWrap.classList.remove('hidden');
 
-            // Already watched part of this one before - reopen it already expanded instead of
-            // making the user click "Watch the Launch" again every time they revisit this mission.
-            let hasResumePosition = false;
+            // Auto-expand only within the SAME site visit the video was already opened in -
+            // closing and reopening this mission's card a moment later shouldn't need a click,
+            // but a fresh visit (this sessionStorage flag gone) always starts collapsed, even
+            // though the resume POSITION itself (localStorage) is still remembered for whenever
+            // "Watch the Launch" is actually pressed again.
+            let shouldAutoExpand = false;
             try {
                 const saved = parseFloat(localStorage.getItem(YT_RESUME_KEY_PREFIX + youtubeId));
-                hasResumePosition = !!(saved && saved > 3);
+                const openedThisVisit = sessionStorage.getItem('spacex_video_session_opened_' + youtubeId) === '1';
+                shouldAutoExpand = !!(saved && saved > 3) && openedThisVisit;
             } catch (e) { }
-            if (hasResumePosition) openPlayer();
+            if (shouldAutoExpand) openPlayer();
         }
 
         function wireModalLiveButton(m, isPastMission) {
