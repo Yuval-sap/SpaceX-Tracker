@@ -11998,23 +11998,51 @@ if (heroNameEl) {
             window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
 
             if (!isLaunches) {
-                // Titles / 3D donut may have been measured while the panel was display:none.
-                // The safety-net call must land safely PAST finishSwap's own 320ms deferral
-                // (matching the panel's 0.32s CSS transition, see its own rule) or it risks
-                // measuring/resizing before the panel is actually revealed - was 300ms while
-                // finishSwap fired at 260ms, which stopped being a safe margin once the CSS
-                // transition (and finishSwap's matching delay) grew to 320ms.
                 setTimeout(() => {
                     if (typeof fitAllTitlesOneLine === 'function') fitAllTitlesOneLine(document);
                     if (typeof fitAllSectionTitles === 'function') fitAllSectionTitles(document);
-                    if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
-                    // Force Three.js canvas resize now that the container has real dimensions
-                    window.dispatchEvent(new Event('resize'));
                 }, 50);
-                setTimeout(() => {
+
+                // The AI Compute donut's resize (updateAIComputeCrtHole + a real Three.js canvas
+                // resize via the 'resize' event) is expensive - reallocating WebGL render
+                // targets, not just a style read. The old code fired it at two guessed delays
+                // (50ms/380ms) sized against the panel's own 0.32s CSS transition - and that
+                // guess had ALREADY broken once before (was 300ms/260ms until the transition
+                // grew to 320ms), then broke again in a different way: 380ms lands past
+                // finishSwap's 320ms reveal, but NOT past the INCOMING panel's own separate
+                // 320ms entrance transition (which only starts once finishSwap reveals it, so it
+                // actually runs 320ms-640ms) - meaning the heavy resize was landing squarely
+                // inside that entrance animation, visibly stuttering it on weaker mobile GPUs
+                // (matches the "screen shakes" video from mobile, not reported on desktop).
+                // Waiting for the real `transitionend` event instead of a guessed delay fixes
+                // this permanently rather than re-tuning another magic number that will just
+                // drift out of sync again the next time the transition's duration changes.
+                const settleAiCompute = () => {
                     if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
                     window.dispatchEvent(new Event('resize'));
-                }, 380);
+                };
+                if (instant) {
+                    // No transition to wait for - the panel is already in its final state.
+                    settleAiCompute();
+                } else {
+                    let settled = false;
+                    const onIncomingTransitionEnd = (ev) => {
+                        if (ev.target !== incoming || settled) return;
+                        settled = true;
+                        incoming.removeEventListener('transitionend', onIncomingTransitionEnd);
+                        settleAiCompute();
+                    };
+                    incoming.addEventListener('transitionend', onIncomingTransitionEnd);
+                    // Fallback in case transitionend never fires for some reason (e.g. the user
+                    // switches tabs again mid-animation) - keeps the donut from getting
+                    // permanently stuck stale/unsized.
+                    setTimeout(() => {
+                        if (settled) return;
+                        settled = true;
+                        incoming.removeEventListener('transitionend', onIncomingTransitionEnd);
+                        settleAiCompute();
+                    }, 750);
+                }
             } else {
                 // Same "measured while display:none" race as the branch above: finishSwap()
                 // (which actually un-hides tab-panel-launches) is deferred 320ms whenever the
