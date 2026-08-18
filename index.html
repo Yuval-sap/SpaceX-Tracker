@@ -350,6 +350,77 @@
             border-color: rgba(16, 185, 129, 0.5) !important;
         }
 
+        /* Four earlier attempts all tried to blend a SEAM between two separate regions (a top
+           image strip + a bottom text panel) - two overlay-gradient versions (one with a real
+           CSS bug, one pixel-verified clean) and a mask-image version, all rejected as "still
+           not a real fade" by the user across multiple real screenshots. The actual gap: the
+           reference design (and this card's own new structure) doesn't have two separate
+           regions to blend AT ALL - the photo fills the ENTIRE card, and the title/date/
+           description/countdown sit AS OVERLAID CONTENT on top of it, readable via a gradient
+           SCRIM behind the text rather than a "this is where the image ends" seam. Implemented
+           directly from a reference file the user provided (mission-card-fade-example.html) -
+           `.mission-card-fade` is that scrim: opaque at the bottom (behind the text block) at
+           the same real color the panel used to be (`#18181b`/light-theme `#ffffff` - matches
+           `.bg-zinc-900`'s existing remap exactly, just written directly since the color isn't
+           coming from a Tailwind class anymore), fully transparent by the upper quarter of the
+           card so the photo itself reads clearly there. */
+        .mission-card-fade {
+            background: linear-gradient(to top,
+                #18181b 0%,
+                #18181b 20%,
+                rgba(24, 24, 27, 0.9) 35%,
+                rgba(24, 24, 27, 0.58) 50%,
+                rgba(24, 24, 27, 0.22) 65%,
+                transparent 100%);
+        }
+        body.light-theme .mission-card-fade {
+            background: linear-gradient(to top,
+                #ffffff 0%,
+                #ffffff 20%,
+                rgba(255, 255, 255, 0.75) 35%,
+                rgba(255, 255, 255, 0.35) 50%,
+                rgba(255, 255, 255, 0.08) 65%,
+                rgba(255, 255, 255, 0.03) 80%,
+                transparent 100%);
+        }
+
+        /* Split off from .mission-card-fade (2026-08-18): the card and the modal hero need
+           different fade-start heights now (card down 0.5cm, modal down 1cm, per user request -
+           a shared class can't hold two different values at once), so the modal's hero scrim
+           got its own class instead of continuing to piggyback on the card's. */
+        .modal-hero-fade {
+            background: linear-gradient(to top,
+                #18181b 0%,
+                #18181b 16%,
+                rgba(24, 24, 27, 0.85) 31%,
+                rgba(24, 24, 27, 0.5) 46%,
+                rgba(24, 24, 27, 0.15) 61%,
+                transparent 100%);
+        }
+        body.light-theme .modal-hero-fade {
+            background: linear-gradient(to top,
+                #ffffff 0%,
+                #ffffff 16%,
+                rgba(255, 255, 255, 0.75) 31%,
+                rgba(255, 255, 255, 0.35) 46%,
+                rgba(255, 255, 255, 0.08) 61%,
+                rgba(255, 255, 255, 0.03) 76%,
+                transparent 100%);
+        }
+
+        /* Subtle resting shadow, matching #hero-banner's own light/dark treatment (see the
+           comment above body:not(.light-theme) #hero-banner) - same reasoning applies here:
+           light theme needs a visible dark drop-shadow to read as "lifted" against the
+           near-white page, dark theme needs a soft light glow instead since a dark shadow is
+           invisible against the near-black page background. Deliberately not tied to the
+           existing hover-lift effect - this shows at rest, on every card, not just on hover. */
+        .mission-card {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        body:not(.light-theme) .mission-card {
+            box-shadow: 0 25px 50px -10px rgba(148, 163, 184, 0.18), 0 10px 20px -8px rgba(148, 163, 184, 0.12), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+        }
+
         .milestone-card {
             transition: background-color 0.5s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
         }
@@ -1213,6 +1284,16 @@
             color: #475569 !important;
         }
 
+        /* One shade darker than the general remap right above (#475569, slate-600) - but not
+           the near-black #0f172a the title uses - scoped to just the mission card's description
+           line, not the general .text-zinc-400 rule shared by many unrelated elements. Placed
+           AFTER the general rule on purpose: both are single-class-plus-body.light-theme
+           selectors with equal specificity, so with !important on both, source order is what
+           decides the winner - this has to come later to actually override it. */
+        body.light-theme .mission-card-desc {
+            color: #334155 !important;
+        }
+
         /* Was #64748b (slate-500) - measured against every light-theme background this text
            actually appears on: 4.76:1 on white (#ffffff, most cards' bg-zinc-900 remap) and
            4.55:1 on the page background (#f8fafc) both clear WCAG AA's 4.5:1 for normal text,
@@ -1392,6 +1473,35 @@
         body.light-theme #hero-weather,
         body.light-theme #hero-weather .text-emerald-400 {
             color: #047857 !important;
+        }
+
+        /* Same problem, same fix: the mission-modal's date line uses text-emerald-400 sitting
+           directly on the hero photo+scrim (not the plain page background text-emerald-400
+           usually appears against), and unlike text-white/text-zinc-400 there's no general
+           body.light-theme remap for emerald-400 - it stays the same bright, light green in
+           light theme. Contrast against the light-theme scrim's near-white backdrop computes to
+           ~1.9:1 (WCAG AA needs 4.5:1) - a real, measured near-invisible-text bug, not a
+           stylistic nitpick. Same #047857 dark-green convention used above for consistency.
+           NOTE: the mission-card countdown timer (.countdown-small) has the exact same
+           contrast problem but was deliberately left unfixed here - user asked for that one
+           specifically reverted (2026-08-18), preferring the original bright green there even
+           though it's the same measured accessibility issue. */
+        body.light-theme #modal-date {
+            color: #047857 !important;
+        }
+
+        /* Documentary episode badges ("EPISODE 1 • RELEASED" / "EPISODE 3 • COMING SOON") sit
+           in a small translucent chip (bg-emerald-500/10 or bg-amber-500/10) directly over the
+           card's own photo+scrim - the default bright text-emerald-400/text-amber-400 washes
+           out in light theme for the same reason every other bright color did on these cards.
+           Same #047857 dark-green convention for released; a matching dark-amber (#92400e,
+           amber-800) for the not-yet-released state so it still reads as "amber" rather than
+           just becoming a second green. */
+        body.light-theme .doc-badge-released {
+            color: #047857 !important;
+        }
+        body.light-theme .doc-badge-upcoming {
+            color: #92400e !important;
         }
 
         /* AI Compute Deals v2 (glass-panel 3D dashboard, ai3d-* prefixed) keeps its own
@@ -3936,7 +4046,7 @@
 
             <div class="relative">
                 <div id="past-launches-grid"
-                    class="flex gap-4 sm:gap-5 overflow-x-auto pt-4 pb-8 -mx-4 px-6 md:mx-0 md:px-3 hide-scrollbar snap-x snap-mandatory">
+                    class="flex gap-4 sm:gap-5 overflow-x-auto pt-10 pb-8 -mx-4 px-12 md:mx-0 md:px-8 scroll-ps-12 scroll-pe-12 md:scroll-ps-8 md:scroll-pe-8 hide-scrollbar snap-x snap-mandatory">
                     <div
                         class="w-[75vw] max-w-[280px] md:w-64 shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
                         <div class="skel h-28 rounded-xl"></div>
@@ -3996,20 +4106,21 @@
                     class="flex md:grid md:grid-cols-3 gap-4 md:gap-5 overflow-x-auto pb-4 md:pb-0 hide-scrollbar snap-x snap-mandatory md:overflow-visible">
                     <a href="https://www.youtube.com/watch?v=-a0ecQMq-rM" target="_blank"
                         onclick="return openDocVideoModal('-a0ecQMq-rM', event)"
-                        class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
+                        class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer no-underline min-h-[367px]">
                         <img src="https://img.youtube.com/vi/-a0ecQMq-rM/maxresdefault.jpg"
                             onerror="this.src='https://img.youtube.com/vi/-a0ecQMq-rM/hqdefault.jpg'"
-                            class="w-full h-40 sm:h-44 object-cover object-[center_5%] border-b border-zinc-800/80" alt="Episode 1 Cover">
-                        <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-start bg-transparent">
+                            class="absolute inset-0 w-full h-full object-cover object-[center_5%] scale-[1.05] origin-bottom" alt="Episode 1 Cover">
+                        <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                        <div class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
                             <div class="flex items-center gap-x-2 mb-2.5">
                                 <span
-                                    class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
+                                    class="doc-badge-released px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
                                     1 • RELEASED</span>
                             </div>
                             <h4 id="doc-ep1-title" translate="no"
                                 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                 Critical Path</h4>
-                            <p class="text-xs text-zinc-400 line-clamp-4">The path to launch is filled with obstacles
+                            <p class="mission-card-desc text-xs text-zinc-400 line-clamp-4">The path to launch is filled with obstacles
                                 and success is only possible through the tireless efforts of many working together
                                 towards a common goal. “Critical Path” continues the ongoing Starship series, following
                                 SpaceX engineers through the final days before launch of the first Starship V3 and the
@@ -4020,20 +4131,21 @@
 
                     <a href="https://www.youtube.com/watch?v=ANe_HW4X8oc" target="_blank"
                         onclick="return openDocVideoModal('ANe_HW4X8oc', event)"
-                        class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-pointer no-underline">
+                        class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer no-underline min-h-[367px]">
                         <img src="https://img.youtube.com/vi/ANe_HW4X8oc/maxresdefault.jpg"
                             onerror="this.src='https://img.youtube.com/vi/ANe_HW4X8oc/hqdefault.jpg'"
-                            class="w-full h-40 sm:h-44 object-cover object-[center_5%] border-b border-zinc-800/80" alt="Episode 2 Cover">
-                        <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-start bg-transparent">
+                            class="absolute inset-0 w-full h-full object-cover object-[center_5%] scale-[1.05] origin-bottom" alt="Episode 2 Cover">
+                        <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                        <div class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
                             <div class="flex items-center gap-x-2 mb-2.5">
                                 <span
-                                    class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
+                                    class="doc-badge-released px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
                                     2 • RELEASED</span>
                             </div>
                             <h4 id="doc-ep2-title" translate="no"
                                 class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                 Test Like You Fly</h4>
-                            <p class="text-xs text-zinc-400 line-clamp-4">Three years since the first flight of
+                            <p class="mission-card-desc text-xs text-zinc-400 line-clamp-4">Three years since the first flight of
                                 Starship, the next generation is here. New ship. New booster. New engines. New pad and
                                 new test site. SpaceX engineers are working to solve one of the most difficult
                                 engineering challenges in history: developing a fully, rapidly reusable rocket. “Test
@@ -4043,25 +4155,24 @@
                     </a>
 
                     <div
-                        class="w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl flex flex-col snap-start shrink-0 mission-card overflow-hidden cursor-default">
-                        <div class="relative w-full h-40 sm:h-44 border-b border-zinc-800/80">
-                            <img src="https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096"
-                                class="w-full h-full object-cover object-[center_5%] filter grayscale opacity-40" alt="Episode 3 Cover">
-                            <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                <i class="fa-solid fa-lock text-zinc-500 text-2xl animate-pulse"></i>
-                            </div>
+                        class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden snap-start shrink-0 cursor-default min-h-[367px]">
+                        <img src="https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096"
+                            class="absolute inset-0 w-full h-full object-cover object-[center_5%] scale-[1.05] origin-bottom filter grayscale opacity-40" alt="Episode 3 Cover">
+                        <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                        <div class="absolute inset-0 z-15 bg-black/40 flex items-center justify-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-zinc-500 text-2xl animate-pulse"></i>
                         </div>
-                        <div class="p-4 sm:p-5 md:p-6 flex-1 flex flex-col justify-between bg-transparent">
+                        <div class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
                             <div>
                                 <div class="flex items-center gap-x-2 mb-2.5">
                                     <span
-                                        class="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
+                                        class="doc-badge-upcoming px-2.5 py-1 bg-amber-500/10 text-amber-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
                                         3 • COMING SOON</span>
                                 </div>
                                 <h4 id="doc-ep3-title" translate="no"
                                     class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                     Fifth Flight Test</h4>
-                                <p class="text-xs text-zinc-400 mb-3 line-clamp-4">The highly anticipated fifth flight
+                                <p class="mission-card-desc text-xs text-zinc-400 mb-3 line-clamp-4">The highly anticipated fifth flight
                                     test, targeting the first-ever catch of the Super Heavy booster by the launch tower.
                                 </p>
                             </div>
@@ -4694,27 +4805,31 @@
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-2 sm:p-3 animate-fade-in overflow-y-auto z-[100]">
         <div id="mission-modal-content" onclick="event.stopImmediatePropagation()"
             class="card-modal-scroll bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
-            <div
-                class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center gap-3 sm:gap-0 bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
-                <div class="flex items-center gap-6 min-w-0">
-                    <div class="min-w-0">
-                        <div id="modal-name" class="font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
-                        </div>
-                        <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
-                    </div>
-                    <img id="modal-patch" src="" alt=""
-                        class="hidden shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full object-contain border border-transparent cursor-pointer hover:border-emerald-500/50 transition-colors"
-                        onclick="openPatchLightbox(this.src, this.alt, event)"
-                        onerror="this.classList.add('hidden')">
-                </div>
+            <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
                 <button onclick="closeModal()"
-                    class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
+                    class="flex items-center justify-center w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 text-2xl leading-none text-white md:hover:bg-black/70 transition-colors">&times;</button>
+            </div>
+
+            <div class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
+                <div id="modal-image" class="absolute inset-0"></div>
+                <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
+                <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
+                    <div class="flex items-center gap-6 min-w-0">
+                        <div class="min-w-0">
+                            <div id="modal-name"
+                                class="mission-title-fit whitespace-nowrap overflow-hidden font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                            </div>
+                            <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
+                        </div>
+                        <img id="modal-patch" src="" alt=""
+                            class="hidden shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full object-contain border border-transparent cursor-pointer hover:border-emerald-500/50 transition-colors"
+                            onclick="openPatchLightbox(this.src, this.alt, event)"
+                            onerror="this.classList.add('hidden')">
+                    </div>
+                </div>
             </div>
 
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
-                <div class="relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg">
-                    <div id="modal-image"></div>
-                </div>
 
                 <!-- Launch video: button + embed (loaded only when user clicks "Watch the Launch") -->
                 <!-- Past launches only: in-page player + fallback link -->
@@ -4793,6 +4908,17 @@
                         <i class="fa-solid fa-calendar-plus shrink-0"></i> <span class="min-w-0 text-center">Save to
                             Calendar</span>
                     </button>
+                </div>
+
+                <div class="space-y-4">
+                    <h4
+                        class="font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
+                        <i class="fa-solid fa-crosshairs text-sm"></i>
+                        <span id="modal-objectives-title-text">Mission Objectives and Payload Information</span>
+                    </h4>
+                    <p id="modal-description-detailed"
+                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500">
+                    </p>
                 </div>
 
                 <div
@@ -4968,17 +5094,6 @@
                     <div id="modal-includes"
                         class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm bg-zinc-950 p-4 border border-zinc-800/50 rounded-2xl transition-colors duration-500">
                     </div>
-                </div>
-
-                <div class="space-y-4">
-                    <h4
-                        class="font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
-                        <i class="fa-solid fa-crosshairs text-sm"></i>
-                        <span id="modal-objectives-title-text">Mission Objectives and Payload Information</span>
-                    </h4>
-                    <p id="modal-description-detailed"
-                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500">
-                    </p>
                 </div>
             </div>
         </div>
@@ -10340,20 +10455,19 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
                 const card = document.createElement('div');
-                card.className = `mission-card w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer flex flex-col snap-start shrink-0 hover:border-zinc-700`;
+                card.className = `mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer snap-start shrink-0 hover:border-zinc-700`;
                 card.dataset.missionId = m.id;
                 card.dataset.category = m.category;
                 card.style = `animation-delay: ${idx * 100}ms;`;
                 card.innerHTML = `
-                    <div class="relative h-40 overflow-hidden z-20">
-                        <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover object-[center_19%]" alt="${m.name}">
-                        ${statusBadge}
-                    </div>
-                    <div class="p-5 flex-1 flex flex-col justify-between relative z-20 bg-zinc-900">
+                    <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom" alt="${m.name}">
+                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    ${statusBadge}
+                    <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pt-[182px]">
                         <div>
                             <div class="mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
                             <div class="text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
-                            <div class="text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
+                            <div class="mission-card-desc text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
                         </div>
                         <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
                             <div>
@@ -10443,7 +10557,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
                 const card = document.createElement('div');
-                card.className = `min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden flex flex-col snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card`;
+                card.className = `relative min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card`;
                 card.dataset.missionId = m.id;
                 card.dataset.category = m.category;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
@@ -10461,10 +10575,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     ? (pastCardDict.watchDetailsVideo || LAUNCH_LABEL_I18N.en.watchDetailsVideo)
                     : (pastCardDict.viewMissionDetails || LAUNCH_LABEL_I18N.en.viewMissionDetails);
                 card.innerHTML = `
-                    <div class="relative h-40 overflow-hidden z-20">
-                        <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover object-[center_21%]" alt="${m.name}" draggable="false" style="-webkit-user-drag: none;">
-                    </div>
-                    <div class="p-5 flex-1 flex flex-col justify-between bg-zinc-900 relative z-20">
+                    <img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_21%] scale-[1.06] origin-bottom" alt="${m.name}" draggable="false" style="-webkit-user-drag: none;">
+                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    <div class="relative z-20 flex flex-col justify-end min-h-[311px] p-5 pt-[182px]">
                         <div>
                             <div class="mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
                             <div class="text-xs text-zinc-500 mb-3"><span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
@@ -11078,7 +11191,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 statusEl.className = "text-sm font-semibold text-emerald-400 mt-0.5 leading-tight notranslate lang-en-lock";
             }
 
-            document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full aspect-video object-cover" alt="${escapeHtml(m.name)}">`;
+            document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover" alt="${escapeHtml(m.name)}">`;
 
             // Video: ONLY for past launches (Completed / past date)
             const videoBtnWrap = document.getElementById('modal-video-btn-wrap');
