@@ -227,9 +227,24 @@
             transition: opacity 0.5s ease;
             /* Cuts a soft circular hole over the AI Compute donut, kept in sync with its
                position/state by updateAIComputeCrtHole() - see that function's own comment.
-               Defaults to none (no hole, CRT shows everywhere) until/unless JS sets it. */
-            mask-image: var(--crt-hole, none);
-            -webkit-mask-image: var(--crt-hole, none);
+               A second mask layer (--crt-card-holes) punches rounded-rect holes over the
+               upcoming-launch, past-launch, and documentary episode cards so those sit
+               visually in front of the scanlines (a z-index on the cards themselves cannot
+               escape the main wrapper / tab-panel stacking contexts — same reason the donut
+               uses a mask rather than z-index). The two layers are INTERSECTED: CRT only
+               shows where BOTH are opaque. Unset variables fall back to a fully-opaque
+               dummy so the CRT still covers everything else. */
+            --crt-mask-solid: linear-gradient(#000, #000);
+            mask-image: var(--crt-hole, var(--crt-mask-solid)), var(--crt-card-holes, var(--crt-mask-solid));
+            -webkit-mask-image: var(--crt-hole, var(--crt-mask-solid)), var(--crt-card-holes, var(--crt-mask-solid));
+            mask-size: 100% 100%, 100% 100%;
+            -webkit-mask-size: 100% 100%, 100% 100%;
+            mask-repeat: no-repeat, no-repeat;
+            -webkit-mask-repeat: no-repeat, no-repeat;
+            mask-position: 0 0, 0 0;
+            -webkit-mask-position: 0 0, 0 0;
+            mask-composite: intersect;
+            -webkit-mask-composite: source-in;
         }
 
         .font-space {
@@ -9427,29 +9442,112 @@
         // when first measured this way). Expressed as fractions of the viewport's own live
         // half-size (not hardcoded pixels) so this stays correct at whatever size the viewport
         // actually renders at (it can be smaller than 330px on narrower screens).
+        function crtRoundedRectPath(x, y, w, h, r) {
+            r = Math.max(0, Math.min(r, w / 2, h / 2));
+            const f = (n) => n.toFixed(1);
+            return `M${f(x + r)},${f(y)} H${f(x + w - r)} A${f(r)},${f(r)} 0 0 1 ${f(x + w)},${f(y + r)} V${f(y + h - r)} A${f(r)},${f(r)} 0 0 1 ${f(x + w - r)},${f(y + h)} H${f(x + r)} A${f(r)},${f(r)} 0 0 1 ${f(x)},${f(y + h - r)} V${f(y + r)} A${f(r)},${f(r)} 0 0 1 ${f(x + r)},${f(y)} Z`;
+        }
+
+        function updateCardCrtHoles() {
+            const vw = document.documentElement.clientWidth;
+            const vh = document.documentElement.clientHeight;
+            if (vw < 1 || vh < 1) {
+                document.body.style.removeProperty('--crt-card-holes');
+                return;
+            }
+            const cards = document.querySelectorAll(
+                '#missions-grid .mission-card, #past-launches-grid .mission-card, #tab-panel-more .mission-card'
+            );
+            const parts = [`M0 0H${vw}V${vh}H0Z`];
+            let any = false;
+            const pad = 8;
+            cards.forEach((el) => {
+                if (el.classList.contains('hidden')) return;
+                const r = el.getBoundingClientRect();
+                if (r.width < 2 || r.height < 2) return;
+                if (r.bottom < -pad || r.top > vh + pad || r.right < -pad || r.left > vw + pad) return;
+                any = true;
+                parts.push(crtRoundedRectPath(r.left - pad, r.top - pad, r.width + pad * 2, r.height + pad * 2, 24));
+            });
+            if (!any) {
+                document.body.style.removeProperty('--crt-card-holes');
+                return;
+            }
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}"><path fill="black" fill-rule="evenodd" d="${parts.join('')}"/></svg>`;
+            document.body.style.setProperty('--crt-card-holes', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+        }
+
         function updateAIComputeCrtHole() {
             const viewport = document.querySelector('.ai3d-viewport-3d');
-            if (!viewport) return;
+            if (!viewport) {
+                document.body.style.removeProperty('--crt-hole');
+                updateCardCrtHoles();
+                return;
+            }
             const r = viewport.getBoundingClientRect();
             if (r.width < 1 || r.height < 1) {
                 document.body.style.removeProperty('--crt-hole');
-                return;
+            } else {
+                const halfSize = r.width / 2;
+                const cx = r.left + halfSize, cy = r.top + halfSize;
+
+                const anySliceLifted = !!(aiComputeScene && (aiComputeScene.activeIdx !== -1 || aiComputeScene.lockedIdx !== -1));
+                const radiusFrac = anySliceLifted ? 0.879 : 0.848;
+                const featherFrac = anySliceLifted ? 0.145 : 0.091;
+                const radius = halfSize * radiusFrac;
+                const feather = halfSize * featherFrac;
+
+                document.body.style.setProperty('--crt-hole',
+                    `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, transparent 0, transparent ${radius.toFixed(1)}px, black ${(radius + feather).toFixed(1)}px, black ${(radius + feather + 4000).toFixed(1)}px)`
+                );
             }
-            const halfSize = r.width / 2;
-            const cx = r.left + halfSize, cy = r.top + halfSize;
-
-            const anySliceLifted = !!(aiComputeScene && (aiComputeScene.activeIdx !== -1 || aiComputeScene.lockedIdx !== -1));
-            const radiusFrac = anySliceLifted ? 0.879 : 0.848;
-            const featherFrac = anySliceLifted ? 0.145 : 0.091;
-            const radius = halfSize * radiusFrac;
-            const feather = halfSize * featherFrac;
-
-            document.body.style.setProperty('--crt-hole',
-                `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, transparent 0, transparent ${radius.toFixed(1)}px, black ${(radius + feather).toFixed(1)}px, black ${(radius + feather + 4000).toFixed(1)}px)`
-            );
+            updateCardCrtHoles();
         }
-        window.addEventListener('scroll', updateAIComputeCrtHole, { passive: true });
-        window.addEventListener('resize', updateAIComputeCrtHole);
+        let _crtHoleRaf = 0;
+        function scheduleCrtHoleUpdate() {
+            if (_crtHoleRaf) return;
+            _crtHoleRaf = requestAnimationFrame(() => {
+                _crtHoleRaf = 0;
+                updateAIComputeCrtHole();
+            });
+        }
+        window.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
+        window.addEventListener('resize', scheduleCrtHoleUpdate);
+
+        function initCardCrtHoleScrollSync() {
+            ['missions-grid', 'past-launches-grid'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el && !el.dataset.crtHoleScroll) {
+                    el.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
+                    el.dataset.crtHoleScroll = '1';
+                }
+            });
+            const firstDocCard = document.querySelector('#tab-panel-more .mission-card');
+            const docStrip = firstDocCard && firstDocCard.parentElement;
+            if (docStrip && !docStrip.dataset.crtHoleScroll) {
+                docStrip.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
+                docStrip.dataset.crtHoleScroll = '1';
+            }
+            let cardHoverHolesUntil = 0;
+            let cardHoverHolesRaf = 0;
+            const pulseCardHoverHoles = (now) => {
+                cardHoverHolesRaf = 0;
+                scheduleCrtHoleUpdate();
+                if (now < cardHoverHolesUntil) {
+                    cardHoverHolesRaf = requestAnimationFrame(pulseCardHoverHoles);
+                }
+            };
+            document.addEventListener('mouseover', (e) => {
+                if (!e.target.closest || !e.target.closest('#missions-grid .mission-card, #past-launches-grid .mission-card, #tab-panel-more .mission-card')) return;
+                cardHoverHolesUntil = performance.now() + 1700;
+                if (!cardHoverHolesRaf) cardHoverHolesRaf = requestAnimationFrame(pulseCardHoverHoles);
+            }, { passive: true });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCardCrtHoleScrollSync);
+        } else {
+            initCardCrtHoleScrollSync();
+        }
 
         // Shared highlight state between the donut mesh (popped up in the animate() loop) and
         // its legend row - both carry the same data-ai-segment index.
@@ -10435,6 +10533,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 } else {
                     grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500">No matching upcoming launches found.</div>`;
                 }
+                if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
                 return;
             }
 
@@ -10524,6 +10623,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             startCountdowns(filteredMissions);
             fitAllTitlesOneLine(grid);
+            if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
         }
 
         function renderPastMissions(filteredPast) {
@@ -10548,6 +10648,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 } else {
                     pastGrid.innerHTML = `<div class="py-10 text-zinc-500 text-center w-full">No recent past launches found in the database.</div>`;
                 }
+                if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
                 return;
             }
 
@@ -10625,6 +10726,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             pastGrid.appendChild(pastSearchEmptyMsg);
 
             fitAllTitlesOneLine(pastGrid);
+            if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
         }
 
         function startCountdowns(missionList) {
@@ -10795,6 +10897,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     grid.querySelectorAll('.mission-card').forEach(card => card.classList.remove('hidden'));
                     if (empty) empty.classList.add('hidden');
                 });
+                if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
                 return;
             }
 
@@ -10842,6 +10945,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 });
                 if (empty) empty.classList.toggle('hidden', cards.length === 0 || visibleCount > 0);
             });
+            if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
         }
 
         // Full refresh: rebuilds the current category's cards, then reapplies whatever search
