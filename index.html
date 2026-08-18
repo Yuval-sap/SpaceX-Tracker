@@ -436,6 +436,19 @@
                 transparent 100%);
         }
 
+        /* Mission-modal close: transparent circle, green ring + X.
+           Dark theme = emerald-400 from the HTML classes.
+           Light theme = #047857 (same dark green used site-wide). */
+        body.light-theme .mission-modal-close {
+            border-color: #047857 !important;
+            color: #047857 !important;
+        }
+        body.light-theme .mission-modal-close:hover {
+            background-color: rgba(4, 120, 87, 0.1) !important;
+            border-color: #059669 !important;
+            color: #059669 !important;
+        }
+
         /* Subtle resting shadow, matching #hero-banner's own light/dark treatment (see the
            comment above body:not(.light-theme) #hero-banner) - same reasoning applies here:
            light theme needs a visible dark drop-shadow to read as "lifted" against the
@@ -2370,23 +2383,8 @@
             background: transparent;
             border-color: rgba(4, 120, 87, 0.5);
         }
-        /* Soft underline indicator — the primary "this is selected" cue */
-        .main-tab-btn.is-active::after {
-            content: '';
-            position: absolute;
-            left: 18%;
-            right: 18%;
-            bottom: 0.2rem;
-            height: 2px;
-            border-radius: 999px;
-            background: #10b981;
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.55);
-            pointer-events: none;
-        }
-        body.light-theme .main-tab-btn.is-active::after {
-            background: #059669;
-            box-shadow: 0 0 8px rgba(5, 150, 105, 0.35);
-        }
+        /* Underline under active tab removed (2026-08-19) — active state is
+           the emerald text color + soft border tint only. */
         .main-tab-btn i {
             font-size: 0.9em;
             opacity: 0.9;
@@ -4835,7 +4833,10 @@
             class="card-modal-scroll bg-zinc-900 border border-zinc-800/80 w-full max-w-3xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.8)] my-auto transition-colors duration-500">
             <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
                 <button onclick="closeModal()"
-                    class="flex items-center justify-center w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 text-2xl leading-none text-white md:hover:bg-black/70 transition-colors">&times;</button>
+                    class="mission-modal-close flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-2 border-emerald-400 text-emerald-400 md:hover:bg-emerald-400/10 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors"
+                    title="Close">
+                    <i class="fa-solid fa-xmark text-lg leading-none"></i>
+                </button>
             </div>
 
             <div class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
