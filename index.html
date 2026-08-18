@@ -64,6 +64,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpaceX Launch Tracker • Mission Control</title>
 
+    <!-- Basic SEO -->
+    <meta name="description"
+        content="Live SpaceX launch tracker with real-time countdowns, mission details, launch schedules, weather, past launch history, booster reuse stats, and more - every Falcon 9, Falcon Heavy, and Starship launch as it happens.">
+    <link rel="canonical" href="https://spacexfantracker.com/">
+
+    <!-- Open Graph (Facebook, WhatsApp, LinkedIn, etc.) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://spacexfantracker.com/">
+    <meta property="og:site_name" content="SpaceX Launch Tracker">
+    <meta property="og:title" content="SpaceX Launch Tracker • Mission Control">
+    <meta property="og:description"
+        content="Live SpaceX launch tracker with real-time countdowns, mission details, launch schedules, weather, and past launch history.">
+    <meta property="og:image" content="https://spacexfantracker.com/og-image.png">
+    <meta property="og:image:width" content="1024">
+    <meta property="og:image:height" content="1024">
+    <meta property="og:image:alt" content="SpaceX Launch Tracker">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="SpaceX Launch Tracker • Mission Control">
+    <meta name="twitter:description"
+        content="Live SpaceX launch tracker with real-time countdowns, mission details, launch schedules, weather, and past launch history.">
+    <meta name="twitter:image" content="https://spacexfantracker.com/og-image.png">
+
+    <!-- Structured data (JSON-LD) - lets Google understand this is a free web app rather than
+         just an arbitrary page; can surface richer info in search results. -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "SpaceX Launch Tracker",
+        "url": "https://spacexfantracker.com/",
+        "description": "Live SpaceX launch tracker with real-time countdowns, mission details, launch schedules, weather, past launch history, and booster reuse stats.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "image": "https://spacexfantracker.com/og-image.png",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
+
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#09090b">
@@ -3044,6 +3088,7 @@
             if (item) {
                 if (yearEl) yearEl.textContent = item.y.replace(/\{\{STARSHIP\}\}/g, starshipTerm).toUpperCase();
                 if (titleEl) titleEl.textContent = item.t.replace(/\{\{STARSHIP\}\}/g, starshipTerm);
+                img.alt = item.t.replace(/\{\{STARSHIP\}\}/g, starshipTerm);
             }
 
             img.classList.add('hidden');
@@ -3086,6 +3131,7 @@
             if (!modal || !img) return;
 
             if (nameEl) nameEl.textContent = name || '';
+            img.alt = name || 'Mission patch';
             img.classList.add('hidden');
             if (spinner) {
                 spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl';
@@ -3494,9 +3540,16 @@
         class="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-50 transition-colors duration-500 border-b border-zinc-900/80">
         <div class="max-w-screen-2xl mx-auto px-3 sm:px-8 py-3 sm:py-5 flex items-center justify-between relative z-50">
             <div class="flex items-center shrink min-w-0 pr-2">
-                <span onclick="window.scrollTo({top: 0, behavior: 'smooth'});"
-                    class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate"
-                    translate="no">SPACEX LAUNCH TRACKER</span>
+                <!-- Was a <span> - promoted to the page's only <h1> (2026-08-18, part of basic
+                     SEO cleanup): the page previously had zero <h1> tags at all (just one lone
+                     <h2> on the hero mission name), and search engines weight <h1> heavily for
+                     understanding a page's topic. Purely a semantic change - Tailwind's Preflight
+                     reset (bundled with the CDN build already in use) already zeroes out every
+                     heading's default margin/font-size, so every bit of this element's actual
+                     appearance still comes from its own explicit utility classes below, unchanged. -->
+                <h1 onclick="window.scrollTo({top: 0, behavior: 'smooth'});"
+                    class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate m-0"
+                    translate="no">SPACEX LAUNCH TRACKER</h1>
                 <span
                     class="hidden xl:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
                     TELEMETRY</span>
@@ -10079,6 +10132,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 const heroImg = document.getElementById('hero-image');
                 if (heroImg) {
                     heroImg.src = nextLaunch.image;
+                    heroImg.alt = nextLaunch.name;
                     heroImg.onerror = function () {
                         this.src = FALLBACK_IMAGES[nextLaunch.category] || FALLBACK_IMAGES.falcon;
                     };
@@ -10996,7 +11050,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 crewContainer.innerHTML = m.crew.map((c, i) => `
                     <div onclick="openAstronautModal(${i})" class="flex flex-col items-center group min-w-0 md:min-w-[110px] md:shrink-0 cursor-pointer md:hover:scale-105 transition-transform duration-200">
                         <div class="w-11 h-11 md:w-20 md:h-20 rounded-full overflow-hidden border border-zinc-700 group-hover:border-emerald-400 transition-colors duration-300 mb-1.5 md:mb-2.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-                            <img src="${c.image}" alt="Astronaut" class="w-full h-full object-cover object-center">
+                            <img src="${c.image}" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover object-center">
                         </div>
                         <div class="text-[9px] md:text-sm font-bold text-center text-zinc-300 leading-tight group-hover:text-emerald-400 transition-colors w-full">${c.name}</div>
                         <div class="text-[8px] md:text-xs text-zinc-500 uppercase tracking-wider text-center mt-0.5 truncate w-full">${c.role}</div>
@@ -11024,7 +11078,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 statusEl.className = "text-sm font-semibold text-emerald-400 mt-0.5 leading-tight notranslate lang-en-lock";
             }
 
-            document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full aspect-video object-cover" alt="">`;
+            document.getElementById('modal-image').innerHTML = `<img src="${m.image}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full aspect-video object-cover" alt="${escapeHtml(m.name)}">`;
 
             // Video: ONLY for past launches (Completed / past date)
             const videoBtnWrap = document.getElementById('modal-video-btn-wrap');
@@ -11449,6 +11503,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const imgEl = document.getElementById('rocket-modal-img');
             imgEl.src = data.image;
+            imgEl.alt = data.name;
             imgEl.className = `w-full h-full object-cover ${data.alignmentClass}`;
 
             window.currentOpenRocketType = type;
@@ -11503,6 +11558,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             document.getElementById('site-modal-name').innerText = data.name;
             document.getElementById('site-modal-img').src = data.image;
+            document.getElementById('site-modal-img').alt = data.name;
             document.getElementById('site-modal-coords').innerText = data.coords;
             document.getElementById('site-modal-fleet').innerText = data.fleet;
             document.getElementById('site-modal-desc').innerText = data.desc;
@@ -11733,6 +11789,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 typeEl.setAttribute('data-i18n-asds', '1');
             }
             [nameEl, typeEl].forEach(el => { el.setAttribute('translate', 'no'); el.classList.add('notranslate'); });
+            if (imgEl) imgEl.alt = nameEl.innerText; // was a static "Landing Zone" regardless of which branch above ran
             if (!str.includes('asds') && !(window.currentActiveLandingStr === "Autonomous Spaceport Drone Ships (ASDS)")) {
                 nameEl.removeAttribute('data-i18n-asds');
                 typeEl.removeAttribute('data-i18n-asds');
@@ -11764,6 +11821,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             document.getElementById('astro-modal-name').innerText = c.name;
             document.getElementById('astro-modal-role').innerText = c.role;
             document.getElementById('astro-modal-img').src = c.image;
+            document.getElementById('astro-modal-img').alt = c.name;
             document.getElementById('astro-modal-agency').innerText = c.agency || "ASTRONAUT DOSSIER";
             document.getElementById('astro-modal-bio').innerText = c.bio || "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.";
 
