@@ -11,6 +11,55 @@
 
         gtag('config', 'G-R08T8Y5J7E');
     </script>
+
+    <!-- Google Translate Script - moved here from the end of <body> (2026-08-18) so the
+         browser starts fetching it in parallel with everything else instead of only after the
+         whole rest of the page has already loaded, shrinking the "renders in English, then
+         visibly re-translates a moment later" window the user was seeing on every visit. `async`
+         (not a plain blocking tag) so this doesn't block HTML parsing/painting despite now
+         living in <head> - it downloads in the background and runs whenever it's ready,
+         possibly before <body> - including #google_translate_element, the div Google's widget
+         actually renders into - has even been parsed yet, which the guard below handles. -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            function doInit() {
+                new google.translate.TranslateElement({
+                    pageLanguage: 'en',
+                    includedLanguages: 'en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr'
+                }, 'google_translate_element');
+            }
+            // Loading this script this early means its callback can fire before <body> (and
+            // #google_translate_element specifically) has been parsed into the DOM yet - defer
+            // to DOMContentLoaded in that case instead of failing to find the target element.
+            if (document.getElementById('google_translate_element')) {
+                doInit();
+            } else {
+                document.addEventListener('DOMContentLoaded', doInit);
+            }
+        }
+
+        // A native <select> sizes itself to its widest <option> ("Chinese (Simplified)",
+        // "Portuguese (Brazil)"...), not the current selection - the placeholder Google ships,
+        // "Select Language", is itself one of the widest entries, and it's what every
+        // untranslated (default English) visitor sees permanently, not a rare edge case.
+        // There's only ~90px of real budget for this control on mobile before it collides with
+        // its neighbors, so shorten just that placeholder label. Google rebuilds this <select>
+        // (fresh "Select Language" option and all) more than once during its own async init -
+        // a one-shot rename gets clobbered - so this re-applies itself continuously on the same
+        // "Bulletproof Timer" interval already used to fight Google Translate's other DOM
+        // rewrites (see applyLaunchLabelTranslations) rather than relying on a single observer.
+        function shortenGoogleTranslatePlaceholder() {
+            const combo = document.querySelector('#google_translate_element select.goog-te-combo');
+            if (!combo) return;
+            const placeholderOption = combo.querySelector('option[value=""]');
+            if (placeholderOption && placeholderOption.textContent !== 'Language') {
+                placeholderOption.textContent = 'Language';
+            }
+        }
+    </script>
+    <script type="text/javascript" async
+        src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpaceX Launch Tracker • Mission Control</title>
@@ -12386,34 +12435,6 @@ if (heroNameEl) {
         window.onload = init;
     </script>
 
-    <!-- Google Translate Script -->
-    <script type="text/javascript">
-        function googleTranslateElementInit() {
-            new google.translate.TranslateElement({
-                pageLanguage: 'en',
-                includedLanguages: 'en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr'
-            }, 'google_translate_element');
-        }
-
-        // A native <select> sizes itself to its widest <option> ("Chinese (Simplified)",
-        // "Portuguese (Brazil)"...), not the current selection - the placeholder Google ships,
-        // "Select Language", is itself one of the widest entries, and it's what every
-        // untranslated (default English) visitor sees permanently, not a rare edge case.
-        // There's only ~90px of real budget for this control on mobile before it collides with
-        // its neighbors, so shorten just that placeholder label. Google rebuilds this <select>
-        // (fresh "Select Language" option and all) more than once during its own async init -
-        // a one-shot rename gets clobbered - so this re-applies itself continuously on the same
-        // "Bulletproof Timer" interval already used to fight Google Translate's other DOM
-        // rewrites (see applyLaunchLabelTranslations) rather than relying on a single observer.
-        function shortenGoogleTranslatePlaceholder() {
-            const combo = document.querySelector('#google_translate_element select.goog-te-combo');
-            if (!combo) return;
-            const placeholderOption = combo.querySelector('option[value=""]');
-            if (placeholderOption && placeholderOption.textContent !== 'Language') {
-                placeholderOption.textContent = 'Language';
-            }
-        }
-    </script>
     <script>
 // פונקציה שרצה מיידית ותופסת שינויים בעמוד ברמת המילי-שניה
 const observer = new MutationObserver((mutations) => {
@@ -12436,8 +12457,6 @@ const observer = new MutationObserver((mutations) => {
 // התחלת האזנה לשינויים בגוף העמוד
 observer.observe(document.body, { childList: true, subtree: true });
 </script>
-    <script type="text/javascript"
-        src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
 </body>
 
 </html>
