@@ -56,6 +56,41 @@
                 placeholderOption.textContent = 'Language';
             }
         }
+
+        // Native <select> always sizes to its widest <option>. Measure the currently selected
+        // label and set an explicit pixel width so the control only takes the space it needs.
+        function fitGoogleTranslateComboWidth() {
+            const combo = document.querySelector('#google_translate_element select.goog-te-combo');
+            if (!combo || !combo.options || combo.options.length === 0) return;
+            const opt = combo.options[combo.selectedIndex];
+            if (!opt) return;
+            const text = (opt.textContent || '').trim() || 'Language';
+            const cs = window.getComputedStyle(combo);
+            const probe = document.createElement('span');
+            probe.setAttribute('aria-hidden', 'true');
+            probe.style.cssText = [
+                'position:absolute', 'left:-9999px', 'top:0', 'visibility:hidden',
+                'white-space:nowrap', 'pointer-events:none',
+                'font-family:' + cs.fontFamily,
+                'font-size:' + cs.fontSize,
+                'font-weight:' + cs.fontWeight,
+                'letter-spacing:' + cs.letterSpacing,
+                'text-transform:' + cs.textTransform
+            ].join(';');
+            probe.textContent = text;
+            document.body.appendChild(probe);
+            const textW = Math.ceil(probe.getBoundingClientRect().width);
+            probe.remove();
+            // Extra room for native dropdown arrow + horizontal padding
+            const pad = window.innerWidth < 640 ? 22 : 28;
+            const maxW = window.innerWidth < 640 ? 110 : 148;
+            const minW = window.innerWidth < 640 ? 52 : 64;
+            const next = Math.min(maxW, Math.max(minW, textW + pad));
+            if (combo.dataset.fitW !== String(next)) {
+                combo.dataset.fitW = String(next);
+                combo.style.setProperty('width', next + 'px', 'important');
+            }
+        }
     </script>
     <script type="text/javascript" async
         src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
@@ -363,6 +398,16 @@
             transform: translateY(-6px) scale(1.015) !important;
             box-shadow: 0 20px 40px -15px rgba(16, 185, 129, 0.3), 0 0 25px 3px rgba(16, 185, 129, 0.2);
             border-color: rgba(16, 185, 129, 0.5) !important;
+        }
+
+        /* Mobile carousel: keep the first/last upcoming card fully visible.
+           scroll-snap alone targets the content edge and ignores padding unless
+           scroll-padding is set — same fix already used on #past-launches-grid. */
+        @media (max-width: 767px) {
+            #missions-grid {
+                padding-inline: 1.5rem !important;
+                scroll-padding-inline: 1.5rem !important;
+            }
         }
 
         /* #past-launches-grid genuinely can't get the same treatment as #missions-grid: the
@@ -1026,7 +1071,12 @@
             cursor: pointer !important;
             margin: 0 !important;
             letter-spacing: 0.05em !important;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.3s ease, width 0.15s ease;
+            /* Width is set by fitGoogleTranslateComboWidth() to the selected language only —
+               without that, a native <select> sizes itself to its widest <option>. */
+            width: auto !important;
+            max-width: 148px !important;
+            box-sizing: content-box !important;
         }
 
         .goog-te-gadget .goog-te-combo:hover {
@@ -1134,13 +1184,9 @@
 
         @media (max-width: 640px) {
             .goog-te-gadget .goog-te-combo {
-                /* A native <select> sizes itself to its WIDEST <option> (e.g. "Chinese
-                   (Simplified)"), not the currently selected one - so even "Hebrew" or
-                   "Select Language" would otherwise render ~135px wide and blow the mobile
-                   header row's budget. A fixed width + ellipsis keeps every language name
-                   readable up to that width and gracefully truncates the rest. */
-                width: 92px !important;
-                max-width: 92px !important;
+                /* Width still driven by fitGoogleTranslateComboWidth() to the selected label;
+                   tight padding + smaller type so short names (e.g. "עברית") stay compact. */
+                max-width: 110px !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
                 white-space: nowrap !important;
@@ -2082,9 +2128,21 @@
                 linear-gradient(180deg, rgba(60, 22, 10, 0.28) 0%, rgba(20, 8, 4, 0.45) 100%),
                 url('https://imgix.bustle.com/uploads/image/2022/4/11/9acdc0da-c0f3-4e5a-a635-7f9e7f676c5f-screenshot-2022-04-11-at-17-24-18-spacex.jpg?w=920&h=560&fit=crop&crop=faces&dpr=2');
             background-position: center, center, center;
-            background-size: cover , cover, cover;
+            background-size: cover, cover, cover;
             background-repeat: no-repeat, no-repeat, no-repeat;
             transition: background 0.6s ease, opacity 0.5s ease;
+        }
+        /* Mobile: tall viewport + landscape photo → cover crops heavily left/right.
+           Bias the focal point and slightly stronger vignette so the surface still reads. */
+        @media (max-width: 640px) {
+            body.mars-theme .stars-container {
+                background-position: center, center, center 28%;
+                background-size: cover, cover, cover;
+                background-image:
+                    radial-gradient(ellipse at 50% 30%, rgba(40, 12, 6, 0.15) 0%, rgba(12, 4, 2, 0.72) 60%, rgba(6, 2, 1, 0.9) 100%),
+                    linear-gradient(180deg, rgba(40, 14, 6, 0.35) 0%, rgba(14, 5, 2, 0.55) 100%),
+                    url('https://imgix.bustle.com/uploads/image/2022/4/11/9acdc0da-c0f3-4e5a-a635-7f9e7f676c5f-screenshot-2022-04-11-at-17-24-18-spacex.jpg?w=920&h=560&fit=crop&crop=faces&dpr=2');
+            }
         }
 
         /* No starfield in Mars Mode — pure surface */
@@ -2445,6 +2503,15 @@
             background-size: cover, cover, cover;
             background-repeat: no-repeat, no-repeat, no-repeat;
         }
+        @media (max-width: 640px) {
+            body.moon-theme .stars-container {
+                background-position: center, center, center 32%;
+                background-image:
+                    radial-gradient(ellipse at 50% 25%, rgba(30, 40, 60, 0.12) 0%, rgba(5, 8, 14, 0.75) 60%, rgba(2, 4, 8, 0.92) 100%),
+                    linear-gradient(180deg, rgba(16, 22, 36, 0.35) 0%, rgba(6, 8, 14, 0.6) 100%),
+                    url('https://i.redd.it/dgantnoqqtp31.jpg');
+            }
+        }
         body.moon-theme .star {
             display: none !important;
         }
@@ -2648,87 +2715,7 @@
             border-top-color: rgba(80, 100, 140, 0.4) !important;
         }
 
-        /* Mission patch strip hover/active glow — themed (was hard-coded emerald) */
-        .patch-hover-glow {
-            background-color: transparent;
-            filter: none;
-        }
-        @media (hover: hover) and (pointer: fine) {
-            .group\/patch:hover .patch-hover-glow {
-                background-color: rgba(16, 185, 129, 0.5);
-                filter: blur(12px);
-            }
-            body.mars-theme .group\/patch:hover .patch-hover-glow {
-                background-color: rgba(255, 107, 53, 0.55);
-                filter: blur(12px);
-            }
-            body.moon-theme .group\/patch:hover .patch-hover-glow {
-                background-color: rgba(158, 197, 232, 0.55);
-                filter: blur(12px);
-            }
-            body.light-theme .group\/patch:hover .patch-hover-glow {
-                background-color: rgba(4, 120, 87, 0.45);
-                filter: blur(12px);
-            }
-        }
-        .group\/patch:active .patch-hover-glow {
-            background-color: rgba(16, 185, 129, 0.5);
-            filter: blur(12px);
-        }
-        body.mars-theme .group\/patch:active .patch-hover-glow {
-            background-color: rgba(255, 107, 53, 0.55);
-            filter: blur(12px);
-        }
-        body.moon-theme .group\/patch:active .patch-hover-glow {
-            background-color: rgba(158, 197, 232, 0.55);
-            filter: blur(12px);
-        }
-        body.light-theme .group\/patch:active .patch-hover-glow {
-            background-color: rgba(4, 120, 87, 0.45);
-            filter: blur(12px);
-        }
-
-        /* Common emerald hover utilities remapped for Mars / Moon (buttons, borders, etc.) */
-        @media (min-width: 768px) {
-            body.mars-theme .md\:hover\:bg-emerald-500:hover {
-                background-color: #e85a28 !important;
-                color: #1a0a06 !important;
-            }
-            body.mars-theme .md\:hover\:border-emerald-500:hover {
-                border-color: #ff6b35 !important;
-            }
-            body.mars-theme .md\:hover\:text-emerald-400:hover {
-                color: #ff8c5a !important;
-            }
-            body.moon-theme .md\:hover\:bg-emerald-500:hover {
-                background-color: #6b9fc9 !important;
-                color: #07090e !important;
-            }
-            body.moon-theme .md\:hover\:border-emerald-500:hover {
-                border-color: #9ec5e8 !important;
-            }
-            body.moon-theme .md\:hover\:text-emerald-400:hover {
-                color: #b8d6f0 !important;
-            }
-        }
-        body.mars-theme .group-hover\:border-emerald-400:hover,
-        body.mars-theme .group:hover .group-hover\:border-emerald-400 {
-            border-color: #ff6b35 !important;
-        }
-        body.mars-theme .group-hover\:text-emerald-400:hover,
-        body.mars-theme .group:hover .group-hover\:text-emerald-400 {
-            color: #ff8c5a !important;
-        }
-        body.moon-theme .group-hover\:border-emerald-400:hover,
-        body.moon-theme .group:hover .group-hover\:border-emerald-400 {
-            border-color: #9ec5e8 !important;
-        }
-        body.moon-theme .group-hover\:text-emerald-400:hover,
-        body.moon-theme .group:hover .group-hover\:text-emerald-400 {
-            color: #b8d6f0 !important;
-        }
-
-        /* ---- Mode menu (Day / Night / Mars city / Moon base) ---- */
+        /* ---- Mode menu (Day / Night / Mars / Moon) ---- */
         #mode-menu-btn:hover {
             color: #34d399;
             border-color: rgba(16, 185, 129, 0.4);
@@ -3353,10 +3340,6 @@
                     const el = document.getElementById(id);
                     if (el) el.innerText = map[id];
                 });
-                // Mode menu labels (Day / Night / Mars city / Moon base) follow the same language
-                if (typeof updateModeMenuUI === 'function') {
-                    updateModeMenuUI(window.currentVisualMode || (typeof getVisualModeFromDom === 'function' ? getVisualModeFromDom() : 'night'));
-                }
 
                 // The status pill's visible text is driven by the T-5 alert toggle (see
                 // updateHeroCountdown), not written directly here — otherwise a language
@@ -4393,6 +4376,7 @@
             }
 
             shortenGoogleTranslatePlaceholder();
+            fitGoogleTranslateComboWidth();
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
             applyNiceToKnowTranslations(currentLang);
@@ -4652,22 +4636,22 @@
                         <i class="fa-solid fa-chevron-down text-[8px] sm:text-[10px] opacity-70" aria-hidden="true"></i>
                     </button>
                     <div id="mode-menu" role="listbox" aria-label="Visual modes"
-                        class="hidden absolute top-full end-0 mt-2 min-w-[168px] py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
+                        class="hidden absolute top-full end-0 mt-2 min-w-[148px] py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
                         <button type="button" role="option" data-mode="day"
                             class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
-                            <i class="fa-solid fa-sun w-4 text-center text-amber-400"></i><span class="mode-option-label">Day</span>
+                            <i class="fa-solid fa-sun w-4 text-center text-amber-400"></i><span>Day</span>
                         </button>
                         <button type="button" role="option" data-mode="night"
                             class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
-                            <i class="fa-solid fa-moon w-4 text-center text-sky-300"></i><span class="mode-option-label">Night</span>
+                            <i class="fa-solid fa-moon w-4 text-center text-sky-300"></i><span>Night</span>
                         </button>
                         <button type="button" role="option" data-mode="mars"
                             class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
-                            <i class="fa-solid fa-globe w-4 text-center text-orange-500"></i><span class="mode-option-label">Mars city</span>
+                            <i class="fa-solid fa-globe w-4 text-center text-orange-500"></i><span>Mars</span>
                         </button>
                         <button type="button" role="option" data-mode="moon"
                             class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
-                            <i class="fa-regular fa-moon w-4 text-center text-slate-300"></i><span class="mode-option-label">Moon base</span>
+                            <i class="fa-regular fa-moon w-4 text-center text-slate-300"></i><span>Moon</span>
                         </button>
                     </div>
                 </div>
@@ -4961,7 +4945,7 @@
             </div>
 
             <div id="missions-grid"
-                class="flex md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto md:overflow-visible hide-scrollbar snap-x snap-mandatory md:snap-none pb-4 md:pb-0 pt-2 sm:pt-6 -mx-4 px-4 md:mx-0 md:px-0">
+                class="flex md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto md:overflow-visible hide-scrollbar snap-x snap-mandatory md:snap-none pb-4 md:pb-0 pt-2 sm:pt-6 -mx-4 px-6 md:mx-0 md:px-0 scroll-ps-6 scroll-pe-6 md:scroll-ps-0 md:scroll-pe-0">
                 <div
                     class="w-[85vw] max-w-[320px] md:w-auto shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-3xl p-5 space-y-4 animate-pulse">
                     <div class="h-40 bg-zinc-800/60 rounded-2xl"></div>
@@ -6515,62 +6499,25 @@
             return 'night';
         }
 
-        // Mode menu labels (Day / Night / Mars city / Moon base) — translated with the rest of the UI.
-        const MODE_LABEL_I18N = {
-            en: { mode: 'Mode', day: 'Day', night: 'Night', mars: 'Mars city', moon: 'Moon base' },
-            he: { mode: 'מצב', day: 'יום', night: 'לילה', mars: 'עיר מאדים', moon: 'בסיס ירח' },
-            iw: { mode: 'מצב', day: 'יום', night: 'לילה', mars: 'עיר מאדים', moon: 'בסיס ירח' },
-            es: { mode: 'Modo', day: 'Día', night: 'Noche', mars: 'Ciudad Marte', moon: 'Base lunar' },
-            fr: { mode: 'Mode', day: 'Jour', night: 'Nuit', mars: 'Ville Mars', moon: 'Base lunaire' },
-            de: { mode: 'Modus', day: 'Tag', night: 'Nacht', mars: 'Mars-Stadt', moon: 'Mondbasis' },
-            ru: { mode: 'Режим', day: 'День', night: 'Ночь', mars: 'Город Марс', moon: 'Лунная база' },
-            zh: { mode: '模式', day: '白天', night: '夜晚', mars: '火星城市', moon: '月球基地' },
-            it: { mode: 'Modalità', day: 'Giorno', night: 'Notte', mars: 'Città Marte', moon: 'Base lunare' },
-            cs: { mode: 'Režim', day: 'Den', night: 'Noc', mars: 'Město Mars', moon: 'Měsíční základna' },
-            sv: { mode: 'Läge', day: 'Dag', night: 'Natt', mars: 'Marsstad', moon: 'Månbas' },
-            nl: { mode: 'Modus', day: 'Dag', night: 'Nacht', mars: 'Marsstad', moon: 'Maanbasis' },
-            da: { mode: 'Tilstand', day: 'Dag', night: 'Nat', mars: 'Marsby', moon: 'Månebase' },
-            pt: { mode: 'Modo', day: 'Dia', night: 'Noite', mars: 'Cidade Marte', moon: 'Base lunar' },
-            pl: { mode: 'Tryb', day: 'Dzień', night: 'Noc', mars: 'Miasto Mars', moon: 'Baza księżycowa' },
-            hi: { mode: 'मोड', day: 'दिन', night: 'रात', mars: 'मंगल नगर', moon: 'चंद्र बेस' },
-            ar: { mode: 'الوضع', day: 'نهار', night: 'ليل', mars: 'مدينة المريخ', moon: 'قاعدة القمر' },
-            tr: { mode: 'Mod', day: 'Gündüz', night: 'Gece', mars: 'Mars şehri', moon: 'Ay üssü' }
-        };
-
-        function getModeLabels() {
-            const lang = (document.documentElement.lang || 'en').toLowerCase();
-            let key = lang.split('-')[0];
-            if (key === 'zh') key = 'zh';
-            return MODE_LABEL_I18N[key] || MODE_LABEL_I18N.en;
-        }
-
         function updateModeMenuUI(mode) {
-            const labels = getModeLabels();
             const label = document.getElementById('mode-menu-label');
             const icon = document.getElementById('mode-menu-icon');
+            const labels = { day: 'Day', night: 'Night', mars: 'Mars', moon: 'Moon' };
             const icons = {
                 day: 'fa-sun',
                 night: 'fa-moon',
                 mars: 'fa-globe',
                 moon: 'fa-moon'
             };
-            if (label) label.textContent = labels[mode] || labels.mode || 'Mode';
+            if (label) label.textContent = labels[mode] || 'Mode';
             if (icon) {
                 icon.className = 'fa-solid ' + (icons[mode] || 'fa-palette') + ' text-[10px] sm:text-sm';
                 if (mode === 'moon') icon.className = 'fa-regular fa-moon text-[10px] sm:text-sm';
             }
             document.querySelectorAll('.mode-option').forEach(btn => {
-                const m = btn.getAttribute('data-mode');
-                btn.classList.toggle('is-selected', m === mode);
-                btn.setAttribute('aria-selected', m === mode ? 'true' : 'false');
-                const span = btn.querySelector('.mode-option-label');
-                if (span && labels[m]) span.textContent = labels[m];
+                btn.classList.toggle('is-selected', btn.getAttribute('data-mode') === mode);
+                btn.setAttribute('aria-selected', btn.getAttribute('data-mode') === mode ? 'true' : 'false');
             });
-            const btn = document.getElementById('mode-menu-btn');
-            if (btn) {
-                btn.title = labels.mode || 'Mode';
-                btn.setAttribute('aria-label', labels.mode || 'Choose visual mode');
-            }
         }
 
         function applyVisualMode(mode, opts) {
@@ -10094,7 +10041,7 @@
                              that reads as the strip "stuttering"/not flowing smoothly on mobile
                              instead of a clean momentum scroll. Toggling the class on/off means only
                              the one tile actually being touched ever pays that cost. -->
-                        <div class="absolute inset-2 rounded-full patch-hover-glow transition-all duration-300 pointer-events-none"></div>
+                        <div class="absolute inset-2 rounded-full bg-emerald-500/0 transition-all duration-300 group-active/patch:blur-md group-active/patch:bg-emerald-500/50 md:group-hover/patch:blur-md md:group-hover/patch:bg-emerald-500/50 pointer-events-none"></div>
                         <img src="${m.patch}" alt="${m.name}" draggable="false"
                             class="relative w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform duration-300 group-active/patch:-translate-y-1 group-active/patch:scale-105 md:group-hover/patch:-translate-y-1 md:group-hover/patch:scale-105"
                             style="-webkit-user-drag: none;"
