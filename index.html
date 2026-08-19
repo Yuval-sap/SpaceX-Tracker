@@ -411,6 +411,31 @@
                 transparent 100%);
         }
 
+        /* Soft white glow behind crew-mission launch card titles, light theme only - crew hero
+           photos (astronauts/capsule interiors) tend to have brighter, busier backgrounds right
+           behind the title than an unmanned Falcon/Starship pad shot does, so the near-black
+           title text (.text-white's light-theme remap) can lose contrast there specifically.
+           Tried this on ALL launch titles first; reverted to crew-only per explicit user request.
+           .is-crew-card is set in JS via the same name-based heuristic already used elsewhere in
+           this file for crew detection (nameLower.includes "crew"/"polaris"/"ax-"/"fram2" - see
+           isCrewMission). Not applied to .mission-modal-content's own title (#modal-name shares
+           .mission-title-fit) - out of scope so far. */
+        body.light-theme #missions-grid .is-crew-card .mission-title-fit,
+        body.light-theme #past-launches-grid .is-crew-card .mission-title-fit {
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.8),
+                0 0 5px rgba(255, 255, 255, 0.45);
+        }
+
+        /* Date line under the launch title matches .mission-card-desc's own light-theme color
+           (#334155) instead of the lighter general .text-zinc-400 remap (#475569) - per explicit
+           user request, so the date and the description read as the same visual weight. Only
+           the upcoming-launch card has both a date line and a description line stacked like this
+           (past-launch cards go straight from the date/site line to the details button, no
+           separate description) - scoped to #missions-grid alone for that reason. */
+        body.light-theme #missions-grid .mission-card-date {
+            color: #334155 !important;
+        }
+
         /* Split off from .mission-card-fade (2026-08-18): the card and the modal hero need
            different fade-start heights now (card down 0.5cm, modal down 1cm, per user request -
            a shared class can't hold two different values at once), so the modal's hero scrim
@@ -10645,8 +10670,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                 const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
+                // Same name-based heuristic as isCrewMission elsewhere in this file (extractBoosterStats
+                // / crew-image selection) - reused here purely to pick the light-theme title-glow
+                // strength (see .is-crew-card in the CSS above), not for anything data-related.
+                const isCrewCard = /crew|polaris|ax-|fram2/i.test(m.name || '');
+
                 const card = document.createElement('div');
-                card.className = `mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer snap-start shrink-0 hover:border-zinc-700`;
+                card.className = `mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden cursor-pointer snap-start shrink-0 hover:border-zinc-700${isCrewCard ? ' is-crew-card' : ''}`;
                 card.dataset.missionId = m.id;
                 card.dataset.category = m.category;
                 card.style = `animation-delay: ${idx * 100}ms;`;
@@ -10657,7 +10687,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pt-[182px]">
                         <div>
                             <div class="mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" title="${m.name}">${m.name}</div>
-                            <div class="text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
+                            <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
                             <div class="mission-card-desc text-sm text-zinc-400 mb-4 line-clamp-2">${m.description}</div>
                         </div>
                         <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
@@ -10749,8 +10779,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                 const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
 
+                // Same name-based heuristic as isCrewMission elsewhere in this file - see the
+                // matching comment on #missions-grid's own card builder above.
+                const isCrewCard = /crew|polaris|ax-|fram2/i.test(m.name || '');
+
                 const card = document.createElement('div');
-                card.className = `relative min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card`;
+                card.className = `relative min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card${isCrewCard ? ' is-crew-card' : ''}`;
                 card.dataset.missionId = m.id;
                 card.dataset.category = m.category;
                 card.style = `animation-delay: ${Math.min(idx * 50, 1000)}ms;`;
