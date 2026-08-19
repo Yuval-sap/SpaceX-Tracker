@@ -3058,39 +3058,38 @@
             return out;
         }
 
-        // Manual translations for the "Mission Objectives & Strategic Significance"
-        // paragraph in the mission modal (#modal-description-detailed). This used to be a
-        // single English template (built in generateDetailedMissionPurpose) left open to
-        // Google Translate, with **bold** markers that were never converted to real <strong>
-        // tags — so the literal asterisks survived translation verbatim. Worse, the
-        // "Starship"-protecting <span class="notranslate"> that localizeStarshipTerm() inserts
-        // into free-flowing translated sentences doesn't reliably keep its surrounding
-        // whitespace when Google reorders a full sentence, which is what glued translated
-        // words directly onto "Starship" (e.g. "סטארשיפמגן החום"). Hand-translating this
-        // paragraph (same approach as MILESTONES_I18N) sidesteps both problems at once: no
-        // markdown syntax to leak, and no Google reordering to fight with. {{B}}...{{B}}
-        // marks the bold phrase and is converted to <strong> at render time. The dynamic,
-        // API-sourced payload description appended after it is NOT translated (arbitrary
-        // external text) — it's HTML-escaped and left for Google Translate as before.
+        // Manual translations for the labels used to build the "Mission Objectives and
+        // Payload Information" paragraph in the mission modal (#modal-description-detailed).
+        // Used to be 4 hardcoded per-category boilerplate paragraphs (same fixed text for
+        // every Starlink/Starship/Dragon/Falcon mission regardless of what it actually was)
+        // with the live API description bolted on afterward as an afterthought - replaced
+        // per explicit user request with a single paragraph built entirely from real
+        // per-mission API fields (mission.description, mission.type, program[].name,
+        // mission.agencies[].name - see mapLaunchToSchema's missionType/programNames/
+        // missionAgencies). Only the short LABELS below are hand-translated (same {{B}}...{{B}}
+        // bold-marker approach as before); the field VALUES themselves are arbitrary API text
+        // that differs per mission, so - exactly like the payload description already did -
+        // they're left for Google Translate rather than pre-translated, wrapped in
+        // no-starship-protect for the same reason documented on that span below.
         const MISSION_PURPOSE_I18N = {
-            en: { payloadInfoLabel: "Payload Info:", starship: "This flight marks a pivotal evolution in deep space exploration, deploying the newly optimized {{B}}Starship V3 platform{{B}}. Standing taller and featuring enhanced propellant capacity, this configuration expands our capabilities exponentially. Every successful checkpoint brings humanity closer to Mars Architecture.", starlink: "A key deployment targeting global communications infrastructure. By expanding the {{B}}Starlink constellation{{B}}, this mission focuses on filling orbital shell gaps, lowering regional network latency, and expanding coverage capabilities globally.", dragon: "Crew or cargo transport mission to the International Space Station using the {{B}}Crew Dragon{{B}} or {{B}}Cargo Dragon{{B}} spacecraft.", falcon: "An essential orbital logistics mission using the battle-tested {{B}}Falcon 9 workhorse{{B}}. This profile delivers commercial, scientific, or institutional hardware directly to designated orbits." },
-            he: { payloadInfoLabel: "מידע על המטען:", starship: "טיסה זו מסמנת התפתחות מרכזית בחקר החלל העמוק, ומציגה את {{B}}פלטפורמת סטארשיפ V3{{B}} המשודרגת. בזכות גובה רב יותר ויכולת דלק גדולה יותר, התצורה הזו מרחיבה את היכולות שלנו באופן משמעותי. כל אבן דרך מוצלחת מקרבת את האנושות לארכיטקטורת מאדים.", starlink: "פריסה מרכזית המיועדת לתשתית תקשורת גלובלית. באמצעות הרחבת {{B}}קונסטלציית Starlink{{B}}, משימה זו מתמקדת בסגירת פערים במעטפת המסלולית, הפחתת זמן השהיה ברשת האזורית, והרחבת יכולות הכיסוי ברחבי העולם.", dragon: "משימת הובלת צוות או מטען לתחנת החלל הבינלאומית באמצעות חללית {{B}}Crew Dragon{{B}} או {{B}}Cargo Dragon{{B}}.", falcon: "משימת לוגיסטיקה מסלולית חיונית באמצעות סוס העבודה המנוסה {{B}}Falcon 9{{B}}. פרופיל זה מספק חומרה מסחרית, מדעית או ממסדית ישירות למסלולים הייעודיים." },
-            iw: { payloadInfoLabel: "מידע על המטען:", starship: "טיסה זו מסמנת התפתחות מרכזית בחקר החלל העמוק, ומציגה את {{B}}פלטפורמת סטארשיפ V3{{B}} המשודרגת. בזכות גובה רב יותר ויכולת דלק גדולה יותר, התצורה הזו מרחיבה את היכולות שלנו באופן משמעותי. כל אבן דרך מוצלחת מקרבת את האנושות לארכיטקטורת מאדים.", starlink: "פריסה מרכזית המיועדת לתשתית תקשורת גלובלית. באמצעות הרחבת {{B}}קונסטלציית Starlink{{B}}, משימה זו מתמקדת בסגירת פערים במעטפת המסלולית, הפחתת זמן השהיה ברשת האזורית, והרחבת יכולות הכיסוי ברחבי העולם.", dragon: "משימת הובלת צוות או מטען לתחנת החלל הבינלאומית באמצעות חללית {{B}}Crew Dragon{{B}} או {{B}}Cargo Dragon{{B}}.", falcon: "משימת לוגיסטיקה מסלולית חיונית באמצעות סוס העבודה המנוסה {{B}}Falcon 9{{B}}. פרופיל זה מספק חומרה מסחרית, מדעית או ממסדית ישירות למסלולים הייעודיים." },
-            es: { payloadInfoLabel: "Información de la Carga:", starship: "Este vuelo marca una evolución fundamental en la exploración del espacio profundo, desplegando la nueva y optimizada {{B}}plataforma Starship V3{{B}}. Con mayor altura y capacidad de propelente mejorada, esta configuración amplía nuestras capacidades de forma exponencial. Cada hito exitoso acerca a la humanidad a la Arquitectura de Marte.", starlink: "Un despliegue clave orientado a la infraestructura de comunicaciones global. Al ampliar la {{B}}constelación Starlink{{B}}, esta misión se centra en cubrir huecos en la capa orbital, reducir la latencia regional de la red y ampliar la cobertura a nivel mundial.", dragon: "Misión de transporte de tripulación o carga a la Estación Espacial Internacional utilizando la nave {{B}}Crew Dragon{{B}} o {{B}}Cargo Dragon{{B}}.", falcon: "Una misión esencial de logística orbital utilizando el probado {{B}}caballo de batalla Falcon 9{{B}}. Este perfil entrega hardware comercial, científico o institucional directamente a las órbitas designadas." },
-            fr: { payloadInfoLabel: "Informations sur la Charge Utile :", starship: "Ce vol marque une évolution majeure dans l'exploration de l'espace lointain, en déployant la {{B}}plateforme Starship V3{{B}} nouvellement optimisée. Plus haute et dotée d'une capacité en propergol accrue, cette configuration multiplie nos capacités. Chaque étape réussie rapproche l'humanité de l'architecture martienne.", starlink: "Un déploiement clé visant l'infrastructure de communication mondiale. En élargissant la {{B}}constellation Starlink{{B}}, cette mission vise à combler les lacunes de la couche orbitale, réduire la latence régionale du réseau et étendre la couverture à l'échelle mondiale.", dragon: "Mission de transport d'équipage ou de fret vers la Station Spatiale Internationale à bord du vaisseau {{B}}Crew Dragon{{B}} ou {{B}}Cargo Dragon{{B}}.", falcon: "Une mission essentielle de logistique orbitale utilisant le {{B}}cheval de bataille Falcon 9{{B}} éprouvé. Ce profil livre du matériel commercial, scientifique ou institutionnel directement sur les orbites désignées." },
-            de: { payloadInfoLabel: "Nutzlast-Info:", starship: "Dieser Flug markiert einen entscheidenden Fortschritt in der Erforschung des tiefen Weltraums mit dem Einsatz der neu optimierten {{B}}Starship-V3-Plattform{{B}}. Höher gebaut und mit größerer Treibstoffkapazität erweitert diese Konfiguration unsere Fähigkeiten exponentiell. Jeder erfolgreiche Meilenstein bringt die Menschheit der Mars-Architektur näher.", starlink: "Ein zentraler Einsatz für die globale Kommunikationsinfrastruktur. Durch die Erweiterung der {{B}}Starlink-Konstellation{{B}} konzentriert sich diese Mission auf das Schließen von Lücken in der Orbitalschale, die Senkung der regionalen Netzwerklatenz und die weltweite Erweiterung der Abdeckung.", dragon: "Besatzungs- oder Fracht-Transportmission zur Internationalen Raumstation mit dem Raumschiff {{B}}Crew Dragon{{B}} oder {{B}}Cargo Dragon{{B}}.", falcon: "Eine essenzielle orbitale Logistikmission mit dem bewährten {{B}}Arbeitspferd Falcon 9{{B}}. Dieses Profil bringt kommerzielle, wissenschaftliche oder institutionelle Hardware direkt in die vorgesehenen Umlaufbahnen." },
-            ru: { payloadInfoLabel: "Информация о полезной нагрузке:", starship: "Этот полёт знаменует ключевой этап в освоении дальнего космоса — развёртывание новой оптимизированной {{B}}платформы Starship V3{{B}}. Более высокая и с увеличенным запасом топлива, эта конфигурация экспоненциально расширяет наши возможности. Каждый успешный этап приближает человечество к марсианской архитектуре.", starlink: "Ключевой запуск для глобальной инфраструктуры связи. Расширяя {{B}}группировку Starlink{{B}}, эта миссия направлена на заполнение пробелов в орбитальной оболочке, снижение региональной задержки сети и расширение покрытия по всему миру.", dragon: "Миссия по доставке экипажа или груза на Международную космическую станцию на корабле {{B}}Crew Dragon{{B}} или {{B}}Cargo Dragon{{B}}.", falcon: "Важная орбитальная логистическая миссия с использованием проверенной {{B}}рабочей лошадки Falcon 9{{B}}. Этот профиль доставляет коммерческое, научное или государственное оборудование непосредственно на заданные орбиты." },
-            zh: { payloadInfoLabel: "载荷信息：", starship: "此次飞行标志着深空探索的关键演进，部署了全新优化的{{B}}星舰V3平台{{B}}。更高的箭体和更强的推进剂容量使该构型的能力呈指数级提升。每一次成功的里程碑都让人类更接近火星架构计划。", starlink: "面向全球通信基础设施的关键部署任务。通过扩展{{B}}星链星座{{B}}，此次任务致力于填补轨道层的覆盖空白、降低区域网络延迟，并在全球范围内扩大覆盖能力。", dragon: "使用{{B}}载人龙飞船{{B}}或{{B}}货运龙飞船{{B}}执行前往国际空间站的乘员或货物运输任务。", falcon: "使用久经考验的{{B}}猎鹰9号主力火箭{{B}}执行的重要轨道物流任务。此次任务将商业、科研或政府硬件直接送入指定轨道。" },
-            it: { payloadInfoLabel: "Info sul Carico Utile:", starship: "Questo volo segna un'evoluzione cruciale nell'esplorazione dello spazio profondo, schierando la nuova e ottimizzata {{B}}piattaforma Starship V3{{B}}. Più alta e con una capacità di propellente maggiore, questa configurazione amplia le nostre capacità in modo esponenziale. Ogni traguardo raggiunto avvicina l'umanità all'Architettura di Marte.", starlink: "Un dispiegamento chiave rivolto all'infrastruttura di comunicazione globale. Ampliando la {{B}}costellazione Starlink{{B}}, questa missione si concentra sul colmare le lacune del guscio orbitale, ridurre la latenza regionale della rete ed espandere la copertura a livello globale.", dragon: "Missione di trasporto equipaggio o carico verso la Stazione Spaziale Internazionale con la navicella {{B}}Crew Dragon{{B}} o {{B}}Cargo Dragon{{B}}.", falcon: "Una missione logistica orbitale essenziale che utilizza il collaudato {{B}}cavallo da lavoro Falcon 9{{B}}. Questo profilo consegna hardware commerciale, scientifico o istituzionale direttamente sulle orbite designate." },
-            cs: { payloadInfoLabel: "Informace o nákladu:", starship: "Tento let představuje zásadní posun v průzkumu hlubokého vesmíru díky nasazení nově optimalizované {{B}}platformy Starship V3{{B}}. Vyšší konstrukce a větší kapacita paliva exponenciálně rozšiřují naše možnosti. Každý úspěšný milník přibližuje lidstvo k marsovské architektuře.", starlink: "Klíčové nasazení zaměřené na globální komunikační infrastrukturu. Rozšířením {{B}}konstelace Starlink{{B}} se tato mise zaměřuje na zaplnění mezer v orbitální vrstvě, snížení regionální latence sítě a rozšíření pokrytí po celém světě.", dragon: "Mise pro přepravu posádky nebo nákladu na Mezinárodní vesmírnou stanici lodí {{B}}Crew Dragon{{B}} nebo {{B}}Cargo Dragon{{B}}.", falcon: "Zásadní orbitální logistická mise s využitím osvědčeného {{B}}tažného koně Falcon 9{{B}}. Tento profil dopravuje komerční, vědecký nebo institucionální náklad přímo na určené oběžné dráhy." },
-            sv: { payloadInfoLabel: "Nyttolastinfo:", starship: "Denna flygning markerar en avgörande utveckling inom djupryms­utforskning genom att sätta in den nyoptimerade {{B}}Starship V3-plattformen{{B}}. Högre och med större drivmedelskapacitet utökar denna konfiguration våra förmågor exponentiellt. Varje lyckad milstolpe för mänskligheten närmare Mars-arkitekturen.", starlink: "En viktig insats riktad mot global kommunikationsinfrastruktur. Genom att utöka {{B}}Starlink-konstellationen{{B}} fokuserar detta uppdrag på att fylla luckor i omloppsskalet, minska regional nätverkslatens och utöka täckningen globalt.", dragon: "Uppdrag för transport av besättning eller last till internationella rymdstationen med rymdskeppet {{B}}Crew Dragon{{B}} eller {{B}}Cargo Dragon{{B}}.", falcon: "Ett viktigt logistikuppdrag i omloppsbana med den beprövade {{B}}arbetshästen Falcon 9{{B}}. Denna profil levererar kommersiell, vetenskaplig eller institutionell utrustning direkt till angivna omloppsbanor." },
-            nl: { payloadInfoLabel: "Ladinginformatie:", starship: "Deze vlucht markeert een cruciale evolutie in de verkenning van de diepe ruimte, met de inzet van het nieuw geoptimaliseerde {{B}}Starship V3-platform{{B}}. Hoger gebouwd en met een grotere brandstofcapaciteit vergroot deze configuratie onze mogelijkheden exponentieel. Elke geslaagde mijlpaal brengt de mensheid dichter bij de Mars-architectuur.", starlink: "Een belangrijke inzet gericht op wereldwijde communicatie-infrastructuur. Door de {{B}}Starlink-constellatie{{B}} uit te breiden, richt deze missie zich op het opvullen van hiaten in de baanschil, het verlagen van de regionale netwerklatentie en het wereldwijd uitbreiden van de dekking.", dragon: "Bemannings- of vrachttransportmissie naar het internationale ruimtestation met het {{B}}Crew Dragon{{B}}- of {{B}}Cargo Dragon{{B}}-ruimtevaartuig.", falcon: "Een essentiële orbitale logistieke missie met het beproefde {{B}}werkpaard Falcon 9{{B}}. Dit profiel levert commerciële, wetenschappelijke of institutionele hardware rechtstreeks naar de aangewezen banen." },
-            da: { payloadInfoLabel: "Nyttelastinfo:", starship: "Denne flyvning markerer en afgørende udvikling inden for udforskning af det dybe rum ved at indsætte den nyoptimerede {{B}}Starship V3-platform{{B}}. Højere og med større drivmiddelkapacitet udvider denne konfiguration vores muligheder eksponentielt. Hver vellykket milepæl bringer menneskeheden tættere på Mars-arkitekturen.", starlink: "En central indsættelse rettet mod global kommunikationsinfrastruktur. Ved at udvide {{B}}Starlink-konstellationen{{B}} fokuserer denne mission på at udfylde huller i baneskallen, reducere regional netværkslatens og udvide dækningen globalt.", dragon: "Besætnings- eller fragttransportmission til Den Internationale Rumstation med rumfartøjet {{B}}Crew Dragon{{B}} eller {{B}}Cargo Dragon{{B}}.", falcon: "En essentiel orbital logistikmission med den velafprøvede {{B}}arbejdshest Falcon 9{{B}}. Denne profil leverer kommercielt, videnskabeligt eller institutionelt udstyr direkte til de udpegede baner." },
-            pt: { payloadInfoLabel: "Informações da Carga:", starship: "Este voo marca uma evolução fundamental na exploração do espaço profundo, implantando a nova e otimizada {{B}}plataforma Starship V3{{B}}. Mais alta e com maior capacidade de propelente, esta configuração amplia nossas capacidades exponencialmente. Cada marco bem-sucedido aproxima a humanidade da Arquitetura de Marte.", starlink: "Uma implantação fundamental voltada para a infraestrutura global de comunicações. Ao expandir a {{B}}constelação Starlink{{B}}, esta missão se concentra em preencher lacunas na camada orbital, reduzir a latência regional da rede e expandir a cobertura globalmente.", dragon: "Missão de transporte de tripulação ou carga para a Estação Espacial Internacional usando a espaçonave {{B}}Crew Dragon{{B}} ou {{B}}Cargo Dragon{{B}}.", falcon: "Uma missão essencial de logística orbital utilizando o comprovado {{B}}cavalo de batalha Falcon 9{{B}}. Este perfil entrega hardware comercial, científico ou institucional diretamente às órbitas designadas." },
-            pl: { payloadInfoLabel: "Informacje o ładunku:", starship: "Ten lot wyznacza kluczową ewolucję w eksploracji głębokiego kosmosu, wdrażając nowo zoptymalizowaną {{B}}platformę Starship V3{{B}}. Wyższa konstrukcja i większa pojemność paliwa wykładniczo zwiększają nasze możliwości. Każdy udany kamień milowy przybliża ludzkość do architektury marsjańskiej.", starlink: "Kluczowe wdrożenie ukierunkowane na globalną infrastrukturę komunikacyjną. Rozszerzając {{B}}konstelację Starlink{{B}}, misja ta koncentruje się na wypełnianiu luk w powłoce orbitalnej, obniżaniu regionalnych opóźnień sieci oraz globalnym rozszerzaniu zasięgu.", dragon: "Misja transportu załogi lub ładunku na Międzynarodową Stację Kosmiczną statkiem {{B}}Crew Dragon{{B}} lub {{B}}Cargo Dragon{{B}}.", falcon: "Kluczowa misja logistyki orbitalnej z wykorzystaniem sprawdzonego {{B}}konia roboczego Falcon 9{{B}}. Ten profil dostarcza sprzęt komercyjny, naukowy lub instytucjonalny bezpośrednio na wyznaczone orbity." },
-            hi: { payloadInfoLabel: "पेलोड जानकारी:", starship: "यह उड़ान गहन अंतरिक्ष अन्वेषण में एक महत्वपूर्ण विकास को चिह्नित करती है, जिसमें नए अनुकूलित {{B}}स्टारशिप V3 प्लेटफ़ॉर्म{{B}} को तैनात किया गया है। अधिक ऊंचाई और बेहतर प्रणोदक क्षमता के साथ, यह विन्यास हमारी क्षमताओं को कई गुना बढ़ाता है। हर सफल पड़ाव मानवता को मंगल वास्तुकला के करीब लाता है।", starlink: "वैश्विक संचार अवसंरचना को लक्षित करने वाली एक प्रमुख तैनाती। {{B}}Starlink तारामंडल{{B}} का विस्तार करके, यह मिशन कक्षीय परत में अंतराल को भरने, क्षेत्रीय नेटवर्क विलंबता को कम करने, और वैश्विक स्तर पर कवरेज क्षमताओं का विस्तार करने पर केंद्रित है।", dragon: "{{B}}Crew Dragon{{B}} या {{B}}Cargo Dragon{{B}} अंतरिक्ष यान का उपयोग करके अंतरराष्ट्रीय अंतरिक्ष स्टेशन तक चालक दल या कार्गो परिवहन मिशन।", falcon: "युद्ध-परीक्षित {{B}}Falcon 9 वर्कहॉर्स{{B}} का उपयोग करते हुए एक आवश्यक कक्षीय रसद मिशन। यह प्रोफ़ाइल वाणिज्यिक, वैज्ञानिक या संस्थागत हार्डवेयर को सीधे निर्दिष्ट कक्षाओं में पहुंचाती है।" },
-            ar: { payloadInfoLabel: "معلومات الحمولة:", starship: "تمثل هذه الرحلة تطورًا محوريًا في استكشاف الفضاء السحيق، من خلال نشر {{B}}منصة ستارشيب V3{{B}} المحسّنة حديثًا. بارتفاع أكبر وقدرة أكبر على حمل الوقود الدافع، يوسّع هذا التكوين قدراتنا بشكل كبير. كل معلم ناجح يقرّب البشرية من عمارة المريخ.", starlink: "نشر رئيسي يستهدف البنية التحتية للاتصالات العالمية. من خلال توسيع {{B}}كوكبة Starlink{{B}}، تركز هذه المهمة على سد الفجوات في الغلاف المداري، وخفض زمن استجابة الشبكة الإقليمية، وتوسيع قدرات التغطية عالميًا.", dragon: "مهمة نقل طاقم أو شحنة إلى محطة الفضاء الدولية باستخدام مركبة {{B}}Crew Dragon{{B}} أو {{B}}Cargo Dragon{{B}}.", falcon: "مهمة لوجستية مدارية أساسية باستخدام {{B}}فالكون 9{{B}} الموثوق. يوفر هذا الملف الشخصي أجهزة تجارية أو علمية أو مؤسسية مباشرة إلى المدارات المحددة." },
-            tr: { payloadInfoLabel: "Yük Bilgisi:", starship: "Bu uçuş, yeni optimize edilmiş {{B}}Starship V3 platformunu{{B}} devreye sokarak derin uzay keşfinde önemli bir evrimi işaret ediyor. Daha uzun boylu ve gelişmiş yakıt kapasitesine sahip bu yapılandırma, yeteneklerimizi katlanarak artırıyor. Her başarılı aşama insanlığı Mars Mimarisi'ne bir adım daha yaklaştırıyor.", starlink: "Küresel iletişim altyapısını hedefleyen kilit bir konuşlandırma. {{B}}Starlink takımyıldızını{{B}} genişleterek bu görev, yörünge katmanındaki boşlukları doldurmaya, bölgesel ağ gecikmesini azaltmaya ve kapsama alanını küresel olarak genişletmeye odaklanıyor.", dragon: "{{B}}Crew Dragon{{B}} veya {{B}}Cargo Dragon{{B}} uzay aracı kullanılarak Uluslararası Uzay İstasyonu'na mürettebat veya kargo taşıma görevi.", falcon: "Kanıtlanmış {{B}}Falcon 9 iş atı{{B}} kullanılarak gerçekleştirilen temel bir yörünge lojistik görevi. Bu profil, ticari, bilimsel veya kurumsal donanımı doğrudan belirlenen yörüngelere teslim eder." },
+            en: { payloadInfoLabel: "Payload Info:", missionTypeLabel: "Mission Type:", programLabel: "Program:", agenciesLabel: "Partner Agencies:", noDataFallback: "No official mission details have been published for this launch yet." },
+            he: { payloadInfoLabel: "מידע על המטען:", missionTypeLabel: "סוג משימה:", programLabel: "תוכנית:", agenciesLabel: "סוכנויות שותפות:", noDataFallback: "טרם פורסמו פרטים רשמיים על משימה זו." },
+            iw: { payloadInfoLabel: "מידע על המטען:", missionTypeLabel: "סוג משימה:", programLabel: "תוכנית:", agenciesLabel: "סוכנויות שותפות:", noDataFallback: "טרם פורסמו פרטים רשמיים על משימה זו." },
+            es: { payloadInfoLabel: "Información de la Carga:", missionTypeLabel: "Tipo de Misión:", programLabel: "Programa:", agenciesLabel: "Agencias Asociadas:", noDataFallback: "Aún no se han publicado detalles oficiales sobre esta misión." },
+            fr: { payloadInfoLabel: "Informations sur la Charge Utile :", missionTypeLabel: "Type de Mission :", programLabel: "Programme :", agenciesLabel: "Agences Partenaires :", noDataFallback: "Aucun détail officiel sur cette mission n'a encore été publié." },
+            de: { payloadInfoLabel: "Nutzlast-Info:", missionTypeLabel: "Missionstyp:", programLabel: "Programm:", agenciesLabel: "Partneragenturen:", noDataFallback: "Für diesen Start wurden noch keine offiziellen Missionsdetails veröffentlicht." },
+            ru: { payloadInfoLabel: "Информация о полезной нагрузке:", missionTypeLabel: "Тип миссии:", programLabel: "Программа:", agenciesLabel: "Партнёрские агентства:", noDataFallback: "Официальные подробности об этой миссии пока не опубликованы." },
+            zh: { payloadInfoLabel: "载荷信息：", missionTypeLabel: "任务类型：", programLabel: "项目：", agenciesLabel: "合作机构：", noDataFallback: "该发射任务的官方详情尚未公布。" },
+            it: { payloadInfoLabel: "Info sul Carico Utile:", missionTypeLabel: "Tipo di Missione:", programLabel: "Programma:", agenciesLabel: "Agenzie Partner:", noDataFallback: "Non sono ancora stati pubblicati dettagli ufficiali su questa missione." },
+            cs: { payloadInfoLabel: "Informace o nákladu:", missionTypeLabel: "Typ mise:", programLabel: "Program:", agenciesLabel: "Partnerské agentury:", noDataFallback: "Oficiální podrobnosti o této misi zatím nebyly zveřejněny." },
+            sv: { payloadInfoLabel: "Nyttolastinfo:", missionTypeLabel: "Uppdragstyp:", programLabel: "Program:", agenciesLabel: "Partnermyndigheter:", noDataFallback: "Inga officiella uppdragsdetaljer har publicerats för denna uppskjutning än." },
+            nl: { payloadInfoLabel: "Ladinginformatie:", missionTypeLabel: "Missietype:", programLabel: "Programma:", agenciesLabel: "Partneragentschappen:", noDataFallback: "Er zijn nog geen officiële missiedetails gepubliceerd voor deze lancering." },
+            da: { payloadInfoLabel: "Nyttelastinfo:", missionTypeLabel: "Missionstype:", programLabel: "Program:", agenciesLabel: "Partneragenturer:", noDataFallback: "Der er endnu ikke offentliggjort officielle missionsdetaljer for denne opsendelse." },
+            pt: { payloadInfoLabel: "Informações da Carga:", missionTypeLabel: "Tipo de Missão:", programLabel: "Programa:", agenciesLabel: "Agências Parceiras:", noDataFallback: "Ainda não foram publicados detalhes oficiais sobre esta missão." },
+            pl: { payloadInfoLabel: "Informacje o ładunku:", missionTypeLabel: "Typ misji:", programLabel: "Program:", agenciesLabel: "Agencje partnerskie:", noDataFallback: "Oficjalne szczegóły tej misji nie zostały jeszcze opublikowane." },
+            hi: { payloadInfoLabel: "पेलोड जानकारी:", missionTypeLabel: "मिशन प्रकार:", programLabel: "कार्यक्रम:", agenciesLabel: "साझेदार एजेंसियां:", noDataFallback: "इस प्रक्षेपण के बारे में अभी तक कोई आधिकारिक मिशन विवरण प्रकाशित नहीं हुआ है।" },
+            ar: { payloadInfoLabel: "معلومات الحمولة:", missionTypeLabel: "نوع المهمة:", programLabel: "البرنامج:", agenciesLabel: "الوكالات الشريكة:", noDataFallback: "لم يتم نشر تفاصيل رسمية عن هذه المهمة بعد." },
+            tr: { payloadInfoLabel: "Yük Bilgisi:", missionTypeLabel: "Görev Türü:", programLabel: "Program:", agenciesLabel: "Ortak Ajanslar:", noDataFallback: "Bu fırlatma için henüz resmi görev detayları yayımlanmadı." },
         };
 
         function escapeHtml(str) {
@@ -3105,31 +3104,146 @@
             return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
-        function renderMissionPurposeHtml(category, description, currentLang) {
+        // Google's own on-page translate widget (the one driving the rest of the site) turned
+        // out to be the actual root cause of the RTL word-order bug in this paragraph - not
+        // Unicode bidi, not our own markup. Measured proof: a static test page containing the
+        // EXACT same HTML this function already produces (hand-translated label + plain <span>
+        // value), fed the SAME real Google-translated Hebrew string but WITHOUT the live widget
+        // touching it, rendered in perfectly correct visual order (checked via
+        // getBoundingClientRect() on each word, not just eyeballed). So the live widget's own
+        // DOM mutation around a translate="no" element sitting mid-sentence is what breaks it -
+        // something we can't fix from outside since we don't control that widget's internals.
+        // The fix is to stop letting it touch this element at all: translate the description
+        // ourselves via a direct call to Google's translation endpoint (translateTextViaGoogle
+        // below), insert the result as plain text, and mark the whole paragraph notranslate (see
+        // the HTML template) so the live widget never gets a chance to re-mutate it.
+        const GOOGLE_TRANSLATE_LANG_MAP = { iw: 'he', zh: 'zh-CN' };
+        const missionDescTranslationCache = new Map(); // key: `${langKey} ${text}` -> translated string
+
+        function translateTextViaGoogle(text, langKey) {
+            if (!text) return Promise.resolve(text);
+            if (!langKey || langKey === 'en') return Promise.resolve(text);
+            const cacheKey = langKey + ' ' + text;
+            if (missionDescTranslationCache.has(cacheKey)) {
+                return Promise.resolve(missionDescTranslationCache.get(cacheKey));
+            }
+            const googleLang = GOOGLE_TRANSLATE_LANG_MAP[langKey] || langKey;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=' +
+                encodeURIComponent(googleLang) + '&dt=t&q=' + encodeURIComponent(text);
+            return fetch(url, { signal: controller.signal })
+                .then(res => {
+                    if (!res.ok) throw new Error('translate API error');
+                    return res.json();
+                })
+                .then(data => {
+                    clearTimeout(timeoutId);
+                    const translated = (data && data[0] || []).map(seg => seg[0]).join('');
+                    if (!translated) throw new Error('empty translation');
+                    missionDescTranslationCache.set(cacheKey, translated);
+                    return translated;
+                })
+                .catch(() => {
+                    clearTimeout(timeoutId);
+                    // Fall back to the original English text - worse than a translation, but
+                    // strictly better than a blank paragraph or (as before) scrambled output.
+                    return text;
+                });
+        }
+
+        // Translates an array of independent strings in ONE request instead of N parallel ones,
+        // by joining them with a distinctive separator and splitting the translated result back
+        // apart - verified against the real endpoint: it preserves " ||| " byte-for-byte,
+        // including empty segments, rather than merging or dropping them. This matters because
+        // N parallel calls to this unofficial endpoint means N times the chance of hitting its
+        // rate limit, and a throttled call silently falls back to English - with N separate
+        // calls that shows up as "some fields translated, some not" (a live user report caught
+        // exactly this for the mission-purpose paragraph's 4 fields), not as an obvious failure.
+        // One request only fails or succeeds as a whole, which is what actually fixes the
+        // inconsistency - not a smarter retry, just far fewer chances to get throttled at all.
+        // Falsy/empty entries are preserved as empty strings in the result without being sent
+        // to the API at all (translating "" is meaningless and would just consume another slot).
+        const BATCH_TRANSLATE_SEP = ' ||| ';
+        function translateBatchViaGoogle(texts, langKey) {
+            if (!langKey || langKey === 'en') return Promise.resolve(texts.slice());
+            const nonEmptyTexts = texts.filter(Boolean);
+            if (nonEmptyTexts.length === 0) return Promise.resolve(texts.slice());
+            const combined = nonEmptyTexts.join(BATCH_TRANSLATE_SEP);
+            return translateTextViaGoogle(combined, langKey).then(translatedCombined => {
+                const parts = translatedCombined.split(/\s*\|\|\|\s*/);
+                if (parts.length !== nonEmptyTexts.length) {
+                    // Google merged/dropped a segment somewhere - safer to return everything in
+                    // English (still correct, just untranslated) than to risk a value landing
+                    // in the wrong slot.
+                    return texts.slice();
+                }
+                let i = 0;
+                return texts.map(t => (t ? parts[i++] : t));
+            });
+        }
+
+        function translateMissionFieldsViaGoogle(description, missionType, programStr, agenciesStr, langKey) {
+            return translateBatchViaGoogle([description, missionType, programStr, agenciesStr], langKey)
+                .then(([description, missionType, programStr, agenciesStr]) => ({ description, missionType, programStr, agenciesStr }));
+        }
+
+        // Pure/sync HTML builder. Every value here is whatever's already available at call time
+        // (raw English on applyMissionPurposeHtml's first, instant render; the Google-translated
+        // strings once those resolve) - programStr/agenciesStr arrive pre-joined (see
+        // applyMissionPurposeHtml), not as arrays, since they need to be plain strings to run
+        // through translateTextViaGoogle in the first place.
+        function buildMissionPurposeHtml(description, missionType, programStr, agenciesStr, dict) {
+            const hasDescription = !!(description && description.length > 30);
+            if (!hasDescription) {
+                // No real mission.description from the API at all (rare - mostly far-out TBD
+                // launches) - one honest hand-translated sentence instead of guessing at
+                // per-category boilerplate the way this used to.
+                return `<span class="notranslate" translate="no">${escapeHtml(dict.noDataFallback || MISSION_PURPOSE_I18N.en.noDataFallback)}</span>`;
+            }
+            const line = (labelKey, value) => {
+                if (!value) return '';
+                const label = dict[labelKey] || MISSION_PURPOSE_I18N.en[labelKey];
+                return `<strong class="notranslate" translate="no">${escapeHtml(label)}</strong> <span class="no-starship-protect">${escapeHtml(value)}</span>`;
+            };
+            const lines = [
+                line('payloadInfoLabel', description),
+                line('missionTypeLabel', missionType),
+                line('programLabel', programStr),
+                line('agenciesLabel', agenciesStr),
+            ].filter(Boolean);
+            return lines.join('<br>');
+        }
+
+        // Renders #modal-description-detailed immediately with the raw (English) values - no
+        // flash of emptiness while translation is in flight - then swaps in the fully
+        // Google-translated version once translateMissionFieldsViaGoogle resolves. A generation
+        // token (same pattern as renderCurrentFact's _factRenderGeneration above) makes sure a
+        // stale in-flight translation from a mission/language the user has since navigated away
+        // from can never clobber whatever's showing now. missionType/program/agencies get
+        // translated too (not just the description) - per explicit user feedback, a paragraph
+        // that's translated everywhere except a couple of short trailing lines looks unfinished/
+        // inconsistent, even though those values are themselves just brief API strings.
+        let _missionPurposeGen = 0;
+        function applyMissionPurposeHtml(el, description, missionType, programNames, missionAgencies, currentLang) {
+            if (!el) return;
             let key = (currentLang || 'en').split('-')[0];
             if (key === 'zh') key = 'zh';
             const dict = MISSION_PURPOSE_I18N[key] || MISSION_PURPOSE_I18N.en;
-            const catKey = dict[category] ? category : 'falcon';
-            const template = dict[catKey] || MISSION_PURPOSE_I18N.en.falcon;
-            const bodyHtml = template.replace(/\{\{B\}\}(.*?)\{\{B\}\}/g, '<strong>$1</strong>');
-            let html = `<span class="notranslate" translate="no">${bodyHtml}</span>`;
-            if (description && description.length > 30) {
-                const label = dict.payloadInfoLabel || MISSION_PURPOSE_I18N.en.payloadInfoLabel;
-                // The payload description comes straight from the live launch API and is
-                // different for every mission, so unlike the paragraph above it can't be
-                // pre-translated by hand — it's left for Google Translate to translate as one
-                // continuous sentence, "Starship" included. It's marked no-starship-protect so
-                // localizeStarshipTerm() leaves it alone: splicing a notranslate span into the
-                // *middle* of a sentence Google is about to grammatically reorder (Hebrew
-                // possessives move the noun after what it modifies, unlike English) is what
-                // caused the gluing/dropped-space bug — Google's own translation model
-                // handles an unfamiliar proper noun inline far better than our DOM surgery
-                // after the fact does. This trades occasional imprecise handling of the word
-                // "Starship" itself for a sentence that actually reads as translated instead
-                // of staying in English or coming out glued together.
-                html += `<br><br><strong class="notranslate" translate="no">${escapeHtml(label)}</strong> <span class="no-starship-protect">${escapeHtml(description)}</span>`;
-            }
-            return html;
+            const programStr = Array.isArray(programNames) ? programNames.join(', ') : programNames;
+            const agenciesStr = Array.isArray(missionAgencies) ? missionAgencies.join(', ') : missionAgencies;
+
+            const myGen = ++_missionPurposeGen;
+            el.innerHTML = buildMissionPurposeHtml(description, missionType, programStr, agenciesStr, dict);
+
+            const hasDescription = !!(description && description.length > 30);
+            if (!hasDescription || key === 'en') return;
+
+            translateMissionFieldsViaGoogle(description, missionType, programStr, agenciesStr, key)
+                .then(t => {
+                    if (_missionPurposeGen !== myGen) return; // superseded by a newer render
+                    el.innerHTML = buildMissionPurposeHtml(t.description, t.missionType, t.programStr, t.agenciesStr, dict);
+                });
         }
 
         let lastAppliedMilestonesLang = null;
@@ -3464,11 +3578,14 @@
                     // .lang-en-lock content is intentionally left untouched in English (see
                     // the status badges); swapping in just the localized "Starship" term there
                     // would produce a jarring one-word-translated mix instead of a full
-                    // sentence. .no-starship-protect (the dynamic payload description in
-                    // renderMissionPurposeHtml) is left alone for a different reason: it's
-                    // still meant to be Google-translated as one continuous sentence, and
-                    // splicing our own notranslate span into the middle of it right as Google
-                    // grammatically reorders that sentence is what caused the gluing bug.
+                    // sentence. .no-starship-protect (the mission description/type/program/
+                    // agencies values built by applyMissionPurposeHtml) is left alone because
+                    // that whole paragraph is now translate="no" and translates itself via a
+                    // direct call to Google's translation endpoint (see translateTextViaGoogle) -
+                    // Google's on-page widget must never touch it at all any more (it mutating
+                    // the DOM around a notranslate label sitting mid-sentence is what caused an
+                    // RTL word-order bug there), so there's nothing for localizeStarshipTerm to
+                    // usefully do inside it either.
                     if (!p || p.closest('.starship-term') || p.closest('.lang-en-lock') || p.closest('.no-starship-protect') || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
                     return NodeFilter.FILTER_ACCEPT;
                 }
@@ -3591,7 +3708,7 @@
                 // re-render on language change instead of relying on Google Translate.
                 const descDetailEl = document.getElementById('modal-description-detailed');
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && descDetailEl && window.currentActiveMissionCategory) {
-                    descDetailEl.innerHTML = renderMissionPurposeHtml(window.currentActiveMissionCategory, window.currentActiveMissionDescription, currentLang);
+                    applyMissionPurposeHtml(descDetailEl, window.currentActiveMissionDescription, window.currentActiveMissionType, window.currentActiveMissionProgramNames, window.currentActiveMissionAgencies, currentLang);
                 }
                 // Same for the mission modal's LAUNCH SITE value and the hero banner's site
                 // line — both notranslate now (see localizeSiteStr above), so a language
@@ -5048,8 +5165,17 @@
                         <i class="fa-solid fa-crosshairs text-sm"></i>
                         <span id="modal-objectives-title-text">Mission Objectives and Payload Information</span>
                     </h4>
-                    <p id="modal-description-detailed"
-                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500">
+                    <!-- notranslate/translate="no": this paragraph translates itself now (see
+                         renderMissionPurposeHtml / translateTextViaGoogle) via a direct call to
+                         Google's translation endpoint instead of relying on the page's live
+                         on-page translate widget. That widget mutating the DOM around the
+                         translate="no" label sitting mid-sentence turned out to be what actually
+                         scrambled RTL word order here (confirmed by measuring word positions on
+                         a static test page with the same markup, translated text, but without
+                         the live widget - it rendered correctly) - so the widget must never be
+                         allowed to touch this element at all now, or the same bug comes back. -->
+                    <p id="modal-description-detailed" translate="no"
+                        class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950 p-5 border border-zinc-800/80 rounded-2xl transition-colors duration-500">
                     </p>
                 </div>
 
@@ -8268,33 +8394,29 @@
             return { code: 'LEO', label: 'LEO (Low Earth Orbit)' };
         }
 
+        // Only builds the "Key Flight Milestones" checklist (#modal-includes) now - the prose
+        // paragraph this used to also generate (detailedAnalysis, 4 fixed per-category
+        // templates) was replaced by applyMissionPurposeHtml/buildMissionPurposeHtml building
+        // real per-mission text
+        // from API fields instead, per explicit user request.
         function generateDetailedMissionPurpose(name, category, description, vehicle) {
             const isStarlink = category === 'starlink';
             const isStarship = category === 'starship';
             const isDragon = category === 'dragon';
 
-            let detailedAnalysis = "";
             let coreObjectives = [];
 
             if (isStarship) {
-                detailedAnalysis = `This flight marks a pivotal evolution in deep space exploration, deploying the newly optimized **Starship V3 platform**. Standing taller and featuring enhanced propellant capacity, this configuration expands our capabilities exponentially. Every successful checkpoint brings humanity closer to Mars Architecture.`;
                 coreObjectives = ["Validate upgraded Raptor v3 engine thrust vectors", "Conduct Hot-Staging rings separation thermal stress tests", "Execute precision launchpad booster recovery sequence", "Verify payload dispenser mechanics in vacuum", "Gather crucial heat shield tile ablation data during re-entry"];
             } else if (isStarlink) {
-                detailedAnalysis = `A key deployment targeting global communications infrastructure. By expanding the **Starlink constellation**, this mission focuses on filling orbital shell gaps, lowering regional network latency, and expanding coverage capabilities globally.`;
                 coreObjectives = ["Deploy Starlink V2 Mini high-capacity satellites", "Establish active laser cross-links between orbital nodes", "Execute precise first-stage recovery on autonomous drone ship", "Boost global high-speed Internet constellation bandwidth"];
             } else if (isDragon) {
-                detailedAnalysis = `Crew or cargo transport mission to the International Space Station using the **Crew Dragon** or **Cargo Dragon** spacecraft.`;
                 coreObjectives = ["Rendezvous and docking with ISS", "Crew/cargo transfer operations", "Safe re-entry and splashdown/recovery"];
             } else {
-                detailedAnalysis = `An essential orbital logistics mission using the battle-tested **Falcon 9 workhorse**. This profile delivers commercial, scientific, or institutional hardware directly to designated orbits.`;
                 coreObjectives = ["Satisfy precision orbital insertion parameters for active payload", "Execute controlled retroburn of the Falcon 9 second stage", "Conduct automated autonomous landing sequence for recovery", "Provide low-cost, ultra-reliable access to orbit"];
             }
 
-            if (description && description.length > 30) {
-                detailedAnalysis += `\n\n**Payload Info:** ${description}`;
-            }
-
-            return { analysis: detailedAnalysis, objectives: coreObjectives };
+            return { objectives: coreObjectives };
         }
 
         function mapLaunchToSchema(launch, id) {
@@ -8622,8 +8744,10 @@
                 description: missionDesc,
                 orbitCode: orbitInfo.code,
                 orbitLabel: orbitInfo.label,
-                detailedAnalysis: details.analysis,
                 objectives: details.objectives,
+                missionType: (launch.mission && launch.mission.type) || '',
+                programNames: Array.isArray(launch.program) ? launch.program.map(p => p.name).filter(Boolean) : [],
+                missionAgencies: (launch.mission && Array.isArray(launch.mission.agencies)) ? launch.mission.agencies.map(a => a.name).filter(Boolean) : [],
                 image: launchImage,
                 patch: patchUrl,
                 liveUrl: liveStreamUrl,
@@ -8646,10 +8770,11 @@
         // Permanent, self-growing local archive of one mission per unique patch - this is what
         // makes the patches section never need to re-hit the API for anything it has already
         // seen. Stored as the same object shape mapLaunchToSchema produces (so it's directly
-        // usable by openMissionModal / renderMissionPurposeHtml with no re-fetching, including
+        // usable by openMissionModal / applyMissionPurposeHtml with no re-fetching, including
         // the mission description - that still renders correctly in whatever language is
-        // active later, since renderMissionPurposeHtml regenerates the localized text from the
-        // archived m.category + m.description at open time rather than from a frozen string).
+        // active later, since applyMissionPurposeHtml re-translates from the archived
+        // m.description/m.missionType/m.programNames/m.missionAgencies at open time rather than
+        // from a frozen string).
         // Seeded once from the one-time historical snapshot (HISTORICAL_RAW_LAUNCHES), then
         // grown incrementally forever after: each time live data refreshes, any newly-seen
         // launch with a patch not already in the archive gets appended and persisted - never
@@ -11459,7 +11584,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             window.currentActiveMissionCategory = m.category;
             window.currentActiveMissionDescription = m.description;
-            document.getElementById('modal-description-detailed').innerHTML = renderMissionPurposeHtml(m.category, m.description, document.documentElement.lang);
+            window.currentActiveMissionType = m.missionType;
+            window.currentActiveMissionProgramNames = m.programNames;
+            window.currentActiveMissionAgencies = m.missionAgencies;
+            applyMissionPurposeHtml(document.getElementById('modal-description-detailed'), m.description, m.missionType, m.programNames, m.missionAgencies, document.documentElement.lang);
             document.getElementById('modal-includes').innerHTML = (m.objectives || []).map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${i}</span></div>`).join('');
 
             // Falcon missions drop the separate "Key Flight Milestones" checklist section -
