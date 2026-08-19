@@ -4376,7 +4376,19 @@
             }
 
             shortenGoogleTranslatePlaceholder();
-            fitGoogleTranslateComboWidth();
+            // Width fit only when the selected language label changes — not every 500ms tick
+            // (repeated style writes on the sticky header select can interact badly with mobile
+            // scroll / focus management).
+            try {
+                const combo = document.querySelector('#google_translate_element select.goog-te-combo');
+                const selText = combo && combo.options && combo.options[combo.selectedIndex]
+                    ? (combo.options[combo.selectedIndex].textContent || '')
+                    : '';
+                if (selText && combo.dataset.lastFitLabel !== selText) {
+                    combo.dataset.lastFitLabel = selText;
+                    fitGoogleTranslateComboWidth();
+                }
+            } catch (e) { /* ignore */ }
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
             applyNiceToKnowTranslations(currentLang);
@@ -13390,12 +13402,36 @@ fitTitleOneLine(document.getElementById('hero-name'));
         }
 
         function init() {
-            window.scrollTo(0, 0);
+            // Do NOT window.scrollTo(0,0) here — on mobile this races with the browser's own
+            // scroll restoration / address-bar layout and can leave the page fighting the user
+            // when they try to scroll. Start wherever the browser naturally put us.
             initVisualMode();
             generateProceduralStars();
             updateClock();
             initDidYouKnow();
             initStickyCountdown();
+
+            // Mobile scroll-to-top storm guard: while the user is actively touch-scrolling,
+            // ignore any window.scrollTo({top:0}) / scrollTo(0,0) calls (tab switch, third-party
+            // widgets, focus management, etc.). Without this, a single bad call mid-gesture
+            // feels like the page "keeps throwing you back to the top".
+            (function installMobileScrollTopGuard() {
+                let lockUntil = 0;
+                const arm = () => { lockUntil = Date.now() + 1000; };
+                window.addEventListener('touchstart', arm, { passive: true, capture: true });
+                window.addEventListener('touchmove', arm, { passive: true, capture: true });
+                const origScrollTo = window.scrollTo.bind(window);
+                window.scrollTo = function (a, b) {
+                    if (Date.now() < lockUntil) {
+                        let top = null;
+                        if (typeof a === 'number') top = a;
+                        else if (a && typeof a === 'object' && 'top' in a) top = a.top;
+                        if (top === 0) return;
+                    }
+                    if (typeof a === 'object' && a !== null) return origScrollTo(a);
+                    return origScrollTo(a, b);
+                };
+            })();
 
             // A browser refresh (F5 / the reload button) shouldn't cost an API call if we
             // already fetched moments ago - that's the exact same LL2 request budget the
@@ -13461,20 +13497,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // display:none/reflow trick on every one of those events throws the page back
             // to the top and makes the site unscollable.
             const settleLayoutAfterRotation = () => {
-                const nav = document.querySelector('nav');
-                if (document.body.style.top && document.body.style.top !== '0px') {
-                    document.body.style.top = '0px';
-                }
-                if (nav) {
-                    const prevDisplay = nav.style.display;
-                    const prevPosition = nav.style.position;
-                    nav.style.display = 'none';
-                    nav.style.position = 'static';
-                    // eslint-disable-next-line no-unused-expressions
-                    nav.offsetHeight;
-                    nav.style.display = prevDisplay;
-                    nav.style.position = prevPosition;
-                }
+                // Intentionally do NOT touch document.body.style.top — fighting Google
+                // Translate's body offset causes scroll jumps on mobile.
+                // Also avoid display:none reflow of nav (was snapping the page to the top).
                 fitAllTitlesOneLine(document);
                 fitAllSectionTitles(document);
             };
@@ -13629,20 +13654,14 @@ if (heroNameEl) {
                 incoming.classList.remove('tab-panel-preenter');
             };
 
-            // Scroll to the very top of the page BEFORE starting the panel's own fade/slide -
-            // found by extracting actual frames from a video the user sent (2026-08-18): tapping
-            // a tab while scrolled deep into the OTHER tab's content (e.g. the documentary
-            // section) caused the ENTIRE page to instantly snap to the top in the exact same
-            // frame the fade-out began, while the tall outgoing content was still fully present
-            // in the layout - an instant, large scroll jump landing in the same instant as an
-            // opacity/transform animation starting is exactly the kind of collision that reads
-            // as a visible "shake"/jolt, and it's more dramatic the further down the user had
-            // scrolled. Doing the jump FIRST (before `tab-panel-leaving` is even added) means the
-            // browser paints the snap against still-static, fully-opaque content - looks like a
-            // normal, deliberate "jump to top" - and only THEN, from that already-settled
-            // position, does the fade/slide begin as its own clean, isolated motion.
+            // Scroll to top only when the user intentionally switches tabs — and never while
+            // they are mid-touch-scroll (see installMobileScrollTopGuard in init()).
+            // On mobile use instant jump only if not touch-locked; otherwise skip to avoid the
+            // "thrown back to top" fight during normal browsing.
             const isMobileViewport = window.innerWidth < 640;
-            window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
+            try {
+                window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
+            } catch (e) { /* ignore */ }
 
             if (instant || outgoing.classList.contains('hidden')) {
                 // First paint / already hidden — swap without exit animation
