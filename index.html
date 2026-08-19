@@ -13455,23 +13455,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
             });
 
             // On mobile, flipping the device to landscape can leave the sticky nav
-            // (and the theme toggle button inside it) rendered in a stale position for
-            // a frame — briefly overlapping the page headers below it — because the
-            // browser reflows the sticky/backdrop-blur nav and Google Translate's body
-            // offset asynchronously with the orientation change itself. Forcing a
-            // reflow right after (and shortly after) the event settles it immediately.
+            // rendered in a stale position for a frame. Only run this on REAL orientation
+            // changes — NOT on visualViewport resize. visualViewport fires constantly while
+            // the mobile URL bar shows/hides during normal scrolling; running the nav
+            // display:none/reflow trick on every one of those events throws the page back
+            // to the top and makes the site unscollable.
             const settleLayoutAfterRotation = () => {
                 const nav = document.querySelector('nav');
                 if (document.body.style.top && document.body.style.top !== '0px') {
                     document.body.style.top = '0px';
                 }
                 if (nav) {
-                    // Toggling display AND position forces the browser to recompute the
-                    // sticky nav's position/stacking instead of reusing a stale
-                    // pre-rotation layout — iOS Safari in particular can leave a
-                    // sticky + backdrop-blur element (like this nav, with the theme
-                    // toggle button inside it) rendered at its old position for a beat
-                    // after a landscape flip, overlapping the headers beneath it.
                     const prevDisplay = nav.style.display;
                     const prevPosition = nav.style.position;
                     nav.style.display = 'none';
@@ -13482,7 +13476,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     nav.style.position = prevPosition;
                 }
                 fitAllTitlesOneLine(document);
-            fitAllSectionTitles(document);
+                fitAllSectionTitles(document);
             };
             window.addEventListener('orientationchange', () => {
                 settleLayoutAfterRotation();
@@ -13492,16 +13486,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (window.screen && window.screen.orientation) {
                 window.screen.orientation.addEventListener('change', () => {
                     setTimeout(settleLayoutAfterRotation, 200);
-                });
-            }
-            // visualViewport fires more reliably than orientationchange on some mobile
-            // browsers (and fires once the viewport dimensions have actually settled,
-            // rather than at the start of the rotation), so it's a useful second net.
-            if (window.visualViewport) {
-                let vvRotateTimer;
-                window.visualViewport.addEventListener('resize', () => {
-                    clearTimeout(vvRotateTimer);
-                    vvRotateTimer = setTimeout(settleLayoutAfterRotation, 150);
                 });
             }
             // כשגוגל טרנסלייט מסיים לתרגם – מקטין שוב את כותרת ההירו
