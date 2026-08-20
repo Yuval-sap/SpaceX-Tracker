@@ -379,6 +379,15 @@
             animation: pulse-calm 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
+        /* "LIVE TELEMETRY" header badge - was plain Tailwind .animate-pulse (2s), which read as
+           a fast, urgent blink for what's just a steady "yes, this is live" status badge, not an
+           alert. Same pulse-calm keyframes as above, just stretched much further (much slower
+           per explicit user request) since even pulse-calm's own 3s wasn't a big enough
+           departure from the original 2s to read as "slow". */
+        .live-telemetry-pulse {
+            animation: pulse-calm 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
         /* T-5 pre-launch alert mode: same 3s / cubic-bezier(0.4,0,0.6,1) rhythm as
            pulse-calm above (used elsewhere for the near-T-0 countdown text) so the
            border and the countdown digits breathe in sync instead of at two
@@ -906,8 +915,17 @@
             order: 1;
         }
 
-        #news-ticker-wrap:hover #news-ticker-track {
-            animation-play-state: paused;
+        /* Gated to (hover: hover) and (pointer: fine) - a touch device has no real mouse to
+           naturally "unhover" after a tap, so without this gate, tapping a ticker item (e.g. to
+           follow its link) left the animation permanently paused/"stuck" until the browser
+           eventually cleared the stale :hover state on its own, sometimes a long while later.
+           Same root cause already fixed for the theme toggle and mission cards elsewhere in
+           this file - this is the same pattern, just missed here. Desktop mouse users keep the
+           original "hover to pause and read" behavior unchanged. */
+        @media (hover: hover) and (pointer: fine) {
+            #news-ticker-wrap:hover #news-ticker-track {
+                animation-play-state: paused;
+            }
         }
 
         @keyframes ticker-scroll-ltr {
@@ -4756,7 +4774,7 @@
                     class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate m-0"
                     translate="no">SPACEX LAUNCH TRACKER</h1>
                 <span
-                    class="hidden xl:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full animate-pulse shrink-0">LIVE
+                    class="hidden xl:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full live-telemetry-pulse shrink-0">LIVE
                     TELEMETRY</span>
             </div>
 
@@ -6839,6 +6857,30 @@
             });
 
             startAutoThemeWatch();
+            preloadModeBackgroundImages();
+        }
+
+        // Mars/Moon mode's desktop background photo (set via CSS background-image on
+        // .stars-container, not an <img> tag) is a multi-hundred-KB hotlinked external image
+        // the browser has never fetched before the first time a visitor actually switches to
+        // that mode - so the color/class changes (instant, CSS-only) used to land immediately
+        // while the photo itself visibly popped in a beat later once the network fetch finally
+        // finished, out of sync with everything else. Warms the browser's own image cache for
+        // both photos ahead of time so that by the time someone actually opens the mode menu
+        // and picks Mars/Moon, the fetch is already done (or far along) and the photo can paint
+        // in the very same frame as the color switch.
+        // - Desktop width only: below the 640px breakpoint these themes use a local, already-fast
+        //   mars-mobile.png/moon-mobile.png instead (see the CSS), so there's nothing to preload there.
+        // - Deferred to the browser's idle time (falling back to a plain timeout on Safari, which
+        //   doesn't support requestIdleCallback) rather than fetched immediately on load, so this
+        //   never competes for bandwidth/connections with the actual visible page content.
+        function preloadModeBackgroundImages() {
+            if (window.innerWidth <= 640) return;
+            const schedule = window.requestIdleCallback || function (cb) { setTimeout(cb, 2000); };
+            schedule(function () {
+                new Image().src = 'https://imgix.bustle.com/uploads/image/2022/4/11/9acdc0da-c0f3-4e5a-a635-7f9e7f676c5f-screenshot-2022-04-11-at-17-24-18-spacex.jpg?w=920&h=560&fit=crop&crop=faces&dpr=2';
+                new Image().src = 'https://i.redd.it/dgantnoqqtp31.jpg';
+            });
         }
 
         // Re-checks the day/night clock boundary while the tab stays open, so a session that's
