@@ -1077,6 +1077,12 @@
             width: auto !important;
             max-width: 148px !important;
             box-sizing: content-box !important;
+            /* box-sizing is content-box (see above), so this is the CONTENT height only -
+               padding (4px top+bottom = 8px) and border (1px top+bottom = 2px) are added on
+               top by the box model. 26px content + 8px padding + 2px border = 36px total,
+               matching #mode-menu-btn / the clock pill's own sm:h-9 (border-box, 36px) so all
+               three sticky-nav controls line up at the same visual height. */
+            height: 26px !important;
         }
 
         .goog-te-gadget .goog-te-combo:hover {
@@ -1192,7 +1198,10 @@
                 white-space: nowrap !important;
                 padding: 1px 4px !important;
                 font-size: 10px !important;
-                height: 24px !important;
+                /* content-box (see base rule): 20px content + 2px padding (1+1) + 2px border
+                   (1+1) = 24px total, matching #mode-menu-btn / the clock pill's own base h-6
+                   (border-box, 24px). */
+                height: 20px !important;
                 border-radius: 0.5rem !important;
             }
         }
@@ -2280,17 +2289,18 @@
             --tw-gradient-from: #ff6b35 !important;
         }
 
+        /* Resting shadow: same 3-layer shape as the default theme's own
+           body:not(.light-theme) .mission-card rule (15px/30px/-8px + 6px/14px/-6px + 1px
+           inset highlight), but deliberately stronger (darker + wider blur) than default's -
+           default sits on a plain starfield, while Mars/Moon sit on a busy photographic
+           surface behind them, so the cards need a more pronounced drop shadow to still read
+           as clearly "lifted" off the background instead of blending into it. */
         body.mars-theme .mission-card {
-            box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 107, 53, 0.06) inset !important;
-        }
-        body.mars-theme .mission-card:hover,
-        body.mars-theme .mission-card:active {
-            box-shadow: 0 22px 44px -14px rgba(255, 107, 53, 0.35), 0 0 28px 2px rgba(255, 107, 53, 0.2) !important;
-            border-color: rgba(255, 107, 53, 0.6) !important;
+            box-shadow: 0 18px 34px -8px rgba(0, 0, 0, 0.6), 0 8px 18px -6px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 140, 80, 0.08) inset !important;
         }
         body.mars-theme #past-launches-grid .mission-card:hover,
         body.mars-theme #past-launches-grid .mission-card:active {
-            box-shadow: 0 8px 16px -8px rgba(255, 107, 53, 0.35), 0 0 10px 1px rgba(255, 107, 53, 0.25) !important;
+            box-shadow: 0 8px 16px -8px rgba(255, 107, 53, 0.35), 0 0 8px 1px rgba(255, 107, 53, 0.25) !important;
         }
         body.mars-theme .milestone-card:hover,
         body.mars-theme .milestone-card:active {
@@ -2390,7 +2400,7 @@
         body.mars-theme .main-tab-btn.is-active {
             color: #ff8c5a !important;
             border-color: rgba(255, 107, 53, 0.55) !important;
-            background: rgba(255, 107, 53, 0.08) !important;
+            background: transparent !important;
         }
         @media (hover: hover) and (pointer: fine) {
             body.mars-theme .main-tab-btn:hover {
@@ -2413,7 +2423,7 @@
             background-image: linear-gradient(to right, #9a3412, #ff6b35);
         }
         body.moon-theme .booster-bar-fill {
-            background-image: linear-gradient(to right, #3b6a94, #9ec5e8);
+            background-image: linear-gradient(to right, #175582, #3fa9f5);
         }
         .booster-sn {
             transition: filter 0.3s ease;
@@ -2425,7 +2435,7 @@
             filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.9));
         }
         body.moon-theme #booster-leaderboard .group:hover .booster-sn {
-            filter: drop-shadow(0 0 8px rgba(158, 197, 232, 0.9));
+            filter: drop-shadow(0 0 8px rgba(63, 169, 245, 0.9));
         }
 
         /* Mars — Booster Flight Leaderboard chrome */
@@ -2545,46 +2555,47 @@
         body.moon-theme .text-zinc-500 { color: #6b809c !important; }
         body.moon-theme .text-zinc-600 { color: #536578 !important; }
         body.moon-theme .text-emerald-400,
-        body.moon-theme .text-emerald-500 { color: #9ec5e8 !important; }
-        body.moon-theme .text-emerald-300 { color: #b8d6f0 !important; }
+        body.moon-theme .text-emerald-500 { color: #3fa9f5 !important; }
+        body.moon-theme .text-emerald-300 { color: #6abffb !important; }
         body.moon-theme .bg-emerald-500,
-        body.moon-theme .bg-emerald-400 { background-color: #6b9fc9 !important; }
-        body.moon-theme .bg-emerald-500\/10 { background-color: rgba(158, 197, 232, 0.12) !important; }
-        body.moon-theme .bg-emerald-500\/15 { background-color: rgba(158, 197, 232, 0.16) !important; }
+        body.moon-theme .bg-emerald-400 { background-color: #1183d4 !important; }
+        body.moon-theme .bg-emerald-500\/10 { background-color: rgba(63, 169, 245, 0.12) !important; }
+        body.moon-theme .bg-emerald-500\/15 { background-color: rgba(63, 169, 245, 0.16) !important; }
         body.moon-theme .border-emerald-500,
         body.moon-theme .border-emerald-400,
         body.moon-theme .border-emerald-500\/40,
-        body.moon-theme .border-emerald-500\/50 { border-color: rgba(158, 197, 232, 0.45) !important; }
-        body.moon-theme .border-emerald-500\/20 { border-color: rgba(158, 197, 232, 0.25) !important; }
+        body.moon-theme .border-emerald-500\/50 { border-color: rgba(63, 169, 245, 0.45) !important; }
+        body.moon-theme .border-emerald-500\/20 { border-color: rgba(63, 169, 245, 0.25) !important; }
         body.moon-theme .shadow-\[0_0_8px_\#10b981\],
         body.moon-theme .shadow-\[0_0_12px_rgba\(16\,185\,129\,0\.3\)\] {
-            box-shadow: 0 0 14px rgba(158, 197, 232, 0.35) !important;
+            box-shadow: 0 0 14px rgba(63, 169, 245, 0.35) !important;
         }
         @media (min-width: 768px) {
-            body.moon-theme .md\:hover\:bg-emerald-500:hover { background-color: #6b9fc9 !important; }
-            body.moon-theme .md\:hover\:border-emerald-500:hover { border-color: #9ec5e8 !important; }
-            body.moon-theme .md\:hover\:text-emerald-400:hover { color: #b8d6f0 !important; }
+            body.moon-theme .md\:hover\:bg-emerald-500:hover { background-color: #1183d4 !important; }
+            body.moon-theme .md\:hover\:border-emerald-500:hover { border-color: #3fa9f5 !important; }
+            body.moon-theme .md\:hover\:text-emerald-400:hover { color: #6abffb !important; }
         }
-        body.moon-theme .hover\:border-emerald-500\/50:hover { border-color: rgba(158, 197, 232, 0.5) !important; }
+        body.moon-theme .hover\:border-emerald-500\/50:hover { border-color: rgba(63, 169, 245, 0.5) !important; }
         body.moon-theme .text-cyan-400,
-        body.moon-theme .text-cyan-500 { color: #a8c8e8 !important; }
-        body.moon-theme .from-cyan-400 { --tw-gradient-from: #9ec5e8 !important; }
+        body.moon-theme .text-cyan-500 { color: #6abffb !important; }
+        body.moon-theme .from-cyan-400 { --tw-gradient-from: #3fa9f5 !important; }
+        /* Resting shadow: same 3-layer shape as the default theme's own
+           body:not(.light-theme) .mission-card rule (15px/30px/-8px + 6px/14px/-6px + 1px
+           inset highlight), but deliberately stronger (darker + wider blur) than default's -
+           default sits on a plain starfield, while Mars/Moon sit on a busy photographic
+           surface behind them, so the cards need a more pronounced drop shadow to still read
+           as clearly "lifted" off the background instead of blending into it. */
         body.moon-theme .mission-card {
-            box-shadow: 0 16px 32px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(158, 197, 232, 0.05) inset !important;
-        }
-        body.moon-theme .mission-card:hover,
-        body.moon-theme .mission-card:active {
-            box-shadow: 0 22px 44px -14px rgba(158, 197, 232, 0.25), 0 0 28px 2px rgba(158, 197, 232, 0.15) !important;
-            border-color: rgba(158, 197, 232, 0.5) !important;
+            box-shadow: 0 18px 34px -8px rgba(0, 0, 0, 0.65), 0 8px 18px -6px rgba(0, 0, 0, 0.48), 0 1px 0 rgba(106, 191, 251, 0.08) inset !important;
         }
         body.moon-theme #past-launches-grid .mission-card:hover,
         body.moon-theme #past-launches-grid .mission-card:active {
-            box-shadow: 0 8px 16px -8px rgba(158, 197, 232, 0.3), 0 0 10px 1px rgba(158, 197, 232, 0.2) !important;
+            box-shadow: 0 8px 16px -8px rgba(63, 169, 245, 0.3), 0 0 8px 1px rgba(63, 169, 245, 0.2) !important;
         }
         body.moon-theme .milestone-card:hover,
         body.moon-theme .milestone-card:active {
-            box-shadow: 0 10px 22px -10px rgba(158, 197, 232, 0.35), 0 0 14px 1px rgba(158, 197, 232, 0.25) !important;
-            border-color: rgba(158, 197, 232, 0.55) !important;
+            box-shadow: 0 10px 22px -10px rgba(63, 169, 245, 0.35), 0 0 14px 1px rgba(63, 169, 245, 0.25) !important;
+            border-color: rgba(63, 169, 245, 0.55) !important;
         }
         body.moon-theme .mission-card-fade {
             background: linear-gradient(to top,
@@ -2596,31 +2607,31 @@
                 #121826 0%, #121826 16%, rgba(18, 24, 38, 0.78) 31%,
                 rgba(18, 24, 38, 0.35) 46%, rgba(18, 24, 38, 0.08) 61%, transparent 100%);
         }
-        body.moon-theme .skel { background: rgba(158, 197, 232, 0.08); }
+        body.moon-theme .skel { background: rgba(63, 169, 245, 0.08); }
         body.moon-theme .skel::after {
-            background: linear-gradient(90deg, transparent, rgba(158, 197, 232, 0.3), transparent);
+            background: linear-gradient(90deg, transparent, rgba(63, 169, 245, 0.3), transparent);
         }
         body.moon-theme .milestones-scrollbox::-webkit-scrollbar-thumb,
         body.moon-theme .card-modal-scroll::-webkit-scrollbar-thumb,
         body.moon-theme .hide-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(158, 197, 232, 0.4);
+            background: rgba(63, 169, 245, 0.4);
         }
         body.moon-theme .milestones-scrollbox,
         body.moon-theme .card-modal-scroll,
         body.moon-theme .hide-scrollbar {
-            scrollbar-color: rgba(158, 197, 232, 0.4) transparent;
+            scrollbar-color: rgba(63, 169, 245, 0.4) transparent;
         }
         body.moon-theme #sticky-countdown-wrap.is-visible {
-            box-shadow: 0 0 22px rgba(158, 197, 232, 0.3);
+            box-shadow: 0 0 22px rgba(63, 169, 245, 0.3);
         }
         body.moon-theme .hero-pill {
-            background-color: rgba(158, 197, 232, 0.12) !important;
-            border-color: rgba(158, 197, 232, 0.4) !important;
-            color: #b8d6f0 !important;
+            background-color: rgba(63, 169, 245, 0.12) !important;
+            border-color: rgba(63, 169, 245, 0.4) !important;
+            color: #6abffb !important;
         }
-        body.moon-theme #news-ticker-wrap { border-color: rgba(158, 197, 232, 0.25) !important; }
-        body.moon-theme #news-ticker-label-wrap { background-color: rgba(158, 197, 232, 0.1) !important; }
-        body.moon-theme #news-ticker-label-wrap .text-emerald-400 { color: #9ec5e8 !important; }
+        body.moon-theme #news-ticker-wrap { border-color: rgba(63, 169, 245, 0.25) !important; }
+        body.moon-theme #news-ticker-label-wrap { background-color: rgba(63, 169, 245, 0.1) !important; }
+        body.moon-theme #news-ticker-label-wrap .text-emerald-400 { color: #3fa9f5 !important; }
         body.moon-theme nav {
             background-color: rgba(8, 11, 18, 0.8) !important;
             border-color: rgba(70, 90, 130, 0.4) !important;
@@ -2628,7 +2639,7 @@
         body.moon-theme .goog-te-combo {
             background-color: #121826 !important;
             border-color: rgba(80, 100, 140, 0.45) !important;
-            color: #b8d6f0 !important;
+            color: #6abffb !important;
         }
         body.moon-theme .timeline-track { background-color: rgba(50, 70, 100, 0.5) !important; }
         body.moon-theme .node-empty {
@@ -2644,20 +2655,20 @@
         body.moon-theme #main-tabs {
             background: rgba(18, 24, 38, 0.92) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
-            box-shadow: inset 0 1px 0 rgba(158, 197, 232, 0.05) !important;
+            box-shadow: inset 0 1px 0 rgba(63, 169, 245, 0.05) !important;
         }
         body.moon-theme .main-tab-btn { color: #8fa3bc !important; }
         body.moon-theme .main-tab-btn.is-active {
-            color: #b8d6f0 !important;
-            border-color: rgba(158, 197, 232, 0.5) !important;
-            background: rgba(158, 197, 232, 0.08) !important;
+            color: #6abffb !important;
+            border-color: rgba(63, 169, 245, 0.5) !important;
+            background: transparent !important;
         }
         @media (hover: hover) and (pointer: fine) {
             body.moon-theme .main-tab-btn:hover {
                 color: #d8e2f0 !important;
                 background: rgba(40, 55, 80, 0.55) !important;
             }
-            body.moon-theme .main-tab-btn:hover i { color: #9ec5e8 !important; }
+            body.moon-theme .main-tab-btn:hover i { color: #3fa9f5 !important; }
         }
 
         /* Moon — Booster Flight Leaderboard chrome */
@@ -2676,23 +2687,23 @@
             border-color: rgba(80, 100, 140, 0.4) !important;
             color: #e8eef6 !important;
             box-shadow:
-                0 0 0 1px rgba(158, 197, 232, 0.05) inset,
+                0 0 0 1px rgba(63, 169, 245, 0.05) inset,
                 0 25px 50px -12px rgba(0, 0, 0, 0.55) !important;
         }
         body.moon-theme .ai3d-legend-row {
-            background: rgba(158, 197, 232, 0.04) !important;
+            background: rgba(63, 169, 245, 0.04) !important;
         }
         body.moon-theme .ai3d-legend-row:hover,
         body.moon-theme .ai3d-legend-row.ai3d-active {
-            background: rgba(158, 197, 232, 0.1) !important;
-            border-color: rgba(158, 197, 232, 0.25) !important;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 26px -2px rgba(158, 197, 232, 0.3) !important;
+            background: rgba(63, 169, 245, 0.1) !important;
+            border-color: rgba(63, 169, 245, 0.25) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 26px -2px rgba(63, 169, 245, 0.3) !important;
         }
         body.moon-theme .ai3d-center-hud .ai3d-value {
-            background: linear-gradient(180deg, #ffffff 20%, #9ec5e8 100%) !important;
+            background: linear-gradient(180deg, #ffffff 20%, #3fa9f5 100%) !important;
             -webkit-background-clip: text !important;
             background-clip: text !important;
-            text-shadow: 0 0 40px rgba(158, 197, 232, 0.2) !important;
+            text-shadow: 0 0 40px rgba(63, 169, 245, 0.2) !important;
         }
         body.moon-theme .ai3d-center-hud .ai3d-unit,
         body.moon-theme .ai3d-client-name,
@@ -2731,7 +2742,7 @@
                 filter: blur(12px);
             }
             body.moon-theme .group\/patch:hover .patch-hover-glow {
-                background-color: rgba(158, 197, 232, 0.55);
+                background-color: rgba(63, 169, 245, 0.55);
                 filter: blur(12px);
             }
             body.light-theme .group\/patch:hover .patch-hover-glow {
@@ -2748,7 +2759,7 @@
             filter: blur(12px);
         }
         body.moon-theme .group\/patch:active .patch-hover-glow {
-            background-color: rgba(158, 197, 232, 0.55);
+            background-color: rgba(63, 169, 245, 0.55);
             filter: blur(12px);
         }
         body.light-theme .group\/patch:active .patch-hover-glow {
@@ -2772,17 +2783,17 @@
                 background-color: rgba(255, 107, 53, 0.12) !important;
             }
             body.moon-theme .md\:hover\:bg-emerald-500:hover {
-                background-color: #6b9fc9 !important;
+                background-color: #1183d4 !important;
                 color: #07090e !important;
             }
             body.moon-theme .md\:hover\:border-emerald-500:hover {
-                border-color: #9ec5e8 !important;
+                border-color: #3fa9f5 !important;
             }
             body.moon-theme .md\:hover\:text-emerald-400:hover {
-                color: #b8d6f0 !important;
+                color: #6abffb !important;
             }
             body.moon-theme .md\:hover\:bg-emerald-500\/10:hover {
-                background-color: rgba(158, 197, 232, 0.12) !important;
+                background-color: rgba(63, 169, 245, 0.12) !important;
             }
         }
         body.mars-theme .group:hover .group-hover\:border-emerald-400,
@@ -2795,11 +2806,11 @@
         }
         body.moon-theme .group:hover .group-hover\:border-emerald-400,
         body.moon-theme .group-hover\:border-emerald-400:hover {
-            border-color: #9ec5e8 !important;
+            border-color: #3fa9f5 !important;
         }
         body.moon-theme .group:hover .group-hover\:text-emerald-400,
         body.moon-theme .group-hover\:text-emerald-400:hover {
-            color: #b8d6f0 !important;
+            color: #6abffb !important;
         }
         body.mars-theme .mission-card:hover,
         body.mars-theme .mission-card:active {
@@ -2808,8 +2819,8 @@
         }
         body.moon-theme .mission-card:hover,
         body.moon-theme .mission-card:active {
-            box-shadow: 0 20px 40px -15px rgba(158, 197, 232, 0.3), 0 0 25px 3px rgba(158, 197, 232, 0.18) !important;
-            border-color: rgba(158, 197, 232, 0.5) !important;
+            box-shadow: 0 20px 40px -15px rgba(63, 169, 245, 0.3), 0 0 25px 3px rgba(63, 169, 245, 0.18) !important;
+            border-color: rgba(63, 169, 245, 0.5) !important;
         }
 
         /* ---- Mode menu (Day / Night / Mars city / Moon base) ---- */
@@ -2824,8 +2835,8 @@
         }
         body.moon-theme #mode-menu-btn:hover,
         body.moon-theme #mode-menu-btn {
-            color: #b8d6f0;
-            border-color: rgba(158, 197, 232, 0.45);
+            color: #6abffb;
+            border-color: rgba(63, 169, 245, 0.45);
         }
         body.light-theme #mode-menu-btn {
             background-color: #ffffff !important;
@@ -2859,8 +2870,8 @@
             color: #ff8c5a !important;
         }
         body.moon-theme .mode-option.is-selected {
-            background: rgba(158, 197, 232, 0.12);
-            color: #b8d6f0 !important;
+            background: rgba(63, 169, 245, 0.12);
+            color: #6abffb !important;
         }
         body.light-theme .mode-option.is-selected {
             background: rgba(4, 120, 87, 0.1);
@@ -4630,22 +4641,39 @@
         // window is closed) - no manual expiry/timestamp logic needed.
         // Unified visual mode: day | night | mars | moon (session only).
         // Migrates older keys (spacex-theme / spacex-mars-mode) once.
+        //
+        // Shared with the auto-theme watcher further down the page (see startAutoThemeWatch),
+        // which re-runs this same clock logic on an interval so a tab left open across the
+        // day/night boundary actually flips instead of being frozen at whatever this early
+        // script picked at load time - defined globally (function declaration in a page-level
+        // <script>, not inside the IIFE below) so both places share one source of truth for the
+        // cutoff hours instead of two copies that could quietly drift apart.
+        function computeTimeBasedMode() {
+            const now = new Date();
+            const hour = now.getHours();
+            const year = now.getFullYear();
+            const janOffset = new Date(year, 0, 1).getTimezoneOffset();
+            const julOffset = new Date(year, 6, 1).getTimezoneOffset();
+            const standardOffset = Math.max(janOffset, julOffset);
+            const isDST = now.getTimezoneOffset() < standardOffset;
+            const eveningCutoff = isDST ? 19 : 17;
+            return (hour >= 6 && hour < eveningCutoff) ? 'day' : 'night';
+        }
         (function earlyVisualMode() {
             let mode = sessionStorage.getItem('spacex-visual-mode');
+            // Tracks whether the CURRENT mode came from the clock (vs an explicit user pick in
+            // the mode menu) - only an auto-derived day/night should ever be flipped later by
+            // the watcher; a manual choice must stick for the rest of the session regardless of
+            // what time it becomes. Only (re)computed below when there's no stored mode yet -
+            // an existing 'spacex-visual-mode-auto' value (set either here on a previous load in
+            // this same session, or cleared to '0' by an explicit menu pick) is left as-is.
             if (!mode) {
-                if (sessionStorage.getItem('spacex-mars-mode') === '1') mode = 'mars';
-                else if (sessionStorage.getItem('spacex-theme') === 'light') mode = 'day';
-                else if (sessionStorage.getItem('spacex-theme') === 'dark') mode = 'night';
+                if (sessionStorage.getItem('spacex-mars-mode') === '1') { mode = 'mars'; sessionStorage.setItem('spacex-visual-mode-auto', '0'); }
+                else if (sessionStorage.getItem('spacex-theme') === 'light') { mode = 'day'; sessionStorage.setItem('spacex-visual-mode-auto', '0'); }
+                else if (sessionStorage.getItem('spacex-theme') === 'dark') { mode = 'night'; sessionStorage.setItem('spacex-visual-mode-auto', '0'); }
                 else {
-                    const now = new Date();
-                    const hour = now.getHours();
-                    const year = now.getFullYear();
-                    const janOffset = new Date(year, 0, 1).getTimezoneOffset();
-                    const julOffset = new Date(year, 6, 1).getTimezoneOffset();
-                    const standardOffset = Math.max(janOffset, julOffset);
-                    const isDST = now.getTimezoneOffset() < standardOffset;
-                    const eveningCutoff = isDST ? 19 : 17;
-                    mode = (hour >= 6 && hour < eveningCutoff) ? 'day' : 'night';
+                    mode = computeTimeBasedMode();
+                    sessionStorage.setItem('spacex-visual-mode-auto', '1');
                 }
             }
             const html = document.documentElement;
@@ -4739,6 +4767,8 @@
             </div>
 
             <div class="flex items-center gap-x-1.5 sm:gap-x-4 shrink-0 ml-1">
+                <div id="google_translate_element" class="notranslate flex shrink-0 items-center h-6 sm:h-9" translate="no"></div>
+
                 <!-- Unified visual Mode menu: Day / Night / Mars / Moon -->
                 <div id="mode-menu-wrap" class="relative shrink-0 notranslate" translate="no">
                     <button type="button" id="mode-menu-btn"
@@ -4764,14 +4794,12 @@
                         </button>
                         <button type="button" role="option" data-mode="moon"
                             class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
-                            <i class="fa-regular fa-moon w-4 text-center text-slate-300"></i><span class="mode-option-label">Moon base</span>
+                            <i class="fa-solid fa-circle w-4 text-center text-slate-300"></i><span class="mode-option-label">Moon base</span>
                         </button>
                     </div>
                 </div>
 
-                <div id="google_translate_element" class="notranslate flex shrink-0 items-center" translate="no"></div>
-
-                <div class="flex shrink-0 items-center gap-x-1 px-1.5 py-1 sm:px-4 sm:py-2 bg-zinc-900 border border-zinc-850 rounded-md sm:rounded-2xl text-[9px] sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate"
+                <div class="flex shrink-0 items-center gap-x-1 h-6 sm:h-9 px-1.5 sm:px-4 bg-zinc-900 border border-zinc-850 rounded-md sm:rounded-2xl text-[9px] sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate"
                     translate="no" dir="ltr">
                     <i class="fa-solid fa-clock text-zinc-400"></i>
                     <span id="live-clock" class="font-mono text-emerald-400 font-bold leading-none">--:--:--</span>
@@ -6649,12 +6677,11 @@
                 day: 'fa-sun',
                 night: 'fa-moon',
                 mars: 'fa-globe',
-                moon: 'fa-moon'
+                moon: 'fa-circle'
             };
             if (label) label.textContent = labels[mode] || labels.mode || 'Mode';
             if (icon) {
                 icon.className = 'fa-solid ' + (icons[mode] || 'fa-palette') + ' text-[10px] sm:text-sm';
-                if (mode === 'moon') icon.className = 'fa-regular fa-moon text-[10px] sm:text-sm';
             }
             document.querySelectorAll('.mode-option').forEach(btn => {
                 const m = btn.getAttribute('data-mode');
@@ -6716,6 +6743,10 @@
 
         function setVisualMode(mode) {
             closeModeMenu();
+            // Explicit choice (this is the only path a real click ever reaches) - stops the
+            // auto-theme watcher below from ever overriding it, even if day/night's own clock
+            // boundary is crossed later while the tab stays open.
+            sessionStorage.setItem('spacex-visual-mode-auto', '0');
             if (mode === window.currentVisualMode) return;
             applyVisualMode(mode);
         }
@@ -6766,6 +6797,38 @@
             });
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') closeModeMenu();
+            });
+
+            startAutoThemeWatch();
+        }
+
+        // Re-checks the day/night clock boundary while the tab stays open, so a session that's
+        // never reloaded still flips at sunrise/sunset instead of being frozen at whatever mode
+        // the early-paint script picked when the tab was first opened. Only ever touches an
+        // auto-derived day/night mode (see the 'spacex-visual-mode-auto' flag, set in
+        // earlyVisualMode / cleared in setVisualMode) - an explicit mode-menu pick, and mars/moon
+        // (never auto-picked by the clock to begin with), are never overridden.
+        function startAutoThemeWatch() {
+            function checkAutoTheme() {
+                if (sessionStorage.getItem('spacex-visual-mode-auto') !== '1') return;
+                if (window.currentVisualMode !== 'day' && window.currentVisualMode !== 'night') return;
+                const wantMode = computeTimeBasedMode();
+                if (wantMode !== window.currentVisualMode) {
+                    applyVisualMode(wantMode);
+                    // applyVisualMode doesn't touch the auto flag itself, but re-assert it
+                    // explicitly anyway - keeps this call site correct even if that ever changes.
+                    sessionStorage.setItem('spacex-visual-mode-auto', '1');
+                }
+            }
+            // 1 minute is frequent enough that the switch feels like it happens "at" the cutoff
+            // (not up to an hour late) while being negligible cost - it's just a couple of Date
+            // calls unless the mode is actually about to change.
+            setInterval(checkAutoTheme, 60 * 1000);
+            // Background tabs throttle/pause timers (sometimes for hours - laptop sleep, tab
+            // backgrounded), so also re-check the instant the tab becomes visible again instead
+            // of waiting for the next interval tick to eventually fire.
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') checkAutoTheme();
             });
         }
 
