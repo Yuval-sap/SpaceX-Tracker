@@ -2540,9 +2540,14 @@
         body.moon-theme .bg-black\/90 { background-color: rgba(8, 11, 18, 0.92) !important; }
         body.moon-theme .bg-black\/95 { background-color: rgba(8, 11, 18, 0.96) !important; }
         body.moon-theme .bg-black\/60 { background-color: rgba(8, 11, 18, 0.65) !important; }
+        /* Section-divider lines (border-t border-zinc-900) sit directly over Moon mode's
+           photographic lunar surface background. The original rgba(70,90,130,0.45) was too
+           close in tone/opacity to that photo to read as a real line; a first attempt at
+           rgba(120,150,195,0.65) overcorrected and stood out too much - this splits the
+           difference. */
         body.moon-theme .border-zinc-900,
         body.moon-theme .border-zinc-900\/80,
-        body.moon-theme .border-zinc-850 { border-color: rgba(70, 90, 130, 0.45) !important; }
+        body.moon-theme .border-zinc-850 { border-color: rgba(95, 118, 155, 0.55) !important; }
         body.moon-theme .border-zinc-800,
         body.moon-theme .border-zinc-800\/80,
         body.moon-theme .border-zinc-800\/60,
@@ -5305,7 +5310,7 @@
                         <div>
                             <div
                                 class="text-3xl sm:text-4xl font-bold font-space text-white transition-colors duration-500 flex items-baseline">
-                                ~<span id="starlink-count">10,852</span>
+                                ~<span id="starlink-count">11,003</span>
                             </div>
                             <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">Active satellites (approx)</div>
                         </div>
@@ -8693,8 +8698,12 @@
         }
 
         function fallbackStarlinkStats() {
-            const baseDateMs = new Date('2026-07-25T00:00:00Z').getTime();
-            let currentCount = 10852 + estimateStarlinkSatsAddedSince(baseDateMs).added;
+            // Manually reset 2026-08-20 to 11,003 (real count as of that date) - satellites from
+            // Starlink launches after this anchor keep adding on top via estimateStarlinkSatsAddedSince,
+            // same mechanism as before, just re-anchored so those launches aren't double-counted
+            // against the old 10,852/2026-07-25 baseline.
+            const baseDateMs = new Date('2026-08-20T00:00:00Z').getTime();
+            let currentCount = 11003 + estimateStarlinkSatsAddedSince(baseDateMs).added;
 
             const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
             const last30Days = estimateStarlinkSatsAddedSince(thirtyDaysAgo);
