@@ -9871,6 +9871,37 @@
 
             let prob = launch.probability;
 
+            // Mission type / program / partner agencies (the "Mission Type:" / "Program:" /
+            // "Partner Agencies:" lines applyMissionPurposeHtml adds below the description)
+            // only exist in the primary LL2 API's detailed schema (launch.mission.type,
+            // launch.program[], launch.mission.agencies[]). When ll.thespacedevs.com rate-limits
+            // (429) and fetchUpcomingWithFallback falls back to spacelaunch.dev - deliberately
+            // tried before the LL2 dev mirror, see that function's own comment on why - that
+            // fallback's raw response doesn't carry this nested data at all, so these three
+            // fields would otherwise come back empty and the detail lines silently vanish from
+            // the modal for every mission until a real LL2 fetch succeeds again. Same
+            // cache-fallback pattern as the crew cache right above: persist real values under
+            // this mission's id whenever a good source provides them, and reuse the last-known
+            // good values instead of blanking the section when the current source doesn't have them.
+            let missionType = (launch.mission && launch.mission.type) || '';
+            let programNames = Array.isArray(launch.program) ? launch.program.map(p => p.name).filter(Boolean) : [];
+            let missionAgencies = (launch.mission && Array.isArray(launch.mission.agencies)) ? launch.mission.agencies.map(a => a.name).filter(Boolean) : [];
+
+            let purposeCache = {};
+            try {
+                purposeCache = JSON.parse(localStorage.getItem('spacex_mission_purpose_cache')) || {};
+            } catch (e) { purposeCache = {}; }
+            const purposeCacheKey = launch.id || id;
+
+            if (missionType || programNames.length > 0 || missionAgencies.length > 0) {
+                purposeCache[purposeCacheKey] = { missionType, programNames, missionAgencies };
+                try { localStorage.setItem('spacex_mission_purpose_cache', JSON.stringify(purposeCache)); } catch (e) { }
+            } else if (purposeCache[purposeCacheKey]) {
+                missionType = purposeCache[purposeCacheKey].missionType || '';
+                programNames = purposeCache[purposeCacheKey].programNames || [];
+                missionAgencies = purposeCache[purposeCacheKey].missionAgencies || [];
+            }
+
             return {
                 id: launch.id || id,
                 name: launch.name || "SpaceX Mission",
@@ -9887,9 +9918,9 @@
                 orbitCode: orbitInfo.code,
                 orbitLabel: orbitInfo.label,
                 objectives: details.objectives,
-                missionType: (launch.mission && launch.mission.type) || '',
-                programNames: Array.isArray(launch.program) ? launch.program.map(p => p.name).filter(Boolean) : [],
-                missionAgencies: (launch.mission && Array.isArray(launch.mission.agencies)) ? launch.mission.agencies.map(a => a.name).filter(Boolean) : [],
+                missionType: missionType,
+                programNames: programNames,
+                missionAgencies: missionAgencies,
                 image: launchImage,
                 patch: patchUrl,
                 liveUrl: liveStreamUrl,
