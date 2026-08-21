@@ -13226,8 +13226,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
         function shareMission(m) {
             const shareTitle = `SpaceX • ${m.name}`;
-            const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!`;
             const shareUrl = buildMissionShareUrl(m);
+            // The link is repeated inside shareText (not just passed as the separate "url"
+            // field) because some share targets reachable via navigator.share - e.g. Windows'
+            // Mail app - only use the "text" field for the message body and silently drop "url".
+            const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!\n${shareUrl}`;
 
             if (navigator.share) {
                 navigator.share({
