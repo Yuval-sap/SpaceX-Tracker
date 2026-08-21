@@ -4162,6 +4162,19 @@
         const GOOGLE_TRANSLATE_LANG_MAP = { iw: 'he', zh: 'zh-CN' };
         const missionDescTranslationCache = new Map(); // key: `${langKey} ${text}` -> translated string
 
+        // Google's raw MT endpoint translates "Starship" literally (e.g. into Hebrew as
+        // something like "ספינת כוכבים", a generic "star ship") instead of the site's chosen
+        // transliteration (STARSHIP_I18N) - the same class of problem localizeStarshipTerm()
+        // solves for widget-translated/static text, but that fix can't run AFTER this point:
+        // by the time the translation comes back, the English word "Starship" is already gone
+        // from the string, replaced by whatever Hebrew Google picked, so there's no English
+        // word left for a post-hoc find-and-fix to match against (this is exactly why
+        // localizeStarshipTerm's own comment excludes .no-starship-protect content). Swapped
+        // for a placeholder instead, sent through the translation instead of the real word -
+        // verified against the real endpoint that it passes through untouched regardless of
+        // target language - then swapped back for the correct localized term once the
+        // translation resolves, before caching.
+        const STARSHIP_MT_PLACEHOLDER = 'XSTARSHIPZQ9X';
         function translateTextViaGoogle(text, langKey) {
             if (!text) return Promise.resolve(text);
             if (!langKey || langKey === 'en') return Promise.resolve(text);
@@ -4169,11 +4182,13 @@
             if (missionDescTranslationCache.has(cacheKey)) {
                 return Promise.resolve(missionDescTranslationCache.get(cacheKey));
             }
+            const hasStarship = /\bstarship\b/i.test(text);
+            const textToSend = hasStarship ? text.replace(/\bstarship\b/gi, STARSHIP_MT_PLACEHOLDER) : text;
             const googleLang = GOOGLE_TRANSLATE_LANG_MAP[langKey] || langKey;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000);
             const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=' +
-                encodeURIComponent(googleLang) + '&dt=t&q=' + encodeURIComponent(text);
+                encodeURIComponent(googleLang) + '&dt=t&q=' + encodeURIComponent(textToSend);
             return fetch(url, { signal: controller.signal })
                 .then(res => {
                     if (!res.ok) throw new Error('translate API error');
@@ -4181,8 +4196,12 @@
                 })
                 .then(data => {
                     clearTimeout(timeoutId);
-                    const translated = (data && data[0] || []).map(seg => seg[0]).join('');
+                    let translated = (data && data[0] || []).map(seg => seg[0]).join('');
                     if (!translated) throw new Error('empty translation');
+                    if (hasStarship) {
+                        const starshipTerm = STARSHIP_I18N[langKey] || STARSHIP_I18N.en;
+                        translated = translated.replace(new RegExp(STARSHIP_MT_PLACEHOLDER, 'gi'), starshipTerm);
+                    }
                     missionDescTranslationCache.set(cacheKey, translated);
                     return translated;
                 })
@@ -4228,6 +4247,33 @@
         function translateMissionFieldsViaGoogle(description, missionType, programStr, agenciesStr, langKey) {
             return translateBatchViaGoogle([description, missionType, programStr, agenciesStr], langKey)
                 .then(([description, missionType, programStr, agenciesStr]) => ({ description, missionType, programStr, agenciesStr }));
+        }
+
+        // The secondary spec modals (rocket/site/orbit/landing/astronaut, opened from the mission
+        // modal's (i) info buttons) write their description text as plain English via innerText,
+        // unlike the main mission modal's own description (see applyMissionPurposeHtml two
+        // functions up) - they relied entirely on the page-wide Google Translate WIDGET noticing
+        // and translating that freshly-injected text, which is slow/unreliable for dynamic
+        // content (confirmed by a live user report: it could take a very long time, and
+        // sometimes never happened at all, requiring navigating away and back to retrigger it).
+        // Same instant-English-then-swap-in-translation idiom as applyMissionPurposeHtml,
+        // generalized to whatever set of elements a given modal needs translated, batched into
+        // one request per call (same rate-limit reasoning as translateBatchViaGoogle above). A
+        // per-modal generation counter (keyed by the caller-supplied key, e.g. 'rocket') discards
+        // a stale in-flight translation if the same modal gets reopened with different content
+        // before the first request resolves.
+        const _modalDescGen = {};
+        function translateModalDescriptions(key, elements, currentLang) {
+            const lang = (currentLang || document.documentElement.lang || 'en').split('-')[0];
+            if (lang === 'en') return;
+            const els = elements.filter(el => el && el.innerText && el.innerText.trim().length > 2);
+            if (els.length === 0) return;
+            const myGen = (_modalDescGen[key] = (_modalDescGen[key] || 0) + 1);
+            const originals = els.map(el => el.innerText);
+            translateBatchViaGoogle(originals, lang).then(translated => {
+                if (_modalDescGen[key] !== myGen) return; // superseded by a newer open/re-render
+                els.forEach((el, i) => { if (translated[i]) el.innerText = translated[i]; });
+            });
         }
 
         // Pure/sync HTML builder. Every value here is whatever's already available at call time
@@ -6465,8 +6511,8 @@
             <div
                 class="sticky top-0 z-40 px-6 py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
-                    <div id="rocket-modal-name"
-                        class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div id="rocket-modal-name" translate="no"
+                        class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         VEHICLE SPECIFICATION</div>
                 </div>
@@ -6517,8 +6563,8 @@
 
                 <div class="space-y-2">
                     <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
-                    <p id="rocket-modal-desc"
-                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
+                    <p id="rocket-modal-desc" translate="no"
+                        class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
                 </div>
             </div>
@@ -6533,8 +6579,8 @@
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
-                    <div id="site-modal-name"
-                        class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div id="site-modal-name" translate="no"
+                        class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         SPACEPORT FACILITY DOSSIER</div>
                 </div>
@@ -6562,14 +6608,14 @@
                     <div>
                         <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Primary
                             Fleet</div>
-                        <div id="site-modal-fleet" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
+                        <div id="site-modal-fleet" translate="no" class="notranslate text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
                 </div>
 
                 <div class="space-y-2">
                     <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Operational Profile</h4>
-                    <p id="site-modal-desc"
-                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
+                    <p id="site-modal-desc" translate="no"
+                        class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
                 </div>
             </div>
@@ -6584,7 +6630,7 @@
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
-                    <div id="orbit-modal-title" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
+                    <div id="orbit-modal-title" translate="no" class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
                         LEO (Low Earth Orbit)</div>
                     <div class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         ORBITAL MECHANICS DOSSIER</div>
@@ -6662,24 +6708,24 @@
                 <!-- Descriptions -->
                 <div class="space-y-4">
                     <div>
-                        <h4 id="orbit-heading-main"
-                            class="font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2">
+                        <h4 id="orbit-heading-main" translate="no"
+                            class="notranslate font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2">
                             <i class="fa-solid fa-satellite"></i> <span></span></h4>
-                        <p id="orbit-desc-main"
-                            class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl transition-colors duration-500">
+                        <p id="orbit-desc-main" translate="no"
+                            class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl transition-colors duration-500">
                         </p>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
-                            <h4 id="orbit-heading-a" class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            <h4 id="orbit-heading-a" translate="no" class="notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
                             </h4>
-                            <p id="orbit-desc-a" class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
+                            <p id="orbit-desc-a" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
                         <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
-                            <h4 id="orbit-heading-b" class="font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            <h4 id="orbit-heading-b" translate="no" class="notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
                             </h4>
-                            <p id="orbit-desc-b" class="text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
+                            <p id="orbit-desc-b" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
                     </div>
                 </div>
@@ -6724,15 +6770,15 @@
                     <div>
                         <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Primary
                             Fleet / Pad</div>
-                        <div id="landing-modal-fleet" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">
+                        <div id="landing-modal-fleet" translate="no" class="notranslate text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-2">
                     <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Recovery Profile</h4>
-                    <p id="landing-modal-desc"
-                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
+                    <p id="landing-modal-desc" translate="no"
+                        class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
                 </div>
             </div>
@@ -6747,10 +6793,10 @@
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
-                    <div id="astro-modal-name"
-                        class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="astro-modal-agency"
-                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
+                    <div id="astro-modal-name" translate="no"
+                        class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
+                    <div id="astro-modal-agency" translate="no"
+                        class="notranslate modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         ASTRONAUT DOSSIER</div>
                 </div>
                 <button onclick="closeAstronautModal()" title="Close"
@@ -6773,8 +6819,8 @@
 
                 <div class="space-y-2">
                     <h4 class="font-space text-sm sm:text-base font-semibold text-zinc-200">Biography & Background</h4>
-                    <p id="astro-modal-bio"
-                        class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 rounded-2xl whitespace-pre-line">
+                    <p id="astro-modal-bio" translate="no"
+                        class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 rounded-2xl whitespace-pre-line">
                     </p>
                 </div>
             </div>
@@ -13393,6 +13439,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 }
             }
             document.getElementById('rocket-modal-desc').innerText = data.desc;
+            translateModalDescriptions('rocket', [document.getElementById('rocket-modal-desc')], document.documentElement.lang);
 
             const modalEl = document.getElementById('rocket-modal');
             modalEl.classList.remove('hidden');
@@ -13422,6 +13469,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             document.getElementById('site-modal-coords').innerText = data.coords;
             document.getElementById('site-modal-fleet').innerText = data.fleet;
             document.getElementById('site-modal-desc').innerText = data.desc;
+            translateModalDescriptions('site', [document.getElementById('site-modal-desc')], document.documentElement.lang);
 
             const modalEl = document.getElementById('site-modal');
             modalEl.classList.remove('hidden');
@@ -13545,6 +13593,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (headingB && infoB) headingB.innerText = infoB.heading;
             if (descB && infoB) descB.innerText = infoB.short;
 
+            translateModalDescriptions('orbit', [descMain, descA, descB], document.documentElement.lang);
+
             applyOrbitRingVisual(activeCode);
         }
 
@@ -13655,6 +13705,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 typeEl.removeAttribute('data-i18n-asds');
             }
 
+            translateModalDescriptions('landing', [descEl], document.documentElement.lang);
+
             const modalEl = document.getElementById('landing-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
@@ -13684,6 +13736,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             document.getElementById('astro-modal-img').alt = c.name;
             document.getElementById('astro-modal-agency').innerText = c.agency || "ASTRONAUT DOSSIER";
             document.getElementById('astro-modal-bio').innerText = c.bio || "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.";
+            translateModalDescriptions('astronaut', [document.getElementById('astro-modal-bio')], document.documentElement.lang);
 
             const modalEl = document.getElementById('astronaut-modal');
             modalEl.classList.remove('hidden');
