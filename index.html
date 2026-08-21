@@ -442,19 +442,24 @@
            deep/dark green, light theme a lighter, more pastel green so the two read as visibly
            different from each other; Mars/Moon reuse those themes' own already-established accent
            colors so this exactly matches the accent border color used everywhere else in each
-           mode. md: only, matching the original Tailwind rule's own breakpoint (no real :hover on
-           touch devices below that anyway). */
+           mode. Lights up #radar-map-box (the small map square inside the card, per explicit
+           user request - not the whole outer card) whenever the OUTER #radar-box-click is
+           hovered, since that's still the actual click/hover target. md: only, matching the
+           original Tailwind rule's own breakpoint (no real :hover on touch devices below that
+           anyway). Tailwind here runs with `important: true` (every utility class it generates
+           is already !important, confirmed directly), so these need !important too just to be in
+           the same weight class as the .border-zinc-800/60 utility already on #radar-map-box. */
         @media (min-width: 768px) {
-            #radar-box-click:hover {
+            #radar-box-click:hover #radar-map-box {
                 border-color: #047857 !important;
             }
-            body.light-theme #radar-box-click:hover {
+            body.light-theme #radar-box-click:hover #radar-map-box {
                 border-color: #34d399 !important;
             }
-            body.mars-theme #radar-box-click:hover {
+            body.mars-theme #radar-box-click:hover #radar-map-box {
                 border-color: #ff6b35 !important;
             }
-            body.moon-theme #radar-box-click:hover {
+            body.moon-theme #radar-box-click:hover #radar-map-box {
                 border-color: #3fa9f5 !important;
             }
         }
@@ -6459,7 +6464,7 @@
                             <p class="text-[11px] sm:text-xs text-zinc-500 notranslate" id="modal-pad-coordinate-label"
                                 dir="ltr" translate="no">Targeting Base Station</p>
                         </div>
-                        <div
+                        <div id="radar-map-box"
                             class="relative w-full h-40 bg-zinc-900 border border-zinc-800/60 rounded-xl mt-3 overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] transition-colors duration-500">
                             <svg class="absolute inset-0 w-full h-full opacity-30 stroke-zinc-700 stroke-[1.5] fill-zinc-800 transition-colors duration-500"
                                 viewBox="0 0 960 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
