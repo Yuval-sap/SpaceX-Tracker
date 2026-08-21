@@ -6984,6 +6984,18 @@
         // setupHeroBanner) - lets that function detect the exact moment a mission stops being
         // shown there (evicted per its grace period), which is when past launches should refresh.
         let lastHeroInProgressId = null;
+        // The full mission object last shown as "In Progress" in the hero (not just its id) -
+        // see setupHeroBanner's fallback branch for why this needs to be the actual data, not a
+        // lookup: rawPastMissions can be stale (a launch's "previous" refetch only happens when
+        // its in-progress status is first detected changing, a request kicked off AFTER this run
+        // already needed the data, not before), so on the very next run - upstream API already
+        // reclassified the mission out of "upcoming" - neither dbMissions[0].status==='In
+        // Progress' nor rawPastMissions[0]'s grace check (still pointing at some OLDER mission)
+        // can find it. Falling through to plain dbMissions[0] in that gap silently evicted the
+        // mission straight to "past" as early as the very first tick after liftoff, well before
+        // its real 60/90-minute grace period - keeping the actual object here instead lets its
+        // own grace period still be checked directly, independent of which list currently has it.
+        let lastHeroInProgressMission = null;
         // The id of whichever mission setupHeroBanner() actually put in the hero on its last run -
         // may be a dbMissions entry OR a rawPastMissions-derived grace-period stand-in (not in
         // dbMissions at all). Used to correctly exclude the hero's mission from the "Scheduled
@@ -12251,6 +12263,25 @@
                 }
             }
 
+            // Neither list above found it: happens on the exact tick the upstream "upcoming" API
+            // first drops the mission from its own listing - before a "previous" refetch (only
+            // triggered a few lines down, once THIS change is first detected) has had a chance to
+            // complete. rawPastMissions is still whatever it was BEFORE this mission ever
+            // launched, so the branch above can't find it there either. Fall back to the actual
+            // mission object remembered from the last run that DID find it (see
+            // lastHeroInProgressMission's own comment), and check its grace period directly -
+            // independent of which list currently (fails to) have it. Without this, a mission
+            // could get evicted straight to "past" on literally the first tick after liftoff,
+            // instead of the real 60/90-minute grace period.
+            if (!nextLaunch && lastHeroInProgressMission) {
+                const sinceLaunchMs = Date.now() - new Date(lastHeroInProgressMission.date).getTime();
+                const graceMs = lastHeroInProgressMission.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
+                if (sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
+                    nextLaunch = Object.assign({}, lastHeroInProgressMission, { status: 'In Progress' });
+                    nextUpcoming = dbMissions.length > 0 ? dbMissions[0] : null;
+                }
+            }
+
             // Exception: a launch starting within the next 15 minutes always takes over the
             // hero immediately, even if the previous mission's own grace period hasn't run out
             // yet - two missions competing for the hero at once is worse than cutting the
@@ -12285,6 +12316,8 @@
                 fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
             }
             lastHeroInProgressId = currentInProgressId;
+            // Kept for the stale-data fallback above - see lastHeroInProgressMission's own comment.
+            lastHeroInProgressMission = currentInProgressId ? nextLaunch : null;
 
             if (nextLaunch) {
     const heroNameEl = document.getElementById('hero-name');
