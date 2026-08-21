@@ -6875,6 +6875,9 @@
         // longer than intervalMs (sometimes indefinitely while hidden), so this is how that
         // handler knows a refresh is actually overdue rather than just "some time passed".
         let nextLaunchRefreshDueMs = 0;
+        // See startPastVideoLongTailRecheck() below - guards the hourly long-tail "previous"
+        // recheck so it only ever gets armed once, no matter how many times processLaunchData runs.
+        let pastVideoLongTailIntervalArmed = false;
         // Tracks whichever mission is CURRENTLY showing as "In Progress" in the hero (see
         // setupHeroBanner) - lets that function detect the exact moment a mission stops being
         // shown there (evicted per its grace period), which is when past launches should refresh.
@@ -9575,6 +9578,32 @@
             updateRefreshSchedule(); // re-evaluate proximity fresh, so the cadence tightens/loosens as time passes
         }
 
+        // needsPastVideoRecheck above is deliberately narrow (70-180 minutes post-launch) so a
+        // mission that never gets a video doesn't add a permanent extra "previous" fetch to
+        // every 1-10 minute "upcoming" tick forever. In practice that window is too short:
+        // unofficial re-streams (the "Unofficial Re-stream"/"Unofficial Webcast" vidURLs entries
+        // thespacedevs indexes from channels like The Space Devs or Spaceflight Now) can take
+        // much longer than 3 hours to get attached - confirmed directly, a mission 2 days past
+        // launch that still only had its X/Twitter link in this app's own cache already had two
+        // YouTube entries in a fresh fetch. Once the fast/narrow window above gives up, a mission
+        // like that was stuck on the X-only fallback link forever, since "previous" was never
+        // refetched again for it. This second, much coarser check - once an hour instead of
+        // every 1-10 minutes - covers that long tail (up to 7 days post-launch) without
+        // meaningfully touching the free tier's 15 requests/hour budget: it only ever fires the
+        // extra request in the (uncommon) case a recent mission is still actually missing video.
+        function startPastVideoLongTailRecheck() {
+            if (pastVideoLongTailIntervalArmed) return;
+            pastVideoLongTailIntervalArmed = true;
+            setInterval(() => {
+                const stillMissing = (rawPastMissions || []).some(m => {
+                    if (m.youtubeId) return false;
+                    const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
+                    return hoursSinceLaunch >= 3 && hoursSinceLaunch <= 24 * 7;
+                });
+                if (stillMissing) fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
+            }, 60 * 60 * 1000);
+        }
+
         // A backgrounded tab throttles setTimeout heavily (sometimes for a very long time
         // while hidden) - so the countdown/hero display can be left showing a stale mission
         // (e.g. still pulsing "MISSION IN PROGRESS"/T-5 alert for a launch that's since
@@ -9717,6 +9746,7 @@
             filterMissions();
 
             updateRefreshSchedule();
+            startPastVideoLongTailRecheck();
             updateStarlinkStats();
             renderBoosterLeaderboard();
             renderMissionPatchesStrip();
@@ -11879,6 +11909,17 @@
                 if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
                 if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
                 watchLiveBtn.onclick = function () {
+                    // Toggle: clicking again while the player is already open and playing THIS
+                    // mission closes it (same effect as the player's own close button) instead of
+                    // just reloading/restarting the same stream. Checked fresh at click time, not
+                    // via the heroVideoOpen captured when this render ran - the player's open/
+                    // closed state can change between renders (a manual close, a mission switch)
+                    // well before the button is actually clicked again.
+                    const isOpenForThisMission = heroVideoSection && !heroVideoSection.classList.contains('hidden') && heroVideoMissionId === nextLaunch.id;
+                    if (isOpenForThisMission) {
+                        closeHeroVideoPlayer();
+                        return;
+                    }
                     // Opens at the player's normal small inline size instead of forcing
                     // fullscreen (per explicit user request, 2026-08-20) - loadHeroVideoContent()
                     // itself already handles small-size positioning whenever
