@@ -9811,6 +9811,7 @@
 
             updateRefreshSchedule();
             startPastVideoLongTailRecheck();
+            handleDeepLinkMission();
             updateStarlinkStats();
             renderBoosterLeaderboard();
             renderMissionPatchesStrip();
@@ -13208,10 +13209,25 @@ fitTitleOneLine(document.getElementById('hero-name'));
             window._pendingMissionYoutubeId = null;
         }
 
+        // Points at the static per-mission preview page (see generate_mission_cards.py at the
+        // repo root - run it locally before each push to keep these current) instead of this
+        // app's own "?mission=<id>" directly. That page carries real, mission-specific
+        // <meta property="og:..."> tags baked in as plain HTML - link-preview bots (WhatsApp,
+        // Telegram, iMessage, Discord, ...) fetch the raw HTML and read those tags without
+        // running any JavaScript, so pointing them at index.html itself would only ever show
+        // this app's one site-wide preview, identical for every mission (the exact "just the
+        // general site link" problem being fixed here). A real visitor who opens the link still
+        // ends up in the full interactive app, on the right mission - the static page's own
+        // meta-refresh/JS immediately forwards to index.html?mission=<id>, which
+        // handleDeepLinkMission() (see near processLaunchData) picks up and opens.
+        function buildMissionShareUrl(m) {
+            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html`;
+        }
+
         function shareMission(m) {
             const shareTitle = `SpaceX • ${m.name}`;
             const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!`;
-            const shareUrl = window.location.href;
+            const shareUrl = buildMissionShareUrl(m);
 
             if (navigator.share) {
                 navigator.share({
@@ -13224,6 +13240,27 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 navigator.clipboard.writeText(fullText).then(() => {
                     alert('Share link and text copied to clipboard!');
                 });
+            }
+        }
+
+        // Opens the mission named by "?mission=<id>" in the URL (see buildMissionShareUrl) -
+        // checked on every processLaunchData run, not just once at startup, since the very first
+        // run can beat a slow/rate-limited fetch and find nothing yet. Guarded by
+        // deepLinkMissionHandled so a successful open only ever fires once per page load - without
+        // it, every later refresh cycle (every few minutes) would silently reopen the modal even
+        // after the user closed it themselves. If the linked mission is never found at all (a bad
+        // id, or one old enough to have aged out of the ~50-mission past-launches window), this
+        // harmlessly keeps re-checking on each refresh forever - cheap (one array scan), so not
+        // worth the extra complexity of a give-up counter.
+        let deepLinkMissionHandled = false;
+        function handleDeepLinkMission() {
+            if (deepLinkMissionHandled) return;
+            const missionId = new URLSearchParams(window.location.search).get('mission');
+            if (!missionId) { deepLinkMissionHandled = true; return; }
+            const found = [...dbMissions, ...rawPastMissions].find(m => m.id === missionId);
+            if (found) {
+                deepLinkMissionHandled = true;
+                openMissionModal(found);
             }
         }
 
