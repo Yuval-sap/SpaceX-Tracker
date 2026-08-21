@@ -1900,171 +1900,6 @@
             cursor: grabbing;
         }
 
-        /* Left behind in #hero-video-section's original spot once initHeroVideoFloatingPlayer()
-           pulls the real element out to a position:fixed body-level element - reserves the small
-           player's layout footprint in the hero card while it's open, invisible either way. */
-        .hero-video-placeholder {
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        /* The floating #hero-video-section itself, once moved to body level. Positioned via
-           top/left transform + width/height, kept in sync with .hero-video-placeholder's live
-           rect (small mode) by initHeroVideoFloatingPlayer's sync function, or pinned full-viewport
-           (fullscreen mode) by enterHeroVideoFullscreen - see both for why this needs to live at
-           body level at all (an ancestor further up establishes a transformed containing block,
-           so plain position:fixed nested in place does NOT resolve relative to the real viewport). */
-        #hero-video-section.hero-video-floating {
-            position: fixed;
-            top: 0;
-            left: 0;
-            margin: 0;
-            z-index: 9999;
-        }
-
-        #hero-video-section.hero-video-fullscreen-active {
-            border-radius: 0 !important;
-            max-width: 100vw !important;
-        }
-
-        /* CSS-only "theater" pseudo-fullscreen (see enterVideoTheaterFullscreen) - NOT the real
-           browser Fullscreen API. Real fullscreen only renders the fullscreened element's own
-           subtree; when YouTube's OWN fullscreen button (inside its cross-origin iframe) is
-           clicked, the iframe itself becomes document.fullscreenElement, and everything else -
-           including our own volume control, a plain DOM sibling of that iframe, not a descendant
-           - stops rendering entirely. Swapping in this class instead keeps both the iframe and
-           our volume control visible, since neither is real fullscreen. Applied to the player
-           wrapper after moving it to <body> (see enterVideoTheaterFullscreen for why the move is
-           needed: a plain position:fixed here, left in its normal spot, does not resolve against
-           the real viewport - some ancestor further up establishes its own containing block,
-           confirmed directly by measuring getBoundingClientRect() before/after). */
-        .video-theater-fullscreen {
-            position: fixed !important;
-            inset: 0 !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            max-width: 100vw !important;
-            max-height: 100vh !important;
-            margin: 0 !important;
-            border-radius: 0 !important;
-            z-index: 9999;
-        }
-
-        /* The wrapper's own base classes include a border (border-zinc-800), a shadow
-           (shadow-lg), and bg-black - meant for its normal small-inline card look, harmless
-           there, but in light theme body.light-theme .bg-black / .border-zinc-800 (further down
-           this stylesheet) remap those to near-white (#e2e8f0), which reads as an ugly white
-           frame around an otherwise edge-to-edge black fullscreen video. All three are purely
-           cosmetic for the small view and serve no purpose once this covers the whole viewport,
-           so all three are killed here regardless of theme. Needs the id+class combination
-           (not just .video-theater-fullscreen alone) to actually outrank body.light-theme
-           .bg-black / .border-zinc-800 on specificity - those are two classes each, this is one
-           id + one class, which wins regardless of source order either way. */
-        #hero-video-section.video-theater-fullscreen,
-        #modal-video-section.video-theater-fullscreen,
-        #doc-video-wrapper.video-theater-fullscreen {
-            border: none !important;
-            box-shadow: none !important;
-            background: #000 !important;
-        }
-
-        /* Our own volume control, drawn over the YouTube embed (see wireCustomVolumeControl) -
-           built because YouTube's own hover-to-reveal volume slider (inside its cross-origin
-           iframe, entirely outside our control) collapses the instant the cursor crosses the gap
-           between the speaker icon and the slider track, making it nearly impossible to actually
-           drag. The button and the slider track both live inside ONE wrapper with no gap between
-           them, and the show/hide hover state is bound to that single wrapper - not to the button
-           or the track individually - so there is no dead zone to cross in the first place. */
-        .video-volume-control {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .video-volume-btn {
-            width: 30px;
-            height: 30px;
-            border-radius: 9999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            color: #fff;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .video-volume-btn:hover {
-            background: rgba(0, 0, 0, 0.8);
-        }
-
-        /* Our own expand/shrink toggle (see wireCustomVolumeControl) - bottom-left. Two real
-           screenshots of this exact embedded player (small AND fullscreen) both showed the SAME
-           arrow-style icon there, next to the progress bar/YouTube-logo row - the actual
-           persistent control-bar icon, not the separate one that only appears over the paused-
-           state end-card (which is what an earlier, wrong attempt at this was actually matching -
-           see the removed comment here for that mistake). Physical `left` (not the logical
-           `start-*` the volume control uses) - this embed's own chrome doesn't mirror for an
-           RTL host page, so its icon sits in the same physical spot regardless of page direction. */
-        .video-expand-btn {
-            left: 0;
-            bottom: 0;
-            width: 50px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .video-expand-btn:hover,
-        .video-expand-btn:focus-visible {
-            background: rgba(0, 0, 0, 0.55);
-        }
-
-        .video-volume-slider-track {
-            height: 0;
-            overflow: hidden;
-            opacity: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            margin-bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 9999px;
-            width: 30px;
-            transition: height 0.15s ease, opacity 0.15s ease, margin-bottom 0.15s ease;
-        }
-
-        .video-volume-control:hover .video-volume-slider-track,
-        .video-volume-control:focus-within .video-volume-slider-track {
-            height: 90px;
-            opacity: 1;
-            margin-bottom: 6px;
-            padding: 10px 0;
-        }
-
-        /* A native <input type=range> laid out vertically via a 90deg rotation - far more
-           consistent across browsers than the Firefox-only orient="vertical" attribute. */
-        .video-volume-slider {
-            width: 70px;
-            height: 20px;
-            transform: rotate(-90deg);
-            cursor: pointer;
-            accent-color: #10b981;
-        }
-
 
         .ai3d-center-hud {
             position: absolute;
@@ -4718,14 +4553,6 @@
         function closeDocVideoModal() {
             const modal = document.getElementById('doc-video-modal');
             if (!modal) return;
-            // The video wrapper is reparented to <body> while in theater mode (see
-            // enterVideoTheaterFullscreen) - no longer a descendant of this modal at all, so
-            // hiding the modal below would leave it stuck floating fullscreen instead of closing
-            // with everything else. Restore it first so hiding the (now empty-of-video-only-in-
-            // theater-mode) modal actually hides it too.
-            if (videoTheaterFullscreenEl && videoTheaterFullscreenEl.id === 'doc-video-wrapper') {
-                exitVideoTheaterFullscreen();
-            }
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             stopYoutubePlayer('doc-video-iframe'); // saves the resume position first
@@ -5382,41 +5209,6 @@
                                 <i id="hero-watch-live-icon" class="fa-solid fa-play text-[10px] animate-pulse"></i>
                                 <span id="hero-watch-live-label">WATCH LIVE</span>
                             </button>
-                        </div>
-                        <div id="hero-video-section"
-                            class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video w-full sm:max-w-md mx-auto lg:mx-0">
-                            <!-- Placeholder for the YouTube IFrame Player API to replace with its own
-                                 real iframe (see loadYoutubeIntoPlayer) - must be a plain container,
-                                 NOT an <iframe> itself, or the API's replacement never actually loads
-                                 a video (confirmed elsewhere in this file: pointing it at a
-                                 pre-existing <iframe> left the replacement's src empty and its
-                                 player methods never became callable). -->
-                            <div id="hero-video-iframe" class="w-full h-full absolute inset-0"></div>
-                            <!-- Used to have a #hero-video-tap-overlay here, structurally identical
-                                 to #modal-video-tap-overlay (see project_spacex_tracker_mobile_video_close_double_tap
-                                 memory) - removed 2026-08-18 for the exact same reason: it swallowed
-                                 the first mobile tap for EVERY interaction with the player, and the
-                                 close button below never needed a "reveal" step at all (already
-                                 unconditionally visible/tappable on mobile via its own classes). -->
-                            <button type="button" id="hero-video-close-btn" title="Close"
-                                class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
-                                <i class="fa-solid fa-xmark text-sm text-red-500"></i>
-                            </button>
-                            <!-- Shown INSTEAD of the iframe whenever we don't yet have a confirmed,
-                                 reliably-embeddable video - covers the iframe entirely (z-10, above
-                                 both the iframe and the tap overlay) so nobody ever sees YouTube's own
-                                 bare "video unavailable" message. Hidden again the moment either a
-                                 confirmed video ID is embedded directly, or the background resolver in
-                                 renderHeroLiveButton finds the real current live video and upgrades to it. -->
-                            <div id="hero-video-unconfirmed-overlay"
-                                class="hidden absolute inset-0 z-10 flex-col items-center justify-center gap-3 bg-zinc-950 text-center px-6">
-                                <i class="fa-solid fa-satellite-dish text-2xl text-zinc-600"></i>
-                                <p id="hero-video-unconfirmed-text" class="text-xs sm:text-sm text-zinc-400 max-w-xs">
-                                    We haven't confirmed a live stream is playing here yet.</p>
-                                <a id="hero-video-unconfirmed-yt-btn" href="#" target="_blank" rel="noopener"
-                                    class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-black font-semibold text-sm rounded-xl md:hover:bg-emerald-400 transition-colors notranslate text-center whitespace-normal max-w-full"
-                                    translate="no"><i class="fa-brands fa-youtube shrink-0"></i> Watch on YouTube</a>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -6305,7 +6097,7 @@
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
-                <div id="doc-video-wrapper" class="w-full aspect-video bg-zinc-900 relative">
+                <div class="w-full aspect-video bg-zinc-900">
                     <!-- Placeholder for the YouTube IFrame Player API to replace with its own
                          real iframe (see loadYoutubeIntoPlayer) - must be a plain container,
                          NOT an <iframe> itself, or the API's replacement never actually loads a
@@ -6422,7 +6214,7 @@
                         class="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 bg-black/60 md:hover:bg-black/80 border-2 border-red-500 md:hover:border-red-400 rounded-full transition-opacity duration-300 opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/video:opacity-100 md:group-hover/video:pointer-events-auto">
                         <i class="fa-solid fa-xmark text-sm text-red-500"></i>
                     </button>
-                    <!-- Mirrors #hero-video-unconfirmed-overlay: shown INSTEAD of the iframe
+                    <!-- Shown INSTEAD of the iframe
                          whenever we don't yet have a confirmed, reliably-embeddable video ID for
                          a live launch - covers the iframe entirely so nobody ever sees YouTube's
                          own bare "video unavailable" message from the unreliable
@@ -7064,16 +6856,6 @@
         // Launches" grid without assuming it's always dbMissions[0].
         let currentHeroMissionId = null;
         let heroLiveCheckIntervalId = null;
-        // Which mission's video is currently loaded into the hero's player (#hero-video-iframe),
-        // if it's open. Lets renderHeroLiveButton tell "still the same mission, a periodic
-        // re-check" apart from "the hero switched to a different mission while the player was
-        // open" - the latter needs the stale stream torn down/replaced, not left alone.
-        let heroVideoMissionId = null;
-        // True while the hero video player is showing full-viewport instead of its normal small
-        // inline size. See initHeroVideoFloatingPlayer/enterHeroVideoFullscreen/exitHeroVideoFullscreen.
-        let heroVideoFullscreenActive = false;
-        let heroVideoFloatingInitDone = false;
-        let heroVideoSyncSmallPosition = null;
         let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
         let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
 
@@ -11859,255 +11641,6 @@
             try { entry.player.stopVideo(); } catch (e) { }
         }
 
-        // Our own always-available volume control, drawn over a Player-API-controlled iframe
-        // (see ytPlayerRegistry above) - built because YouTube's own hover-to-reveal volume
-        // slider lives inside the embed's cross-origin document, entirely outside our reach (no
-        // code anywhere in this file builds or styles it), and collapses the instant the cursor
-        // crosses the gap between its speaker icon and its slider track - confirmed directly to
-        // be YouTube's own behavior, not this site's. The button and the slider track here both
-        // live inside ONE wrapper with zero gap between them (see the CSS), and the show/hide
-        // hover state is read off that one wrapper, not the button or the track individually - so
-        // there's no dead zone to lose the hover through in the first place.
-        // Looks up the live player fresh on every interaction (ytPlayerRegistry[iframeId]?.player)
-        // instead of capturing it once, since a later mission/episode switch reuses the same
-        // registry entry with a new underlying player state (see loadYoutubeIntoPlayer above).
-        function wireCustomVolumeControl(container, iframeId) {
-            if (!container || container.querySelector('.video-volume-control')) return; // already wired
-            const wrap = document.createElement('div');
-            wrap.className = 'video-volume-control absolute bottom-2 start-2 z-20';
-            wrap.innerHTML = `
-                <div class="video-volume-slider-track">
-                    <input type="range" class="video-volume-slider" min="0" max="100" value="100" aria-label="Volume">
-                </div>
-                <button type="button" class="video-volume-btn" title="Mute">
-                    <i class="fa-solid fa-volume-high"></i>
-                </button>
-            `;
-            container.appendChild(wrap);
-
-            const btn = wrap.querySelector('.video-volume-btn');
-            const icon = btn.querySelector('i');
-            const slider = wrap.querySelector('.video-volume-slider');
-
-            // Once the slider has actually been dragged/clicked, an <input type=range> keeps
-            // real keyboard focus - combined with :focus-within (see the CSS), that alone kept
-            // the track visually expanded indefinitely after ANY interaction, until the user
-            // happened to click some unrelated part of the page to steal focus away. Moving the
-            // mouse off the whole control should be enough on its own, same as it is before the
-            // slider was ever touched - blurring it here on mouseleave removes exactly that
-            // stuck-open :focus-within state without changing anything about the volume itself.
-            wrap.addEventListener('mouseleave', () => slider.blur());
-
-            // Our own "expand to fill the screen" toggle - deliberately separate from YouTube's
-            // own native fullscreen button (which we no longer touch at all, see
-            // enterVideoTheaterFullscreen's comment for why auto-intercepting it broke more than
-            // it fixed). This one only ever enters/exits OUR theater mode, in a single
-            // predictable way, with no cross-origin state for us to lose track of.
-            const expandBtn = document.createElement('button');
-            expandBtn.type = 'button';
-            // Physical `left` (not the logical `start-*` the volume control uses) - deliberately
-            // NOT RTL-aware here. This embed's own player chrome never mirrors for a right-to-
-            // left HOST page (it's its own separate document, always laid out however YouTube
-            // itself renders it regardless of ours), so its own expand icon sits at the same
-            // physical spot every time, Hebrew page or not. Positioning (left side, vertically
-            // centered) is set in the CSS (.video-expand-btn) - confirmed directly from an actual
-            // screenshot of this exact embedded player, not assumed from a generic youtube.com
-            // layout (that assumption was wrong the first time around).
-            expandBtn.className = 'video-expand-btn absolute z-20';
-            expandBtn.title = 'Expand';
-            expandBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
-            expandBtn.addEventListener('click', () => {
-                // Icon/title sync happens inside enter/exit themselves (syncVideoExpandBtnIcon) -
-                // stays correct even when theater mode gets exited some OTHER way (Escape, the
-                // player's own close button, the whole modal closing).
-                if (videoTheaterFullscreenEl === container) exitVideoTheaterFullscreen();
-                else enterVideoTheaterFullscreen(container);
-            });
-            container.appendChild(expandBtn);
-
-            const getPlayer = () => {
-                const entry = ytPlayerRegistry[iframeId];
-                return (entry && entry.player) ? entry.player : null;
-            };
-
-            const updateIcon = (volume, muted) => {
-                icon.className = (muted || volume === 0) ? 'fa-solid fa-volume-xmark'
-                    : (volume < 50) ? 'fa-solid fa-volume-low'
-                        : 'fa-solid fa-volume-high';
-            };
-
-            // Reflects the player's real current state on every hover, rather than trusting
-            // whatever this control last set - a brand new video can load into the same iframe
-            // (mission switch, reopening the modal/episode) without the user ever touching this
-            // control, and it always starts unmuted at whatever volume was last set.
-            wrap.addEventListener('mouseenter', () => {
-                const player = getPlayer();
-                if (!player) return;
-                try {
-                    const muted = player.isMuted();
-                    const volume = player.getVolume();
-                    slider.value = muted ? 0 : volume;
-                    updateIcon(volume, muted);
-                } catch (e) { }
-            });
-
-            btn.addEventListener('click', () => {
-                const player = getPlayer();
-                if (!player) return;
-                try {
-                    if (player.isMuted() || player.getVolume() === 0) {
-                        player.unMute();
-                        if (player.getVolume() === 0) player.setVolume(100);
-                        slider.value = player.getVolume();
-                        updateIcon(player.getVolume(), false);
-                    } else {
-                        player.mute();
-                        updateIcon(0, true);
-                    }
-                } catch (e) { }
-            });
-
-            slider.addEventListener('input', () => {
-                const player = getPlayer();
-                if (!player) return;
-                const v = parseInt(slider.value, 10);
-                try {
-                    player.setVolume(v);
-                    if (v === 0) player.mute();
-                    else player.unMute();
-                    updateIcon(v, v === 0);
-                } catch (e) { }
-            });
-        }
-
-        // CSS-only "theater" pseudo-fullscreen for a video player wrapper - see the
-        // .video-theater-fullscreen CSS comment for why this exists (in short: real Fullscreen
-        // API on the iframe hides our sibling volume control; a fixed-viewport CSS overlay on
-        // the wrapper doesn't, since both stay siblings inside it).
-        //
-        // Only ever entered via our OWN expand button (wireCustomVolumeControl) now - an earlier
-        // version auto-intercepted YouTube's OWN fullscreen button instead (listening for
-        // 'fullscreenchange' and swapping in theater mode the instant it fired), which sounded
-        // right but broke two things live: (1) YouTube's own player keeps its OWN internal
-        // fullscreen/shrink icon toggled to "active" after we silently call
-        // document.exitFullscreen() out from under it - its document is cross-origin, so we can
-        // never see or correct that icon's state, and clicking it again does nothing (browser
-        // fullscreen was already gone) instead of shrinking anything back. (2) it fired on EVERY
-        // native fullscreen entry, so a user who only ever wanted YouTube's own normal fullscreen
-        // now always got our reload-triggering swap instead, with no way to opt out. Leaving
-        // YouTube's native button alone entirely avoids both - it works exactly as YouTube built
-        // it, just without our volume control visible while it's active (the original, already-
-        // explained cross-origin limitation) - and our own button is a clean, predictable
-        // alternative for whoever wants the volume control to stay up.
-        //
-        // Moving the wrapper to <body> is required for the fixed positioning to actually resolve
-        // against the real viewport (confirmed directly - see the CSS comment) - the unavoidable
-        // cost is that moving an iframe's ancestor still tears down and reloads that iframe's
-        // browsing context, same as moving the iframe itself. capturePlayerState/
-        // restorePlayerState below exist specifically to paper over that: current time, playing/
-        // paused, volume and mute are all captured immediately before the move and reapplied
-        // (via a freshly re-created player - the old player object isn't trusted to survive the
-        // implicit reload) once the new player is ready, so entering/exiting theater mode reads
-        // as "kept playing, just bigger" instead of restarting the video from the top.
-        const VIDEO_WRAPPER_IFRAME_IDS = {
-            'hero-video-section': 'hero-video-iframe',
-            'modal-video-section': 'modal-video-iframe',
-            'doc-video-wrapper': 'doc-video-iframe'
-        };
-
-        function capturePlayerStateForReparent(wrapper) {
-            const iframeId = VIDEO_WRAPPER_IFRAME_IDS[wrapper.id];
-            const entry = iframeId ? ytPlayerRegistry[iframeId] : null;
-            if (!iframeId || !entry || !entry.player) return null;
-            try {
-                return {
-                    iframeId,
-                    videoId: entry.videoId,
-                    resumable: entry.resumable,
-                    time: entry.player.getCurrentTime(),
-                    wasPlaying: entry.player.getPlayerState() === 1, // YT.PlayerState.PLAYING
-                    volume: entry.player.getVolume(),
-                    muted: entry.player.isMuted()
-                };
-            } catch (e) {
-                return null;
-            }
-        }
-
-        function restorePlayerStateAfterReparent(savedState) {
-            if (!savedState) return;
-            if (savedState.resumable) {
-                // Reuses loadYoutubeIntoPlayer's own already-proven resume-position mechanism
-                // (findResumePosition/cueVideoById) instead of a parallel seekTo path - this just
-                // makes sure the position it finds is the exact one captured a moment ago, not
-                // whatever the periodic 4s autosave last happened to write.
-                try { localStorage.setItem(YT_RESUME_KEY_PREFIX + savedState.videoId, String(savedState.time)); } catch (e) { }
-            }
-            // The DOM move already tore down the old iframe's browsing context - don't trust the
-            // old player object to still be responsive on the other side of that, force a clean
-            // re-creation instead of letting loadYoutubeIntoPlayer reuse the (likely dead) one.
-            delete ytPlayerRegistry[savedState.iframeId];
-            loadYoutubeIntoPlayer(savedState.iframeId, savedState.videoId, { resumable: savedState.resumable }).then(player => {
-                try {
-                    player.setVolume(savedState.volume);
-                    if (savedState.muted) player.mute(); else player.unMute();
-                    if (savedState.resumable) {
-                        if (savedState.wasPlaying) player.playVideo();
-                    }
-                    // Live (non-resumable) content already autoplays at the live edge by default -
-                    // nothing further to restore there.
-                } catch (e) { }
-            });
-        }
-
-        let videoTheaterFullscreenEl = null;
-        let videoTheaterFullscreenOriginalParent = null;
-        let videoTheaterFullscreenOriginalNextSibling = null;
-
-        // Keeps a wrapper's own .video-expand-btn icon/title in sync regardless of which path
-        // actually entered/exited theater mode for it (the button's own click, the player's
-        // close button, Escape, or the whole modal closing out from under it) - centralized here
-        // instead of only updating it inside the button's own click handler, which would leave it
-        // stuck on "shrink" if theater mode was exited some other way.
-        function syncVideoExpandBtnIcon(wrapper, isTheater) {
-            const expandBtn = wrapper && wrapper.querySelector('.video-expand-btn');
-            if (!expandBtn) return;
-            expandBtn.innerHTML = isTheater ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>';
-            expandBtn.title = isTheater ? 'Shrink' : 'Expand';
-        }
-
-        function enterVideoTheaterFullscreen(wrapper) {
-            if (!wrapper || videoTheaterFullscreenEl === wrapper) return;
-            if (videoTheaterFullscreenEl) exitVideoTheaterFullscreen();
-            const savedState = capturePlayerStateForReparent(wrapper);
-            videoTheaterFullscreenOriginalParent = wrapper.parentNode;
-            videoTheaterFullscreenOriginalNextSibling = wrapper.nextSibling;
-            document.body.appendChild(wrapper);
-            wrapper.classList.add('video-theater-fullscreen');
-            videoTheaterFullscreenEl = wrapper;
-            lockBodyScroll();
-            restorePlayerStateAfterReparent(savedState);
-            syncVideoExpandBtnIcon(wrapper, true);
-        }
-
-        function exitVideoTheaterFullscreen() {
-            if (!videoTheaterFullscreenEl) return;
-            const wrapper = videoTheaterFullscreenEl;
-            const savedState = capturePlayerStateForReparent(wrapper);
-            wrapper.classList.remove('video-theater-fullscreen');
-            if (videoTheaterFullscreenOriginalNextSibling && videoTheaterFullscreenOriginalNextSibling.parentNode === videoTheaterFullscreenOriginalParent) {
-                videoTheaterFullscreenOriginalParent.insertBefore(wrapper, videoTheaterFullscreenOriginalNextSibling);
-            } else if (videoTheaterFullscreenOriginalParent) {
-                videoTheaterFullscreenOriginalParent.appendChild(wrapper);
-            }
-            videoTheaterFullscreenEl = null;
-            videoTheaterFullscreenOriginalParent = null;
-            videoTheaterFullscreenOriginalNextSibling = null;
-            unlockBodyScroll();
-            restorePlayerStateAfterReparent(savedState);
-            syncVideoExpandBtnIcon(wrapper, false);
-        }
-
         // After a live-launch player opens without a confirmed video ID (the "we haven't
         // confirmed a live stream" overlay), keeps retrying resolveSfnLiveVideoId() every 20s
         // for as long as that player stays open and unconfirmed, instead of giving up after the
@@ -12155,120 +11688,19 @@
             setTimeout(attempt, 20000);
         }
 
-        // Used to move #hero-video-section to a position:fixed, body-level element and track its
-        // "small mode" position on every scroll/resize frame via getBoundingClientRect + a
-        // written transform - needed ONLY so a later enterHeroVideoFullscreen() could size the
-        // player against the real viewport, past an ancestor further up that establishes its own
-        // containing block (plain position:fixed in place doesn't resolve relative to the real
-        // viewport there). But nothing calls enterHeroVideoFullscreen() anymore - WATCH LIVE
-        // opens the small inline player directly per the explicit 2026-08-20 change (see
-        // renderHeroLiveButton below) - so heroVideoFullscreenActive is always false and this
-        // machinery was pure overhead: every single scroll had to re-measure layout and write a
-        // new transform on the main thread, one rAF frame behind the browser's own (compositor-
-        // thread) native scroll. That one-frame lag is exactly the "not pinned to its place,
-        // dances while scrolling" bug reported live - visible on every scroll now that small mode
-        // is the default, not just an edge case. With nothing left that actually needs real-
-        // viewport-fixed positioning, the section is left in its normal DOM slot (already
-        // `relative` in its base class) and scrolls natively with zero JS involvement, exactly
-        // like every other element on the page - which by construction can never lag or jitter.
-        // (If a fullscreen mode is ever wired back up, it'll need this reparent-to-body dance
-        // restored - a plain position:fixed here alone won't reach the real viewport.)
-        function initHeroVideoFloatingPlayer() {
-            heroVideoFloatingInitDone = true;
-        }
-
-        // Swaps the small player's X button between "minimize" (fullscreen) and "close" (small)
-        // so its icon/tooltip always matches what clicking it will actually do right now.
-        function updateHeroVideoCloseBtnIcon() {
-            const btn = document.getElementById('hero-video-close-btn');
-            if (!btn) return;
-            const icon = btn.querySelector('i');
-            if (heroVideoFullscreenActive) {
-                if (icon) icon.className = 'fa-solid fa-down-left-and-up-right-to-center text-sm text-red-500';
-                btn.title = 'Minimize';
-            } else {
-                if (icon) icon.className = 'fa-solid fa-xmark text-sm text-red-500';
-                btn.title = 'Close';
-            }
-        }
-
-        // Expands the (already-open) hero video player to cover the full viewport. Always body-
-        // level by this point (see initHeroVideoFloatingPlayer), so a plain inset:0 genuinely
-        // covers the real viewport instead of some ancestor's smaller transformed box.
-        function enterHeroVideoFullscreen() {
-            const section = document.getElementById('hero-video-section');
-            if (!section || heroVideoFullscreenActive) return;
-            heroVideoFullscreenActive = true;
-            section.classList.add('hero-video-fullscreen-active');
-            section.style.transform = 'none';
-            section.style.width = '100vw';
-            section.style.height = '100vh';
-            lockBodyScroll();
-            updateHeroVideoCloseBtnIcon();
-        }
-
-        // Shrinks the player back down to its normal small size, inline in the hero card - does
-        // NOT close it, playback continues. Actually closing is the small player's own X button.
-        function exitHeroVideoFullscreen() {
-            const section = document.getElementById('hero-video-section');
-            if (!section || !heroVideoFullscreenActive) return;
-            heroVideoFullscreenActive = false;
-            section.classList.remove('hero-video-fullscreen-active');
-            unlockBodyScroll();
-            if (heroVideoSyncSmallPosition) heroVideoSyncSmallPosition();
-            updateHeroVideoCloseBtnIcon();
-        }
-
-        // Fully closes the hero video player (stops playback, hides it, forgets which mission it
-        // belonged to) - shared by the small player's own close button and by renderHeroLiveButton
-        // tearing down a stale player when the hero switches to a mission with no live coverage.
-        function closeHeroVideoPlayer() {
-            const section = document.getElementById('hero-video-section');
-            const unconfirmedOverlay = document.getElementById('hero-video-unconfirmed-overlay');
-            const placeholder = document.querySelector('.hero-video-placeholder');
-            if (heroVideoFullscreenActive) {
-                heroVideoFullscreenActive = false;
-                unlockBodyScroll();
-                updateHeroVideoCloseBtnIcon();
-            }
-            heroVideoMissionId = null;
-            stopYoutubePlayer('hero-video-iframe'); // Player-API-controlled now (see loadHeroVideoContent)
-            if (section) {
-                section.classList.add('hidden');
-                section.classList.remove('hero-video-fullscreen-active');
-            }
-            if (placeholder) placeholder.classList.add('hidden');
-            if (unconfirmedOverlay) {
-                unconfirmedOverlay.classList.add('hidden');
-                unconfirmedOverlay.classList.remove('flex');
-            }
-            resetVideoControlsOverlay('hero');
-        }
-
+        // Decides whether the hero's WATCH LIVE button should show for `nextLaunch`, and what
+        // clicking it does. There's no small inline player in the hero itself anymore (removed
+        // per explicit user request, 2026-08-21, after the floating-player/theater-mode/volume-
+        // control machinery built around it kept causing more bugs than it fixed) - clicking
+        // WATCH LIVE now just opens that mission's own modal and immediately triggers ITS
+        // existing live-video button (#modal-watch-live-btn, wired by wireModalLiveButton, called
+        // synchronously inside openMissionModal), reusing a player that already exists and works
+        // rather than maintaining a second, parallel one.
         function renderHeroLiveButton(nextLaunch) {
-            initHeroVideoFloatingPlayer();
-
             const watchLiveBtn = document.getElementById('hero-watch-live-btn');
             const watchLiveIcon = document.getElementById('hero-watch-live-icon');
             const watchLiveLabel = document.getElementById('hero-watch-live-label');
-            const heroVideoSection = document.getElementById('hero-video-section');
-            const heroVideoIframe = document.getElementById('hero-video-iframe');
-            const heroVideoCloseBtn = document.getElementById('hero-video-close-btn');
-            const heroVideoUnconfirmedOverlay = document.getElementById('hero-video-unconfirmed-overlay');
-            const heroVideoUnconfirmedYtBtn = document.getElementById('hero-video-unconfirmed-yt-btn');
-            const heroVideoPlaceholder = document.querySelector('.hero-video-placeholder');
             if (!watchLiveBtn) return;
-
-            const heroVideoOpen = heroVideoSection && !heroVideoSection.classList.contains('hidden');
-            // The hero switched to a genuinely different mission (e.g. eviction/grace-period
-            // rules moved a new mission into the hero) while a player was open and playing -
-            // the open stream belongs to whichever mission it was loaded for, not to whatever
-            // is now in the hero, so it needs to be swapped/torn down below instead of left alone.
-            const missionChangedWhileOpen = heroVideoOpen && heroVideoMissionId !== null && heroVideoMissionId !== nextLaunch.id;
-
-            // Don't tear down a player that's already open and playing just because this
-            // function got re-invoked by the 20-second ticker or a data refresh for the SAME mission.
-            if (heroVideoOpen && !missionChangedWhileOpen) return;
 
             const liveSrcUrl = nextLaunch.hasLiveVideo ? (nextLaunch.liveVideoUrl || nextLaunch.liveUrl || "") : "";
             const heroYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
@@ -12278,123 +11710,20 @@
             // Widened from 15 to 60 - Spaceflight Now's coverage has been observed starting
             // more than 15 (even more than the ~30 the code used to assume) minutes before
             // liftoff, so the old window was missing real early starts. Kept in sync with the
-            // modal's own copy of this same window below (wireModalLiveButton).
+            // modal's own copy of this same window (wireModalLiveButton).
             const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 && minutesToLaunch >= -180;
-
-            const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
-
-            // Loads/refreshes the actual video content for `nextLaunch` into the player, without
-            // touching whether it's currently small or fullscreen - shared by a deliberate WATCH
-            // LIVE click (which separately calls enterHeroVideoFullscreen right before this) and
-            // by an automatic mission-switch refresh below (which should keep whatever size the
-            // player already happened to be at, not yank the user into fullscreen on its own).
-            function loadHeroVideoContent() {
-                if (!heroVideoIframe || !heroVideoSection) return;
-                heroVideoMissionId = nextLaunch.id;
-                // Same generation counter pollForConfirmedLiveVideo() uses on this same
-                // videoSection node (see its own comment above) - incrementing it here too
-                // means a rapid mission-switch/reopen while THIS initial resolve is still in
-                // flight correctly invalidates it, instead of only the later poll being guarded.
-                heroVideoSection._livePollGeneration = (heroVideoSection._livePollGeneration || 0) + 1;
-                const myVideoLoadGeneration = heroVideoSection._livePollGeneration;
-                heroVideoSection.classList.remove('hidden');
-                heroVideoSection.style.display = ''; // clear a stale inline display:none a previous close may have left
-                if (heroVideoPlaceholder) heroVideoPlaceholder.classList.remove('hidden');
-                resetVideoControlsOverlay('hero');
-
-                if (heroYoutubeId) {
-                    // The API confirmed a specific, real video - most precise, embed it directly.
-                    // Routed through the Player API (like modal-video-iframe already was) rather
-                    // than a raw `.src =` write, so our own volume control (wireCustomVolumeControl)
-                    // has a real player object to call setVolume/mute on.
-                    loadYoutubeIntoPlayer('hero-video-iframe', heroYoutubeId, { resumable: false });
-                    if (heroVideoUnconfirmedOverlay) {
-                        heroVideoUnconfirmedOverlay.classList.add('hidden');
-                        heroVideoUnconfirmedOverlay.classList.remove('flex');
-                    }
-                } else {
-                    // No confirmed video yet, but we're inside the pre-launch window - show the
-                    // "not confirmed yet" overlay with a real "Watch on YouTube" button INSTEAD of
-                    // the unreliable "embed/live_stream?channel=X" trick (confirmed directly to
-                    // show YouTube's own bare "video unavailable" even while genuinely live). A
-                    // background lookup silently swaps in a real player and hides the overlay
-                    // once/if it resolves.
-                    stopYoutubePlayer('hero-video-iframe'); // in case a previous mission's video is still loaded/playing underneath
-                    if (heroVideoUnconfirmedYtBtn) heroVideoUnconfirmedYtBtn.href = youtubeOpenUrlFallback;
-                    if (heroVideoUnconfirmedOverlay) {
-                        heroVideoUnconfirmedOverlay.classList.remove('hidden');
-                        heroVideoUnconfirmedOverlay.classList.add('flex');
-                    }
-                    resolveSfnLiveVideoId().then(resolvedId => {
-                        if (heroVideoSection._livePollGeneration !== myVideoLoadGeneration) return; // superseded by a newer load/poll while this resolve() was in flight
-                        if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) {
-                            pollForConfirmedLiveVideo(heroVideoIframe, heroVideoSection, heroVideoUnconfirmedOverlay, 'hero-video-iframe');
-                            return;
-                        }
-                        loadYoutubeIntoPlayer('hero-video-iframe', resolvedId, { resumable: false });
-                        if (heroVideoUnconfirmedOverlay) {
-                            heroVideoUnconfirmedOverlay.classList.add('hidden');
-                            heroVideoUnconfirmedOverlay.classList.remove('flex');
-                        }
-                    });
-                }
-                if (!heroVideoFullscreenActive && heroVideoSyncSmallPosition) heroVideoSyncSmallPosition();
-            }
 
             if (heroYoutubeId || withinLiveWindow) {
                 watchLiveBtn.classList.remove('hidden');
                 if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
                 if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
                 watchLiveBtn.onclick = function () {
-                    // Toggle: clicking again while the player is already open and playing THIS
-                    // mission closes it (same effect as the player's own close button) instead of
-                    // just reloading/restarting the same stream. Checked fresh at click time, not
-                    // via the heroVideoOpen captured when this render ran - the player's open/
-                    // closed state can change between renders (a manual close, a mission switch)
-                    // well before the button is actually clicked again.
-                    const isOpenForThisMission = heroVideoSection && !heroVideoSection.classList.contains('hidden') && heroVideoMissionId === nextLaunch.id;
-                    if (isOpenForThisMission) {
-                        closeHeroVideoPlayer();
-                        return;
-                    }
-                    // Opens at the player's normal small inline size instead of forcing
-                    // fullscreen (per explicit user request, 2026-08-20) - loadHeroVideoContent()
-                    // itself already handles small-size positioning whenever
-                    // heroVideoFullscreenActive is false, which it now always is at this point
-                    // since nothing enters fullscreen anymore.
-                    loadHeroVideoContent();
+                    openMissionModal(nextLaunch);
+                    const modalLiveBtn = document.getElementById('modal-watch-live-btn');
+                    if (modalLiveBtn) modalLiveBtn.click();
                 };
-
-                if (missionChangedWhileOpen) {
-                    // Force a fresh lookup instead of trusting the 2-minute SFN cache - it may
-                    // still hold the PREVIOUS mission's video id from just before the switch,
-                    // which would silently keep the stale stream playing for up to 2 more minutes.
-                    sfnLiveVideoIdCache = { id: null, fetchedAt: 0 };
-                    loadHeroVideoContent();
-                }
             } else {
                 watchLiveBtn.classList.add('hidden');
-                if (missionChangedWhileOpen) {
-                    // New mission has no live coverage at all (yet) - close the stale player
-                    // instead of leaving the previous mission's stream running underneath it.
-                    closeHeroVideoPlayer();
-                }
-            }
-
-            if (heroVideoCloseBtn) {
-                heroVideoCloseBtn.onclick = function () {
-                    // Theater mode -> small (keeps playing); small -> fully closed. Matches the
-                    // player's own current state at click time, not whatever nextLaunch is now.
-                    if (videoTheaterFullscreenEl === heroVideoSection) {
-                        exitVideoTheaterFullscreen();
-                        return;
-                    }
-                    if (heroVideoFullscreenActive) {
-                        exitHeroVideoFullscreen();
-                        return;
-                    }
-                    closeHeroVideoPlayer();
-                };
             }
         }
 
@@ -13241,13 +12570,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
             if (videoCloseBtn) {
                 videoCloseBtn.onclick = function () {
-                    // Theater mode -> normal embedded size (keeps playing), matching the hero
-                    // player's own close-button convention - a second click (now not in theater
-                    // mode) actually closes it, below.
-                    if (videoTheaterFullscreenEl === videoSection) {
-                        exitVideoTheaterFullscreen();
-                        return;
-                    }
                     stopYoutubePlayer('modal-video-iframe'); // saves the resume position first
                     if (videoSection) videoSection.classList.add('hidden');
                     const btnRow = document.getElementById('modal-video-btn-row');
@@ -13395,12 +12717,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // every mission modal opened for the rest of the session (it's a shared element,
                 // not per-mission). Now restores everything either open-path can hide.
                 videoCloseBtn.onclick = function () {
-                    // Theater mode -> normal embedded size (keeps playing) - same convention as
-                    // the hero player's own close button.
-                    if (videoTheaterFullscreenEl === videoSection) {
-                        exitVideoTheaterFullscreen();
-                        return;
-                    }
                     stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
                     if (videoSection) videoSection.classList.add('hidden');
                     if (videoUnconfirmedOverlay) {
@@ -13734,13 +13050,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
         function closeModal() {
             const modal = document.getElementById('mission-modal');
-            // The video wrapper is reparented to <body> while in theater mode (see
-            // enterVideoTheaterFullscreen) - no longer a descendant of this modal at all, so
-            // hiding the modal below would leave it stuck floating fullscreen instead of closing
-            // with everything else. Restore it first so hiding the modal actually hides it too.
-            if (videoTheaterFullscreenEl && videoTheaterFullscreenEl.id === 'modal-video-section') {
-                exitVideoTheaterFullscreen();
-            }
             modal.style.display = 'none';
             modal.classList.add('hidden');
             unlockBodyScroll();
@@ -14752,13 +14061,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 };
             })();
 
-            // One-time wiring for the custom volume control (see wireCustomVolumeControl) on
-            // each of the three YouTube players - static containers already present in the DOM
-            // at this point regardless of whether a video has ever been loaded into them yet.
-            wireCustomVolumeControl(document.getElementById('hero-video-section'), 'hero-video-iframe');
-            wireCustomVolumeControl(document.getElementById('modal-video-section'), 'modal-video-iframe');
-            wireCustomVolumeControl(document.getElementById('doc-video-wrapper'), 'doc-video-iframe');
-
             // GitHub Pages' CDN can keep serving an old build for a while after a new one ships -
             // a tab left open (or even a fresh load hitting a not-yet-expired CDN edge) has no
             // other signal that a refresh would actually get something newer. A HEAD request with
@@ -15107,7 +14409,7 @@ if (heroNameEl) {
         // cost is that keyboard shortcuts aimed at the YouTube player itself (space to pause,
         // arrow keys to seek) stop working, an acceptable trade for Escape actually working.
         (function () {
-            const trackedVideoIframeIds = ['hero-video-iframe', 'modal-video-iframe', 'doc-video-iframe'];
+            const trackedVideoIframeIds = ['modal-video-iframe', 'doc-video-iframe'];
             window.addEventListener('blur', function () {
                 const active = document.activeElement;
                 if (!active || !trackedVideoIframeIds.includes(active.id)) return;
@@ -15132,24 +14434,6 @@ if (heroNameEl) {
         // reading each close function), so a single generic loop covers all of them.
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
-            // Our own theater-mode pseudo-fullscreen (see enterVideoTheaterFullscreen) sits above
-            // everything else visually, including the hero's own older fullscreen overlay below -
-            // checked first for the same reason that one is checked before the nine modals.
-            if (typeof videoTheaterFullscreenEl !== 'undefined' && videoTheaterFullscreenEl) {
-                exitVideoTheaterFullscreen();
-                return;
-            }
-            // The hero WATCH LIVE fullscreen video player isn't one of the nine `hidden`-class
-            // modals below - it's a separate full-viewport overlay (see enterHeroVideoFullscreen)
-            // that had no keyboard support at all, so Escape did nothing while watching a launch
-            // this way. Checked first since it visually sits above everything else. Mirrors the
-            // player's own close button: while fullscreen, exits back to the small inline player
-            // (keeps playing) rather than closing it outright - matches standard fullscreen-video
-            // Escape behavior (exit fullscreen, don't stop playback).
-            if (typeof heroVideoFullscreenActive !== 'undefined' && heroVideoFullscreenActive) {
-                exitHeroVideoFullscreen();
-                return;
-            }
             const modalCloseOrder = [
                 ['doc-video-modal', closeDocVideoModal],
                 ['milestone-image-modal', closeMilestoneImageModal],
