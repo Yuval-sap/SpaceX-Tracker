@@ -342,7 +342,17 @@
         .modal-subhead,
         #sticky-countdown,
         #sticky-countdown-mobile {
-            font-family: 'Orbitron', 'Rubik', system_ui, sans-serif;
+            /* !important needed here (unlike this rule's original members like #hero-name,
+               which never conflicted with anything more specific): several of the elements
+               added to this list live inside #rocket-modal/#site-modal/#orbit-modal/
+               #landing-modal/#astronaut-modal AND carry .font-space (rocket-modal-name and
+               friends, plus the "Technical Overview"/"Operational Profile"/"Recovery Profile"
+               dossier headers) - those modals each have their own `#modal-id .font-space`
+               rule (JetBrains Mono, for the numeric spec readouts inside them) at a HIGHER
+               specificity (ID+class) than this plain class selector, so without !important
+               that rule silently won here in day/night mode even though Mars/Moon's own
+               !important override already masked the bug there. */
+            font-family: 'Orbitron', 'Rubik', system_ui, sans-serif !important;
         }
 
         /* Orbitron (every mode's base heading font) runs wide enough that these 6 mission-modal
@@ -6599,14 +6609,14 @@
                 <div
                     class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Global
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Global
                             Coordinates</div>
                         <div id="site-modal-coords"
                             class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate" dir="ltr"
                             translate="no"></div>
                     </div>
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Primary
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Primary
                             Fleet</div>
                         <div id="site-modal-fleet" translate="no" class="notranslate text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
@@ -6686,21 +6696,21 @@
                 <div
                     class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Altitude
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Altitude
                         </div>
-                        <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate"
+                        <div class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate"
                             id="orbit-alt" dir="auto" translate="no"></div>
                     </div>
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Velocity
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Velocity
                         </div>
-                        <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate"
+                        <div class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate"
                             id="orbit-vel" dir="auto" translate="no"></div>
                     </div>
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Orbital
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Orbital
                             Period</div>
-                        <div class="text-xs sm:text-base font-semibold text-emerald-400 mt-0.5 notranslate"
+                        <div class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate"
                             id="orbit-period" dir="auto" translate="no"></div>
                     </div>
                 </div>
@@ -6709,7 +6719,7 @@
                 <div class="space-y-4">
                     <div>
                         <h4 id="orbit-heading-main" translate="no"
-                            class="notranslate font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2">
+                            class="modal-subhead notranslate font-space text-sm sm:text-base font-bold text-emerald-400 mb-1.5 flex items-center gap-2">
                             <i class="fa-solid fa-satellite"></i> <span></span></h4>
                         <p id="orbit-desc-main" translate="no"
                             class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-emerald-900/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl transition-colors duration-500">
@@ -6718,12 +6728,12 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
-                            <h4 id="orbit-heading-a" translate="no" class="notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            <h4 id="orbit-heading-a" translate="no" class="modal-subhead notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
                             </h4>
                             <p id="orbit-desc-a" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
                         <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
-                            <h4 id="orbit-heading-b" translate="no" class="notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            <h4 id="orbit-heading-b" translate="no" class="modal-subhead notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
                             </h4>
                             <p id="orbit-desc-b" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
@@ -6762,13 +6772,13 @@
                 <div
                     class="grid grid-cols-2 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Recovery
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Recovery
                             Method</div>
-                        <div id="landing-modal-type" class="text-xs sm:text-sm font-semibold text-emerald-400 mt-0.5">
+                        <div id="landing-modal-type" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">
                         </div>
                     </div>
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-500 font-bold">Primary
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Primary
                             Fleet / Pad</div>
                         <div id="landing-modal-fleet" translate="no" class="notranslate text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">
                         </div>
@@ -6813,8 +6823,8 @@
                 </div>
 
                 <div class="bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center">
-                    <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Assigned Flight Role</div>
-                    <div id="astro-modal-role" class="text-sm sm:text-base font-semibold text-emerald-400 mt-0.5"></div>
+                    <div class="modal-subhead text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Assigned Flight Role</div>
+                    <div id="astro-modal-role" class="text-sm sm:text-base font-semibold text-zinc-200 mt-0.5"></div>
                 </div>
 
                 <div class="space-y-2">
