@@ -1927,6 +1927,31 @@
             max-width: 100vw !important;
         }
 
+        /* CSS-only "theater" pseudo-fullscreen (see enterVideoTheaterFullscreen) - NOT the real
+           browser Fullscreen API. Real fullscreen only renders the fullscreened element's own
+           subtree; when YouTube's OWN fullscreen button (inside its cross-origin iframe) is
+           clicked, the iframe itself becomes document.fullscreenElement, and everything else -
+           including our own volume control, a plain DOM sibling of that iframe, not a descendant
+           - stops rendering entirely. Swapping in this class instead keeps both the iframe and
+           our volume control visible, since neither is real fullscreen. Applied to the player
+           wrapper after moving it to <body> (see enterVideoTheaterFullscreen for why the move is
+           needed: a plain position:fixed here, left in its normal spot, does not resolve against
+           the real viewport - some ancestor further up establishes its own containing block,
+           confirmed directly by measuring getBoundingClientRect() before/after). */
+        .video-theater-fullscreen {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            z-index: 9999;
+        }
+
         /* Our own volume control, drawn over the YouTube embed (see wireCustomVolumeControl) -
            built because YouTube's own hover-to-reveal volume slider (inside its cross-origin
            iframe, entirely outside our control) collapses the instant the cursor crosses the gap
@@ -4646,6 +4671,14 @@
         function closeDocVideoModal() {
             const modal = document.getElementById('doc-video-modal');
             if (!modal) return;
+            // The video wrapper is reparented to <body> while in theater mode (see
+            // enterVideoTheaterFullscreen) - no longer a descendant of this modal at all, so
+            // hiding the modal below would leave it stuck floating fullscreen instead of closing
+            // with everything else. Restore it first so hiding the (now empty-of-video-only-in-
+            // theater-mode) modal actually hides it too.
+            if (videoTheaterFullscreenEl && videoTheaterFullscreenEl.id === 'doc-video-wrapper') {
+                exitVideoTheaterFullscreen();
+            }
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             stopYoutubePlayer('doc-video-iframe'); // saves the resume position first
@@ -6225,7 +6258,7 @@
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
-                <div class="w-full aspect-video bg-zinc-900 relative">
+                <div id="doc-video-wrapper" class="w-full aspect-video bg-zinc-900 relative">
                     <!-- Placeholder for the YouTube IFrame Player API to replace with its own
                          real iframe (see loadYoutubeIntoPlayer) - must be a plain container,
                          NOT an <iframe> itself, or the API's replacement never actually loads a
@@ -9663,14 +9696,24 @@
         function startPastVideoLongTailRecheck() {
             if (pastVideoLongTailIntervalArmed) return;
             pastVideoLongTailIntervalArmed = true;
-            setInterval(() => {
+            const check = () => {
                 const stillMissing = (rawPastMissions || []).some(m => {
                     if (m.youtubeId) return false;
                     const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
                     return hoursSinceLaunch >= 3 && hoursSinceLaunch <= 24 * 7;
                 });
                 if (stillMissing) fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
-            }, 60 * 60 * 1000);
+            };
+            // First check fires soon after load (not a full hour later) - a session that was
+            // rate-limited (or simply hadn't refreshed yet) when the page was first opened would
+            // otherwise sit on stale X-only data for up to an hour before this ever gets a chance
+            // to fix it, which is exactly what was reported: a reload minutes after the fetch
+            // that first surfaced this bug still showed the same stale X fallback, because the
+            // hourly-only version of this check hadn't fired even once yet. Delayed slightly
+            // (not fired at 0ms) so it doesn't pile onto the burst of requests page-load already
+            // makes (upcoming+previous, weather, currency, etc).
+            setTimeout(check, 45 * 1000);
+            setInterval(check, 60 * 60 * 1000);
         }
 
         // A backgrounded tab throttles setTimeout heavily (sometimes for a very long time
@@ -11827,6 +11870,63 @@
             });
         }
 
+        // CSS-only "theater" pseudo-fullscreen for a video player wrapper - see the
+        // .video-theater-fullscreen CSS comment for why this exists (in short: real Fullscreen
+        // API on the iframe hides our sibling volume control; a fixed-viewport CSS overlay on
+        // the wrapper doesn't, since both stay siblings inside it). Moving the wrapper to <body>
+        // is required for the fixed positioning to actually resolve against the real viewport
+        // (confirmed directly - see the CSS comment) - the unavoidable cost is that moving an
+        // iframe's ancestor still tears down and reloads that iframe's browsing context, same as
+        // moving the iframe itself, so entering/exiting theater mode restarts the video (a live
+        // stream reconnects at the live edge; archived footage restarts from the top). Accepted
+        // as the lesser cost against the volume control silently vanishing on every fullscreen
+        // view - which is the bug this exists to fix.
+        let videoTheaterFullscreenEl = null;
+        let videoTheaterFullscreenOriginalParent = null;
+        let videoTheaterFullscreenOriginalNextSibling = null;
+
+        function enterVideoTheaterFullscreen(wrapper) {
+            if (!wrapper || videoTheaterFullscreenEl === wrapper) return;
+            if (videoTheaterFullscreenEl) exitVideoTheaterFullscreen();
+            videoTheaterFullscreenOriginalParent = wrapper.parentNode;
+            videoTheaterFullscreenOriginalNextSibling = wrapper.nextSibling;
+            document.body.appendChild(wrapper);
+            wrapper.classList.add('video-theater-fullscreen');
+            videoTheaterFullscreenEl = wrapper;
+            lockBodyScroll();
+        }
+
+        function exitVideoTheaterFullscreen() {
+            if (!videoTheaterFullscreenEl) return;
+            const wrapper = videoTheaterFullscreenEl;
+            wrapper.classList.remove('video-theater-fullscreen');
+            if (videoTheaterFullscreenOriginalNextSibling && videoTheaterFullscreenOriginalNextSibling.parentNode === videoTheaterFullscreenOriginalParent) {
+                videoTheaterFullscreenOriginalParent.insertBefore(wrapper, videoTheaterFullscreenOriginalNextSibling);
+            } else if (videoTheaterFullscreenOriginalParent) {
+                videoTheaterFullscreenOriginalParent.appendChild(wrapper);
+            }
+            videoTheaterFullscreenEl = null;
+            videoTheaterFullscreenOriginalParent = null;
+            videoTheaterFullscreenOriginalNextSibling = null;
+            unlockBodyScroll();
+        }
+
+        // The instant the real Fullscreen API activates on one of our video iframes (always via
+        // YouTube's OWN fullscreen button, inside its cross-origin document - we never call
+        // requestFullscreen ourselves), immediately back out of it and swap in our own theater
+        // mode instead. document.fullscreenElement ends up being the <iframe> itself (browsers
+        // propagate a cross-origin iframe's internal fullscreen request up to the iframe element
+        // in the PARENT page - standard Fullscreen API behavior for framed content), which is
+        // always a direct child of one of our three player wrappers.
+        document.addEventListener('fullscreenchange', function () {
+            const fsEl = document.fullscreenElement;
+            if (!fsEl) return;
+            const wrapper = fsEl.closest('#hero-video-section, #modal-video-section, #doc-video-wrapper');
+            if (!wrapper) return;
+            document.exitFullscreen().catch(() => { });
+            enterVideoTheaterFullscreen(wrapper);
+        });
+
         // After a live-launch player opens without a confirmed video ID (the "we haven't
         // confirmed a live stream" overlay), keeps retrying resolveSfnLiveVideoId() every 20s
         // for as long as that player stays open and unconfirmed, instead of giving up after the
@@ -12102,8 +12202,12 @@
 
             if (heroVideoCloseBtn) {
                 heroVideoCloseBtn.onclick = function () {
-                    // Fullscreen -> small (keeps playing); small -> fully closed. Matches the
+                    // Theater mode -> small (keeps playing); small -> fully closed. Matches the
                     // player's own current state at click time, not whatever nextLaunch is now.
+                    if (videoTheaterFullscreenEl === heroVideoSection) {
+                        exitVideoTheaterFullscreen();
+                        return;
+                    }
                     if (heroVideoFullscreenActive) {
                         exitHeroVideoFullscreen();
                         return;
@@ -12925,6 +13029,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
             if (videoCloseBtn) {
                 videoCloseBtn.onclick = function () {
+                    // Theater mode -> normal embedded size (keeps playing), matching the hero
+                    // player's own close-button convention - a second click (now not in theater
+                    // mode) actually closes it, below.
+                    if (videoTheaterFullscreenEl === videoSection) {
+                        exitVideoTheaterFullscreen();
+                        return;
+                    }
                     stopYoutubePlayer('modal-video-iframe'); // saves the resume position first
                     if (videoSection) videoSection.classList.add('hidden');
                     const btnRow = document.getElementById('modal-video-btn-row');
@@ -13072,6 +13183,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // every mission modal opened for the rest of the session (it's a shared element,
                 // not per-mission). Now restores everything either open-path can hide.
                 videoCloseBtn.onclick = function () {
+                    // Theater mode -> normal embedded size (keeps playing) - same convention as
+                    // the hero player's own close button.
+                    if (videoTheaterFullscreenEl === videoSection) {
+                        exitVideoTheaterFullscreen();
+                        return;
+                    }
                     stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
                     if (videoSection) videoSection.classList.add('hidden');
                     if (videoUnconfirmedOverlay) {
@@ -13405,6 +13522,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
         function closeModal() {
             const modal = document.getElementById('mission-modal');
+            // The video wrapper is reparented to <body> while in theater mode (see
+            // enterVideoTheaterFullscreen) - no longer a descendant of this modal at all, so
+            // hiding the modal below would leave it stuck floating fullscreen instead of closing
+            // with everything else. Restore it first so hiding the modal actually hides it too.
+            if (videoTheaterFullscreenEl && videoTheaterFullscreenEl.id === 'modal-video-section') {
+                exitVideoTheaterFullscreen();
+            }
             modal.style.display = 'none';
             modal.classList.add('hidden');
             unlockBodyScroll();
@@ -14421,8 +14545,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // at this point regardless of whether a video has ever been loaded into them yet.
             wireCustomVolumeControl(document.getElementById('hero-video-section'), 'hero-video-iframe');
             wireCustomVolumeControl(document.getElementById('modal-video-section'), 'modal-video-iframe');
-            const docVideoPlaceholder = document.getElementById('doc-video-iframe');
-            wireCustomVolumeControl(docVideoPlaceholder ? docVideoPlaceholder.parentElement : null, 'doc-video-iframe');
+            wireCustomVolumeControl(document.getElementById('doc-video-wrapper'), 'doc-video-iframe');
 
             // A browser refresh (F5 / the reload button) shouldn't cost an API call if we
             // already fetched moments ago - that's the exact same LL2 request budget the
@@ -14765,6 +14888,13 @@ if (heroNameEl) {
         // reading each close function), so a single generic loop covers all of them.
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
+            // Our own theater-mode pseudo-fullscreen (see enterVideoTheaterFullscreen) sits above
+            // everything else visually, including the hero's own older fullscreen overlay below -
+            // checked first for the same reason that one is checked before the nine modals.
+            if (typeof videoTheaterFullscreenEl !== 'undefined' && videoTheaterFullscreenEl) {
+                exitVideoTheaterFullscreen();
+                return;
+            }
             // The hero WATCH LIVE fullscreen video player isn't one of the nine `hidden`-class
             // modals below - it's a separate full-viewport overlay (see enterHeroVideoFullscreen)
             // that had no keyboard support at all, so Escape did nothing while watching a launch
