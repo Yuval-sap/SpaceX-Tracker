@@ -433,6 +433,32 @@
             }
         }
 
+        /* The "Telemetry Coordinates"/Launch Site radar box's hover border was a flat, theme-
+           agnostic zinc-700 (Tailwind's md:hover:border-zinc-700, removed from its class list in
+           the HTML in favor of this) - reads as a dull, disconnected gray in every mode instead
+           of matching each theme's own accent. Own dedicated rules per mode instead of just
+           swapping in .border-emerald-500 (which the night/light themes don't actually
+           differentiate - both would resolve to the same plain bright green): night gets a
+           deep/dark green, light theme a lighter, more pastel green so the two read as visibly
+           different from each other; Mars/Moon reuse those themes' own already-established accent
+           colors so this exactly matches the accent border color used everywhere else in each
+           mode. md: only, matching the original Tailwind rule's own breakpoint (no real :hover on
+           touch devices below that anyway). */
+        @media (min-width: 768px) {
+            #radar-box-click:hover {
+                border-color: #047857 !important;
+            }
+            body.light-theme #radar-box-click:hover {
+                border-color: #34d399 !important;
+            }
+            body.mars-theme #radar-box-click:hover {
+                border-color: #ff6b35 !important;
+            }
+            body.moon-theme #radar-box-click:hover {
+                border-color: #3fa9f5 !important;
+            }
+        }
+
         /* Section headings (Scheduled Launches, Milestones, etc.) sit in a flex row with their
            icon (icon gets shrink-0 so it never gives up its own size) - min-width:0 lets this
            span actually shrink below its intrinsic text width instead of forcing the row wider
@@ -6421,7 +6447,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 md:hover:border-zinc-700 transition-colors duration-500"
+                    <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 transition-colors duration-500"
                         id="radar-box-click" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)">
                         <div>
                             <h5 class="modal-subhead modal-mini-heading text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2 flex items-center gap-2">
