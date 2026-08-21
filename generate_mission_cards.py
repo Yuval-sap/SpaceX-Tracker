@@ -13,7 +13,7 @@ every mission would be the exact same site-wide tags. There's no way to make tho
 different per mission without a page that's different per mission - hence this script,
 which writes one small real HTML file per mission (m/<id>.html) with that mission's own
 title/description/image baked in as static text. A real visitor who lands on one of these
-still ends up in the full interactive app - see the meta-refresh/JS redirect below.
+still ends up in the full interactive app - see the JS redirect below.
 
 Usage:
     python generate_mission_cards.py
@@ -111,7 +111,6 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta name="twitter:description" content="{description_escaped}">
 <meta name="twitter:image" content="{image_escaped}">
 
-<meta http-equiv="refresh" content="0; url={app_url_escaped}">
 <script>location.replace({app_url_json});</script>
 </head>
 <body>
