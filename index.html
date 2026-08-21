@@ -391,6 +391,48 @@
             }
         }
 
+        /* The 0.7rem/0.8rem shrink right above exists ONLY because Orbitron (this label's
+           declared font-family, see .modal-subhead above) is wide enough to wrap these 6 labels
+           to 2 lines in English at their original text-sm/text-base size. Orbitron has no Hebrew
+           glyphs at all though, so in RTL the browser silently falls through to the next font in
+           the stack (Rubik) instead - a much more compact face that never had a wrapping problem
+           to begin with, making the same shrink look needlessly tiny (the actual live complaint).
+           Sized back up close to the original text-sm/text-base intent, not all the way to 1rem,
+           so a long label (e.g. "יעד המסלול") still can't wrap even in the narrower 2-column
+           mobile grid - verified directly against actual rendered widths, not assumed. */
+        html[dir="rtl"] #i18n-vehicle-type,
+        html[dir="rtl"] #i18n-launch-site,
+        html[dir="rtl"] #i18n-orbit-destination,
+        html[dir="rtl"] #i18n-mission-status,
+        html[dir="rtl"] #i18n-first-stage-booster,
+        html[dir="rtl"] #i18n-recovery-zone {
+            font-size: 0.85rem !important;
+        }
+        @media (min-width: 640px) {
+            html[dir="rtl"] #i18n-vehicle-type,
+            html[dir="rtl"] #i18n-launch-site,
+            html[dir="rtl"] #i18n-orbit-destination,
+            html[dir="rtl"] #i18n-mission-status,
+            html[dir="rtl"] #i18n-first-stage-booster,
+            html[dir="rtl"] #i18n-recovery-zone {
+                font-size: 0.95rem !important;
+            }
+        }
+
+        /* Same Orbitron-falls-back-to-Rubik-in-Hebrew story as the six labels right above, for
+           the mission modal's two other green mini-section titles ("Telemetry Coordinates",
+           "Rocket Scale Comparator") - these were never given an Orbitron-specific shrink to
+           begin with (plain text-xs), so at 0.75rem in the more compact Hebrew/Rubik render they
+           just read as too small, not wrapping-constrained the way the six labels were. */
+        html[dir="rtl"] .modal-mini-heading {
+            font-size: 0.85rem !important;
+        }
+        @media (min-width: 640px) {
+            html[dir="rtl"] .modal-mini-heading {
+                font-size: 0.95rem !important;
+            }
+        }
+
         /* Section headings (Scheduled Launches, Milestones, etc.) sit in a flex row with their
            icon (icon gets shrink-0 so it never gives up its own size) - min-width:0 lets this
            span actually shrink below its intrinsic text width instead of forcing the row wider
@@ -6361,7 +6403,7 @@
                     <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 md:hover:border-zinc-700 transition-colors duration-500"
                         id="radar-box-click" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)">
                         <div>
-                            <h5 class="modal-subhead text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
+                            <h5 class="modal-subhead modal-mini-heading text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
                                 <i class="fa-solid fa-map-location-dot"></i> Telemetry Coordinates
                             </h5>
                             <p class="text-[11px] sm:text-xs text-zinc-500 notranslate" id="modal-pad-coordinate-label"
@@ -6388,7 +6430,7 @@
                     </div>
 
                     <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
-                        <h5 class="modal-subhead text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
+                        <h5 class="modal-subhead modal-mini-heading text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
                             <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
                         </h5>
                         <div class="flex items-end justify-around h-48 font-mono text-xs">
