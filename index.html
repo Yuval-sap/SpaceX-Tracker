@@ -1927,6 +1927,72 @@
             max-width: 100vw !important;
         }
 
+        /* Our own volume control, drawn over the YouTube embed (see wireCustomVolumeControl) -
+           built because YouTube's own hover-to-reveal volume slider (inside its cross-origin
+           iframe, entirely outside our control) collapses the instant the cursor crosses the gap
+           between the speaker icon and the slider track, making it nearly impossible to actually
+           drag. The button and the slider track both live inside ONE wrapper with no gap between
+           them, and the show/hide hover state is bound to that single wrapper - not to the button
+           or the track individually - so there is no dead zone to cross in the first place. */
+        .video-volume-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .video-volume-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .video-volume-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .video-volume-slider-track {
+            height: 0;
+            overflow: hidden;
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin-bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 9999px;
+            width: 30px;
+            transition: height 0.15s ease, opacity 0.15s ease, margin-bottom 0.15s ease;
+        }
+
+        .video-volume-control:hover .video-volume-slider-track,
+        .video-volume-control:focus-within .video-volume-slider-track {
+            height: 90px;
+            opacity: 1;
+            margin-bottom: 6px;
+            padding: 10px 0;
+        }
+
+        /* A native <input type=range> laid out vertically via a 90deg rotation - far more
+           consistent across browsers than the Firefox-only orient="vertical" attribute. */
+        .video-volume-slider {
+            width: 70px;
+            height: 20px;
+            transform: rotate(-90deg);
+            cursor: pointer;
+            accent-color: #10b981;
+        }
+
 
         .ai3d-center-hud {
             position: absolute;
@@ -5239,10 +5305,13 @@
                         </div>
                         <div id="hero-video-section"
                             class="hidden group/video relative rounded-2xl overflow-hidden border border-zinc-800 shadow-lg bg-black aspect-video w-full sm:max-w-md mx-auto lg:mx-0">
-                            <iframe id="hero-video-iframe" class="w-full h-full absolute inset-0" src=""
-                                title="Live Launch Video" frameborder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowfullscreen></iframe>
+                            <!-- Placeholder for the YouTube IFrame Player API to replace with its own
+                                 real iframe (see loadYoutubeIntoPlayer) - must be a plain container,
+                                 NOT an <iframe> itself, or the API's replacement never actually loads
+                                 a video (confirmed elsewhere in this file: pointing it at a
+                                 pre-existing <iframe> left the replacement's src empty and its
+                                 player methods never became callable). -->
+                            <div id="hero-video-iframe" class="w-full h-full absolute inset-0"></div>
                             <!-- Used to have a #hero-video-tap-overlay here, structurally identical
                                  to #modal-video-tap-overlay (see project_spacex_tracker_mobile_video_close_double_tap
                                  memory) - removed 2026-08-18 for the exact same reason: it swallowed
@@ -6156,7 +6225,7 @@
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
-                <div class="w-full aspect-video bg-zinc-900">
+                <div class="w-full aspect-video bg-zinc-900 relative">
                     <!-- Placeholder for the YouTube IFrame Player API to replace with its own
                          real iframe (see loadYoutubeIntoPlayer) - must be a plain container,
                          NOT an <iframe> itself, or the API's replacement never actually loads a
@@ -11673,6 +11742,91 @@
             try { entry.player.stopVideo(); } catch (e) { }
         }
 
+        // Our own always-available volume control, drawn over a Player-API-controlled iframe
+        // (see ytPlayerRegistry above) - built because YouTube's own hover-to-reveal volume
+        // slider lives inside the embed's cross-origin document, entirely outside our reach (no
+        // code anywhere in this file builds or styles it), and collapses the instant the cursor
+        // crosses the gap between its speaker icon and its slider track - confirmed directly to
+        // be YouTube's own behavior, not this site's. The button and the slider track here both
+        // live inside ONE wrapper with zero gap between them (see the CSS), and the show/hide
+        // hover state is read off that one wrapper, not the button or the track individually - so
+        // there's no dead zone to lose the hover through in the first place.
+        // Looks up the live player fresh on every interaction (ytPlayerRegistry[iframeId]?.player)
+        // instead of capturing it once, since a later mission/episode switch reuses the same
+        // registry entry with a new underlying player state (see loadYoutubeIntoPlayer above).
+        function wireCustomVolumeControl(container, iframeId) {
+            if (!container || container.querySelector('.video-volume-control')) return; // already wired
+            const wrap = document.createElement('div');
+            wrap.className = 'video-volume-control absolute bottom-2 start-2 z-20';
+            wrap.innerHTML = `
+                <div class="video-volume-slider-track">
+                    <input type="range" class="video-volume-slider" min="0" max="100" value="100" aria-label="Volume">
+                </div>
+                <button type="button" class="video-volume-btn" title="Mute">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            `;
+            container.appendChild(wrap);
+
+            const btn = wrap.querySelector('.video-volume-btn');
+            const icon = btn.querySelector('i');
+            const slider = wrap.querySelector('.video-volume-slider');
+
+            const getPlayer = () => {
+                const entry = ytPlayerRegistry[iframeId];
+                return (entry && entry.player) ? entry.player : null;
+            };
+
+            const updateIcon = (volume, muted) => {
+                icon.className = (muted || volume === 0) ? 'fa-solid fa-volume-xmark'
+                    : (volume < 50) ? 'fa-solid fa-volume-low'
+                        : 'fa-solid fa-volume-high';
+            };
+
+            // Reflects the player's real current state on every hover, rather than trusting
+            // whatever this control last set - a brand new video can load into the same iframe
+            // (mission switch, reopening the modal/episode) without the user ever touching this
+            // control, and it always starts unmuted at whatever volume was last set.
+            wrap.addEventListener('mouseenter', () => {
+                const player = getPlayer();
+                if (!player) return;
+                try {
+                    const muted = player.isMuted();
+                    const volume = player.getVolume();
+                    slider.value = muted ? 0 : volume;
+                    updateIcon(volume, muted);
+                } catch (e) { }
+            });
+
+            btn.addEventListener('click', () => {
+                const player = getPlayer();
+                if (!player) return;
+                try {
+                    if (player.isMuted() || player.getVolume() === 0) {
+                        player.unMute();
+                        if (player.getVolume() === 0) player.setVolume(100);
+                        slider.value = player.getVolume();
+                        updateIcon(player.getVolume(), false);
+                    } else {
+                        player.mute();
+                        updateIcon(0, true);
+                    }
+                } catch (e) { }
+            });
+
+            slider.addEventListener('input', () => {
+                const player = getPlayer();
+                if (!player) return;
+                const v = parseInt(slider.value, 10);
+                try {
+                    player.setVolume(v);
+                    if (v === 0) player.mute();
+                    else player.unMute();
+                    updateIcon(v, v === 0);
+                } catch (e) { }
+            });
+        }
+
         // After a live-launch player opens without a confirmed video ID (the "we haven't
         // confirmed a live stream" overlay), keeps retrying resolveSfnLiveVideoId() every 20s
         // for as long as that player stays open and unconfirmed, instead of giving up after the
@@ -11789,7 +11943,6 @@
         // tearing down a stale player when the hero switches to a mission with no live coverage.
         function closeHeroVideoPlayer() {
             const section = document.getElementById('hero-video-section');
-            const iframe = document.getElementById('hero-video-iframe');
             const unconfirmedOverlay = document.getElementById('hero-video-unconfirmed-overlay');
             const placeholder = document.querySelector('.hero-video-placeholder');
             if (heroVideoFullscreenActive) {
@@ -11798,7 +11951,7 @@
                 updateHeroVideoCloseBtnIcon();
             }
             heroVideoMissionId = null;
-            if (iframe) iframe.src = '';
+            stopYoutubePlayer('hero-video-iframe'); // Player-API-controlled now (see loadHeroVideoContent)
             if (section) {
                 section.classList.add('hidden');
                 section.classList.remove('hero-video-fullscreen-active');
@@ -11870,7 +12023,10 @@
 
                 if (heroYoutubeId) {
                     // The API confirmed a specific, real video - most precise, embed it directly.
-                    heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + heroYoutubeId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                    // Routed through the Player API (like modal-video-iframe already was) rather
+                    // than a raw `.src =` write, so our own volume control (wireCustomVolumeControl)
+                    // has a real player object to call setVolume/mute on.
+                    loadYoutubeIntoPlayer('hero-video-iframe', heroYoutubeId, { resumable: false });
                     if (heroVideoUnconfirmedOverlay) {
                         heroVideoUnconfirmedOverlay.classList.add('hidden');
                         heroVideoUnconfirmedOverlay.classList.remove('flex');
@@ -11882,7 +12038,7 @@
                     // show YouTube's own bare "video unavailable" even while genuinely live). A
                     // background lookup silently swaps in a real player and hides the overlay
                     // once/if it resolves.
-                    heroVideoIframe.src = '';
+                    stopYoutubePlayer('hero-video-iframe'); // in case a previous mission's video is still loaded/playing underneath
                     if (heroVideoUnconfirmedYtBtn) heroVideoUnconfirmedYtBtn.href = youtubeOpenUrlFallback;
                     if (heroVideoUnconfirmedOverlay) {
                         heroVideoUnconfirmedOverlay.classList.remove('hidden');
@@ -11891,10 +12047,10 @@
                     resolveSfnLiveVideoId().then(resolvedId => {
                         if (heroVideoSection._livePollGeneration !== myVideoLoadGeneration) return; // superseded by a newer load/poll while this resolve() was in flight
                         if (!resolvedId || !heroVideoIframe || heroVideoSection.classList.contains('hidden')) {
-                            pollForConfirmedLiveVideo(heroVideoIframe, heroVideoSection, heroVideoUnconfirmedOverlay);
+                            pollForConfirmedLiveVideo(heroVideoIframe, heroVideoSection, heroVideoUnconfirmedOverlay, 'hero-video-iframe');
                             return;
                         }
-                        heroVideoIframe.src = 'https://www.youtube-nocookie.com/embed/' + resolvedId + '?rel=0&modestbranding=1&playsinline=1&autoplay=1';
+                        loadYoutubeIntoPlayer('hero-video-iframe', resolvedId, { resumable: false });
                         if (heroVideoUnconfirmedOverlay) {
                             heroVideoUnconfirmedOverlay.classList.add('hidden');
                             heroVideoUnconfirmedOverlay.classList.remove('flex');
@@ -14259,6 +14415,14 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     return origScrollTo(a, b);
                 };
             })();
+
+            // One-time wiring for the custom volume control (see wireCustomVolumeControl) on
+            // each of the three YouTube players - static containers already present in the DOM
+            // at this point regardless of whether a video has ever been loaded into them yet.
+            wireCustomVolumeControl(document.getElementById('hero-video-section'), 'hero-video-iframe');
+            wireCustomVolumeControl(document.getElementById('modal-video-section'), 'modal-video-iframe');
+            const docVideoPlaceholder = document.getElementById('doc-video-iframe');
+            wireCustomVolumeControl(docVideoPlaceholder ? docVideoPlaceholder.parentElement : null, 'doc-video-iframe');
 
             // A browser refresh (F5 / the reload button) shouldn't cost an API call if we
             // already fetched moments ago - that's the exact same LL2 request budget the
