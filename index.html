@@ -202,7 +202,7 @@
            experiment made Orbitron the site-wide default before being scaled back to just those
            specific spots, which is why it's still loaded here even though body/.font-space no
            longer reference it directly. */
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&family=Audiowide&family=Zen+Dots&display=swap');
 
         /* Font weight LABELS aren't visually equivalent across typefaces - Rubik's "600" is a
            notably rounder/heavier cut than Space Grotesk's "600", so in a mixed-script line
@@ -326,8 +326,59 @@
         #hero-name,
         #hero-countdown,
         .mission-title-fit,
-        .main-tab-btn {
+        .main-tab-btn,
+        #site-title,
+        #rocket-modal-name,
+        #site-modal-name,
+        #orbit-modal-title,
+        #landing-modal-name,
+        #astro-modal-name,
+        #i18n-countdown-to-launch,
+        #i18n-launch-window,
+        .milestones-title,
+        #doc-ep1-title,
+        #doc-ep2-title,
+        #doc-ep3-title,
+        .modal-subhead,
+        #sticky-countdown,
+        #sticky-countdown-mobile {
             font-family: 'Orbitron', 'Rubik', system_ui, sans-serif;
+        }
+
+        /* Orbitron (every mode's base heading font) runs wide enough that these 6 mission-modal
+           spec labels wrap to 2 lines at their original text-sm/text-base size - measured true
+           in day AND night, not just Mars/Moon's own even-wider Zen Dots/Audiowide - so this is
+           unscoped (applies in all 4 modes) rather than duplicated per mode. Wrapping threw off
+           the row's vertical rhythm and left the (i) info-icon beside each label looking
+           mis-attached. The two grids these labels sit in (#modal-vehicle-info-grid /
+           #modal-booster-info-grid) get a bit more gap alongside it so the columns don't feel
+           cramped against the bulkier font. */
+        #i18n-vehicle-type,
+        #i18n-launch-site,
+        #i18n-orbit-destination,
+        #i18n-mission-status,
+        #i18n-first-stage-booster,
+        #i18n-recovery-zone {
+            font-size: 0.7rem !important;
+            letter-spacing: 0 !important;
+        }
+        #modal-vehicle-info-grid,
+        #modal-booster-info-grid {
+            gap: 1rem !important;
+        }
+        @media (min-width: 640px) {
+            #i18n-vehicle-type,
+            #i18n-launch-site,
+            #i18n-orbit-destination,
+            #i18n-mission-status,
+            #i18n-first-stage-booster,
+            #i18n-recovery-zone {
+                font-size: 0.8rem !important;
+            }
+            #modal-vehicle-info-grid,
+            #modal-booster-info-grid {
+                gap: 1.25rem !important;
+            }
         }
 
         /* Section headings (Scheduled Launches, Milestones, etc.) sit in a flex row with their
@@ -377,15 +428,6 @@
 
         .animate-pulse-calm {
             animation: pulse-calm 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        /* "LIVE TELEMETRY" header badge - was plain Tailwind .animate-pulse (2s), which read as
-           a fast, urgent blink for what's just a steady "yes, this is live" status badge, not an
-           alert. Same pulse-calm keyframes as above, just stretched much further (much slower
-           per explicit user request) since even pulse-calm's own 3s wasn't a big enough
-           departure from the original 2s to read as "slow". */
-        .live-telemetry-pulse {
-            animation: pulse-calm 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         /* T-5 pre-launch alert mode: same 3s / cubic-bezier(0.4,0,0.6,1) rhythm as
@@ -1671,6 +1713,16 @@
         body.light-theme .text-emerald-500:not(.countdown-small) {
             color: #047857 !important;
         }
+        /* .text-emerald-400/70 (the (i) info-circle buttons next to VEHICLE TYPE/LAUNCH SITE/
+           ORBIT DESTINATION/RECOVERY ZONE) is a DIFFERENT generated class from the bare
+           .text-emerald-400 above - Tailwind's opacity-suffixed utilities are their own class
+           name, so the blanket contrast fix two rules up never matched it and these icons were
+           still sitting at the original washed-out bright green in light theme (same root cause
+           as the mars/moon icon-color gap fixed elsewhere in this file). Same #047857 convention,
+           with the /70 opacity preserved. */
+        body.light-theme .text-emerald-400\/70 {
+            color: rgba(4, 120, 87, 0.7) !important;
+        }
 
         /* Documentary episode badges ("EPISODE 1 • RELEASED" / "EPISODE 3 • COMING SOON") sit
            in a small translucent chip (bg-emerald-500/10 or bg-amber-500/10) directly over the
@@ -2175,7 +2227,44 @@
             background-color: #140806 !important;
             color: #f3e6d8 !important;
         }
-
+        /* Mars mode swaps the site's "cool" heading font (Orbitron) for Zen Dots - same pattern
+           as moon-theme's Audiowide swap above. Zen Dots only ships one real weight (400), so
+           font-weight is forced to 400 !important to override the font-semibold/font-bold
+           Tailwind classes these headings otherwise carry. */
+        body.mars-theme .font-orbitron,
+        body.mars-theme #hero-name,
+        body.mars-theme #hero-countdown,
+        body.mars-theme .mission-title-fit,
+        body.mars-theme .main-tab-btn,
+        body.mars-theme .countdown-small,
+        body.mars-theme #site-title,
+        body.mars-theme #rocket-modal-name,
+        body.mars-theme #site-modal-name,
+        body.mars-theme #orbit-modal-title,
+        body.mars-theme #landing-modal-name,
+        body.mars-theme #astro-modal-name,
+        body.mars-theme #i18n-countdown-to-launch,
+        body.mars-theme #i18n-launch-window,
+        body.mars-theme .milestones-title,
+        body.mars-theme #doc-ep1-title,
+        body.mars-theme #doc-ep2-title,
+        body.mars-theme #doc-ep3-title,
+        body.mars-theme .modal-subhead,
+        body.mars-theme #sticky-countdown,
+        body.mars-theme #sticky-countdown-mobile {
+            font-family: 'Zen Dots', 'Rubik', system_ui, sans-serif !important;
+            font-weight: 400 !important;
+        }
+        /* The little (i) info-circle buttons next to VEHICLE TYPE/LAUNCH SITE/ORBIT DESTINATION/
+           RECOVERY ZONE use Tailwind's opacity-suffixed .text-emerald-400/70 - a DIFFERENT
+           generated class name from plain .text-emerald-400, so the existing emerald->accent
+           remap two rules up (which only lists the plain class) never matched it and the icons
+           stayed green in both Mars and Moon mode. Same accent colors as that remap, just with
+           the /70 opacity baked in as rgba so it still reads as a secondary/muted icon next to
+           the now-brighter accent-colored label. */
+        body.mars-theme .text-emerald-400\/70 {
+            color: rgba(255, 107, 53, 0.7) !important;
+        }
         /* Kill light-theme visual rules while Mars is on (JS also removes the class).
            Extra safety if anything re-adds light-theme mid-session. */
         body.mars-theme.light-theme {
@@ -2546,6 +2635,41 @@
         body.moon-theme {
             background-color: #07090e !important;
             color: #e8eef6 !important;
+        }
+        /* Moon mode swaps the site's "cool" heading font (Orbitron) for Audiowide - Audiowide
+           only ships one real weight (400/regular), so font-weight is forced to 400 !important
+           to override the font-semibold/font-bold Tailwind classes these headings otherwise
+           carry (Orbitron has those weights, Audiowide doesn't). */
+        body.moon-theme .font-orbitron,
+        body.moon-theme #hero-name,
+        body.moon-theme #hero-countdown,
+        body.moon-theme .mission-title-fit,
+        body.moon-theme .main-tab-btn,
+        body.moon-theme .countdown-small,
+        body.moon-theme #site-title,
+        body.moon-theme #rocket-modal-name,
+        body.moon-theme #site-modal-name,
+        body.moon-theme #orbit-modal-title,
+        body.moon-theme #landing-modal-name,
+        body.moon-theme #astro-modal-name,
+        body.moon-theme #i18n-countdown-to-launch,
+        body.moon-theme #i18n-launch-window,
+        body.moon-theme .milestones-title,
+        body.moon-theme #doc-ep1-title,
+        body.moon-theme #doc-ep2-title,
+        body.moon-theme #doc-ep3-title,
+        body.moon-theme .modal-subhead,
+        body.moon-theme #sticky-countdown,
+        body.moon-theme #sticky-countdown-mobile {
+            font-family: 'Audiowide', 'Rubik', system_ui, sans-serif !important;
+            font-weight: 400 !important;
+        }
+        /* Same rationale as Mars mode's own copy of these rules further up - the (i) icons'
+           .text-emerald-400/70 opacity-suffixed class isn't matched by the plain-class emerald
+           remap below, and Audiowide is wide enough to wrap these labels to 2 lines at their
+           original size. */
+        body.moon-theme .text-emerald-400\/70 {
+            color: rgba(63, 169, 245, 0.7) !important;
         }
         body.moon-theme .stars-container {
             opacity: 1 !important;
@@ -3614,9 +3738,18 @@
     el.style.fontSize = '';
     void el.offsetWidth;
 
+    const computedFontFamily = getComputedStyle(el).fontFamily;
     const initialSize = parseFloat(getComputedStyle(el).fontSize) || 22;
     let size = initialSize;
-    const minSize = 10;
+    // Orbitron (all 4 modes' base heading font) / Zen Dots (Mars) / Audiowide (Moon) all render
+    // noticeably wider per character than the plain Space Grotesk/Rubik fallback this floor was
+    // originally tuned against - the standard 10px floor isn't always enough room for them to
+    // fully resolve a long title in a narrow container (measured overflow on mobile: the nav's
+    // own "SPACEX LAUNCH TRACKER" needed ~8.9px in Zen Dots/Audiowide, and the same element hit
+    // the identical overflow once Orbitron was extended to it too - not just those first two).
+    // Lowered only for these three fonts, with margin, rather than lowering the shared floor for
+    // every font unconditionally.
+    const minSize = /Zen Dots|Audiowide|Orbitron/.test(computedFontFamily) ? 7 : 10;
     let guard = 0;
 
     // מדידה אגרסיבית יותר – ממשיכים עד שהטקסט באמת נכנס
@@ -3638,6 +3771,32 @@
         function fitAllSectionTitles(root) {
             (root || document).querySelectorAll('.section-title-fit').forEach(fitTitleOneLine);
         }
+
+        // Clears fitTitleOneLine()'s per-element cache (see its own comment) and forces every
+        // shrink-to-fit title to remeasure from scratch. Needed anywhere a font-FAMILY change
+        // can happen without the text or the container width changing - the two things the cache
+        // actually keys on - since neither of those trips on its own. Used both by
+        // applyVisualMode() on every mode switch, and once below for a page load that starts
+        // directly in mars/moon mode (session-remembered choice): the initial fit pass at
+        // DOMContentLoaded can run before the Zen Dots/Audiowide @font-face file finishes
+        // fetching, so it measures under the narrower fallback font and caches a size that
+        // overflows once the real (wider) font swaps in - same race, different entry point.
+        function resyncTitleFitsForFonts() {
+            document.querySelectorAll('.mission-title-fit, .section-title-fit').forEach(el => {
+                el.style.fontSize = '';
+                delete el.dataset.fitForText;
+                delete el.dataset.fitForWidth;
+            });
+            fitAllTitlesOneLine();
+            fitAllSectionTitles();
+            fitTitleOneLine(document.getElementById('hero-name'));
+        }
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(resyncTitleFitsForFonts);
+        }
+        setTimeout(resyncTitleFitsForFonts, 150);
+        setTimeout(resyncTitleFitsForFonts, 600);
+        setTimeout(resyncTitleFitsForFonts, 1500);
 
         function applyPhraseFixes(currentLang) {
             fixMistranslatedPhrases(document.getElementById('missions-grid'), currentLang);
@@ -4770,12 +4929,9 @@
                      reset (bundled with the CDN build already in use) already zeroes out every
                      heading's default margin/font-size, so every bit of this element's actual
                      appearance still comes from its own explicit utility classes below, unchanged. -->
-                <h1 onclick="window.scrollTo({top: 0, behavior: 'smooth'});"
-                    class="font-space text-[11px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate m-0"
+                <h1 id="site-title" onclick="window.scrollTo({top: 0, behavior: 'smooth'});"
+                    class="section-title-fit font-space text-[14px] sm:text-xl lg:text-[26px] font-bold tracking-tight sm:tracking-[3px] text-white transition-colors cursor-pointer hover:text-emerald-400 uppercase whitespace-nowrap notranslate m-0"
                     translate="no">SPACEX LAUNCH TRACKER</h1>
-                <span
-                    class="hidden xl:block px-3 py-1 ml-4 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full live-telemetry-pulse shrink-0">LIVE
-                    TELEMETRY</span>
             </div>
 
             <!-- Mirrors #hero-countdown's live value (see updateHeroCountdown) — hidden until
@@ -4844,14 +5000,6 @@
                             <i class="fa-solid fa-circle w-4 text-center text-slate-300"></i><span class="mode-option-label">Moon base</span>
                         </button>
                     </div>
-                </div>
-
-                <div class="flex shrink-0 items-center gap-x-1 h-6 sm:h-9 px-1.5 sm:px-4 bg-zinc-900 border border-zinc-850 rounded-md sm:rounded-2xl text-[9px] sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.05)] notranslate"
-                    translate="no" dir="ltr">
-                    <i class="fa-solid fa-clock text-zinc-400"></i>
-                    <span id="live-clock" class="font-mono text-emerald-400 font-bold leading-none">--:--:--</span>
-                    <span id="live-timezone"
-                        class="hidden sm:inline text-[10px] text-zinc-500 font-semibold uppercase tracking-wide leading-none">LOCAL</span>
                 </div>
             </div>
         </div>
@@ -5133,7 +5281,7 @@
             </div>
 
             <div id="missions-grid"
-                class="flex md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto md:overflow-visible hide-scrollbar snap-x snap-mandatory md:snap-none pb-4 md:pb-0 pt-2 sm:pt-6 -mx-4 px-6 md:mx-0 md:px-0 scroll-ps-6 scroll-pe-6 md:scroll-ps-0 md:scroll-pe-0">
+                class="flex md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto md:overflow-visible hide-scrollbar snap-x snap-mandatory md:snap-none pb-8 md:pb-0 pt-2 sm:pt-6 -mx-4 px-6 md:mx-0 md:px-0 scroll-ps-6 scroll-pe-6 md:scroll-ps-0 md:scroll-pe-0">
                 <div
                     class="w-[85vw] max-w-[320px] md:w-auto shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-3xl p-5 space-y-4 animate-pulse">
                     <div class="h-40 bg-zinc-800/60 rounded-2xl"></div>
@@ -6112,7 +6260,7 @@
                     <h4
                         class="font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
                         <i class="fa-solid fa-crosshairs text-sm"></i>
-                        <span id="modal-objectives-title-text">Mission Objectives and Payload Information</span>
+                        <span id="modal-objectives-title-text" class="modal-subhead">Mission Objectives and Payload Information</span>
                     </h4>
                     <!-- notranslate/translate="no": this paragraph translates itself now (see
                          renderMissionPurposeHtml / translateTextViaGoogle) via a direct call to
@@ -6128,14 +6276,14 @@
                     </p>
                 </div>
 
-                <div
+                <div id="modal-vehicle-info-grid"
                     class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500 items-start">
                     <div class="cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
                         role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)"
                         onclick="openRocketSpecs(window.currentActiveVehicleStr.toLowerCase().includes('starship')?'starship':(window.currentActiveVehicleStr.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-2">
                             <div id="i18n-vehicle-type"
-                                class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                                 translate="no" lang="en">VEHICLE TYPE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
@@ -6144,9 +6292,9 @@
                     </div>
                     <div class="cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
                         id="modal-site-click-target" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-2">
                             <div id="i18n-launch-site"
-                                class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                                 translate="no" lang="en">LAUNCH SITE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
@@ -6155,9 +6303,9 @@
                     </div>
                     <div class="cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
                         role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openOrbitSpecs()">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-2">
                             <div id="i18n-orbit-destination"
-                                class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                                 translate="no" lang="en">ORBIT DESTINATION</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
@@ -6167,7 +6315,7 @@
                     </div>
                     <div class="p-1">
                         <div id="i18n-mission-status"
-                            class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                            class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                             translate="no" lang="en">MISSION STATUS</div>
                         <div id="modal-status"
                             class="text-xs sm:text-sm font-semibold mt-0.5 leading-tight notranslate lang-en-lock"
@@ -6176,19 +6324,19 @@
                 </div>
 
                 <!-- Hardcore Lore Block (Booster & Landing Zone) -->
-                <div
+                <div id="modal-booster-info-grid"
                     class="grid grid-cols-2 gap-3 sm:gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
                     <div class="p-1">
                         <div id="i18n-first-stage-booster"
-                            class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                            class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                             translate="no" lang="en">FIRST STAGE BOOSTER</div>
                         <div id="modal-booster" class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5"></div>
                     </div>
                     <div class="p-1 cursor-pointer md:hover:bg-emerald-500/10 rounded-xl transition-colors"
                         id="modal-landing-click-target" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openLandingSpecs()">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-2">
                             <div id="i18n-recovery-zone"
-                                class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                                 translate="no" lang="en">RECOVERY ZONE</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
@@ -6212,7 +6360,7 @@
                     <div class="bg-zinc-950 rounded-2xl p-4 flex flex-col justify-between cursor-pointer border border-zinc-800/80 md:hover:border-zinc-700 transition-colors duration-500"
                         id="radar-box-click" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)">
                         <div>
-                            <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
+                            <h5 class="modal-subhead text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2">
                                 <i class="fa-solid fa-map-location-dot"></i> Telemetry Coordinates
                             </h5>
                             <p class="text-[11px] sm:text-xs text-zinc-500 notranslate" id="modal-pad-coordinate-label"
@@ -6239,7 +6387,7 @@
                     </div>
 
                     <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
-                        <h5 class="text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
+                        <h5 class="modal-subhead text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
                             <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
                         </h5>
                         <div class="flex items-end justify-around h-48 font-mono text-xs">
@@ -6319,7 +6467,7 @@
                 <div>
                     <div id="rocket-modal-name"
                         class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
+                    <div class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         VEHICLE SPECIFICATION</div>
                 </div>
                 <button onclick="closeRocketModal()" title="Close"
@@ -6337,21 +6485,21 @@
                 <div
                     class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Height
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Height
                         </div>
                         <div id="rocket-modal-height"
                             class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="auto"
                             translate="no"></div>
                     </div>
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Thrust
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Thrust
                         </div>
                         <div id="rocket-modal-thrust"
                             class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="auto"
                             translate="no"></div>
                     </div>
                     <div>
-                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Payload
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Payload
                             LEO</div>
                         <div id="rocket-modal-payload"
                             class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="auto"
@@ -6359,7 +6507,7 @@
                     </div>
                     <div>
                         <div id="rocket-modal-cost-label"
-                            class="text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold notranslate"
+                            class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold notranslate"
                             translate="no">Cost to Orbit</div>
                         <div id="rocket-modal-cost"
                             class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="auto"
@@ -6368,7 +6516,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
+                    <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
                     <p id="rocket-modal-desc"
                         class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
@@ -6387,7 +6535,7 @@
                 <div>
                     <div id="site-modal-name"
                         class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
+                    <div class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         SPACEPORT FACILITY DOSSIER</div>
                 </div>
                 <button onclick="closeLaunchSiteModal()" title="Close"
@@ -6419,7 +6567,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Operational Profile</h4>
+                    <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Operational Profile</h4>
                     <p id="site-modal-desc"
                         class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
@@ -6438,7 +6586,7 @@
                 <div>
                     <div id="orbit-modal-title" class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
                         LEO (Low Earth Orbit)</div>
-                    <div class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
+                    <div class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         ORBITAL MECHANICS DOSSIER</div>
                 </div>
                 <button onclick="closeOrbitSpecs()" title="Close"
@@ -6550,7 +6698,7 @@
                     <div id="landing-modal-name"
                         class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div id="i18n-recovery-zone-info"
-                        class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                         translate="no" lang="en">RECOVERY ZONE INFORMATION</div>
                 </div>
                 <button onclick="closeLandingSpecs()" title="Close"
@@ -6582,7 +6730,7 @@
                 </div>
 
                 <div class="space-y-2">
-                    <h4 class="font-space text-base sm:text-lg font-semibold text-emerald-400">Recovery Profile</h4>
+                    <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Recovery Profile</h4>
                     <p id="landing-modal-desc"
                         class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
@@ -6602,7 +6750,7 @@
                     <div id="astro-modal-name"
                         class="font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
                     <div id="astro-modal-agency"
-                        class="text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
+                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
                         ASTRONAUT DOSSIER</div>
                 </div>
                 <button onclick="closeAstronautModal()" title="Close"
@@ -6782,6 +6930,21 @@
                 else if (mode === 'night') sessionStorage.setItem('spacex-theme', 'dark');
                 sessionStorage.setItem('spacex-mars-mode', mode === 'mars' ? '1' : '0');
                 updateModeMenuUI(mode);
+                // Mars/moon swap the heading font (Zen Dots / Audiowide - both noticeably wider
+                // than Orbitron), but fitTitleOneLine() caches its result per element keyed on
+                // text+width only (see its own comment) - a font-family-only change trips neither
+                // key, so titles fitted under the old font silently kept the old, now-too-small-
+                // to-prevent-overflow size and got clipped by the surrounding whitespace-nowrap/
+                // overflow-hidden. resyncTitleFitsForFonts() (defined once, near fitTitleOneLine
+                // itself) clears the cache and forces a resync refit - called here immediately,
+                // and again once the new @font-face file actually finishes loading, since the
+                // Zen Dots/Audiowide src isn't fetched until a mars/moon element first needs it.
+                resyncTitleFitsForFonts();
+                if (document.fonts && document.fonts.ready) {
+                    document.fonts.ready.then(resyncTitleFitsForFonts);
+                }
+                setTimeout(resyncTitleFitsForFonts, 150);
+                setTimeout(resyncTitleFitsForFonts, 600);
                 if (!opts.skipSwitchingClass) {
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
@@ -6938,43 +7101,6 @@
                 star.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
                 container.appendChild(star);
             }
-        }
-
-        function updateClock() {
-            const el = document.getElementById('live-clock');
-            const tzEl = document.getElementById('live-timezone');
-            // Unlike most DOM lookups in this file, this one used to dereference el/tzEl
-            // unconditionally - updateClock() runs synchronously near the top of init(), so a
-            // missing element here (e.g. a future slimmed-down layout) would throw and abort
-            // the rest of init() before mission rendering/countdowns ever ran.
-            if (tzEl) {
-                try {
-                    const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(new Date());
-                    const shortTz = parts.find(p => p.type === 'timeZoneName')?.value || 'LOCAL';
-                    tzEl.innerHTML = shortTz;
-                    tzEl.title = `Your local time (${userTimezone})`;
-                } catch (e) {
-                    tzEl.innerHTML = "LOCAL";
-                    tzEl.title = "Your local time";
-                }
-            }
-
-            const tick = () => {
-                if (!el) return;
-                try {
-                    el.innerHTML = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: userTimezone });
-                } catch (e) {
-                    el.innerHTML = new Date().toLocaleTimeString('en-US');
-                }
-            };
-            // Guarded the same way factIntervalId is elsewhere in this file - updateClock() is
-            // currently only ever called once (from init(), itself only bound once via the
-            // single-slot window.onload = init), so this isn't reachable today, but without the
-            // guard a future second call (e.g. a soft-refresh/re-init path) would stack another
-            // permanent 1s interval on top, each independently writing to #live-clock forever.
-            if (window._liveClockIntervalId) clearInterval(window._liveClockIntervalId);
-            window._liveClockIntervalId = setInterval(tick, 1000);
-            tick();
         }
 
         // setTimeout's delay is capped at a 32-bit signed int (~24.8 days) — pass anything
@@ -13816,7 +13942,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // when they try to scroll. Start wherever the browser naturally put us.
             initVisualMode();
             generateProceduralStars();
-            updateClock();
             initDidYouKnow();
             initStickyCountdown();
 
