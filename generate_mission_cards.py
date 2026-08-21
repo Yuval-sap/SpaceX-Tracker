@@ -31,6 +31,7 @@ import html
 import json
 import re
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -72,15 +73,23 @@ def detect_category(name: str, vehicle: str) -> str:
     return "falcon"
 
 
-def fetch_launches(url: str) -> list:
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "spacexfantracker-card-generator/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        return data.get("results", []) or []
-    except Exception as e:
-        print(f"Warning: failed to fetch {url}: {e}", file=sys.stderr)
-        return []
+def fetch_launches(url: str, retries: int = 4) -> list:
+    # ll.thespacedevs.com throttles requests that come in too close together (HTTP 429) -
+    # this script makes two calls back-to-back, so a single throttle used to silently drop
+    # every mission that call would have returned. Retry with backoff instead of giving up.
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "spacexfantracker-card-generator/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            return data.get("results", []) or []
+        except Exception as e:
+            wait = 20 * (attempt + 1)
+            print(f"Warning: failed to fetch {url}: {e}", file=sys.stderr)
+            if attempt < retries - 1:
+                print(f"Retrying in {wait}s...", file=sys.stderr)
+                time.sleep(wait)
+    return []
 
 
 def format_date(net: str) -> str:
@@ -142,10 +151,18 @@ def build_page(mission_id: str, name: str, vehicle: str, site: str, net: str) ->
 def main():
     OUTPUT_DIR.mkdir(exist_ok=True)
 
-    launches = fetch_launches(LL2_UPCOMING_URL) + fetch_launches(LL2_PREVIOUS_URL)
-    if not launches:
-        print("No launches fetched - aborting without touching existing files.", file=sys.stderr)
+    upcoming = fetch_launches(LL2_UPCOMING_URL)
+    time.sleep(3)
+    previous = fetch_launches(LL2_PREVIOUS_URL)
+
+    # If either half of the fetch still failed after retries, don't ship a half-complete
+    # set of cards - better to leave the existing (older but complete) m/ folder untouched
+    # and let the next scheduled run try again.
+    if not upcoming or not previous:
+        print("Failed to fetch one or both launch lists - aborting without touching existing files.", file=sys.stderr)
         sys.exit(1)
+
+    launches = upcoming + previous
 
     written = 0
     seen_ids = set()
