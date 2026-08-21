@@ -2002,6 +2002,27 @@
             background: rgba(0, 0, 0, 0.8);
         }
 
+        /* Our own expand/shrink toggle (see wireCustomVolumeControl) - same visual language as
+           .video-volume-btn, opposite corner (RTL-aware end-2, not right-2 - see the JS). */
+        .video-expand-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .video-expand-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
         .video-volume-slider-track {
             height: 0;
             overflow: hidden;
@@ -11860,6 +11881,34 @@
             const icon = btn.querySelector('i');
             const slider = wrap.querySelector('.video-volume-slider');
 
+            // Once the slider has actually been dragged/clicked, an <input type=range> keeps
+            // real keyboard focus - combined with :focus-within (see the CSS), that alone kept
+            // the track visually expanded indefinitely after ANY interaction, until the user
+            // happened to click some unrelated part of the page to steal focus away. Moving the
+            // mouse off the whole control should be enough on its own, same as it is before the
+            // slider was ever touched - blurring it here on mouseleave removes exactly that
+            // stuck-open :focus-within state without changing anything about the volume itself.
+            wrap.addEventListener('mouseleave', () => slider.blur());
+
+            // Our own "expand to fill the screen" toggle - deliberately separate from YouTube's
+            // own native fullscreen button (which we no longer touch at all, see
+            // enterVideoTheaterFullscreen's comment for why auto-intercepting it broke more than
+            // it fixed). This one only ever enters/exits OUR theater mode, in a single
+            // predictable way, with no cross-origin state for us to lose track of.
+            const expandBtn = document.createElement('button');
+            expandBtn.type = 'button';
+            expandBtn.className = 'video-expand-btn absolute bottom-2 end-2 z-20';
+            expandBtn.title = 'Expand';
+            expandBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+            expandBtn.addEventListener('click', () => {
+                // Icon/title sync happens inside enter/exit themselves (syncVideoExpandBtnIcon) -
+                // stays correct even when theater mode gets exited some OTHER way (Escape, the
+                // player's own close button, the whole modal closing).
+                if (videoTheaterFullscreenEl === container) exitVideoTheaterFullscreen();
+                else enterVideoTheaterFullscreen(container);
+            });
+            container.appendChild(expandBtn);
+
             const getPlayer = () => {
                 const entry = ytPlayerRegistry[iframeId];
                 return (entry && entry.player) ? entry.player : null;
@@ -11918,32 +11967,117 @@
         // CSS-only "theater" pseudo-fullscreen for a video player wrapper - see the
         // .video-theater-fullscreen CSS comment for why this exists (in short: real Fullscreen
         // API on the iframe hides our sibling volume control; a fixed-viewport CSS overlay on
-        // the wrapper doesn't, since both stay siblings inside it). Moving the wrapper to <body>
-        // is required for the fixed positioning to actually resolve against the real viewport
-        // (confirmed directly - see the CSS comment) - the unavoidable cost is that moving an
-        // iframe's ancestor still tears down and reloads that iframe's browsing context, same as
-        // moving the iframe itself, so entering/exiting theater mode restarts the video (a live
-        // stream reconnects at the live edge; archived footage restarts from the top). Accepted
-        // as the lesser cost against the volume control silently vanishing on every fullscreen
-        // view - which is the bug this exists to fix.
+        // the wrapper doesn't, since both stay siblings inside it).
+        //
+        // Only ever entered via our OWN expand button (wireCustomVolumeControl) now - an earlier
+        // version auto-intercepted YouTube's OWN fullscreen button instead (listening for
+        // 'fullscreenchange' and swapping in theater mode the instant it fired), which sounded
+        // right but broke two things live: (1) YouTube's own player keeps its OWN internal
+        // fullscreen/shrink icon toggled to "active" after we silently call
+        // document.exitFullscreen() out from under it - its document is cross-origin, so we can
+        // never see or correct that icon's state, and clicking it again does nothing (browser
+        // fullscreen was already gone) instead of shrinking anything back. (2) it fired on EVERY
+        // native fullscreen entry, so a user who only ever wanted YouTube's own normal fullscreen
+        // now always got our reload-triggering swap instead, with no way to opt out. Leaving
+        // YouTube's native button alone entirely avoids both - it works exactly as YouTube built
+        // it, just without our volume control visible while it's active (the original, already-
+        // explained cross-origin limitation) - and our own button is a clean, predictable
+        // alternative for whoever wants the volume control to stay up.
+        //
+        // Moving the wrapper to <body> is required for the fixed positioning to actually resolve
+        // against the real viewport (confirmed directly - see the CSS comment) - the unavoidable
+        // cost is that moving an iframe's ancestor still tears down and reloads that iframe's
+        // browsing context, same as moving the iframe itself. capturePlayerState/
+        // restorePlayerState below exist specifically to paper over that: current time, playing/
+        // paused, volume and mute are all captured immediately before the move and reapplied
+        // (via a freshly re-created player - the old player object isn't trusted to survive the
+        // implicit reload) once the new player is ready, so entering/exiting theater mode reads
+        // as "kept playing, just bigger" instead of restarting the video from the top.
+        const VIDEO_WRAPPER_IFRAME_IDS = {
+            'hero-video-section': 'hero-video-iframe',
+            'modal-video-section': 'modal-video-iframe',
+            'doc-video-wrapper': 'doc-video-iframe'
+        };
+
+        function capturePlayerStateForReparent(wrapper) {
+            const iframeId = VIDEO_WRAPPER_IFRAME_IDS[wrapper.id];
+            const entry = iframeId ? ytPlayerRegistry[iframeId] : null;
+            if (!iframeId || !entry || !entry.player) return null;
+            try {
+                return {
+                    iframeId,
+                    videoId: entry.videoId,
+                    resumable: entry.resumable,
+                    time: entry.player.getCurrentTime(),
+                    wasPlaying: entry.player.getPlayerState() === 1, // YT.PlayerState.PLAYING
+                    volume: entry.player.getVolume(),
+                    muted: entry.player.isMuted()
+                };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function restorePlayerStateAfterReparent(savedState) {
+            if (!savedState) return;
+            if (savedState.resumable) {
+                // Reuses loadYoutubeIntoPlayer's own already-proven resume-position mechanism
+                // (findResumePosition/cueVideoById) instead of a parallel seekTo path - this just
+                // makes sure the position it finds is the exact one captured a moment ago, not
+                // whatever the periodic 4s autosave last happened to write.
+                try { localStorage.setItem(YT_RESUME_KEY_PREFIX + savedState.videoId, String(savedState.time)); } catch (e) { }
+            }
+            // The DOM move already tore down the old iframe's browsing context - don't trust the
+            // old player object to still be responsive on the other side of that, force a clean
+            // re-creation instead of letting loadYoutubeIntoPlayer reuse the (likely dead) one.
+            delete ytPlayerRegistry[savedState.iframeId];
+            loadYoutubeIntoPlayer(savedState.iframeId, savedState.videoId, { resumable: savedState.resumable }).then(player => {
+                try {
+                    player.setVolume(savedState.volume);
+                    if (savedState.muted) player.mute(); else player.unMute();
+                    if (savedState.resumable) {
+                        if (savedState.wasPlaying) player.playVideo();
+                    }
+                    // Live (non-resumable) content already autoplays at the live edge by default -
+                    // nothing further to restore there.
+                } catch (e) { }
+            });
+        }
+
         let videoTheaterFullscreenEl = null;
         let videoTheaterFullscreenOriginalParent = null;
         let videoTheaterFullscreenOriginalNextSibling = null;
 
+        // Keeps a wrapper's own .video-expand-btn icon/title in sync regardless of which path
+        // actually entered/exited theater mode for it (the button's own click, the player's
+        // close button, Escape, or the whole modal closing out from under it) - centralized here
+        // instead of only updating it inside the button's own click handler, which would leave it
+        // stuck on "shrink" if theater mode was exited some other way.
+        function syncVideoExpandBtnIcon(wrapper, isTheater) {
+            const expandBtn = wrapper && wrapper.querySelector('.video-expand-btn');
+            if (!expandBtn) return;
+            expandBtn.innerHTML = isTheater ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>';
+            expandBtn.title = isTheater ? 'Shrink' : 'Expand';
+        }
+
         function enterVideoTheaterFullscreen(wrapper) {
             if (!wrapper || videoTheaterFullscreenEl === wrapper) return;
             if (videoTheaterFullscreenEl) exitVideoTheaterFullscreen();
+            const savedState = capturePlayerStateForReparent(wrapper);
             videoTheaterFullscreenOriginalParent = wrapper.parentNode;
             videoTheaterFullscreenOriginalNextSibling = wrapper.nextSibling;
             document.body.appendChild(wrapper);
             wrapper.classList.add('video-theater-fullscreen');
             videoTheaterFullscreenEl = wrapper;
             lockBodyScroll();
+            restorePlayerStateAfterReparent(savedState);
+            syncVideoExpandBtnIcon(wrapper, true);
         }
 
         function exitVideoTheaterFullscreen() {
             if (!videoTheaterFullscreenEl) return;
             const wrapper = videoTheaterFullscreenEl;
+            const savedState = capturePlayerStateForReparent(wrapper);
             wrapper.classList.remove('video-theater-fullscreen');
             if (videoTheaterFullscreenOriginalNextSibling && videoTheaterFullscreenOriginalNextSibling.parentNode === videoTheaterFullscreenOriginalParent) {
                 videoTheaterFullscreenOriginalParent.insertBefore(wrapper, videoTheaterFullscreenOriginalNextSibling);
@@ -11954,23 +12088,9 @@
             videoTheaterFullscreenOriginalParent = null;
             videoTheaterFullscreenOriginalNextSibling = null;
             unlockBodyScroll();
+            restorePlayerStateAfterReparent(savedState);
+            syncVideoExpandBtnIcon(wrapper, false);
         }
-
-        // The instant the real Fullscreen API activates on one of our video iframes (always via
-        // YouTube's OWN fullscreen button, inside its cross-origin document - we never call
-        // requestFullscreen ourselves), immediately back out of it and swap in our own theater
-        // mode instead. document.fullscreenElement ends up being the <iframe> itself (browsers
-        // propagate a cross-origin iframe's internal fullscreen request up to the iframe element
-        // in the PARENT page - standard Fullscreen API behavior for framed content), which is
-        // always a direct child of one of our three player wrappers.
-        document.addEventListener('fullscreenchange', function () {
-            const fsEl = document.fullscreenElement;
-            if (!fsEl) return;
-            const wrapper = fsEl.closest('#hero-video-section, #modal-video-section, #doc-video-wrapper');
-            if (!wrapper) return;
-            document.exitFullscreen().catch(() => { });
-            enterVideoTheaterFullscreen(wrapper);
-        });
 
         // After a live-launch player opens without a confirmed video ID (the "we haven't
         // confirmed a live stream" overlay), keeps retrying resolveSfnLiveVideoId() every 20s
