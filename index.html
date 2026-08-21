@@ -12288,7 +12288,17 @@
             // previous one's "in progress" display a little short.
             if (nextLaunch && nextUpcoming) {
                 const minutesToNextUpcoming = (new Date(nextUpcoming.date).getTime() - Date.now()) / 60000;
-                if (minutesToNextUpcoming <= 15) {
+                // Guards against nextUpcoming's own date already being in the past - dbMissions
+                // is supposed to hold only genuinely future launches, but a mission can sit there
+                // briefly stale right after its own liftoff too (the exact same kind of gap
+                // lastHeroInProgressMission exists to cover, just for a DIFFERENT mission this
+                // time). Without the >= 0 check here, a stale past date is always "<= 15" -
+                // permanently stealing the hero for whatever nextUpcoming happens to resolve to
+                // on any given tick, which is exactly the current-mission/next-mission flapping
+                // reported live (some ticks it's a stale nextUpcoming winning this exception,
+                // other ticks fresh data reclassifies it and the real in-progress mission wins
+                // back - back and forth every refresh instead of a stable 60/90-minute display).
+                if (minutesToNextUpcoming >= 0 && minutesToNextUpcoming <= 15) {
                     // Promote nextUpcoming directly instead of nulling nextLaunch out - in the
                     // "In Progress" branch above, nextUpcoming is dbMissions[1] (the mission we
                     // actually want to promote), while the fallback a few lines down picks
