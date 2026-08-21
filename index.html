@@ -2002,25 +2002,35 @@
             background: rgba(0, 0, 0, 0.8);
         }
 
-        /* Our own expand/shrink toggle (see wireCustomVolumeControl) - same visual language as
-           .video-volume-btn, opposite corner (RTL-aware end-2, not right-2 - see the JS). */
+        /* Our own expand/shrink toggle (see wireCustomVolumeControl) - positioned to sit right on
+           top of where THIS player's own expand icon actually renders: left side of the video,
+           roughly vertically centered (confirmed directly from a real screenshot of this exact
+           embedded player, NOT the bottom-right corner a plain youtube.com layout would use -
+           this embed's own chrome doesn't look like that at all). Physical `left` (not the
+           logical `start-*` the volume control uses) for the same reason the old bottom-right
+           version used physical `right`: this embed's own chrome doesn't mirror for an RTL host
+           page, so its icon sits in the same physical spot regardless of page direction. */
         .video-expand-btn {
-            width: 30px;
-            height: 30px;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
             border-radius: 9999px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: transparent;
+            border: none;
             color: #fff;
-            font-size: 12px;
+            font-size: 16px;
             cursor: pointer;
             transition: background-color 0.2s;
         }
 
-        .video-expand-btn:hover {
-            background: rgba(0, 0, 0, 0.8);
+        .video-expand-btn:hover,
+        .video-expand-btn:focus-visible {
+            background: rgba(0, 0, 0, 0.55);
         }
 
         .video-volume-slider-track {
@@ -11897,7 +11907,15 @@
             // predictable way, with no cross-origin state for us to lose track of.
             const expandBtn = document.createElement('button');
             expandBtn.type = 'button';
-            expandBtn.className = 'video-expand-btn absolute bottom-2 end-2 z-20';
+            // Physical `left` (not the logical `start-*` the volume control uses) - deliberately
+            // NOT RTL-aware here. This embed's own player chrome never mirrors for a right-to-
+            // left HOST page (it's its own separate document, always laid out however YouTube
+            // itself renders it regardless of ours), so its own expand icon sits at the same
+            // physical spot every time, Hebrew page or not. Positioning (left side, vertically
+            // centered) is set in the CSS (.video-expand-btn) - confirmed directly from an actual
+            // screenshot of this exact embedded player, not assumed from a generic youtube.com
+            // layout (that assumption was wrong the first time around).
+            expandBtn.className = 'video-expand-btn absolute z-20';
             expandBtn.title = 'Expand';
             expandBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
             expandBtn.addEventListener('click', () => {
