@@ -13227,16 +13227,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
         function shareMission(m) {
             const shareTitle = `SpaceX • ${m.name}`;
             const shareUrl = buildMissionShareUrl(m);
-            // The link is repeated inside shareText (not just passed as the separate "url"
-            // field) because some share targets reachable via navigator.share - e.g. Windows'
-            // Mail app - only use the "text" field for the message body and silently drop "url".
+            // The link lives inside shareText rather than the separate "url" field because
+            // some share targets reachable via navigator.share - e.g. Windows' Mail app - only
+            // use "text" for the message body and silently drop "url". Targets that DO use both
+            // (WhatsApp, Telegram...) would otherwise show the link twice, so it's kept out of
+            // the "url" field entirely - plain http(s) text is auto-linkified almost everywhere.
             const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!\n${shareUrl}`;
 
             if (navigator.share) {
                 navigator.share({
                     title: shareTitle,
-                    text: shareText,
-                    url: shareUrl
+                    text: shareText
                 });
             } else {
                 const fullText = `${shareTitle}\n${shareText}\nLink: ${shareUrl}`;
