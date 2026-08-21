@@ -11690,65 +11690,26 @@
             setTimeout(attempt, 20000);
         }
 
-        // Moves #hero-video-section to a position:fixed, body-level element exactly once, the
-        // first time it's ever opened - a plain position:fixed in place doesn't resolve relative
-        // to the real viewport here: an ancestor further up establishes its own containing
-        // block, confirmed directly by measuring getBoundingClientRect() before/after the move.
-        // Doing this ONCE, up front,
-        // before any video src is ever set, is deliberate: reparenting a live <iframe> was
-        // confirmed (via a 'load' event counter) to force it to reload/renavigate, which would
-        // restart playback - moving the empty, not-yet-playing element at init time sidesteps
-        // that entirely, so later fullscreen/small toggles are pure CSS/position changes with no
-        // further DOM moves and no further reload risk.
+        // Used to move #hero-video-section to a position:fixed, body-level element and track its
+        // "small mode" position on every scroll/resize frame via getBoundingClientRect + a
+        // written transform - needed ONLY so a later enterHeroVideoFullscreen() could size the
+        // player against the real viewport, past an ancestor further up that establishes its own
+        // containing block (plain position:fixed in place doesn't resolve relative to the real
+        // viewport there). But nothing calls enterHeroVideoFullscreen() anymore - WATCH LIVE
+        // opens the small inline player directly per the explicit 2026-08-20 change (see
+        // renderHeroLiveButton below) - so heroVideoFullscreenActive is always false and this
+        // machinery was pure overhead: every single scroll had to re-measure layout and write a
+        // new transform on the main thread, one rAF frame behind the browser's own (compositor-
+        // thread) native scroll. That one-frame lag is exactly the "not pinned to its place,
+        // dances while scrolling" bug reported live - visible on every scroll now that small mode
+        // is the default, not just an edge case. With nothing left that actually needs real-
+        // viewport-fixed positioning, the section is left in its normal DOM slot (already
+        // `relative` in its base class) and scrolls natively with zero JS involvement, exactly
+        // like every other element on the page - which by construction can never lag or jitter.
+        // (If a fullscreen mode is ever wired back up, it'll need this reparent-to-body dance
+        // restored - a plain position:fixed here alone won't reach the real viewport.)
         function initHeroVideoFloatingPlayer() {
-            if (heroVideoFloatingInitDone) return;
-            const section = document.getElementById('hero-video-section');
-            if (!section) return;
             heroVideoFloatingInitDone = true;
-
-            const placeholder = document.createElement('div');
-            placeholder.className = section.className + ' hero-video-placeholder';
-            section.parentNode.insertBefore(placeholder, section);
-
-            section.classList.add('hero-video-floating');
-            document.body.appendChild(section);
-
-            function sync() {
-                if (heroVideoFullscreenActive) return; // fullscreen uses its own inset:0 sizing
-                if (section.classList.contains('hidden')) return;
-                const r = placeholder.getBoundingClientRect();
-                if (r.width < 1 || r.height < 1) {
-                    section.style.display = 'none';
-                    return;
-                }
-                section.style.display = '';
-                section.style.transform = `translate(${r.left.toFixed(1)}px, ${r.top.toFixed(1)}px)`;
-                section.style.width = r.width.toFixed(1) + 'px';
-                section.style.height = r.height.toFixed(1) + 'px';
-            }
-            heroVideoSyncSmallPosition = sync;
-
-            // Scroll fires far more often than the browser actually paints - calling sync()
-            // straight from the raw event (as this used to) reads layout (getBoundingClientRect)
-            // and writes styles (transform/width/height) possibly several times per frame, out
-            // of step with the browser's own paint cycle. That's what made the floating player
-            // visibly lag/jitter behind the page while scrolling instead of staying pinned to
-            // its placeholder like every other on-page element. Coalescing to one sync() per
-            // animation frame (same rAF-guard pattern the resize listener right below already
-            // used) fixes it - matches how every other scroll-position-tracking element on this
-            // page already behaves.
-            let scrollRaf = false;
-            window.addEventListener('scroll', () => {
-                if (scrollRaf) return;
-                scrollRaf = true;
-                requestAnimationFrame(() => { scrollRaf = false; sync(); });
-            }, { passive: true });
-            let resizeRaf = false;
-            window.addEventListener('resize', () => {
-                if (resizeRaf) return;
-                resizeRaf = true;
-                requestAnimationFrame(() => { resizeRaf = false; sync(); });
-            });
         }
 
         // Swaps the small player's X button between "minimize" (fullscreen) and "close" (small)
