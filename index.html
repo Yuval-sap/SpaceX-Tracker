@@ -6803,34 +6803,39 @@
     <div id="astronaut-modal" onclick="if (event.target.id === 'astronaut-modal') closeAstronautModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[250]">
         <div id="astronaut-modal-content" onclick="event.stopImmediatePropagation()"
-            class="card-modal-scroll bg-zinc-900 border border-emerald-500/40 w-full max-w-lg max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.25)] my-auto transition-colors duration-500">
-            <div
-                class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
-                <div>
-                    <div id="astro-modal-name" translate="no"
-                        class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="astro-modal-agency" translate="no"
-                        class="notranslate modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1">
-                        ASTRONAUT DOSSIER</div>
-                </div>
+            class="card-modal-scroll bg-zinc-900 border border-emerald-500/40 w-full max-w-lg max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.25)] my-auto transition-colors duration-500 relative">
+            
+            <!-- Hero Image Header with Full Bleed & Fade (גובה מוגדל וללא אנימציית גלישה) -->
+            <div class="relative w-full h-80 sm:h-96 overflow-hidden bg-zinc-950 shrink-0">
+                <img id="astro-modal-img" 
+                     src="" 
+                     alt="Astronaut Profile" 
+                     crossorigin="anonymous"
+                     class="w-full h-full object-cover" 
+                     style="object-position: center 0%;" />
+                
+                <div class="absolute inset-0 modal-hero-fade pointer-events-none"></div>
+
                 <button onclick="closeAstronautModal()" title="Close"
-                    class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
-            </div>
-            <div class="p-5 sm:p-6 space-y-5">
-                <div
-                    class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center">
-                    <img id="astro-modal-img" src="" class="w-full h-full object-contain"
-                        alt="Astronaut Profile">
-                    <div
-                        class="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent pointer-events-none">
+                    class="mission-modal-close absolute top-4 end-4 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-emerald-400/40 text-emerald-400 bg-zinc-900/60 backdrop-blur-md flex items-center justify-center hover:bg-zinc-800 transition-colors"
+                    aria-label="Close">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+
+                <!-- Title & Role over Image Bottom -->
+                <div class="absolute bottom-4 start-5 end-5 z-10">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span id="astro-modal-role" class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-400 drop-shadow"></span>
+                        <span class="text-zinc-500">•</span>
+                        <span id="astro-modal-agency" translate="no" class="notranslate text-[10px] sm:text-[11px] font-semibold text-zinc-300 uppercase tracking-wider drop-shadow">ASTRONAUT DOSSIER</span>
                     </div>
+                    <div id="astro-modal-name" translate="no"
+                        class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight drop-shadow-md"></div>
                 </div>
+            </div>
 
-                <div class="bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center">
-                    <div class="modal-subhead text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Assigned Flight Role</div>
-                    <div id="astro-modal-role" class="text-sm sm:text-base font-semibold text-zinc-200 mt-0.5"></div>
-                </div>
-
+            <!-- Modal Body Details -->
+            <div class="p-5 sm:p-6 space-y-4">
                 <div class="space-y-2">
                     <h4 class="modal-subhead font-space text-sm sm:text-base font-semibold text-emerald-400">Biography & Background</h4>
                     <p id="astro-modal-bio" translate="no"
@@ -12988,18 +12993,41 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const crewSection = document.getElementById('modal-crew-section');
             const crewContainer = document.getElementById('modal-crew-container');
-            if (m.crew && m.crew.length > 0) {
+          if (m.crew && m.crew.length > 0) {
                 window.currentMissionCrew = m.crew;
 
-                crewContainer.innerHTML = m.crew.map((c, i) => `
-                    <div onclick="openAstronautModal(${i})" class="flex flex-col items-center group min-w-0 md:w-[140px] md:shrink-0 cursor-pointer md:hover:scale-105 transition-transform duration-200">
-                        <div class="w-11 h-11 md:w-20 md:h-20 rounded-full overflow-hidden border border-zinc-700 group-hover:border-emerald-400 transition-colors duration-300 mb-1.5 md:mb-2.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-                            <img src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)}" class="w-full h-full object-cover object-center">
+                // מילון תמונות מותאמות אישית לאסטרונאוטים
+                const CUSTOM_ASTRONAUT_IMAGES = {
+                    "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg"
+                };
+
+                crewContainer.innerHTML = m.crew.map((c, i) => {
+                    const customImg = CUSTOM_ASTRONAUT_IMAGES[c.name] || CUSTOM_ASTRONAUT_IMAGES[(c.name || '').trim()];
+                    const photoSrc = customImg || c.image;
+
+                    return `
+                        <div onclick="openAstronautModal(${i})" class="flex flex-col items-center group min-w-0 md:w-[140px] md:shrink-0 cursor-pointer md:hover:scale-105 transition-transform duration-200">
+                            <div class="w-11 h-11 md:w-20 md:h-20 rounded-full overflow-hidden border border-zinc-700 group-hover:border-emerald-400 transition-colors duration-300 mb-1.5 md:mb-2.5 shadow-[0_0_12px_rgba(16,185,129,0.3)] bg-zinc-950">
+                                <img src="${escapeHtml(photoSrc)}" 
+                                     alt="${escapeHtml(c.name)}" 
+                                     crossorigin="anonymous"
+                                     onload="alignAstronautHeadToTop(this, 3)"
+                                     class="crew-grid-avatar w-full h-full object-cover" 
+                                     style="object-position: center 0%;">
+                            </div>
+                            <div class="text-[9px] md:text-sm font-bold text-center text-zinc-300 leading-tight group-hover:text-emerald-400 transition-colors w-full">${escapeHtml(c.name)}</div>
+                            <div class="modal-subhead mission-title-fit text-[8px] md:text-xs text-emerald-400 uppercase tracking-wider text-center mt-0.5 whitespace-normal overflow-hidden w-full leading-tight">${escapeHtml(c.role)}</div>
                         </div>
-                        <div class="text-[9px] md:text-sm font-bold text-center text-zinc-300 leading-tight group-hover:text-emerald-400 transition-colors w-full">${escapeHtml(c.name)}</div>
-                        <div class="modal-subhead mission-title-fit text-[8px] md:text-xs text-emerald-400 uppercase tracking-wider text-center mt-0.5 whitespace-normal overflow-hidden w-full leading-tight">${escapeHtml(c.role)}</div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
+
+                // בדיקה נוספת ליישור כל התמונות לאחר טעינתן ב-DOM
+                setTimeout(() => {
+                    crewContainer.querySelectorAll('.crew-grid-avatar').forEach(img => {
+                        alignAstronautHeadToTop(img, 3);
+                    });
+                }, 50);
+
                 fitAllTitlesOneLine(crewContainer);
                 crewSection.classList.remove('hidden');
                 crewSection.classList.add('block');
@@ -13739,6 +13767,125 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
         }
 
+        /**
+         * מזהה אוטומטית את מיקום הראש בתמונה ומצמיד אותו לחלק העליון עם מרווח קל
+         */
+        /**
+         * מזהה את מיקום הראש ומצמיד אותו לגבול העליון בדיוק של פיקסלים
+         */
+        async function alignAstronautHeadToTop(imgEl, topPaddingPx = 6) {
+            if (!imgEl) return;
+
+            // טעינת הממדים המקוריים
+            if (!imgEl.complete || imgEl.naturalWidth === 0) {
+                await new Promise(resolve => {
+                    imgEl.onload = resolve;
+                    imgEl.onerror = resolve;
+                });
+            }
+
+            const nw = imgEl.naturalWidth;
+            const nh = imgEl.naturalHeight;
+            if (!nw || !nh) return;
+
+            let faceBox = null;
+
+            // 1. זיהוי פנים דרך FaceDetector API
+            if ('FaceDetector' in window) {
+                try {
+                    const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 3 });
+                    const faces = await detector.detect(imgEl);
+                    if (faces && faces.length > 0) {
+                        // בוחרים את הפנים הגדולות/ברורות ביותר
+                        faces.sort((a, b) => (b.boundingBox.width * b.boundingBox.height) - (a.boundingBox.width * a.boundingBox.height));
+                        faceBox = faces[0].boundingBox;
+                    }
+                } catch (e) { }
+            }
+
+            // 2. סריקה חכמה ברוחב מלא דרך Canvas אם הזיהוי נכשל
+            if (!faceBox) {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const sw = 100, sh = 100;
+                    canvas.width = sw;
+                    canvas.height = sh;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(imgEl, 0, 0, sw, sh);
+                    const data = ctx.getImageData(0, 0, sw, sh).data;
+
+                    // חיפוש גווני עור וקונטרסט ראש לרוחב כל התמונה
+                    let bestY = -1;
+                    for (let y = 5; y < sh * 0.85; y++) {
+                        let skinOrContrastFound = 0;
+                        for (let x = 10; x < sw - 10; x++) {
+                            const i = (y * sw + x) * 4;
+                            const r = data[i], g = data[i+1], b = data[i+2];
+                            
+                            // זיהוי גוון עור פשוט (Skin-tone detection)
+                            const isSkin = (r > 60 && g > 40 && b > 20 && r > g && r > b && (Math.max(r,g,b) - Math.min(r,g,b) > 10));
+                            
+                            // זיהוי קווי מתאר של שיער/קסדה/ראש
+                            const iAbove = ((y - 3) * sw + x) * 4;
+                            const diff = Math.abs(r - data[iAbove]) + Math.abs(g - data[iAbove+1]) + Math.abs(b - data[iAbove+2]);
+
+                            if (isSkin || diff > 50) skinOrContrastFound++;
+                        }
+
+                        if (skinOrContrastFound > 6) {
+                            bestY = y;
+                            break;
+                        }
+                    }
+
+                    if (bestY !== -1) {
+                        faceBox = {
+                            top: (bestY / sh) * nh,
+                            height: nh * 0.2,
+                            left: nw * 0.5,
+                            width: nw * 0.2
+                        };
+                    }
+                } catch (err) { }
+            }
+
+            // חישוב המיקום לפי החיתוך בפועל (Aspect Ratio)
+            if (faceBox) {
+                // החלק העליון של הראש (מעט מעל העיניים/קופסת הפנים)
+                const headTopY = Math.max(0, faceBox.top - (faceBox.height * 0.25));
+                const faceCenterX = faceBox.left + (faceBox.width / 2);
+
+                const containerW = imgEl.parentElement.clientWidth || 400;
+                const containerH = imgEl.parentElement.clientHeight || 320;
+                
+                // התמונה ב-object-cover מתוחה לפי היחס בין הרוחב לגובה
+                const scale = Math.max(containerW / nw, containerH / nh);
+                const scaledH = nh * scale;
+
+                // חישוב המרחק באחוזים כדי שה-headTopY ינחת בדיוק topPaddingPx פיקסלים מהקצה העליון
+                const visibleHeadY = headTopY * scale;
+                const overflowH = scaledH - containerH;
+
+                let yPercent = 0;
+                if (overflowH > 0) {
+                    const desiredOffset = Math.max(0, visibleHeadY - topPaddingPx);
+                    yPercent = Math.min(100, Math.max(0, (desiredOffset / overflowH) * 100));
+                }
+
+                const xPercent = Math.min(100, Math.max(0, (faceCenterX / nw) * 100));
+
+                imgEl.style.objectPosition = `${xPercent.toFixed(1)}% ${yPercent.toFixed(1)}%`;
+            } else {
+                // ברירת מחדל אם לא זוהה כלל
+                imgEl.style.objectPosition = 'center 10%';
+            }
+        }
+
+        // מילון תמונות מותאמות אישית לאסטרונאוטים
+        const CUSTOM_ASTRONAUT_IMAGES = {
+            "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg"
+        };
+
         function openAstronautModal(index) {
             if (!window.currentMissionCrew || !window.currentMissionCrew[index]) return;
 
@@ -13747,9 +13894,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const c = window.currentMissionCrew[index];
             document.getElementById('astro-modal-name').innerText = c.name;
-            document.getElementById('astro-modal-role').innerText = c.role;
-            document.getElementById('astro-modal-img').src = c.image;
-            document.getElementById('astro-modal-img').alt = c.name;
+            document.getElementById('astro-modal-role').innerText = c.role || "CREW MEMBER";
+            
+            const imgEl = document.getElementById('astro-modal-img');
+            
+            // בדיקה אם קיימת תמונה מותאמת אישית לאיש הצוות לפי השם שלו
+            const customImg = CUSTOM_ASTRONAUT_IMAGES[c.name] || CUSTOM_ASTRONAUT_IMAGES[(c.name || '').trim()];
+            imgEl.src = customImg || c.image;
+            imgEl.alt = c.name;
+
+            // הפעלת ההצמדה החכמה לראש
+            alignAstronautHeadToTop(imgEl, 6);
+
             document.getElementById('astro-modal-agency').innerText = c.agency || "ASTRONAUT DOSSIER";
             document.getElementById('astro-modal-bio').innerText = c.bio || "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.";
             translateModalDescriptions('astronaut', [document.getElementById('astro-modal-bio')], document.documentElement.lang);
@@ -13762,12 +13918,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
         }
 
         function closeAstronautModal() {
-            const modal = document.getElementById('astronaut-modal');
-            if (modal) {
-                modal.style.display = 'none';
-                modal.classList.add('hidden');
-                unlockBodyScroll();
-            }
+            const modalEl = document.getElementById('astronaut-modal');
+            if (!modalEl) return;
+            modalEl.classList.add('hidden');
+            modalEl.style.display = 'none';
+            unlockBodyScroll();
         }
 
         let heroInterval;
