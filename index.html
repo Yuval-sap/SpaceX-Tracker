@@ -3854,6 +3854,7 @@
             document.querySelectorAll('[data-i18n-asds="1"]').forEach(el => {
                 el.innerText = dict.asds || LAUNCH_LABEL_I18N.en.asds;
             });
+
         }
 
         // The Recent Past Launches cards' bottom-left button ("Watch Launch Details and
@@ -5538,24 +5539,30 @@
                 <div class="flex flex-col items-end gap-2">
                     <div id="year-count-box"
                         class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm">
-                        <div id="i18n-upcoming-launches"
-                            class="text-[6px] sm:text-[10px] text-zinc-500 tracking-wide sm:tracking-widest font-bold uppercase mb-0.5 sm:mb-1 whitespace-nowrap notranslate"
-                            translate="no" lang="en">Launches This Year</div>
+                        <div class="flex items-center gap-1 mb-0.5 sm:mb-1">
+                            <div id="i18n-upcoming-launches"
+                                class="text-[6px] sm:text-[10px] text-zinc-500 tracking-wide sm:tracking-widest font-bold uppercase whitespace-nowrap notranslate"
+                                translate="no" lang="en">Launches This Year</div>
+                            <i class="fa-solid fa-circle-info text-emerald-400/70 text-[6px] sm:text-[9px]" aria-hidden="true"></i>
+                        </div>
                         <div class="text-emerald-400 text-lg sm:text-4xl font-bold font-orbitron notranslate leading-none"
                             id="upcoming-count" translate="no">0</div>
 
                         <!-- פירוט פלקון 9 מול סטארשיפ - מופיע רק בריחוף (דסקטופ בלבד, למכשירי מגע
-                             אין hover אמיתי) - ראו computeYearToDateLaunchCountByVehicle לחישוב. -->
+                             אין hover אמיתי) - ראו computeYearToDateLaunchCountByVehicle לחישוב.
+                             ממוקם בצד התיבה (לא מתחתיה) באמצעות end-full+me, שמתהפך אוטומטית בין
+                             RTL ל-LTR - לא top-full/end-0 (זה היה פותח למטה, לא לצד). w-full (לא
+                             min-w קבוע) משווה את הרוחב לזה של תיבת המונה עצמה (ההורה עם position:
+                             relative) במקום ערך מקובע שיצא מסונכרן אם רוחב התיבה ישתנה בעתיד. -->
                         <div id="year-count-breakdown"
-                            class="hidden md:group-hover:flex absolute top-full end-0 mt-2 flex-col gap-1.5 min-w-[150px] py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80] notranslate"
-                            translate="no">
-                            <div class="flex items-center justify-between gap-3 text-xs">
-                                <span class="flex items-center gap-1.5 text-zinc-300 font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-[10px]"></i> Falcon 9</span>
-                                <span id="year-count-falcon9" class="font-orbitron font-bold text-emerald-400">0</span>
+                            class="hidden md:group-hover:flex absolute top-0 end-full me-2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
+                            <div class="flex items-center justify-between gap-3 text-sm">
+                                <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span>Falcon 9</span></span>
+                                <span id="year-count-falcon9" class="font-orbitron font-bold text-emerald-400 text-base">0</span>
                             </div>
-                            <div class="flex items-center justify-between gap-3 text-xs">
-                                <span class="flex items-center gap-1.5 text-zinc-300 font-semibold"><i class="fa-solid fa-shuttle-space text-emerald-400 text-[10px]"></i> Starship</span>
-                                <span id="year-count-starship" class="font-orbitron font-bold text-emerald-400">0</span>
+                            <div class="flex items-center justify-between gap-3 text-sm">
+                                <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span class="starship-term notranslate" translate="no">Starship</span></span>
+                                <span id="year-count-starship" class="font-orbitron font-bold text-emerald-400 text-base">0</span>
                             </div>
                         </div>
                     </div>
