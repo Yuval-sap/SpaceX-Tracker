@@ -3036,6 +3036,85 @@
             box-shadow: 0 20px 50px rgba(4, 120, 87, 0.15);
         }
 
+        /* ==================================================
+           HERO NEXT LAUNCH - HUD BRACKET TAG (static, no motion)
+           ================================================== */
+        .next-launch-tag {
+            position: relative;
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .next-launch-tag::before,
+        .next-launch-tag::after {
+            content: '';
+            position: absolute;
+            width: 9px;
+            height: 9px;
+        }
+        .next-launch-tag::before {
+            top: -1px;
+            left: -1px;
+            border-top: 2px solid #10b981;
+            border-left: 2px solid #10b981;
+        }
+        .next-launch-tag::after {
+            bottom: -1px;
+            right: -1px;
+            border-bottom: 2px solid #10b981;
+            border-right: 2px solid #10b981;
+        }
+        html[dir="rtl"] .next-launch-tag::before {
+            left: auto;
+            right: -1px;
+            border-left: 0;
+            border-right: 2px solid #10b981;
+        }
+        html[dir="rtl"] .next-launch-tag::after {
+            right: auto;
+            left: -1px;
+            border-right: 0;
+            border-left: 2px solid #10b981;
+        }
+
+        body.light-theme .next-launch-tag {
+            background: rgba(4, 120, 87, 0.06);
+            border-color: rgba(4, 120, 87, 0.35);
+        }
+        body.light-theme .next-launch-tag::before,
+        body.light-theme .next-launch-tag::after {
+            border-color: #047857;
+        }
+        body.light-theme .next-launch-tag #i18n-next-launch {
+            color: #1e293b !important;
+        }
+        body.light-theme .next-launch-tag i {
+            color: #047857 !important;
+        }
+
+        body.mars-theme .next-launch-tag {
+            background: rgba(255, 107, 53, 0.08);
+            border-color: rgba(255, 107, 53, 0.35);
+        }
+        body.mars-theme .next-launch-tag::before,
+        body.mars-theme .next-launch-tag::after {
+            border-color: #ff8c5a;
+        }
+        body.mars-theme .next-launch-tag i {
+            color: #ff8c5a !important;
+        }
+
+        body.moon-theme .next-launch-tag {
+            background: rgba(63, 169, 245, 0.08);
+            border-color: rgba(63, 169, 245, 0.35);
+        }
+        body.moon-theme .next-launch-tag::before,
+        body.moon-theme .next-launch-tag::after {
+            border-color: #6abffb;
+        }
+        body.moon-theme .next-launch-tag i {
+            color: #6abffb !important;
+        }
+
         /* Extra emerald hover utilities → Mars / Moon accents (buttons, borders, groups) */
         @media (min-width: 768px) {
             body.mars-theme .md\:hover\:bg-emerald-500:hover {
@@ -5228,6 +5307,17 @@
             <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-3xl">
                 <img id="hero-image" src="" alt="" class="w-full h-full object-cover object-[center_19%] opacity-30 hero-fade-image">
             </div>
+            <!-- תגית הירו - HUD Bracket Tag - מוצמדת לפינה העליונה של ההירו, מחוץ לזרימת
+                 הטקסט הממורכז אנכית, כדי שתישאר תמיד ליד הקצה העליון בכל הגדלי מסך. -->
+            <div class="next-launch-tag absolute top-4 start-3 sm:top-5 sm:start-4 z-20 px-4 py-1.5 sm:px-5 sm:py-2 inline-flex items-center justify-center gap-2 notranslate" translate="no">
+                <i class="fa-solid fa-satellite-dish text-emerald-400 text-xs sm:text-sm shrink-0" aria-hidden="true"></i>
+                <span id="i18n-next-launch"
+                      class="font-orbitron text-xs sm:text-sm font-bold tracking-[0.18em] text-zinc-200 uppercase whitespace-nowrap notranslate leading-none"
+                      translate="no"
+                      lang="en">
+                    NEXT LAUNCH
+                </span>
+            </div>
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10 lg:w-full">
                 <!-- On mobile this wrapper is unwrapped (display:contents) so its two children
                      (the info block below, and the buttons/video block further down) become
@@ -5235,19 +5325,7 @@
                      reordered (via order-last) to sit after #countdown-box instead of before it.
                      On lg+ it reverts to its original block layout, so desktop is unaffected. -->
                 <div class="contents lg:block lg:space-y-3 lg:flex-1 lg:w-full lg:min-w-0">
-                <div class="space-y-3">
-                    <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <span
-                            class="hero-pill px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs sm:text-[13px] font-bold tracking-[0.2em] rounded-full flex items-center">
-                            <span id="i18n-next-launch" class="notranslate" translate="no" lang="en">NEXT LAUNCH</span>
-                        </span>
-                        <span id="hero-status-pill"
-                            class="hero-pill px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-full flex items-center gap-1.5 transition-colors duration-500">
-                            <i id="hero-status-icon" class="fa-solid fa-check-double"></i>
-                            <span id="hero-status-text" class="notranslate" translate="no" lang="en"
-                                data-go-text="SYSTEMS GO" data-alert-text="FINAL COUNTDOWN">SYSTEMS GO</span>
-                        </span>
-                    </div>
+                <div class="space-y-3 pt-12 sm:pt-14">
                     <h2 id="hero-name"
                         class="font-space text-2xl sm:text-4xl md:text-5xl font-semibold tracking-tighter text-white">
                         Loading...</h2>
