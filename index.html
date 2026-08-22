@@ -9762,13 +9762,28 @@
         function startPastVideoLongTailRecheck() {
             if (pastVideoLongTailIntervalArmed) return;
             pastVideoLongTailIntervalArmed = true;
-            const check = () => {
-                const stillMissing = (rawPastMissions || []).some(m => {
-                    if (m.youtubeId) return false;
-                    const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
-                    return hoursSinceLaunch >= 3 && hoursSinceLaunch <= 24 * 7;
-                });
-                if (stillMissing) fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
+            // Bounded budget for the fast-retry escalation below - shared across every check()
+            // call for the life of this tab, not reset per-mission. Keeps a mission that never
+            // gets a video from turning into a permanent extra request every few minutes.
+            let fastRetriesLeft = 4;
+            const isStillMissing = () => (rawPastMissions || []).some(m => {
+                if (m.youtubeId) return false;
+                const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
+                return hoursSinceLaunch >= 3 && hoursSinceLaunch <= 24 * 7;
+            });
+            const check = async () => {
+                if (!isStillMissing()) return;
+                await fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
+                // If that fetch didn't resolve it - most likely this free-tier API's own rate
+                // limit rejected it, same as it can reject this app's regular polling - waiting
+                // a full hour for the next scheduled check (below) can leave a real user stuck
+                // on the stale X-fallback link far longer than the rate limit itself actually
+                // lasts. Retry sooner instead, a bounded number of times, before falling back
+                // to the plain hourly cadence.
+                if (isStillMissing() && fastRetriesLeft > 0) {
+                    fastRetriesLeft--;
+                    setTimeout(check, 5 * 60 * 1000);
+                }
             };
             // First check fires soon after load (not a full hour later) - a session that was
             // rate-limited (or simply hadn't refreshed yet) when the page was first opened would
