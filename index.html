@@ -3011,6 +3011,31 @@
             filter: blur(12px);
         }
 
+        /* Border + drop-shadow "glow" for the three info-dossier modals (rocket/site/orbit,
+           opened via the small (i) icon next to a stat label) - was hard-coded emerald via
+           Tailwind's border-emerald-500/30 + an arbitrary-value shadow-[...] class, so it never
+           changed with the site theme. Tailwind arbitrary-value classes bake the literal color
+           into the generated class name itself, so they can't be retargeted by a body.theme
+           selector the way named utility classes (border-emerald-500) can elsewhere on this
+           page - hence a dedicated class here instead, same themed-glow palette as
+           .patch-hover-glow above. */
+        .dossier-modal-shell {
+            border-color: rgba(16, 185, 129, 0.3);
+            box-shadow: 0 20px 50px rgba(16, 185, 129, 0.2);
+        }
+        body.mars-theme .dossier-modal-shell {
+            border-color: rgba(255, 107, 53, 0.3);
+            box-shadow: 0 20px 50px rgba(255, 107, 53, 0.2);
+        }
+        body.moon-theme .dossier-modal-shell {
+            border-color: rgba(63, 169, 245, 0.3);
+            box-shadow: 0 20px 50px rgba(63, 169, 245, 0.2);
+        }
+        body.light-theme .dossier-modal-shell {
+            border-color: rgba(4, 120, 87, 0.25);
+            box-shadow: 0 20px 50px rgba(4, 120, 87, 0.15);
+        }
+
         /* Extra emerald hover utilities → Mars / Moon accents (buttons, borders, groups) */
         @media (min-width: 768px) {
             body.mars-theme .md\:hover\:bg-emerald-500:hover {
@@ -4352,7 +4377,10 @@
             const originals = els.map(el => el.innerText);
             translateBatchViaGoogle(originals, lang).then(translated => {
                 if (_modalDescGen[key] !== myGen) return; // superseded by a newer open/re-render
-                els.forEach((el, i) => { if (translated[i]) el.innerText = translated[i]; });
+                els.forEach((el, i) => {
+                    if (translated[i]) el.innerText = translated[i];
+                    fixMistranslatedPhrases(el, lang);
+                });
             });
         }
 
@@ -6558,7 +6586,7 @@
     <div id="rocket-modal" onclick="if (event.target.id === 'rocket-modal') closeRocketModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
         <div id="rocket-modal-content" onclick="event.stopImmediatePropagation()"
-            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.15)] my-auto transition-colors duration-500">
+            class="dossier-modal-shell card-modal-scroll bg-zinc-900 border w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col my-auto transition-colors duration-500">
             <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
                 <button onclick="closeRocketModal()"
                     class="mission-modal-close flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-2 border-emerald-400 text-emerald-400 md:hover:bg-emerald-400/10 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors"
@@ -6626,7 +6654,7 @@
     <div id="site-modal" onclick="if (event.target.id === 'site-modal') closeLaunchSiteModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
         <div id="site-modal-content" onclick="event.stopImmediatePropagation()"
-            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            class="dossier-modal-shell card-modal-scroll bg-zinc-900 border w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col my-auto transition-colors duration-500">
             <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
                 <button onclick="closeLaunchSiteModal()"
                     class="mission-modal-close flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-2 border-emerald-400 text-emerald-400 md:hover:bg-emerald-400/10 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors"
@@ -6677,7 +6705,7 @@
     <div id="orbit-modal" onclick="if (event.target.id === 'orbit-modal') closeOrbitSpecs()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
         <div id="orbit-modal-content" onclick="event.stopImmediatePropagation()"
-            class="card-modal-scroll bg-zinc-900 border border-emerald-500/30 w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-[0_20px_50px_rgba(16,185,129,0.2)] my-auto transition-colors duration-500">
+            class="dossier-modal-shell card-modal-scroll bg-zinc-900 border w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col my-auto transition-colors duration-500">
             <div
                 class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
                 <div>
