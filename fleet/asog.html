@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>A Shortfall of Gravitas - Live Position</title>
+<style>
+    html,body{margin:0;padding:0;background:#09090b;height:208px;overflow:hidden}
+    /* VesselFinder's free embed always renders its own branded top bar (#embed-header - 20px +
+       1px border, confirmed from their own CSS) inside the map iframe it writes, with no config
+       option to disable it, and their aismap.js also enforces a hard 400px height floor
+       (any height var under 400 is silently raised to 400 - confirmed by reading their script
+       source) so it can't just be sized down to skip the bar either. Crop it out of view
+       instead: let the widget render at its real 400px, but clip it inside a 208px window
+       (matches index.html's h-52 container this file is embedded into) shifted up 21px so the
+       visible slice starts right below the bar instead of at its top. */
+    #crop{width:100%;height:208px;overflow:hidden;position:relative}
+    #crop-inner{position:absolute;top:-21px;left:0;width:100%}
+</style>
+</head>
+<body>
+<div id="crop"><div id="crop-inner">
+<script type="text/javascript">
+    var width="100%";
+    var height="400";
+    var mmsi="368219910";
+    var show_track=false;
+    var names=true;
+</script>
+<script type="text/javascript" src="https://www.vesselfinder.com/aismap.js"></script>
+</div></div>
+</body>
+</html>
