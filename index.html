@@ -3943,11 +3943,24 @@
         const PHRASE_FIXES_HE = [
             [/קבוצת\s*ה?כוכבים(?:\s+(?:ה)?לוויינים)?/g, 'מערך הלוויינים'],
             [/ספינ(?:ות|ה|ת)\s*(?:נמל\s*)?חלל\s*אוטונומי(?:ת|ות)/g, 'ספינות נחיתה אוטונומיות'],
+            // "Spaceport" (from the ASDS acronym: Autonomous Spaceport Drone Ship) translated
+            // literally into running prose as "of an autonomous spaceport" - redundant and
+            // confusing once "Drone Ship" is already correctly rendered as "ספינות נחיתה
+            // אוטונומיות" above, so it's dropped entirely rather than reworded.
+            [/\s*של\s*נמל\s*חלל\s*אוטונומי(?:ת|ות)?/g, ''],
             // "Drone Ship" translated literally as "spinat rachfanim" (ships of flying quadcopter
             // drones) reads as nonsense/misleading in Hebrew - "drone" here means unmanned/
             // autonomous, not a flying drone. Reuses the same "ספינות נחיתה אוטונומיות" wording
             // as the rule above, for the Recovery Zone dossier's ASDS description text.
             [/ספינ(?:ות|ה|ת)\s*(?:ה)?רחפנים(?:\s*ה?אוטונומי(?:ת|ות))?/g, 'ספינות נחיתה אוטונומיות'],
+            // Same "Drone Ship" mistranslation, but Google sometimes picks "מזל"ט" (UAV) instead
+            // of "רחפנים" - a second variant of the exact same wrong word.
+            [/ספינ(?:ות|ה|ת)\s*(?:ה)?מזל["״]?ט/g, 'ספינות נחיתה'],
+            // "mobile landing pads" mistranslated as "משטחי נחיתה נייחים" (STATIONARY landing
+            // pads) - the opposite of the source meaning, and directly contradicts the very next
+            // sentence about dynamic positioning/no anchoring. Scoped to this exact phrase only,
+            // not a blanket "נייחים" replacement, since that word is correct in other contexts.
+            [/משטחי\s*נחיתה\s*נייחים/g, 'משטחי נחיתה ניידים'],
         ];
         function fixMistranslatedPhrases(root, currentLang) {
             if (!root) return;
@@ -14636,7 +14649,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 typeEl.removeAttribute('data-i18n-asds');
             }
 
-            translateModalDescriptions('landing', [descEl], document.documentElement.lang);
+            translateModalDescriptions('landing', [descEl, fleetEl], document.documentElement.lang);
 
             const modalEl = document.getElementById('landing-modal');
             modalEl.classList.remove('hidden');
