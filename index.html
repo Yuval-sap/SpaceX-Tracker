@@ -3123,6 +3123,47 @@
             color: #6abffb !important;
         }
 
+        /* Mission modal's Share/Save to Calendar/Download poster row - see the HTML comment on
+           #modal-action-btn-row for why this is plain CSS instead of Tailwind grid/width
+           utilities. Explicit `width` (not flex-basis percentages - tried first, and its
+           computed value came back wrong for reasons that didn't trace to any competing rule in
+           the document, so dropped rather than keep chasing it) with `!important` on every
+           declaration and `flex: none` so each button strictly honors that width instead of
+           flex-grow/shrink recalculating it from content size - the actual bug this whole rule
+           exists to fix (poster-btn ending up ~2x wider than the other two, sized to its own
+           text instead of an even share of the row). */
+        /* Mutually-exclusive width ranges (max-width/min-width pairs, not a base rule plus a
+           later min-width override) - a base-then-override structure was tried first here and
+           the override lost to the base rule at 1280px width despite matching every cascade rule
+           on paper (higher specificity, later source order, confirmed-matching media query) for
+           reasons that never resolved. With only one range ever active for a given viewport,
+           there's nothing left for width to lose a contest against. */
+        #modal-action-btn-row {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+        }
+        #modal-action-btn-row > button {
+            flex: none !important;
+            min-width: 0 !important;
+        }
+        @media (max-width: 639px) {
+            #modal-action-btn-row > button { width: calc(50% - 0.25rem) !important; }
+            #modal-action-btn-row > #modal-poster-btn { width: 100% !important; }
+        }
+        @media (min-width: 640px) and (max-width: 767px) {
+            #modal-action-btn-row { gap: 0.75rem !important; }
+            #modal-action-btn-row > button { width: calc(50% - 0.375rem) !important; }
+            #modal-action-btn-row > #modal-poster-btn { width: 100% !important; }
+        }
+        @media (min-width: 768px) {
+            #modal-action-btn-row { gap: 0.75rem !important; }
+            #modal-action-btn-row > button,
+            #modal-action-btn-row > #modal-poster-btn {
+                width: calc(33.333% - 0.5rem) !important;
+            }
+        }
+
         /* Extra emerald hover utilities → Mars / Moon accents (buttons, borders, groups) */
         @media (min-width: 768px) {
             body.mars-theme .md\:hover\:bg-emerald-500:hover {
@@ -6479,22 +6520,36 @@
                     </a>
                 </div>
 
-                <div id="modal-action-btn-row" class="flex flex-row flex-nowrap gap-2 sm:gap-3">
+                <!-- Layout for this row is plain hand-written CSS (#modal-action-btn-row rule,
+                     search this id in the <style> block) instead of Tailwind grid/width utility
+                     classes - several rounds of grid-cols-N/w-full/col-span-N attempts here
+                     measured as correct in one test browser but visibly did not stretch the
+                     buttons to fill their column in another (real, reported: poster-btn ended up
+                     ~2x width with large uneven gaps, the signature of un-stretched content-sized
+                     grid items), and never got to a confirmed root cause. Full manual control
+                     here removes that uncertainty entirely instead of trying another utility
+                     combination. -->
+                <div id="modal-action-btn-row">
                     <button id="modal-watch-live-btn"
-                        class="hidden w-1/3 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-3 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 rounded-2xl text-[11px] sm:text-sm font-bold tracking-wide text-white transition-all duration-300 shadow-md">
+                        class="hidden flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-3 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 rounded-2xl text-[11px] sm:text-sm font-bold tracking-wide text-white transition-all duration-300 shadow-md">
                         <i class="fa-solid fa-play text-[10px] animate-pulse shrink-0"></i>
                         <span id="modal-watch-live-label" class="min-w-0 text-center notranslate" translate="no"
                             lang="en">WATCH LIVE</span>
                     </button>
                     <button id="modal-share-btn"
-                        class="w-1/2 min-w-0 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                        class="flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-share-nodes shrink-0"></i> <span class="min-w-0 text-center">Share
                             Mission</span>
                     </button>
                     <button id="modal-calendar-btn"
-                        class="w-1/2 min-w-0 flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                        class="flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-calendar-plus shrink-0"></i> <span class="min-w-0 text-center">Save to
                             Calendar</span>
+                    </button>
+                    <button id="modal-poster-btn"
+                        class="flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                        <i class="fa-solid fa-image shrink-0"></i> <span id="modal-poster-btn-label" class="min-w-0 text-center">Download /
+                            Share Poster</span>
                     </button>
                 </div>
 
@@ -13268,6 +13323,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             document.getElementById('modal-share-btn').onclick = () => shareMission(m);
             document.getElementById('modal-calendar-btn').onclick = () => saveToCalendar(m);
+            document.getElementById('modal-poster-btn').onclick = () => downloadMissionPoster(m);
 
             document.getElementById('modal-trajectory-btn').onclick = () => {
                 window.open('https://flightclub.io/', '_blank');
@@ -13482,6 +13538,20 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
         }
 
+        // Escapes text per RFC 5545 §3.3.11 (ICS) - backslash, semicolon, comma and newline all
+        // need escaping inside a text value, or calendar apps mis-parse the field boundaries.
+        function icsEscape(str) {
+            return String(str || '')
+                .replace(/\\/g, '\\\\')
+                .replace(/;/g, '\\;')
+                .replace(/,/g, '\\,')
+                .replace(/\n/g, '\\n');
+        }
+
+        // Real, universal .ics file download - works with Apple Calendar, Outlook, and Google
+        // Calendar (via import) alike, unlike a Google Calendar "render" link which only makes
+        // sense for Google Calendar users and requires being signed in. Previously this opened
+        // that Google-only link in a new tab instead of actually saving anything.
         function saveToCalendar(m) {
             const dateObj = new Date(m.date);
             // toISOString() throws a RangeError on Invalid Date (missing/malformed m.date) -
@@ -13492,15 +13562,388 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             const endObj = new Date(dateObj.getTime() + 90 * 60 * 1000);
             const endStr = endObj.toISOString().replace(/-|:|\.\d+/g, "");
+            const nowStr = new Date().toISOString().replace(/-|:|\.\d+/g, "");
 
-            const title = encodeURIComponent(`SpaceX Launch • ${m.name}`);
-            const location = encodeURIComponent(m.site);
-            const description = encodeURIComponent(`${m.description}\n\nVehicle: ${m.vehicle}\nWatch Stream: ${m.liveUrl}`);
-            const dates = `${startStr}/${endStr}`;
+            const description = `${m.description || ''}\n\nVehicle: ${m.vehicle || ''}\nWatch Stream: ${m.liveUrl || ''}`;
 
-            const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${description}&location=${location}&sf=true&output=xml`;
+            const icsLines = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//SpaceX Fan Tracker//EN',
+                'CALSCALE:GREGORIAN',
+                'BEGIN:VEVENT',
+                `UID:${m.id}@spacexfantracker.com`,
+                `DTSTAMP:${nowStr}`,
+                `DTSTART:${startStr}`,
+                `DTEND:${endStr}`,
+                `SUMMARY:${icsEscape('SpaceX Launch • ' + m.name)}`,
+                `DESCRIPTION:${icsEscape(description)}`,
+                `LOCATION:${icsEscape(m.site)}`,
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ];
+            // ICS spec calls for CRLF line endings - most calendar apps tolerate bare \n, but
+            // this is cheap to get right and avoids depending on that tolerance.
+            const icsContent = icsLines.join('\r\n');
 
-            window.open(calendarUrl, '_blank');
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `spacex-${m.id}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Draws a downloadable "mission poster" (1080x1350, portrait - fits social stories/feed),
+        // using the mission's real photo (same image/fallback the mission card itself shows) as
+        // a full-bleed header when the image host's CORS headers allow it, and a vector-only
+        // background when they don't. Reading pixels back out of a canvas that drew a cross-
+        // origin image (via toDataURL/toBlob) throws a SecurityError unless that image host sent
+        // Access-Control-Allow-Origin - not something this app controls, and not knowable in
+        // advance per host. So this tries the photo first and only falls back to the plain
+        // version if the browser actually rejects the readback - real users get the real photo
+        // on every host that cooperates (confirmed: everydayastronaut.com, the Starlink fallback,
+        // sends `access-control-allow-origin: *`), instead of unconditionally never trying.
+        function loadImageForPoster(url) {
+            return new Promise(resolve => {
+                if (!url) { resolve(null); return; }
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                const timer = setTimeout(() => resolve(null), 8000);
+                img.onload = () => { clearTimeout(timer); resolve(img); };
+                img.onerror = () => { clearTimeout(timer); resolve(null); };
+                img.src = url;
+            });
+        }
+
+        // Poster label text, matched to whatever language is active on the page at the moment
+        // the button is clicked - not baked in at English. Mission name/vehicle themselves stay
+        // as the raw API text (same as everywhere else in the app - those aren't translated
+        // strings to begin with, just data), only these four fixed labels are.
+        const POSTER_I18N = {
+            en: { brief: 'SPACEX MISSION BRIEF', date: 'DATE', site: 'SITE', status: 'STATUS' },
+            he: { brief: 'תדריך משימה', date: 'תאריך', site: 'אתר שיגור', status: 'סטטוס' },
+            iw: { brief: 'תדריך משימה', date: 'תאריך', site: 'אתר שיגור', status: 'סטטוס' },
+            es: { brief: 'INFORME DE MISIÓN SPACEX', date: 'FECHA', site: 'SITIO', status: 'ESTADO' },
+            fr: { brief: 'BRIEFING DE MISSION SPACEX', date: 'DATE', site: 'SITE', status: 'STATUT' },
+            de: { brief: 'SPACEX MISSIONSBERICHT', date: 'DATUM', site: 'STANDORT', status: 'STATUS' },
+            ru: { brief: 'БРИФИНГ МИССИИ SPACEX', date: 'ДАТА', site: 'МЕСТО', status: 'СТАТУС' },
+            zh: { brief: 'SPACEX 任务简报', date: '日期', site: '地点', status: '状态' },
+            it: { brief: 'BRIEFING MISSIONE SPACEX', date: 'DATA', site: 'SITO', status: 'STATO' },
+            cs: { brief: 'BRIEFING MISE SPACEX', date: 'DATUM', site: 'MÍSTO', status: 'STAV' },
+            sv: { brief: 'SPACEX UPPDRAGSBRIEF', date: 'DATUM', site: 'PLATS', status: 'STATUS' },
+            nl: { brief: 'SPACEX MISSIEBRIEFING', date: 'DATUM', site: 'LOCATIE', status: 'STATUS' },
+            da: { brief: 'SPACEX MISSIONSBRIEFING', date: 'DATO', site: 'STED', status: 'STATUS' },
+            pt: { brief: 'BRIEFING DA MISSÃO SPACEX', date: 'DATA', site: 'LOCAL', status: 'STATUS' },
+            pl: { brief: 'ODPRAWA MISJI SPACEX', date: 'DATA', site: 'MIEJSCE', status: 'STATUS' },
+            hi: { brief: 'स्पेसएक्स मिशन ब्रीफ', date: 'तारीख', site: 'स्थल', status: 'स्थिति' },
+            ar: { brief: 'ملخص مهمة سبيس إكس', date: 'التاريخ', site: 'الموقع', status: 'الحالة' },
+            tr: { brief: 'SPACEX GÖREV BRİFİNGİ', date: 'TARİH', site: 'YER', status: 'DURUM' },
+        };
+
+        function getPosterTheme() {
+            if (document.body.classList.contains('mars-theme')) return { accent: '#ff6b35', accentSoft: 'rgba(255,107,53,0.16)', bg1: '#140806', bg2: '#1f0f09' };
+            if (document.body.classList.contains('moon-theme')) return { accent: '#3fa9f5', accentSoft: 'rgba(63,169,245,0.16)', bg1: '#07090e', bg2: '#0c1420' };
+            if (document.body.classList.contains('light-theme')) return { accent: '#047857', accentSoft: 'rgba(4,120,87,0.12)', bg1: '#f8faf9', bg2: '#e7efec' };
+            return { accent: '#10b981', accentSoft: 'rgba(16,185,129,0.16)', bg1: '#0a0e0c', bg2: '#101915' };
+        }
+
+        function wrapCanvasText(ctx, text, maxWidth) {
+            const words = String(text || '').split(/\s+/).filter(Boolean);
+            const lines = [];
+            let line = '';
+            words.forEach(word => {
+                const test = line ? line + ' ' + word : word;
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    lines.push(line);
+                    line = word;
+                } else {
+                    line = test;
+                }
+            });
+            if (line) lines.push(line);
+            return lines;
+        }
+
+        // Builds the poster canvas synchronously. photoImg is either a loaded, same-origin-safe
+        // <img> (drawn as a full-bleed header, like the mission card's own photo) or null (draws
+        // the vector starfield/rocket art in that same region instead - see downloadMissionPoster
+        // for why a real toDataURL call further up the chain can still force this null path even
+        // when the image itself loaded fine).
+        function drawPosterCanvas(m, photoImg) {
+            const W = 1080, H = 1350;
+            const canvas = document.createElement('canvas');
+            canvas.width = W;
+            canvas.height = H;
+            const ctx = canvas.getContext('2d');
+            const theme = getPosterTheme();
+            const isLight = document.body.classList.contains('light-theme');
+            const ink = isLight ? '#0f172a' : '#f4f6f5';
+            const inkMuted = isLight ? '#5b6b63' : '#8a978e';
+
+            let langKey = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (langKey === 'zh') langKey = 'zh';
+            const dict = POSTER_I18N[langKey] || POSTER_I18N.en;
+            const dateLocale = CURRENCY_LOCALE[langKey] || 'en-US';
+            const isRTL = langKey === 'he' || langKey === 'iw' || langKey === 'ar';
+            // Canvas's own bidi resolution for a mixed-script string (Hebrew month name next to
+            // plain digits, e.g. "25 באוגוסט 2026") comes out in the wrong visual order unless
+            // the context's base direction is set explicitly - confirmed directly: the actual
+            // JS string toLocaleDateString produces is already in correct logical order, so this
+            // is purely a canvas rendering gap, not a data bug. ctx.direction defaults to 'ltr'
+            // and is never inherited from the page even though the page itself is RTL, because
+            // this canvas element is never attached to the DOM.
+            ctx.direction = isRTL ? 'rtl' : 'ltr';
+
+            const grad = ctx.createLinearGradient(0, 0, 0, H);
+            grad.addColorStop(0, theme.bg1);
+            grad.addColorStop(1, theme.bg2);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, H);
+
+            const photoH = Math.round(H * 0.56);
+
+            if (photoImg) {
+                // Cover-fit crop, same idea as CSS object-fit:cover.
+                const scale = Math.max(W / photoImg.width, photoH / photoImg.height);
+                const sw = W / scale, sh = photoH / scale;
+                const sx = (photoImg.width - sw) / 2, sy = (photoImg.height - sh) / 2;
+                ctx.drawImage(photoImg, sx, sy, sw, sh, 0, 0, W, photoH);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                ctx.fillRect(0, 0, W, photoH);
+
+                // Fades the photo's bottom edge into the solid background color below it - same
+                // idea as .modal-hero-fade elsewhere in this app, redone here since canvas can't
+                // reuse a CSS mask.
+                const fade = ctx.createLinearGradient(0, photoH - 200, 0, photoH);
+                fade.addColorStop(0, 'rgba(0,0,0,0)');
+                fade.addColorStop(1, theme.bg1);
+                ctx.fillStyle = fade;
+                ctx.fillRect(0, photoH - 200, W, 200);
+            } else {
+                let seed = 42;
+                const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+                for (let i = 0; i < 160; i++) {
+                    ctx.fillStyle = `rgba(${isLight ? '15,23,42' : '255,255,255'},${(0.06 + rand() * 0.3).toFixed(2)})`;
+                    const r = rand() * 1.6 + 0.4;
+                    ctx.beginPath();
+                    ctx.arc(rand() * W, rand() * photoH, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                const glow = ctx.createRadialGradient(W / 2, photoH / 2, 40, W / 2, photoH / 2, 520);
+                glow.addColorStop(0, theme.accentSoft);
+                glow.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = glow;
+                ctx.fillRect(0, 0, W, photoH);
+
+                // Simple vector rocket silhouette - nose cone + body + two fins - only drawn when
+                // there's no real mission photo to show instead.
+                ctx.save();
+                ctx.translate(W / 2, photoH / 2);
+                ctx.fillStyle = isLight ? '#1e293b' : '#e4e4e7';
+                ctx.beginPath();
+                ctx.moveTo(0, -95);
+                ctx.quadraticCurveTo(34, -30, 34, 60);
+                ctx.lineTo(-34, 60);
+                ctx.quadraticCurveTo(-34, -30, 0, -95);
+                ctx.fill();
+                ctx.fillStyle = theme.accent;
+                ctx.beginPath();
+                ctx.moveTo(-34, 20); ctx.lineTo(-70, 70); ctx.lineTo(-34, 70); ctx.closePath(); ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(34, 20); ctx.lineTo(70, 70); ctx.lineTo(34, 70); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = theme.bg1;
+                ctx.beginPath();
+                ctx.arc(0, -25, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            let cursorY = photoH + 62;
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = theme.accent;
+            ctx.font = '700 22px "Space Grotesk", sans-serif';
+            ctx.save();
+            // Real per-character letter-spacing (not manually-spaced English text) - works
+            // correctly for any script, whereas typing spaces between every character (the old
+            // English-only approach) breaks connected scripts like Hebrew/Arabic and looks wrong
+            // with CJK/Devanagari.
+            ctx.letterSpacing = '3px';
+            ctx.fillText(dict.brief, W / 2, cursorY);
+            ctx.restore();
+            cursorY += 34;
+
+            ctx.strokeStyle = theme.accent;
+            ctx.globalAlpha = 0.5;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(W / 2 - 60, cursorY);
+            ctx.lineTo(W / 2 + 60, cursorY);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            cursorY += 64;
+
+            ctx.fillStyle = ink;
+            ctx.font = '800 56px Orbitron, sans-serif';
+            const titleLines = wrapCanvasText(ctx, m.name || 'SpaceX Mission', W - 140);
+            titleLines.slice(0, 2).forEach(line => {
+                ctx.fillText(line, W / 2, cursorY);
+                cursorY += 64;
+            });
+            cursorY += 12;
+
+            ctx.fillStyle = theme.accent;
+            ctx.font = '700 28px "Space Grotesk", sans-serif';
+            ctx.fillText((m.vehicle || 'Falcon 9').toUpperCase(), W / 2, cursorY);
+            cursorY += 60;
+
+            // Status VALUE (m.status, e.g. "Go for Launch") stays in English regardless of
+            // language, matching #modal-status elsewhere in the app (its raw source text, not a
+            // translated string) - only the "STATUS" LABEL itself is localized below.
+            const statusValue = (m.status || 'GO FOR LAUNCH').toUpperCase();
+            const rows = [
+                [dict.date, new Date(m.date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' })],
+                [dict.site, m.site || '—'],
+                [dict.status, statusValue]
+            ];
+            // RTL languages get the label on the right / value on the left (mirrored), matching
+            // how the rest of the site flips its own layout under html[dir="rtl"] - a plain LTR
+            // label-left/value-right row would read backwards for a Hebrew/Arabic label.
+            const labelX = isRTL ? W - 90 : 90;
+            const valueX = isRTL ? 90 : W - 90;
+            const labelAlign = isRTL ? 'right' : 'left';
+            const valueAlign = isRTL ? 'left' : 'right';
+            rows.forEach(row => {
+                ctx.strokeStyle = theme.accent;
+                ctx.globalAlpha = 0.35;
+                ctx.beginPath();
+                ctx.moveTo(90, cursorY - 38);
+                ctx.lineTo(W - 90, cursorY - 38);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                ctx.textAlign = labelAlign;
+                ctx.fillStyle = inkMuted;
+                ctx.font = '700 20px "Space Grotesk", sans-serif';
+                ctx.fillText(row[0], labelX, cursorY);
+
+                ctx.textAlign = valueAlign;
+                ctx.fillStyle = ink;
+                ctx.font = '700 26px "Space Grotesk", sans-serif';
+                const val = ctx.measureText(row[1]).width > (W - 260) ? row[1].slice(0, 40) + '…' : row[1];
+                ctx.fillText(val, valueX, cursorY);
+                cursorY += 72;
+            });
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = inkMuted;
+            ctx.font = '600 22px "Space Grotesk", sans-serif';
+            ctx.fillText('spacexfantracker.com', W / 2, H - 50);
+
+            return canvas;
+        }
+
+        async function downloadMissionPoster(m) {
+            const btn = document.getElementById('modal-poster-btn');
+            const labelEl = document.getElementById('modal-poster-btn-label');
+            const originalLabel = labelEl ? labelEl.textContent : '';
+            if (btn) btn.disabled = true;
+            if (labelEl) labelEl.textContent = 'Generating…';
+
+            try {
+                // Ensures Orbitron/Space Grotesk (used at several sizes below) are actually
+                // parsed and ready - without this, the very first poster generated in a session
+                // can silently draw in the fallback font if this fires before the page's own
+                // <link> finishes.
+                await Promise.all([
+                    document.fonts.load('800 56px Orbitron'),
+                    document.fonts.load('700 28px "Space Grotesk"')
+                ]);
+
+                const imageUrl = m.image || FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon;
+                const photoImg = await loadImageForPoster(imageUrl);
+
+                // The mission name/vehicle/site drawn on the poster are otherwise stuck in
+                // English forever, unlike everywhere else these same values appear in the app -
+                // the mission modal shows the exact same raw text, but as real DOM text it gets
+                // picked up and translated by Google's page-wide live-translate widget; canvas
+                // text is invisible to that widget (it only ever scans the DOM), so without this
+                // the poster would be the one place on the whole site these fields stayed
+                // English regardless of language. translateBatchViaGoogle already exists for
+                // exactly this - it's the same call the mission description elsewhere in this
+                // modal uses to translate itself outside the DOM-scanning widget.
+                let langKey = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                if (langKey === 'zh') langKey = 'zh';
+                let posterMission = m;
+                if (langKey !== 'en') {
+                    try {
+                        const [tName, tVehicle, tSite] = await translateBatchViaGoogle([m.name, m.vehicle, m.site], langKey);
+                        posterMission = { ...m, name: tName || m.name, vehicle: tVehicle || m.vehicle, site: tSite || m.site };
+                    } catch (translateErr) {
+                        // Poster still generates in English rather than failing outright.
+                    }
+                }
+
+                let canvas = drawPosterCanvas(posterMission, photoImg);
+                try {
+                    // toDataURL() is only used here to test whether the canvas is tainted - it
+                    // throws synchronously on a tainted canvas, unlike toBlob() below (which
+                    // would just resolve null instead), so it's the more reliable check even
+                    // though the resulting data URL itself isn't used for anything further down.
+                    canvas.toDataURL('image/png');
+                } catch (securityErr) {
+                    // The image loaded (photoImg is real) but this specific host didn't send
+                    // permissive CORS headers, so reading pixels back out is blocked - redraw
+                    // without it rather than failing the whole download.
+                    canvas = drawPosterCanvas(posterMission, null);
+                }
+
+                const filename = `spacex-${m.id}-poster.png`;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) throw new Error('Canvas could not be exported to an image.');
+
+                // On devices with a real native share sheet (mobile, mainly), sharing a file
+                // already offers "save to device" as one of its own built-in options alongside
+                // sending it to another app - one action covers both instead of needing two
+                // separate buttons. Desktop browsers largely don't support sharing files at all,
+                // so they fall through to a plain download below.
+                const file = new File([blob], filename, { type: 'image/png' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: `SpaceX • ${m.name}`,
+                            text: `Check out this SpaceX mission: ${m.name}`
+                        });
+                        return;
+                    } catch (shareErr) {
+                        // AbortError = the user closed the share sheet without picking anything -
+                        // respect that instead of forcing a download they didn't ask for. Any
+                        // other failure (share genuinely not usable right now) falls through to
+                        // the plain download below instead of leaving the user with nothing.
+                        if (shareErr && shareErr.name === 'AbortError') return;
+                    }
+                }
+
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(objectUrl);
+            } catch (e) {
+                console.error('Poster generation failed:', e);
+            } finally {
+                if (btn) btn.disabled = false;
+                if (labelEl) labelEl.textContent = originalLabel;
+            }
         }
 
         // Cost-to-orbit figures are stored in ROCKET_DATABASE as raw USD numbers (costUsd) and
