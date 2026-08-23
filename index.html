@@ -3956,11 +3956,14 @@
             // Same "Drone Ship" mistranslation, but Google sometimes picks "מזל"ט" (UAV) instead
             // of "רחפנים" - a second variant of the exact same wrong word.
             [/ספינ(?:ות|ה|ת)\s*(?:ה)?מזל["״]?ט/g, 'ספינות נחיתה'],
-            // "mobile landing pads" mistranslated as "משטחי נחיתה נייחים" (STATIONARY landing
-            // pads) - the opposite of the source meaning, and directly contradicts the very next
-            // sentence about dynamic positioning/no anchoring. Scoped to this exact phrase only,
-            // not a blanket "נייחים" replacement, since that word is correct in other contexts.
-            [/משטחי\s*נחיתה\s*נייחים/g, 'משטחי נחיתה ניידים'],
+            // "modified to serve as mobile landing pads" mistranslated as "...לשמש משטחי נחיתה
+            // נייחים" (STATIONARY landing pads) - the opposite of the source meaning, and
+            // directly contradicts the very next sentence about dynamic positioning/no
+            // anchoring. Scoped to the "לשמש" ("to serve as") lead-in specific to this exact
+            // ASDS description sentence, not a blanket "נייחים" replacement - SpaceX's land-based
+            // Landing Zones genuinely ARE stationary, and a future correct sentence describing
+            // those must not get silently flipped to "mobile" by this rule.
+            [/לשמש\s*משטחי\s*נחיתה\s*נייחים/g, 'לשמש משטחי נחיתה ניידים'],
         ];
         function fixMistranslatedPhrases(root, currentLang) {
             if (!root) return;
@@ -6265,7 +6268,7 @@
              MARMAC 302 ASOG, JRTI = MARMAC 303 JRTI, OCISLY = MARMAC 304 (registered under its
              barge hull name, no SpaceX nickname in the AIS record). -->
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
-            <div class="mb-6">
+            <div class="mb-6 notranslate" translate="no" lang="en">
                 <h3
                     class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
                     <i class="fa-solid fa-anchor text-emerald-400 shrink-0"></i>
@@ -12550,7 +12553,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
             }
         }
 
+        // Generation token guard, same pattern used elsewhere in this file for async fetches
+        // that write into shared UI state (_modalDescGen, _missionPurposeGen,
+        // _factRenderGeneration) - setupHeroBanner can call this again (scheduled poll,
+        // visibilitychange catch-up) before a slow/timed-out in-flight call for a DIFFERENT
+        // launch site has resolved; without this guard that stale response could overwrite the
+        // newer site's weather after the fact.
+        let _weatherGen = 0;
         async function fetchLiveWeather(siteLower, probability) {
+            const myWeatherGen = ++_weatherGen;
             let lat = 28.5623, lon = -80.5773;
             if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('pad 2')) {
                 lat = 25.9973; lon = -97.1556;
@@ -12585,6 +12596,8 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     try { weatherData = JSON.parse(cached); } catch (e) { }
                 }
             }
+
+            if (myWeatherGen !== _weatherGen) return; // superseded by a newer call while this one was in flight
 
             if (weatherData && weatherData.current) {
                 const tempC = Math.round(weatherData.current.temperature_2m);
