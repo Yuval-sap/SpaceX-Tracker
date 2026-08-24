@@ -3929,6 +3929,53 @@
             }).join('');
         }
 
+        // Touch devices have no hover, so the popup's md:group-hover:flex (desktop-only) never
+        // triggers there - this gives mobile a tap-to-open/tap-to-close equivalent. Desktop is
+        // unaffected: hovering still opens it via CSS regardless of this toggle's class state
+        // (the hover variant's specificity wins over a plain "hidden" class either way), this
+        // just adds an ADDITIONAL way to open it, mirroring the click-outside-closes pattern
+        // already used for the mode-menu dropdown elsewhere in this file.
+        function toggleMissionStatusBreakdown(event) {
+            if (event) event.stopPropagation();
+            const popup = document.getElementById('mission-status-breakdown');
+            if (!popup) return;
+            const isOpen = !popup.classList.contains('hidden');
+            popup.classList.toggle('hidden', isOpen);
+            popup.classList.toggle('flex', !isOpen);
+        }
+        document.addEventListener('click', function (e) {
+            const popup = document.getElementById('mission-status-breakdown');
+            const icon = document.getElementById('mission-status-info-icon');
+            if (!popup || popup.classList.contains('hidden')) return;
+            if (icon && icon.contains(e.target)) return; // the icon's own onclick already handles this tap
+            if (!popup.contains(e.target)) {
+                popup.classList.add('hidden');
+                popup.classList.remove('flex');
+            }
+        });
+
+        // Same tap-to-open/tap-to-close pattern as toggleMissionStatusBreakdown above, for the
+        // "Launches This Year" counter's Falcon 9 vs Starship breakdown - desktop hover (on the
+        // whole #year-count-box, via its own "group" class) is untouched by this.
+        function toggleYearCountBreakdown(event) {
+            if (event) event.stopPropagation();
+            const popup = document.getElementById('year-count-breakdown');
+            if (!popup) return;
+            const isOpen = !popup.classList.contains('hidden');
+            popup.classList.toggle('hidden', isOpen);
+            popup.classList.toggle('flex', !isOpen);
+        }
+        document.addEventListener('click', function (e) {
+            const popup = document.getElementById('year-count-breakdown');
+            const box = document.getElementById('year-count-box');
+            if (!popup || popup.classList.contains('hidden')) return;
+            if (box && box.contains(e.target) && !popup.contains(e.target)) return; // the box's own onclick already handled this tap (it stopPropagation's)
+            if (!popup.contains(e.target)) {
+                popup.classList.add('hidden');
+                popup.classList.remove('flex');
+            }
+        });
+
         let lastAppliedLaunchLabelLang = null;
         function applyLaunchLabelTranslations(currentLang) {
             let key = currentLang.split('-')[0];
@@ -5642,10 +5689,11 @@
                             class="text-[12px] uppercase tracking-[3px] text-zinc-500 font-bold text-center notranslate"
                             translate="no" lang="en">Countdown to launch</div>
                         <i id="mission-status-info-icon"
-                            class="hidden fa-solid fa-circle-info text-emerald-400/70 text-[10px] cursor-help"
-                            aria-hidden="true"></i>
+                            class="hidden fa-solid fa-circle-info text-emerald-400/70 text-[10px] cursor-pointer"
+                            role="button" tabindex="0" aria-label="Mission status timeline"
+                            onclick="toggleMissionStatusBreakdown(event)" onkeydown="activateOnEnterOrSpace(event)"></i>
                         <div id="mission-status-breakdown"
-                            class="hidden md:group-hover:flex absolute top-0 end-full me-2 flex-col gap-2.5 w-72 max-w-[80vw] py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80] text-start">
+                            class="hidden md:group-hover:flex absolute top-full mt-2 start-0 md:top-0 md:mt-0 md:start-auto md:end-full md:me-2 flex-col gap-2.5 w-72 max-w-[80vw] py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80] text-start">
                             <div id="mission-status-breakdown-list" class="flex flex-col gap-2.5"></div>
                         </div>
                     </div>
@@ -5748,7 +5796,9 @@
                      it's the one that lines up with the title, with Scroll underneath it. -->
                 <div class="flex flex-col items-end gap-2">
                     <div id="year-count-box"
-                        class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm">
+                        class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm cursor-pointer"
+                        role="button" tabindex="0" aria-label="Falcon 9 vs Starship breakdown"
+                        onclick="toggleYearCountBreakdown(event)" onkeydown="activateOnEnterOrSpace(event)">
                         <div class="flex items-center gap-1 mb-0.5 sm:mb-1">
                             <div id="i18n-upcoming-launches"
                                 class="text-[6px] sm:text-[10px] text-zinc-500 tracking-wide sm:tracking-widest font-bold uppercase whitespace-nowrap notranslate"
@@ -5758,14 +5808,16 @@
                         <div class="text-emerald-400 text-lg sm:text-4xl font-bold font-orbitron notranslate leading-none"
                             id="upcoming-count" translate="no">0</div>
 
-                        <!-- פירוט פלקון 9 מול סטארשיפ - מופיע רק בריחוף (דסקטופ בלבד, למכשירי מגע
-                             אין hover אמיתי) - ראו computeYearToDateLaunchCountByVehicle לחישוב.
-                             ממוקם בצד התיבה (לא מתחתיה) באמצעות end-full+me, שמתהפך אוטומטית בין
-                             RTL ל-LTR - לא top-full/end-0 (זה היה פותח למטה, לא לצד). w-full (לא
-                             min-w קבוע) משווה את הרוחב לזה של תיבת המונה עצמה (ההורה עם position:
-                             relative) במקום ערך מקובע שיצא מסונכרן אם רוחב התיבה ישתנה בעתיד. -->
+                        <!-- פירוט פלקון 9 מול סטארשיפ - בדסקטופ מופיע בריחוף על כל התיבה (group
+                             ברמת year-count-box); במגע אין hover אמיתי, אז יש גם לחיצה על ה-i
+                             עצמה שמפעילה toggleYearCountBreakdown (ראו שם) - ראו
+                             computeYearToDateLaunchCountByVehicle לחישוב. ממוקם בצד התיבה (לא
+                             מתחתיה) באמצעות end-full+me, שמתהפך אוטומטית בין RTL ל-LTR - לא
+                             top-full/end-0 (זה היה פותח למטה, לא לצד). w-full (לא min-w קבוע)
+                             משווה את הרוחב לזה של תיבת המונה עצמה (ההורה עם position: relative)
+                             במקום ערך מקובע שיצא מסונכרן אם רוחב התיבה ישתנה בעתיד. -->
                         <div id="year-count-breakdown"
-                            class="hidden md:group-hover:flex absolute top-0 end-full me-2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
+                            class="hidden md:group-hover:flex absolute top-full mt-2 start-0 md:top-0 md:mt-0 md:start-auto md:end-full md:me-2 flex-col gap-2 w-max min-w-[190px] md:w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
                             <div class="flex items-center justify-between gap-3 text-sm">
                                 <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span>Falcon 9</span></span>
                                 <span id="year-count-falcon9" class="font-orbitron font-bold text-emerald-400 text-base">0</span>
@@ -6423,8 +6475,8 @@
                 <p id="i18n-recovery-fleet-subtitle" class="text-sm text-zinc-400 transition-colors duration-500">Live positions of SpaceX's autonomous
                     drone ships, via public AIS data</p>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
+            <div class="flex overflow-x-auto gap-4 -mx-4 px-4 pb-2 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:mx-0 md:px-0 md:pb-0 md:snap-none">
+                <div class="w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
                     <div class="p-4 sm:p-5 pb-3">
                         <h4 class="font-space font-bold text-white text-base">A Shortfall of Gravitas</h4>
                         <p class="text-xs text-zinc-500 notranslate" translate="no">ASOG · MARMAC 302</p>
@@ -6440,7 +6492,7 @@
                             VesselFinder →</a>
                     </div>
                 </div>
-                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
+                <div class="w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
                     <div class="p-4 sm:p-5 pb-3">
                         <h4 class="font-space font-bold text-white text-base">Just Read the Instructions</h4>
                         <p class="text-xs text-zinc-500 notranslate" translate="no">JRTI · MARMAC 303</p>
@@ -6456,7 +6508,7 @@
                             VesselFinder →</a>
                     </div>
                 </div>
-                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
+                <div class="w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
                     <div class="p-4 sm:p-5 pb-3">
                         <h4 class="font-space font-bold text-white text-base">Of Course I Still Love You</h4>
                         <p class="text-xs text-zinc-500 notranslate" translate="no">OCISLY · MARMAC 304</p>
