@@ -5029,7 +5029,10 @@
             const nameEl = document.getElementById('patch-lightbox-name');
             if (!modal || !img) return;
 
-            if (nameEl) nameEl.textContent = name || '';
+            // Raw English name kept so a language switch while this is open can re-localize it
+            // (the element is notranslate, so nothing else would update it).
+            window.currentOpenPatchLightboxName = name || '';
+            if (nameEl) nameEl.textContent = localizeMissionName(name, document.documentElement.lang);
             img.alt = name || 'Mission patch';
             img.classList.add('hidden');
             if (spinner) {
@@ -5128,9 +5131,7 @@
                 // still display:none/hidden at initial page scan (this modal starts hidden).
                 // Precomputing the string sidesteps the whole race: there's simply never an
                 // unprotected English moment for Google to catch.
-                const nameKey = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
-                const nameTerm = STARSHIP_I18N[nameKey === 'iw' ? 'he' : nameKey] || STARSHIP_I18N.en;
-                nameEl.innerText = (m.name || '').replace(/starship/gi, nameTerm);
+                nameEl.innerText = localizeMissionName(m.name, document.documentElement.lang);
             }
 
             const descEl = document.getElementById('patch-mission-modal-desc');
@@ -5168,6 +5169,30 @@
         // that still contains the raw English word — mission cards/descriptions pulled from
         // the live API, the facts rotator, rocket spec text, documentary blurbs, etc. — which
         // can't all be hand-tagged since they're generated at runtime.
+        // Fully localizes a mission name ("Starship | Flight 13" -> "סטארשיפ | טיסה 13") without
+        // involving Google Translate at all. Used by the patch views, whose name elements are
+        // marked notranslate so Google can't touch them: relying on Google there was unreliable
+        // in two separate ways - it mistranslated "Starship" to the generic word for
+        // "spacecraft" at random (whichever of Google or our own periodic sweep happened to run
+        // first), AND it was directly observed leaving "Flight 13" untranslated for 5+ seconds
+        // in the same element. Everything else in a mission name (Falcon 9, Starlink, Transporter,
+        // Bandwagon, USSF-xx, customer/payload names) is a proper noun that should stay as-is in
+        // every language, so only these two patterns need substituting.
+        function localizeMissionName(rawName, langAttr) {
+            if (!rawName) return '';
+            let key = (langAttr || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (key === 'iw') key = 'he';
+            const dict = LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en;
+            const flTemplate = dict.flightNumberLabel || LAUNCH_LABEL_I18N.en.flightNumberLabel;
+            const starTerm = STARSHIP_I18N[key] || STARSHIP_I18N.en;
+            // "Flight" first: doing "Starship" first would leave a localized term sitting next to
+            // the still-English "Flight N", and some languages' flight template starts with the
+            // number (tr: "{n}. Uçuş"), so the two substitutions must not overlap.
+            return rawName
+                .replace(/\bFlight\s+(\d+)/gi, (_, n) => flTemplate.replace('{n}', n))
+                .replace(/starship/gi, starTerm);
+        }
+
         function localizeStarshipTerm(root) {
             root = root || document.body;
             if (!root) return;
@@ -5340,9 +5365,7 @@
                 const patchModalEl = document.getElementById('patch-mission-modal');
                 const patchNameEl = document.getElementById('patch-mission-modal-name');
                 if (patchModalEl && !patchModalEl.classList.contains('hidden') && patchNameEl && window.currentOpenPatchMissionName) {
-                    const patchKey = currentLang.split('-')[0];
-                    const patchTerm = STARSHIP_I18N[patchKey === 'iw' ? 'he' : patchKey] || STARSHIP_I18N.en;
-                    patchNameEl.innerText = window.currentOpenPatchMissionName.replace(/starship/gi, patchTerm);
+                    patchNameEl.innerText = localizeMissionName(window.currentOpenPatchMissionName, currentLang);
                 }
                 // Same for the "Mission Objectives & Strategic Significance" paragraph —
                 // also notranslate (see MISSION_PURPOSE_I18N above), so it needs its own
@@ -5370,6 +5393,32 @@
                     renderCurrentFact();
                 }
             }
+            // Re-localizes the two patch views' titles when the language changes while one is
+            // open. Deliberately OUT here in the sweep's main body rather than inside the
+            // `lastAppliedSpecLang` block below with the other modal re-renders: that block
+            // assigns its own flag on the FIRST line and only then runs a long chain of
+            // re-render calls, so if any earlier call in that chain throws, everything after it
+            // is skipped AND the flag has already advanced - the language change is swallowed
+            // permanently, with no retry on later ticks (observed live: a switch to Arabic never
+            // reached this code, while the same switch to Russian did). These titles are
+            // notranslate (see localizeMissionName), so nothing else would ever fix them. Runs
+            // unconditionally but writes only on an actual difference, so the steady-state cost
+            // is two getElementById calls and a string compare per tick.
+            try {
+                const lbNameEl2 = document.getElementById('patch-lightbox-name');
+                const lbModalEl2 = document.getElementById('patch-lightbox');
+                if (lbNameEl2 && lbModalEl2 && !lbModalEl2.classList.contains('hidden') && window.currentOpenPatchLightboxName) {
+                    const wanted = localizeMissionName(window.currentOpenPatchLightboxName, currentLang);
+                    if (lbNameEl2.textContent !== wanted) lbNameEl2.textContent = wanted;
+                }
+                const pcNameEl2 = document.getElementById('patch-mission-modal-name');
+                const pcModalEl2 = document.getElementById('patch-mission-modal');
+                if (pcNameEl2 && pcModalEl2 && !pcModalEl2.classList.contains('hidden') && window.currentOpenPatchMissionName) {
+                    const wanted2 = localizeMissionName(window.currentOpenPatchMissionName, currentLang);
+                    if (pcNameEl2.textContent !== wanted2) pcNameEl2.textContent = wanted2;
+                }
+            } catch (e) { /* never let this block the rest of the sweep */ }
+
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
             // Skipped while a tab-switch transition is in flight (see switchMainTab's own
@@ -6744,7 +6793,7 @@
                     <i id="patch-lightbox-spinner" class="fa-solid fa-spinner fa-spin text-zinc-600 text-2xl"></i>
                     <img id="patch-lightbox-photo" src="" alt="" class="hidden w-full h-full object-contain">
                 </div>
-                <div id="patch-lightbox-name" class="p-4 sm:p-5 pt-0 font-semibold text-white text-base sm:text-lg text-center"></div>
+                <div id="patch-lightbox-name" translate="no" class="notranslate p-4 sm:p-5 pt-0 font-semibold text-white text-base sm:text-lg text-center"></div>
             </div>
         </div>
     </div>
