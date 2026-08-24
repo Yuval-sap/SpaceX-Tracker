@@ -7317,6 +7317,18 @@
                     </div>
                 </div>
             </div>
+            <!-- Upcoming Scheduled Flights - missions this app already has scheduled for this
+                 same booster serial that haven't launched yet (see getUpcomingFlights). These
+                 deliberately do NOT count toward flight-history-count's total (see
+                 extractBoosterStats's own comment: only actually-flown missions count) - once a
+                 listed mission here actually launches, it naturally moves out of this section and
+                 into Flight History below on its own, with no special-case code needed, since
+                 both lists are just derived fresh from live mission status every time the modal
+                 opens. Hidden entirely (see openFlightHistoryModal) when there are none. -->
+            <div id="flight-history-upcoming-section" class="hidden p-5 sm:p-6 pb-0 space-y-2">
+                <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-amber-400">Scheduled Future Flights</h4>
+                <div id="flight-history-upcoming-list" class="space-y-2"></div>
+            </div>
             <div class="p-5 sm:p-6 space-y-2">
                 <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Flight History</h4>
                 <p id="flight-history-note" class="hidden text-xs text-zinc-500 notranslate" translate="no"></p>
@@ -9707,6 +9719,18 @@
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
         }
 
+        // The mirror image of getFlightHistory above: missions genuinely still in the future
+        // (excludes "In Progress", which getFlightHistory already covers as a flown mission) for
+        // this same booster serial - only ever populated when the API has already publicly
+        // assigned this specific booster to an upcoming mission, which isn't true for every
+        // far-future launch. Sorted soonest-first (the natural reading order for "what's next"),
+        // the opposite of getFlightHistory's oldest-first order.
+        function getUpcomingFlights(serial) {
+            return (dbMissions || [])
+                .filter(m => m.boosterSerial === serial && (m.status || '').toLowerCase() !== 'in progress')
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
         function closeFlightHistoryModal() {
             const modal = document.getElementById('flight-history-modal');
             modal.classList.add('hidden');
@@ -9748,6 +9772,32 @@
                     noteEl.classList.remove('hidden');
                 } else {
                     noteEl.classList.add('hidden');
+                }
+            }
+
+            const upcomingFlights = getUpcomingFlights(serial);
+            const upcomingSection = document.getElementById('flight-history-upcoming-section');
+            const upcomingListEl = document.getElementById('flight-history-upcoming-list');
+            if (upcomingSection && upcomingListEl) {
+                if (upcomingFlights.length === 0) {
+                    upcomingSection.classList.add('hidden');
+                    upcomingListEl.innerHTML = '';
+                } else {
+                    upcomingSection.classList.remove('hidden');
+                    upcomingListEl.innerHTML = upcomingFlights.map(m => `
+                        <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800/50 rounded-xl p-3 cursor-pointer md:hover:border-amber-500/40 transition-colors"
+                            role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)"
+                            onclick="closeFlightHistoryModal(); const m = [...(rawPastMissions||[]), ...(dbMissions||[])].find(x => x.id === '${m.id}'); if (m) openMissionModal(m);">
+                            <div class="w-7 h-7 shrink-0 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                <i class="fa-solid fa-clock text-[10px]"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-sm font-semibold text-zinc-200 truncate">${escapeHtml(m.name)}</div>
+                                <div class="text-[11px] text-zinc-500">${new Date(m.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-left text-zinc-600 text-xs shrink-0"></i>
+                        </div>
+                    `).join('');
                 }
             }
 
