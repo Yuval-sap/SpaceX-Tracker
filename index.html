@@ -5032,7 +5032,7 @@
             // Raw English name kept so a language switch while this is open can re-localize it
             // (the element is notranslate, so nothing else would update it).
             window.currentOpenPatchLightboxName = name || '';
-            if (nameEl) nameEl.textContent = localizeMissionName(name, document.documentElement.lang);
+            renderLocalizedMissionName(nameEl, name, document.documentElement.lang);
             img.alt = name || 'Mission patch';
             img.classList.add('hidden');
             if (spinner) {
@@ -5131,7 +5131,7 @@
                 // still display:none/hidden at initial page scan (this modal starts hidden).
                 // Precomputing the string sidesteps the whole race: there's simply never an
                 // unprotected English moment for Google to catch.
-                nameEl.innerText = localizeMissionName(m.name, document.documentElement.lang);
+                renderLocalizedMissionName(nameEl, m.name, document.documentElement.lang);
             }
 
             const descEl = document.getElementById('patch-mission-modal-desc');
@@ -5191,6 +5191,120 @@
             return rawName
                 .replace(/\bFlight\s+(\d+)/gi, (_, n) => flTemplate.replace('{n}', n))
                 .replace(/starship/gi, starTerm);
+        }
+
+        // Renders a mission name into a notranslate element in two stages, the same instant-then-
+        // upgrade pattern applyMissionPurposeHtml uses. localizeMissionName above only knows the
+        // two terms it has hand-written dictionaries for ("Starship", "Flight N"), which left
+        // every OTHER word in a mission name stuck in English once the element was marked
+        // notranslate ("Starlink Group 12-20", "Crew-11", "Axiom Mission 4"...) - the on-page
+        // widget used to handle those, but it can't be trusted here (it mistranslated "Starship"
+        // at random and was measured leaving "Flight 13" untouched for 5+ seconds). So: paint the
+        // locally-known terms immediately so there's never an English flash of the words we care
+        // most about, then upgrade to a full translation from Google's translation ENDPOINT -
+        // a direct request we control, not the DOM-rewriting widget - which returns the whole
+        // title translated and, via translateTextViaGoogle's own placeholder swap, still resolves
+        // "Starship" through STARSHIP_I18N rather than Google's wrong generic word.
+        let _patchNameGen = 0;
+        function renderLocalizedMissionName(el, rawName, currentLang) {
+            if (!el) return;
+            const lang = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            el.textContent = localizeMissionName(rawName, lang);
+            if (!rawName || lang === 'en') return;
+            // Generation token stored PER ELEMENT, not in one shared counter: the patches strip
+            // renders ~90 of these in a single pass, and a global counter would make every tile
+            // invalidate the one before it, so only the last tile's translation would ever land.
+            const myGen = ++_patchNameGen;
+            el.dataset.nameGen = String(myGen);
+            translateTextViaGoogle(rawName, lang === 'iw' ? 'he' : lang).then(translated => {
+                // Superseded by a newer render of THIS element (reopened with a different
+                // mission, or a language switch) while the request was in flight.
+                if (el.dataset.nameGen !== String(myGen)) return;
+                if (!translated) return;
+                // translateTextViaGoogle already restored "Starship"; run the result through
+                // localizeMissionName too so "Flight N" still uses our own template even when
+                // the endpoint phrased it differently, and so a failed call (which falls back to
+                // the original English) degrades to exactly the instant render above, not worse.
+                el.textContent = localizeMissionName(translated, lang);
+            });
+        }
+
+        // Batch equivalent of renderLocalizedMissionName for the patches strip: ~90 tiles would
+        // otherwise be ~90 separate requests to Google's unofficial translation endpoint, which
+        // is exactly the rate-limit trap translateBatchViaGoogle was written to avoid (a
+        // throttled call silently falls back to English, which would show up as "some tiles
+        // translated, some not"). One request for the whole strip instead. Each tile still gets
+        // the instant local render first, so the terms we have our own dictionaries for are
+        // never wrong even if the request fails entirely.
+        let _stripNamesGen = 0;
+        function renderLocalizedMissionNamesBatch(els, rawNames, currentLang) {
+            if (!els || !els.length) return;
+            const lang = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            els.forEach((el, i) => { if (el) el.textContent = localizeMissionName(rawNames[i], lang); });
+            if (lang === 'en') return;
+            const myGen = ++_stripNamesGen;
+            const apiLang = lang === 'iw' ? 'he' : lang;
+
+            // Chunked rather than one request for all ~90 names: translateTextViaGoogle sends the
+            // combined string as a GET query parameter, and the whole strip joined together blows
+            // past a safe URL length - which doesn't fail cleanly, it comes back partially
+            // translated (measured: some names returned still in English and one came back with
+            // its segments garbled). Budget by character count, not by a fixed item count, since
+            // mission names vary a lot in length.
+            const CHUNK_CHARS = 900;
+            const chunks = [];
+            let cur = [];
+            let curLen = 0;
+            rawNames.forEach((nm, i) => {
+                const len = (nm || '').length + 5; // + separator
+                if (cur.length && curLen + len > CHUNK_CHARS) { chunks.push(cur); cur = []; curLen = 0; }
+                cur.push(i);
+                curLen += len;
+            });
+            if (cur.length) chunks.push(cur);
+
+            // NOT translateBatchViaGoogle here: its " ||| " separator collides with the pipe that
+            // mission names themselves contain ("Falcon 9 | Starlink Group 10-39"), and the
+            // collision doesn't fail loudly - it quietly degrades the translation. Measured
+            // side by side against the real endpoint: sent alone the name comes back fully
+            // translated ("פלקון 9 | קבוצת סטארלינק 10-39"), but sent inside a " ||| " batch the
+            // payload half stays in English. A newline separator has no such collision and was
+            // verified round-tripping the exact segment count with the payload translated.
+            const batchByNewline = (texts) => {
+                const combined = texts.join('\n');
+                return translateTextViaGoogle(combined, apiLang).then(translatedCombined => {
+                    const out = String(translatedCombined);
+                    // translateTextViaGoogle swallows a failed/throttled request and hands back
+                    // the ORIGINAL text, which is otherwise indistinguishable from success. An
+                    // identical round trip into a non-English language means the request didn't
+                    // really happen - report it so the caller can retry rather than stamping the
+                    // strip as done and freezing it in English (observed exactly that on a page
+                    // load where the first attempt raced the rest of the page's API traffic).
+                    if (out === combined) return { parts: texts.slice(), ok: false };
+                    const parts = out.split('\n');
+                    // Google merged or dropped a line - fall back to the untranslated originals
+                    // rather than risk a name landing on the wrong tile.
+                    if (parts.length !== texts.length) return { parts: texts.slice(), ok: false };
+                    return { parts, ok: true };
+                });
+            };
+
+            // Sequentially, not in parallel: this endpoint is unofficial and rate-limits, and a
+            // throttled chunk silently falls back to English (which would look like "some tiles
+            // translated, some not").
+            let allOk = true;
+            return chunks.reduce((chain, idxs) => chain.then(() => {
+                if (_stripNamesGen !== myGen) return;
+                return batchByNewline(idxs.map(i => rawNames[i])).then(({ parts, ok }) => {
+                    if (_stripNamesGen !== myGen) return; // strip re-rendered meanwhile
+                    if (!ok) { allOk = false; return; }
+                    idxs.forEach((origIdx, k) => {
+                        const el = els[origIdx];
+                        if (!el || !el.isConnected || !parts[k]) return;
+                        el.textContent = localizeMissionName(parts[k], lang);
+                    });
+                });
+            }), Promise.resolve()).then(() => ({ ok: allOk, superseded: _stripNamesGen !== myGen }));
         }
 
         function localizeStarshipTerm(root) {
@@ -5271,6 +5385,39 @@
             } else {
                 if (htmlEl.getAttribute('dir') !== 'ltr') htmlEl.setAttribute('dir', 'ltr');
             }
+
+            // Re-localizes the two patch views' titles when the language changes while one is
+            // open. Placed at the very TOP of this sweep, and wrapped in its own try/catch, on
+            // purpose: statements further down this interval were measured throwing in practice
+            // (probed live - applyPhraseFixes, near the end, was never reached across 4 ticks),
+            // which silently kills everything after the throw for that tick. Anything sitting
+            // below such a statement is at the mercy of it. These titles are notranslate (see
+            // renderLocalizedMissionName), so nothing else in the page would ever fix them.
+            // Keyed on language+name so it re-renders exactly once per actual change rather than
+            // on every 500ms tick, since renderLocalizedMissionName can fire a network request.
+            try {
+                const langNow = currentLang.split('-')[0];
+                const patchTargets = [
+                    ['patch-lightbox', 'patch-lightbox-name', window.currentOpenPatchLightboxName],
+                    ['patch-mission-modal', 'patch-mission-modal-name', window.currentOpenPatchMissionName]
+                ];
+                patchTargets.forEach(([modalId, nameId, rawName]) => {
+                    if (!rawName) return;
+                    const modalEl = document.getElementById(modalId);
+                    const nameEl2 = document.getElementById(nameId);
+                    if (!modalEl || !nameEl2 || modalEl.classList.contains('hidden')) return;
+                    const stamp = langNow + '|' + rawName;
+                    if (nameEl2.dataset.renderedStamp === stamp) return;
+                    nameEl2.dataset.renderedStamp = stamp;
+                    renderLocalizedMissionName(nameEl2, rawName, currentLang);
+                });
+
+                // Same for the patches strip's tile names (also notranslate now).
+                const stripEl = document.getElementById('mission-patches-strip');
+                if (stripEl && stripEl.dataset.namesLang !== langNow && typeof translateStripNames === 'function') {
+                    translateStripNames(stripEl, currentLang);
+                }
+            } catch (e) { /* never let this block the rest of the sweep */ }
 
             // The news ticker's item order depends on isRtl (see renderNewsTickerTrack) - if
             // the language flips RTL<->LTR after the ticker already rendered, re-render it
@@ -5404,21 +5551,6 @@
             // notranslate (see localizeMissionName), so nothing else would ever fix them. Runs
             // unconditionally but writes only on an actual difference, so the steady-state cost
             // is two getElementById calls and a string compare per tick.
-            try {
-                const lbNameEl2 = document.getElementById('patch-lightbox-name');
-                const lbModalEl2 = document.getElementById('patch-lightbox');
-                if (lbNameEl2 && lbModalEl2 && !lbModalEl2.classList.contains('hidden') && window.currentOpenPatchLightboxName) {
-                    const wanted = localizeMissionName(window.currentOpenPatchLightboxName, currentLang);
-                    if (lbNameEl2.textContent !== wanted) lbNameEl2.textContent = wanted;
-                }
-                const pcNameEl2 = document.getElementById('patch-mission-modal-name');
-                const pcModalEl2 = document.getElementById('patch-mission-modal');
-                if (pcNameEl2 && pcModalEl2 && !pcModalEl2.classList.contains('hidden') && window.currentOpenPatchMissionName) {
-                    const wanted2 = localizeMissionName(window.currentOpenPatchMissionName, currentLang);
-                    if (pcNameEl2.textContent !== wanted2) pcNameEl2.textContent = wanted2;
-                }
-            } catch (e) { /* never let this block the rest of the sweep */ }
-
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
             // Skipped while a tab-switch transition is in flight (see switchMainTab's own
@@ -11695,12 +11827,42 @@
                             style="-webkit-user-drag: none;"
                             loading="lazy" onerror="this.closest('button').remove()">
                     </div>
-                    <span class="text-[11px] text-zinc-400 text-center leading-tight group-active/patch:text-white md:group-hover/patch:text-white transition-colors">${escapeHtml(m.name)}</span>
+                    <span class="patch-tile-name notranslate text-[11px] text-zinc-400 text-center leading-tight group-active/patch:text-white md:group-hover/patch:text-white transition-colors" translate="no" data-raw-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</span>
                 `;
                 tile.onclick = () => openPatchMissionCard(m);
-                localizeStarshipTerm(tile);
                 strip.appendChild(tile);
             });
+
+            // Same treatment as the two patch popups: the tile names are notranslate so Google's
+            // on-page widget can never mistranslate "Starship" into the generic word for
+            // "spacecraft", and we translate the full title ourselves instead - batched into one
+            // request for the whole strip. The raw English stays in data-raw-name so a later
+            // language switch re-translates from the original rather than from an
+            // already-translated string.
+            translateStripNames(strip, document.documentElement.lang);
+        }
+
+        // Kicks off the strip's name translation and stamps `namesLang` only once it actually
+        // SUCCEEDED. Stamping unconditionally was wrong: a first attempt that got throttled left
+        // the strip marked as done-in-Hebrew while still showing English, and the sweep's
+        // "namesLang !== current language" check then never retried it. Attempts are capped so a
+        // persistently failing endpoint can't turn the 500ms sweep into a retry loop.
+        function translateStripNames(strip, currentLang) {
+            if (!strip) return;
+            const lang = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            const els = [...strip.querySelectorAll('.patch-tile-name')];
+            if (!els.length) return;
+            if (lang === 'en') { strip.dataset.namesLang = 'en'; return; }
+            const attemptKey = lang + '|' + (strip.dataset.namesAttemptLang === lang ? strip.dataset.namesAttempts : '0');
+            const attempts = strip.dataset.namesAttemptLang === lang ? parseInt(strip.dataset.namesAttempts || '0', 10) : 0;
+            if (attempts >= 4) { strip.dataset.namesLang = lang; return; } // give up, keep English
+            strip.dataset.namesAttemptLang = lang;
+            strip.dataset.namesAttempts = String(attempts + 1);
+            renderLocalizedMissionNamesBatch(els, els.map(el => el.dataset.rawName || ''), lang)
+                .then(res => {
+                    if (!res || res.superseded) return;
+                    if (res.ok) strip.dataset.namesLang = lang;
+                });
         }
 
         // Manually-curated snapshot of SpaceX/xAI's Colossus AI-compute buildout - see the
