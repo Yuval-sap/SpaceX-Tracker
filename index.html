@@ -5095,6 +5095,7 @@
             if (!m) return;
             const modal = document.getElementById('patch-mission-modal');
             if (!modal) return;
+            window.currentOpenPatchMissionName = m.name;
 
             const img = document.getElementById('patch-mission-modal-photo');
             const spinner = document.getElementById('patch-mission-modal-spinner');
@@ -5117,8 +5118,19 @@
 
             const nameEl = document.getElementById('patch-mission-modal-name');
             if (nameEl) {
-                nameEl.innerText = m.name;
-                localizeStarshipTerm(nameEl);
+                // Insert the ALREADY-localized text directly, in one step - never write the raw
+                // English "Starship" into the DOM at all, even for a split second. The previous
+                // approach (write English, then synchronously swap it) assumed a same-tick JS
+                // call always beats Google's translate widget, which turned out to be unreliable
+                // in practice on the live site (observed failing intermittently even with the
+                // notranslate attribute in place) - likely because Google's widget doesn't
+                // consistently honor notranslate for text inserted into an element that was
+                // still display:none/hidden at initial page scan (this modal starts hidden).
+                // Precomputing the string sidesteps the whole race: there's simply never an
+                // unprotected English moment for Google to catch.
+                const nameKey = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                const nameTerm = STARSHIP_I18N[nameKey === 'iw' ? 'he' : nameKey] || STARSHIP_I18N.en;
+                nameEl.innerText = (m.name || '').replace(/starship/gi, nameTerm);
             }
 
             const descEl = document.getElementById('patch-mission-modal-desc');
@@ -5318,6 +5330,19 @@
                 const landingModalEl = document.getElementById('landing-modal');
                 if (landingModalEl && !landingModalEl.classList.contains('hidden') && typeof openLandingSpecs === 'function') {
                     openLandingSpecs();
+                }
+                // Same for the patch-summary card's title (openPatchMissionCard) if it's open -
+                // it now inserts the already-localized "Starship" term directly instead of
+                // relying on a post-insert swap (see openPatchMissionCard's own comment), so a
+                // language switch WHILE it's open needs this explicit re-render; there's no
+                // English "starship" substring left in the DOM afterward for the periodic
+                // localizeStarshipTerm(document.body) sweep to find and fix on its own.
+                const patchModalEl = document.getElementById('patch-mission-modal');
+                const patchNameEl = document.getElementById('patch-mission-modal-name');
+                if (patchModalEl && !patchModalEl.classList.contains('hidden') && patchNameEl && window.currentOpenPatchMissionName) {
+                    const patchKey = currentLang.split('-')[0];
+                    const patchTerm = STARSHIP_I18N[patchKey === 'iw' ? 'he' : patchKey] || STARSHIP_I18N.en;
+                    patchNameEl.innerText = window.currentOpenPatchMissionName.replace(/starship/gi, patchTerm);
                 }
                 // Same for the "Mission Objectives & Strategic Significance" paragraph —
                 // also notranslate (see MISSION_PURPOSE_I18N above), so it needs its own
