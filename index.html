@@ -13746,17 +13746,38 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // needs the number placed mid-phrase, "第1次飞行", not prefixed) - a simple
                 // "{n}" template sidesteps that entirely.
                 const vehicleEl = document.getElementById('modal-vehicle');
-                let vehicleHtml = escapeHtml(m.vehicle);
+                // The vehicle name itself (e.g. "Starship V3") is also wrapped notranslate -
+                // otherwise Google's widget was translating the "V3" suffix on its own (reading
+                // "V" as an abbreviation for "Version" and producing "גרסה 3"), even though
+                // localizeStarshipTerm below already handles the "Starship" word correctly.
+                // localizeStarshipTerm still finds and replaces that word inside a notranslate
+                // wrapper - only Google's own widget is blocked by that attribute, not our own
+                // DOM walk - so this doesn't interfere with the per-language Starship term.
+                // unicode-bidi:isolate on each fragment below is required, not cosmetic - without
+                // it, none of these spans create a bidi boundary, so the browser's bidi algorithm
+                // treats this whole line (Hebrew + "V3" + "Ship 39" + the Hebrew flight-count
+                // parenthetical) as ONE paragraph and freely reorders the separate LTR runs
+                // relative to each other and to the Hebrew text - observed to visibly scramble
+                // "Starship V3 • Ship 39 (Flight 1)" into the wrong order. Isolating each fragment
+                // keeps them anchored in their authored (DOM) order while still letting each
+                // fragment's own internal script direction resolve correctly.
+                let vehicleHtml = `<span class="notranslate" translate="no" style="white-space:nowrap; unicode-bidi:isolate; margin-inline-end: 0.3em;">${escapeHtml(m.vehicle)}</span>`;
                 if (m.shipLabel) {
-                    vehicleHtml += ` • <span class="notranslate" translate="no" style="white-space:nowrap; margin-inline: 0.3em;">${escapeHtml(m.shipLabel)}</span>`;
+                    vehicleHtml += ` • <span class="notranslate" translate="no" style="white-space:nowrap; margin-inline: 0.3em; unicode-bidi:isolate;">${escapeHtml(m.shipLabel)}</span>`;
                     if (m.shipFlightNum) {
                         const flKey = (document.documentElement.lang || 'en').split('-')[0];
                         const flDict = LAUNCH_LABEL_I18N[flKey] || LAUNCH_LABEL_I18N.en;
                         const flTemplate = flDict.flightNumberLabel || LAUNCH_LABEL_I18N.en.flightNumberLabel;
-                        vehicleHtml += ` (${escapeHtml(flTemplate.replace('{n}', m.shipFlightNum))})`;
+                        vehicleHtml += ` <span style="unicode-bidi:isolate;">(${escapeHtml(flTemplate.replace('{n}', m.shipFlightNum))})</span>`;
                     }
                 }
                 vehicleEl.innerHTML = vehicleHtml;
+                // Same synchronous-protection race as modalNameEl above: this must run before
+                // the current script tick ends, or Google's translate widget can mistranslate
+                // "Starship" (e.g. to the generic word for "spacecraft") before this function
+                // gets a chance to wrap it - and once that happens the literal English word is
+                // gone from the DOM, so localizeStarshipTerm's regex has nothing left to find.
+                localizeStarshipTerm(vehicleEl);
             }
             window.currentActiveVehicleStr = m.vehicle || "falcon 9";
 
