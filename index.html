@@ -6133,6 +6133,15 @@
             if (!window._tabTransitionInProgress) {
                 fitAllTitlesOneLine(document);
                 fitAllSectionTitles(document);
+                // #hero-name carries neither .mission-title-fit nor .section-title-fit, so the
+                // two sweeps above skip it - it was only ever re-fitted at specific moments
+                // (mission change, resize, language switch, tab switch, font resync). Anything
+                // that changed its available width AFTER those had run left it clipped with no
+                // second chance: the countdown box beside it is content-sized, so when a mode
+                // switch swaps in the wider Zen Dots/Audiowide heading font that box grows and
+                // takes the width away from the title. Cheap to include - fitTitleOneLine caches
+                // on text+width and returns immediately when neither changed.
+                fitTitleOneLine(document.getElementById('hero-name'));
             }
 
             // Unit system follows the resolved language only. Google Translate's
@@ -16770,6 +16779,19 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const filterAll = document.getElementById('filter-all');
             if (filterAll) {
                 filterAll.classList.add('bg-white', 'text-black');
+            }
+
+            // Heading fonts (Orbitron / Zen Dots / Audiowide) render noticeably wider than the
+            // fallback they're measured against before the file arrives, so a fit computed during
+            // that window is based on the wrong glyph widths and comes out too large once the real
+            // face swaps in. document.fonts.ready resolves after that swap.
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => {
+                    try {
+                        if (typeof resyncTitleFitsForFonts === 'function') resyncTitleFitsForFonts();
+                        else fitTitleOneLine(document.getElementById('hero-name'));
+                    } catch (e) { /* cosmetic only */ }
+                });
             }
 
             let resizeFitTimer;
