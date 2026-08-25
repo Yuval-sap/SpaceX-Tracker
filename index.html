@@ -4712,6 +4712,17 @@
     //      not reported by scrollWidth at all.
     // SAFETY keeps a couple of pixels of daylight rather than stopping the moment it merely
     // touches the edge, which is what left that last glyph looking clipped.
+    // Restricted to the hero mission title, which is the only element with this problem and the
+    // only one whose width is fixed independently of its text (display:block, width:100%).
+    // It must NOT be generalised:
+    //   - on an element containing child nodes (the tab buttons: icon + label, flex) a Range
+    //     measures the whole content box, not the glyphs;
+    //   - on a shrink-to-fit element (.section-title-fit is inline-block, so its width IS its
+    //     text width) ink and container width are equal by definition.
+    //   In both cases "ink > container - SAFETY" is true on the first pass and the loop shrinks
+    //   the text all the way down to the size floor - which is exactly what happened to the tab
+    //   labels and the site title.
+    const isPlainTextEl = el.id === 'hero-name' && el.childElementCount === 0;
     const SAFETY = 3;
     const inkWidth = () => {
         try {
@@ -4721,9 +4732,9 @@
             return w > 0 ? w : el.scrollWidth;
         } catch (e) { return el.scrollWidth; }
     };
-    const avail = () => el.clientWidth - SAFETY;
+    const inkOverflows = () => isPlainTextEl && inkWidth() > el.clientWidth - SAFETY;
 
-    while ((inkWidth() > avail() || el.scrollWidth > el.clientWidth + 1) && size > minSize && guard < 150) {
+    while ((inkOverflows() || el.scrollWidth > el.clientWidth + 1) && size > minSize && guard < 150) {
         size -= 0.4;
         el.style.fontSize = size + 'px';
         void el.offsetWidth; // כפיית reflow
