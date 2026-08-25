@@ -3403,6 +3403,57 @@
             color: #10b981 !important;
         }
 
+        /* The PAGE's own scrollbar (the one on the window edge). The inner scroll areas - the
+           milestones strip, the card modals, the horizontal card rows - already themed themselves
+           via .milestones-scrollbox/.card-modal-scroll/.hide-scrollbar, but the main document
+           scrollbar was left at the browser default and stayed a light grey bar against every
+           dark mode. Firefox gets the standard two-value scrollbar-color; Chrome/Safari/Edge need
+           the -webkit pseudo-elements, so both are declared. */
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(16, 185, 129, 0.45) rgba(24, 24, 27, 0.9);
+        }
+        html::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        html::-webkit-scrollbar-track {
+            background: rgba(24, 24, 27, 0.9);
+        }
+        html::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.45);
+            border-radius: 8px;
+            /* Transparent border + background-clip leaves a small inset so the thumb reads as a
+               rounded pill inside the track rather than filling the full gutter width. */
+            border: 3px solid transparent;
+            background-clip: content-box;
+        }
+        html::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.75);
+            background-clip: content-box;
+        }
+
+        html.light-theme {
+            scrollbar-color: rgba(4, 120, 87, 0.55) rgba(226, 232, 240, 0.9);
+        }
+        html.light-theme::-webkit-scrollbar-track { background: rgba(226, 232, 240, 0.9); }
+        html.light-theme::-webkit-scrollbar-thumb { background: rgba(4, 120, 87, 0.55); background-clip: content-box; }
+        html.light-theme::-webkit-scrollbar-thumb:hover { background: rgba(4, 120, 87, 0.85); background-clip: content-box; }
+
+        html.mars-theme {
+            scrollbar-color: rgba(255, 107, 53, 0.55) rgba(39, 21, 16, 0.95);
+        }
+        html.mars-theme::-webkit-scrollbar-track { background: rgba(39, 21, 16, 0.95); }
+        html.mars-theme::-webkit-scrollbar-thumb { background: rgba(255, 107, 53, 0.55); background-clip: content-box; }
+        html.mars-theme::-webkit-scrollbar-thumb:hover { background: rgba(255, 107, 53, 0.85); background-clip: content-box; }
+
+        html.moon-theme {
+            scrollbar-color: rgba(63, 169, 245, 0.55) rgba(18, 24, 38, 0.95);
+        }
+        html.moon-theme::-webkit-scrollbar-track { background: rgba(18, 24, 38, 0.95); }
+        html.moon-theme::-webkit-scrollbar-thumb { background: rgba(63, 169, 245, 0.55); background-clip: content-box; }
+        html.moon-theme::-webkit-scrollbar-thumb:hover { background: rgba(63, 169, 245, 0.85); background-clip: content-box; }
+
         /* The two context rings (MEO/GEO) and their labels are drawn in dark greys picked against
            the light theme, where they read fine. On every dark-background mode they came out
            nearly invisible - the labels especially. Lifted per theme here rather than by editing
@@ -8470,6 +8521,20 @@
                 }
                 // night: no extra class
                 window.currentVisualMode = mode;
+                // Repaints the installed-app title bar / mobile browser UI strip to match the
+                // mode. It's driven by the theme-color meta tag, which was a fixed near-black -
+                // so in day mode the app window kept a black bar above the page. Values match
+                // each mode's own page background.
+                try {
+                    const themeMeta = document.querySelector('meta[name="theme-color"]');
+                    if (themeMeta) {
+                        themeMeta.setAttribute('content',
+                            mode === 'day' ? '#f1f5f9'
+                            : mode === 'mars' ? '#140806'
+                            : mode === 'moon' ? '#080c14'
+                            : '#09090b');
+                    }
+                } catch (e) { /* cosmetic only - never block the mode switch */ }
                 sessionStorage.setItem('spacex-visual-mode', mode);
                 // Keep legacy keys roughly in sync for anything that still reads them
                 if (mode === 'day') sessionStorage.setItem('spacex-theme', 'light');
