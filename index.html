@@ -3180,31 +3180,6 @@
             }
         }
 
-        /* While WATCH LIVE is showing the row holds FOUR buttons, not three - the widths above
-           then wrap as 3-then-1 on desktop (and 2/1/1 on mobile, since poster is full-width
-           there), leaving a lone stretched button on its own line. Even 2-per-row instead, at
-           every breakpoint. The .has-live class is toggled alongside the live button itself in
-           wireModalLiveButton's setThreeUp, so the two can never disagree. Kept inside the same
-           mutually-exclusive width ranges as the base rules (see their comment) rather than as a
-           single override, so exactly one width declaration is ever live for a given viewport. */
-        @media (max-width: 639px) {
-            #modal-action-btn-row.has-live > button,
-            #modal-action-btn-row.has-live > #modal-poster-btn {
-                width: calc(50% - 0.25rem) !important;
-            }
-        }
-        @media (min-width: 640px) and (max-width: 767px) {
-            #modal-action-btn-row.has-live > button,
-            #modal-action-btn-row.has-live > #modal-poster-btn {
-                width: calc(50% - 0.375rem) !important;
-            }
-        }
-        @media (min-width: 768px) {
-            #modal-action-btn-row.has-live > button,
-            #modal-action-btn-row.has-live > #modal-poster-btn {
-                width: calc(50% - 0.375rem) !important;
-            }
-        }
 
         /* Extra emerald hover utilities → Mars / Moon accents (buttons, borders, groups) */
         @media (min-width: 768px) {
@@ -3334,18 +3309,61 @@
                 max-width: 80vw !important;
             }
         }
-        body.light-theme #year-count-breakdown {
+        /* All nine milestones are taller than the space below the countdown box on shorter
+           screens, and the panel was simply running off the bottom edge with its last rows
+           unreachable. Cap it and let it scroll inside itself instead. Applies in both ranges,
+           including the desktop CSS-hover path where no JS positioning runs at all. */
+        #mission-status-breakdown {
+            max-height: min(60vh, calc(100vh - 6rem)) !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain;
+        }
+
+        /* Completed milestones get a filled tick; upcoming ones a dim hollow marker, so the row
+           layout never shifts as the flight progresses. */
+        #mission-status-breakdown .mission-timeline-check {
+            color: #3f3f46;
+            opacity: 0.5;
+        }
+        #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check {
+            color: #34d399;
+            opacity: 1;
+        }
+        #mission-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-label,
+        #mission-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-explain {
+            opacity: 0.55;
+        }
+        body.light-theme #mission-status-breakdown .mission-timeline-check { color: #cbd5e1; }
+        body.light-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #047857; }
+        body.mars-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #ff8c5a; }
+        body.moon-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #6abffb; }
+        body.light-theme #year-count-breakdown,
+        body.light-theme #mission-status-breakdown {
             background: rgba(255, 255, 255, 0.98) !important;
             border-color: #e2e8f0 !important;
         }
-        body.mars-theme #year-count-breakdown {
+        body.mars-theme #year-count-breakdown,
+        body.mars-theme #mission-status-breakdown {
             background: rgba(39, 21, 16, 0.96) !important;
             border-color: rgba(140, 65, 35, 0.55) !important;
         }
-        body.moon-theme #year-count-breakdown {
+        body.moon-theme #year-count-breakdown,
+        body.moon-theme #mission-status-breakdown {
             background: rgba(18, 24, 38, 0.96) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
         }
+
+        /* The breakdown's own text colours. The list is built in JS with dark-mode Tailwind
+           classes (text-emerald-400 / text-zinc-400), and the light theme's global class remap
+           doesn't reach them because the markup is injected after load - so the panel rendered
+           as light-grey-on-white once the background above turned light. Accent + body text are
+           set per theme here instead, keyed off the container rather than the utility classes. */
+        body.light-theme #mission-status-breakdown .mission-timeline-label { color: #047857 !important; }
+        body.light-theme #mission-status-breakdown .mission-timeline-explain { color: #475569 !important; }
+        body.mars-theme #mission-status-breakdown .mission-timeline-label { color: #ff8c5a !important; }
+        body.mars-theme #mission-status-breakdown .mission-timeline-explain { color: #d8b9a8 !important; }
+        body.moon-theme #mission-status-breakdown .mission-timeline-label { color: #6abffb !important; }
+        body.moon-theme #mission-status-breakdown .mission-timeline-explain { color: #aebdd4 !important; }
         .mode-option.is-selected {
             background: rgba(16, 185, 129, 0.12);
             color: #34d399 !important;
@@ -3889,8 +3907,8 @@
         // regardless of language, not descriptive English text.
         const MISSION_TIMELINE_I18N = {
             en: { stageSep: "Stage Separation", fairingSep: "Fairing Separation", entryBurn: "Entry Burn", landingBurn: "Landing Burn", boosterLanding: "Booster Landing" },
-            he: { stageSep: "הפרדת שלבים", fairingSep: "הפרדת כיפה", entryBurn: "שריפת כניסה", landingBurn: "שריפת נחיתה", boosterLanding: "נחיתת הבוסטר" },
-            iw: { stageSep: "הפרדת שלבים", fairingSep: "הפרדת כיפה", entryBurn: "שריפת כניסה", landingBurn: "שריפת נחיתה", boosterLanding: "נחיתת הבוסטר" },
+            he: { stageSep: "הפרדת שלבים", fairingSep: "הפרדת כיפה", entryBurn: "צריבת כניסה", landingBurn: "צריבת נחיתה", boosterLanding: "נחיתת הבוסטר" },
+            iw: { stageSep: "הפרדת שלבים", fairingSep: "הפרדת כיפה", entryBurn: "צריבת כניסה", landingBurn: "צריבת נחיתה", boosterLanding: "נחיתת הבוסטר" },
             es: { stageSep: "Separación de Etapas", fairingSep: "Separación del Carenado", entryBurn: "Quemado de Reentrada", landingBurn: "Quemado de Aterrizaje", boosterLanding: "Aterrizaje del Booster" },
             fr: { stageSep: "Séparation des Étages", fairingSep: "Séparation de la Coiffe", entryBurn: "Combustion de Rentrée", landingBurn: "Combustion d'Atterrissage", boosterLanding: "Atterrissage du Booster" },
             de: { stageSep: "Stufentrennung", fairingSep: "Verkleidungstrennung", entryBurn: "Wiedereintrittszündung", landingBurn: "Landezündung", boosterLanding: "Booster-Landung" },
@@ -3915,8 +3933,8 @@
         // comment) - the abbreviation itself doesn't need translation, but what it means does.
         const MISSION_TIMELINE_EXPLAIN_I18N = {
             en: { maxQ: "Peak aerodynamic stress on the rocket", meco: "First-stage engines shut down", stageSep: "First and second stages separate", ses1: "Second-stage engine ignites", fairingSep: "Nose cone jettisoned to expose the payload", entryBurn: "Booster re-enters the atmosphere", landingBurn: "Booster slows down for landing", boosterLanding: "Booster touches down on the droneship", seco1: "Second-stage engine cuts off, coasting to orbit" },
-            he: { maxQ: "שיא הלחץ האווירודינמי על הרקטה", meco: "כיבוי מנועי השלב הראשון", stageSep: "הפרדה בין השלב הראשון לשני", ses1: "הצתת מנוע השלב השני", fairingSep: "שחרור כיפת האף וחשיפת המטען", entryBurn: "הבוסטר חוזר לאטמוספרה", landingBurn: "הבוסטר מאט לקראת נחיתה", boosterLanding: "הבוסטר נוחת על הספינה", seco1: "כיבוי מנוע השלב השני, גלישה למסלול" },
-            iw: { maxQ: "שיא הלחץ האווירודינמי על הרקטה", meco: "כיבוי מנועי השלב הראשון", stageSep: "הפרדה בין השלב הראשון לשני", ses1: "הצתת מנוע השלב השני", fairingSep: "שחרור כיפת האף וחשיפת המטען", entryBurn: "הבוסטר חוזר לאטמוספרה", landingBurn: "הבוסטר מאט לקראת נחיתה", boosterLanding: "הבוסטר נוחת על הספינה", seco1: "כיבוי מנוע השלב השני, גלישה למסלול" },
+            he: { maxQ: "שיא הלחץ האווירודינמי על הרקטה", meco: "כיבוי מנועי השלב הראשון", stageSep: "הפרדה בין השלב הראשון לשני", ses1: "הצתת מנוע השלב השני", fairingSep: "שחרור כיפת האף וחשיפת המטען", entryBurn: "הבוסטר חוזר לאטמוספרה", landingBurn: "הבוסטר מאט לקראת נחיתה", boosterLanding: "הבוסטר נוחת על ספינת הנחיתה", seco1: "כיבוי מנוע השלב השני והמשך שיוט למסלול" },
+            iw: { maxQ: "שיא הלחץ האווירודינמי על הרקטה", meco: "כיבוי מנועי השלב הראשון", stageSep: "הפרדה בין השלב הראשון לשני", ses1: "הצתת מנוע השלב השני", fairingSep: "שחרור כיפת האף וחשיפת המטען", entryBurn: "הבוסטר חוזר לאטמוספרה", landingBurn: "הבוסטר מאט לקראת נחיתה", boosterLanding: "הבוסטר נוחת על ספינת הנחיתה", seco1: "כיבוי מנוע השלב השני והמשך שיוט למסלול" },
             es: { maxQ: "Máxima presión aerodinámica sobre el cohete", meco: "Apagado de los motores de la primera etapa", stageSep: "Separación entre la primera y segunda etapa", ses1: "Encendido del motor de la segunda etapa", fairingSep: "Se desprende el carenado, exponiendo la carga útil", entryBurn: "El booster reingresa a la atmósfera", landingBurn: "El booster reduce la velocidad para aterrizar", boosterLanding: "El booster aterriza en el buque nodriza", seco1: "Apagado del motor de la segunda etapa, rumbo a órbita" },
             fr: { maxQ: "Pression aérodynamique maximale sur la fusée", meco: "Extinction des moteurs du premier étage", stageSep: "Séparation entre le premier et le second étage", ses1: "Allumage du moteur du second étage", fairingSep: "La coiffe se sépare, exposant la charge utile", entryBurn: "Le booster rentre dans l'atmosphère", landingBurn: "Le booster ralentit pour l'atterrissage", boosterLanding: "Le booster se pose sur le navire-drone", seco1: "Extinction du moteur du second étage, en route vers l'orbite" },
             de: { maxQ: "Maximaler aerodynamischer Druck auf die Rakete", meco: "Abschaltung der Erststufentriebwerke", stageSep: "Trennung von erster und zweiter Stufe", ses1: "Zündung des Zweitstufentriebwerks", fairingSep: "Nutzlastverkleidung wird abgeworfen", entryBurn: "Booster tritt wieder in die Atmosphäre ein", landingBurn: "Booster bremst zur Landung ab", boosterLanding: "Booster landet auf dem Droneship", seco1: "Abschaltung des Zweitstufentriebwerks, Gleitflug zur Umlaufbahn" },
@@ -3997,12 +4015,39 @@
             listEl.innerHTML = STARLINK_ASDS_TIMELINE.map(entry => {
                 const label = entry.fixedLabel || labelDict[entry.labelKey] || MISSION_TIMELINE_I18N.en[entry.labelKey];
                 const explain = explainDict[entry.explainKey] || MISSION_TIMELINE_EXPLAIN_I18N.en[entry.explainKey];
+                // notranslate on both: the label is either a fixed acronym that must stay as-is
+                // (Google was transliterating "MAX Q" into Hebrew letters - "מקס קיו") or already
+                // localized from MISSION_TIMELINE_I18N above, and the explanation likewise comes
+                // pre-translated from MISSION_TIMELINE_EXPLAIN_I18N. Letting the widget near
+                // either one can only re-translate already-translated text.
                 return `
-                    <div class="flex flex-col gap-0.5">
-                        <span class="text-emerald-400 font-orbitron font-bold text-xs">${escapeHtml(label)}</span>
-                        <span class="text-zinc-400 text-[11px] leading-snug">${escapeHtml(explain)}</span>
+                    <div class="mission-timeline-row flex flex-col gap-0.5" data-t="${entry.t}">
+                        <span class="flex items-center gap-1.5">
+                            <i class="mission-timeline-check fa-solid fa-circle-check text-[10px] shrink-0"></i>
+                            <span class="mission-timeline-label notranslate text-emerald-400 font-orbitron font-bold text-xs" translate="no">${escapeHtml(label)}</span>
+                        </span>
+                        <span class="mission-timeline-explain notranslate text-zinc-400 text-[11px] leading-snug" translate="no">${escapeHtml(explain)}</span>
                     </div>`;
             }).join('');
+            // A freshly rebuilt list has no completed-state yet (this only reruns on a language
+            // change, which can happen mid-flight) - repaint it right away from the last known
+            // elapsed time so the ticks don't all vanish until the next tick.
+            if (typeof window.lastMissionElapsedSec === 'number') {
+                updateMissionStatusBreakdownProgress(window.lastMissionElapsedSec);
+            }
+        }
+
+        // Ticks off each milestone the mission has already passed. Kept separate from the
+        // renderer above because that one deliberately only rebuilds on a language change, while
+        // this has to run every second - it only flips a class per row, no innerHTML work.
+        function updateMissionStatusBreakdownProgress(elapsedSec) {
+            const listEl = document.getElementById('mission-status-breakdown-list');
+            if (!listEl) return;
+            window.lastMissionElapsedSec = elapsedSec;
+            listEl.querySelectorAll('.mission-timeline-row').forEach(row => {
+                const t = parseFloat(row.getAttribute('data-t'));
+                row.classList.toggle('is-done', typeof elapsedSec === 'number' && !isNaN(t) && elapsedSec >= t);
+            });
         }
 
         // CSS alone (even mutually-exclusive @media ranges) turned out not to be trustworthy for
@@ -4041,6 +4086,32 @@
             } catch (e) { /* popup stays open in its default CSS position - better than nothing */ }
         }
 
+        // Caps the breakdown's height to the space actually left below its own top edge. The CSS
+        // max-height alone can't do this: it's a fraction of the VIEWPORT, but the panel starts
+        // wherever the countdown box happens to sit, so on a short window the panel still ran off
+        // the bottom with its last milestones unreachable. Runs on both open paths - the desktop
+        // CSS :hover (via mouseenter on the wrapper, since no JS is otherwise involved there) and
+        // the mobile tap toggle - and on resize while it's open.
+        function clampMissionBreakdownHeight() {
+            const popup = document.getElementById('mission-status-breakdown');
+            if (!popup || popup.classList.contains('hidden')) return;
+            try {
+                const margin = 16;
+                const top = popup.getBoundingClientRect().top;
+                const avail = Math.max(140, window.innerHeight - top - margin);
+                popup.style.setProperty('max-height', avail + 'px', 'important');
+            } catch (e) { /* falls back to the CSS max-height */ }
+        }
+        window.addEventListener('resize', clampMissionBreakdownHeight);
+        document.addEventListener('DOMContentLoaded', () => {
+            const popup = document.getElementById('mission-status-breakdown');
+            const wrap = popup && popup.parentElement;
+            if (!wrap) return;
+            // Desktop opens purely on CSS :hover - mouseenter is the only hook that fires there.
+            // rAF so the measurement happens after the hover rule has actually laid the panel out.
+            wrap.addEventListener('mouseenter', () => requestAnimationFrame(clampMissionBreakdownHeight));
+        });
+
         // Touch devices have no hover, so the popup's md:group-hover:flex (desktop-only) never
         // triggers there - this gives mobile a tap-to-open/tap-to-close equivalent. Desktop is
         // unaffected: hovering still opens it via CSS regardless of this toggle's class state
@@ -4054,7 +4125,10 @@
             const isOpen = !popup.classList.contains('hidden');
             popup.classList.toggle('hidden', isOpen);
             popup.classList.toggle('flex', !isOpen);
-            if (!isOpen) pinPopupWithinViewport(popup, document.getElementById('countdown-box'));
+            if (!isOpen) {
+                pinPopupWithinViewport(popup, document.getElementById('countdown-box'));
+                clampMissionBreakdownHeight();
+            }
         }
         document.addEventListener('click', function (e) {
             const popup = document.getElementById('mission-status-breakdown');
@@ -4111,6 +4185,7 @@
                     'i18n-filter-favorites': dict.filterFavorites,
                     'i18n-watch-launch': dict.watchLaunch || LAUNCH_LABEL_I18N.en.watchLaunch,
                     'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
+                    'i18n-open-youtube-live': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
                     'i18n-patches-title': dict.patchesTitle || LAUNCH_LABEL_I18N.en.patchesTitle,
                     'i18n-patches-subtitle': dict.patchesSubtitle || LAUNCH_LABEL_I18N.en.patchesSubtitle,
                     'i18n-tab-launches': dict.launchesTab || LAUNCH_LABEL_I18N.en.launchesTab || 'Launches',
@@ -4163,8 +4238,13 @@
             // marked data-i18n-asds="1" can appear at any time (e.g. opening a mission
             // modal), not just when the language changes. Covers modal-landing,
             // landing-modal-name, and landing-modal-type, all of which can show this phrase.
+            // data-i18n-asds-ship="1" marks the elements that should also carry the specific
+            // drone ship's name (the mission modal's RECOVERY ZONE value and the landing popup's
+            // title); the landing popup's TYPE line stays the plain classification.
             document.querySelectorAll('[data-i18n-asds="1"]').forEach(el => {
-                el.innerText = dict.asds || LAUNCH_LABEL_I18N.en.asds;
+                el.innerText = el.getAttribute('data-i18n-asds-ship') === '1'
+                    ? buildAsdsLabel(dict, window.currentActiveLandingShipName)
+                    : (dict.asds || LAUNCH_LABEL_I18N.en.asds);
             });
 
         }
@@ -4527,6 +4607,18 @@
             out = out.replace(/Landing Zone/g, d.landingZone);
             out = out.replace(/\bOcean\b/g, d.ocean);
             return out;
+        }
+
+        // Builds the ASDS label actually shown: the localized "Autonomous Spaceport Drone Ship"
+        // phrase with its trailing "(ASDS)" acronym dropped, followed by the specific ship the
+        // API assigned, in quotes - e.g. `ספינת נחיתה אוטונומית - "Of Course I Still Love You"`.
+        // Every language's `asds` entry ends with that same parenthesized acronym, so one strip
+        // covers all 18. With no ship assigned yet (common for far-out launches) the acronym is
+        // kept and the string is returned exactly as before, so nothing regresses.
+        function buildAsdsLabel(dict, shipName) {
+            const base = dict.asds || LAUNCH_LABEL_I18N.en.asds;
+            if (!shipName) return base;
+            return base.replace(/\s*\(ASDS\)\s*$/i, '') + ' - "' + shipName + '"';
         }
 
         function getLandingDict(currentLang) {
@@ -7116,13 +7208,30 @@
                      grid items), and never got to a confirmed root cause. Full manual control
                      here removes that uncertainty entirely instead of trying another utility
                      combination. -->
+                <!-- Live launch: same two-button layout the past-launch player row above uses
+                     (big primary button + a narrow "Open on YouTube" escape hatch beside it),
+                     rather than sitting inline with Share/Calendar/Poster. Structured as a plain
+                     wrapper holding a flex row - NOT `class="hidden flex ..."` on one element -
+                     because `hidden` and `flex` are both Tailwind utilities emitted with
+                     !important here, so putting them on the same element makes visibility depend
+                     on their order in Tailwind's output rather than on the class being toggled. -->
+                <div id="modal-live-btn-wrap" class="hidden">
+                    <div class="flex flex-row flex-nowrap gap-2 sm:gap-3">
+                        <button id="modal-watch-live-btn"
+                            class="w-3/4 min-w-0 flex items-center justify-center gap-2 py-3.5 bg-red-600 md:hover:bg-red-500 md:hover:scale-[1.02] md:hover:shadow-[0_0_22px_rgba(239,68,68,0.55)] border border-red-500 md:hover:border-red-400 rounded-2xl text-sm sm:text-base font-semibold text-white transition-all duration-300 shadow-md">
+                            <i class="fa-solid fa-play text-[10px] animate-pulse shrink-0"></i>
+                            <span id="modal-watch-live-label" class="min-w-0 text-center notranslate" translate="no"
+                                lang="en">WATCH LIVE</span>
+                        </button>
+                        <a id="modal-live-yt-link" href="#" target="_blank" rel="noopener"
+                            class="w-1/4 min-w-0 flex items-center justify-center text-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
+                            <i class="fa-brands fa-youtube text-red-500 shrink-0"></i>
+                            <span id="i18n-open-youtube-live" class="notranslate leading-tight" translate="no"
+                                lang="en">Open on YouTube</span>
+                        </a>
+                    </div>
+                </div>
                 <div id="modal-action-btn-row">
-                    <button id="modal-watch-live-btn"
-                        class="hidden flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-3 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 rounded-2xl text-[11px] sm:text-sm font-bold tracking-wide text-white transition-all duration-300 shadow-md">
-                        <i class="fa-solid fa-play text-[10px] animate-pulse shrink-0"></i>
-                        <span id="modal-watch-live-label" class="min-w-0 text-center notranslate" translate="no"
-                            lang="en">WATCH LIVE</span>
-                    </button>
                     <button id="modal-share-btn"
                         class="flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
                         <i class="fa-solid fa-share-nodes shrink-0"></i> <span class="min-w-0 text-center">Share
@@ -11171,6 +11280,7 @@
             let boosterFlightNum = null;
             let landingAttempt = null;
             let landingSuccess = null;
+            let landingShipName = null;
 
             if (launch.rocket && launch.rocket.launcher_stage && launch.rocket.launcher_stage.length > 0) {
                 const stage = launch.rocket.launcher_stage[0];
@@ -11207,6 +11317,14 @@
                         // בדיקה אם זה מנחת ASDS
                         if ((typeName && typeName.includes('ASDS')) || (locName && (locName.includes('Read the') || locName.includes('Love You') || locName.includes('Gravitas')))) {
                             landingStr = "Autonomous Spaceport Drone Ships (ASDS)";
+                            // The API names the specific drone ship ("Of Course I Still Love You",
+                            // "A Shortfall of Gravitas", ...) - kept alongside the generic
+                            // classification string rather than replacing it, because that exact
+                            // string is a lookup key for the whole ASDS display/translation path
+                            // (data-i18n-asds, openLandingSpecs). The name is appended at display
+                            // time instead. Frequently absent on far-out launches (no ship
+                            // assigned yet), so every consumer must handle null.
+                            landingShipName = locName || null;
                         } else if (locName) {
                             landingStr = `${typeName} • ${locName}`;
                         } else if (typeName) {
@@ -11409,6 +11527,7 @@
                 shipLabel: shipLabel,
                 landingAttempt: landingAttempt,
                 landingSuccess: landingSuccess,
+                landingShipName: landingShipName,
                 launchSuccess: launchSuccess,
                 crew: crewArr,
                 probability: prob
@@ -13843,19 +13962,14 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const videoUnconfirmedYtBtn = document.getElementById('modal-video-unconfirmed-yt-btn');
             if (!liveBtn) return;
 
+            // The live button now lives in its own row (#modal-live-btn-wrap) above the
+            // Share/Calendar/Poster row, paired with an "Open on YouTube" link - the same shape
+            // the past-launch player row uses. Toggling the WRAPPER, not the button, is what
+            // hides the pair together; #modal-action-btn-row is left alone and keeps its normal
+            // three-button layout in both states.
             const setThreeUp = (on) => {
-                liveBtn.classList.toggle('hidden', !on);
-                [shareBtn, calendarBtn].forEach(b => {
-                    if (!b) return;
-                    b.classList.toggle('w-1/3', on);
-                    b.classList.toggle('w-1/2', !on);
-                });
-                // Marks the row so its CSS can switch to an even 2-per-row layout while the
-                // live button is showing. Without it the row has 4 buttons against widths meant
-                // for 3, which wrapped as 3-then-1 on desktop (and 2/1/1 on mobile) - see the
-                // #modal-action-btn-row.has-live rules in the <style> block.
-                const actionRow = document.getElementById('modal-action-btn-row');
-                if (actionRow) actionRow.classList.toggle('has-live', !!on);
+                const liveWrap = document.getElementById('modal-live-btn-wrap');
+                if (liveWrap) liveWrap.classList.toggle('hidden', !on);
             };
 
             const launchTimeMs = new Date(m.date).getTime();
@@ -13897,6 +14011,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const youtubeOpenUrlFallback = `https://www.youtube.com/channel/${SFN_YT_CHANNEL_ID}/live`;
 
             if (liveLabel) liveLabel.innerText = 'WATCH LIVE';
+
+            // "Open on YouTube" beside the live button: the confirmed video when we have one,
+            // otherwise the channel's /live URL - the same fallback the unconfirmed-stream
+            // overlay already uses.
+            const liveYtLink = document.getElementById('modal-live-yt-link');
+            if (liveYtLink) {
+                liveYtLink.href = confirmedYoutubeId
+                    ? `https://www.youtube.com/watch?v=${confirmedYoutubeId}`
+                    : (liveSrcUrl || youtubeOpenUrlFallback);
+            }
+
             liveBtn.onclick = function () {
                 if (!videoIframe || !videoSection) return;
                 // Reuse the shared player: make sure the past-launch button row isn't
@@ -14071,14 +14196,23 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             document.getElementById('modal-booster').innerText = m.booster || "Falcon 9 Core";
             window.currentActiveLandingStr = m.landing || "Autonomous Spaceport Drone Ships (ASDS)";
+            window.currentActiveLandingShipName = m.landingShipName || null;
             const modalLandingEl = document.getElementById('modal-landing');
             modalLandingEl.innerText = localizeLandingStr(window.currentActiveLandingStr, document.documentElement.lang);
             modalLandingEl.setAttribute('translate', 'no');
             modalLandingEl.classList.add('notranslate');
             if (window.currentActiveLandingStr === "Autonomous Spaceport Drone Ships (ASDS)") {
                 modalLandingEl.setAttribute('data-i18n-asds', '1');
+                modalLandingEl.setAttribute('data-i18n-asds-ship', '1');
+                // Painted immediately rather than waiting up to 500ms for the sweep above to
+                // pick the element up - otherwise the previous mission's ship name is briefly
+                // visible when switching between two ASDS missions.
+                const asdsKey = (document.documentElement.lang || 'en').split('-')[0];
+                modalLandingEl.innerText = buildAsdsLabel(
+                    LAUNCH_LABEL_I18N[asdsKey] || LAUNCH_LABEL_I18N.en, window.currentActiveLandingShipName);
             } else {
                 modalLandingEl.removeAttribute('data-i18n-asds');
+                modalLandingEl.removeAttribute('data-i18n-asds-ship');
             }
 
             const crewSection = document.getElementById('modal-crew-section');
@@ -15302,19 +15436,25 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 descEl.innerText = "Due to the extreme mass or high orbital energy required for this specific payload, the first stage booster was expended. It utilized all its propellant to maximize payload performance and was intentionally not recovered.";
             }
             else {
-                nameEl.innerText = "Autonomous Spaceport Drone Ship (ASDS)";
+                // Title carries the specific ship's name (data-i18n-asds-ship) the same way the
+                // mission modal's RECOVERY ZONE line does; the TYPE line below stays the plain
+                // classification, so the acronym is still shown somewhere in this popup.
+                const asdsDictHere = LAUNCH_LABEL_I18N[(document.documentElement.lang || 'en').split('-')[0]] || LAUNCH_LABEL_I18N.en;
+                nameEl.innerText = buildAsdsLabel(asdsDictHere, window.currentActiveLandingShipName);
                 imgEl.src = fixedDroneShipImg;
                 imgEl.style.objectPosition = 'top';
                 typeEl.innerText = "ASDS (Ocean Drone Ship)";
                 fleetEl.innerText = "Atlantic & Pacific Ocean Fleets";
                 descEl.innerText = "Autonomous Spaceport Drone Ships (ASDS) are ocean-going vessels modified to serve as mobile landing pads in deep waters.\n\nEquipped with azimuthing thrusters and dynamic GPS positioning, these vessels hold exact coordinates in high seas without anchoring. Drone ship landings save significant rocket fuel because the booster doesn't need to turn back to land.";
                 nameEl.setAttribute('data-i18n-asds', '1');
+                nameEl.setAttribute('data-i18n-asds-ship', '1');
                 typeEl.setAttribute('data-i18n-asds', '1');
             }
             [nameEl, typeEl].forEach(el => { el.setAttribute('translate', 'no'); el.classList.add('notranslate'); });
             if (imgEl) imgEl.alt = nameEl.innerText; // was a static "Landing Zone" regardless of which branch above ran
             if (!str.includes('asds') && !(window.currentActiveLandingStr === "Autonomous Spaceport Drone Ships (ASDS)")) {
                 nameEl.removeAttribute('data-i18n-asds');
+                nameEl.removeAttribute('data-i18n-asds-ship');
                 typeEl.removeAttribute('data-i18n-asds');
             }
 
@@ -15575,7 +15715,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // own parameters.
             const countdownLabelEl = document.getElementById('i18n-countdown-to-launch');
             const missionStatusInfoIcon = document.getElementById('mission-status-info-icon');
-            function setCountdownLabel(showMissionStatus) {
+            // elapsedSec (seconds since liftoff) is passed in rather than read from the tick's
+            // own `diff`, which is declared inside the nested tick function below and is not in
+            // scope here.
+            function setCountdownLabel(showMissionStatus, elapsedSec) {
                 if (!countdownLabelEl) return;
                 const key = (document.documentElement.lang || 'en').split('-')[0];
                 const dict = LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en;
@@ -15586,7 +15729,10 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // launched (there's nothing to explain about a countdown that hasn't happened
                 // yet) - hidden the rest of the time, same as the label reverting above.
                 if (missionStatusInfoIcon) missionStatusInfoIcon.classList.toggle('hidden', !showMissionStatus);
-                if (showMissionStatus) renderMissionStatusBreakdown(document.documentElement.lang);
+                if (showMissionStatus) {
+                    renderMissionStatusBreakdown(document.documentElement.lang);
+                    if (typeof elapsedSec === 'number') updateMissionStatusBreakdownProgress(elapsedSec);
+                }
             }
             // Both the desktop pill (absolutely centered in the header row) and the mobile
             // row below it (see #sticky-countdown-wrap-mobile) show the exact same value -
@@ -15708,13 +15854,19 @@ fitTitleOneLine(document.getElementById('hero-name'));
                             stEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
                             stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
                         });
-                    } else if (diff > -3 * 60 * 1000) {
+                    } else if (diff > -3 * 60 * 1000 &&
+                        !(hasAsdsProfile && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang))) {
                         // First 3 minutes after T-0: "LIFTOFF" - after that, "MISSION IN PROGRESS"
                         // takes over (below) until the mission is evicted from the hero per
                         // setupHeroBanner's grace-period rules. The mission has genuinely
                         // launched at this point, so the label above switches to "Mission
                         // Status".
-                        setCountdownLabel(true);
+                        // The milestone check above yields this branch as soon as a tracked event
+                        // is reached: five of the nine milestones (MAX Q at T+67s through fairing
+                        // separation at T+176s) fall inside this same 3-minute window, and without
+                        // it this branch ran first and held "LIFTOFF" on screen straight through
+                        // all of them - the timeline appeared frozen until entry burn at T+361s.
+                        setCountdownLabel(true, -diff / 1000);
                         el.innerHTML = el.dataset.launchNowText || 'LIFTOFF';
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                         stickyEls.forEach(stEl => {
@@ -15733,7 +15885,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         const milestone = hasAsdsProfile ? getCurrentMissionMilestone(elapsedSec, document.documentElement.lang) : null;
                         const displayText = milestone ? milestone.label : (el.dataset.inProgressText || 'MISSION IN PROGRESS');
 
-                        setCountdownLabel(true);
+                        setCountdownLabel(true, elapsedSec);
                         el.innerHTML = displayText;
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                         stickyEls.forEach(stEl => {
