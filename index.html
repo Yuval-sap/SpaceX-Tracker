@@ -3304,10 +3304,30 @@
                 margin-top: 0 !important;
                 inset-inline-start: auto !important;
                 inset-inline-end: 100% !important;
-                margin-inline-end: 0.5rem !important;
-                width: 18rem !important;
+                /* No gap: the panel butts straight up against the card. A margin here left a
+                   few pixels belonging to neither element, and the pointer crossing that strip
+                   dropped the hover and closed the panel before it could be reached. A
+                   pseudo-element bridge was tried instead, but it sits outside the panel's box
+                   and so re-introduced horizontal overflow - removing the gap solves both at
+                   once. */
+                margin-inline-end: 0 !important;
+                /* Wide enough that the longest explanation wraps to at most two comfortable
+                   lines instead of needing to be scrolled sideways. */
+                width: 23rem !important;
                 max-width: 80vw !important;
             }
+        }
+        /* Never scroll sideways: the explanations wrap instead. overflow-y:auto on its own makes
+           the browser compute overflow-x as auto too, which is where the horizontal scrollbar
+           came from - it has to be pinned to hidden explicitly. */
+        #mission-status-breakdown {
+            overflow-x: hidden !important;
+        }
+        #mission-status-breakdown .mission-timeline-explain,
+        #mission-status-breakdown .mission-timeline-label {
+            overflow-wrap: anywhere;
+            word-break: normal;
+            white-space: normal;
         }
         /* All nine milestones are taller than the space below the countdown box on shorter
            screens, and the panel was simply running off the bottom edge with its last rows
@@ -3317,20 +3337,6 @@
             max-height: min(60vh, calc(100vh - 6rem)) !important;
             overflow-y: auto !important;
             overscroll-behavior: contain;
-        }
-        /* Invisible bridge across the gap between the label/icon and the panel. The panel is a
-           child of the hovered wrapper, so hovering the panel itself keeps it open - but the
-           0.5rem margin between them is NOT part of either, so the pointer left the wrapper
-           mid-way and the panel vanished before it could be reached (and therefore scrolled).
-           This pseudo-element makes that gap part of the panel's own hover area. Sized off the
-           same margin value, and pointer-events stay on so it actually registers. */
-        #mission-status-breakdown::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            inset-inline-end: -0.75rem;
-            width: 0.75rem;
         }
 
         /* Mission-status mode: the launch-window block is gone, so the status headline and its
@@ -6217,15 +6223,21 @@
                     </div>
                 </div>
 
+                <!-- `group` sits here, on the whole countdown card, rather than on the small
+                     label wrapper inside it: scoped to just the label, the pointer left the hover
+                     target as soon as it moved off those few words, so the breakdown closed
+                     before it could be reached or scrolled. The panel is a descendant of this
+                     card, so hovering the panel itself keeps this card hovered too (:hover
+                     applies up the ancestor chain regardless of where the panel is painted). -->
                 <div id="countdown-box"
-                    class="relative bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0 transition-colors duration-500">
+                    class="group relative bg-zinc-950 border border-zinc-800/80 px-5 py-5 sm:px-8 sm:py-6 rounded-[2rem] flex flex-col items-center justify-center text-center w-full lg:w-auto shrink-0 transition-colors duration-500">
                     <!-- group (not relative) on this small wrapper only, so hover is scoped to
                          the label+icon - NOT the whole countdown-box (digits, launch window).
                          The popup itself is still positioned against #countdown-box's own edge
                          (that's the closest ancestor with position:relative, since this wrapper
                          deliberately has none), matching year-count-breakdown's end-full+me-2
                          side-opening pattern (auto-flips RTL/LTR) - see that div's own comment. -->
-                    <div id="mission-status-hover-wrap" class="group inline-flex items-center gap-1.5 mb-2">
+                    <div id="mission-status-hover-wrap" class="inline-flex items-center gap-1.5 mb-2">
                         <div id="i18n-countdown-to-launch"
                             class="text-[12px] uppercase tracking-[3px] text-zinc-500 font-bold text-center notranslate"
                             translate="no" lang="en">Countdown to launch</div>
