@@ -4703,8 +4703,27 @@
     const minSize = /Zen Dots|Audiowide|Orbitron/.test(computedFontFamily) ? 7 : 10;
     let guard = 0;
 
-    // מדידה אגרסיבית יותר – ממשיכים עד שהטקסט באמת נכנס
-    while (el.scrollWidth > el.clientWidth + 1 && size > minSize && guard < 100) {
+    // Overflow is judged on the text's real painted extent (a Range over the element's contents),
+    // not scrollWidth. Two reasons scrollWidth was not enough on the hero title:
+    //   1. it is built from glyph ADVANCE widths, while these display faces (Zen Dots, Audiowide,
+    //      Orbitron) paint ink past the advance box - so the final character could sit a hair
+    //      outside the element and look shaved even though scrollWidth said it fitted;
+    //   2. on a full-width block whose text is centred, overflow spilling off the start side is
+    //      not reported by scrollWidth at all.
+    // SAFETY keeps a couple of pixels of daylight rather than stopping the moment it merely
+    // touches the edge, which is what left that last glyph looking clipped.
+    const SAFETY = 3;
+    const inkWidth = () => {
+        try {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            const w = range.getBoundingClientRect().width;
+            return w > 0 ? w : el.scrollWidth;
+        } catch (e) { return el.scrollWidth; }
+    };
+    const avail = () => el.clientWidth - SAFETY;
+
+    while ((inkWidth() > avail() || el.scrollWidth > el.clientWidth + 1) && size > minSize && guard < 150) {
         size -= 0.4;
         el.style.fontSize = size + 'px';
         void el.offsetWidth; // כפיית reflow
