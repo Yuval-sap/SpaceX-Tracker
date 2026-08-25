@@ -4501,6 +4501,26 @@
             // Landing Zones genuinely ARE stationary, and a future correct sentence describing
             // those must not get silently flipped to "mobile" by this rule.
             [/לשמש\s*משטחי\s*נחיתה\s*נייחים/g, 'לשמש משטחי נחיתה ניידים'],
+            // "of the two-stage Starship launch vehicle" came back as word salad - Google renders
+            // "launch vehicle" as the literal "רכב שיגור" (a road vehicle) and then strands the
+            // "two-stage" qualifier before the name instead of after it, producing "שני השלבים
+            // סטארשיפ רכב שיגור". "משגר" is the actual Hebrew term for a launch vehicle, and the
+            // qualifier has to follow the noun in Hebrew. Written to tolerate either order of the
+            // pieces, since the exact scramble varies with the surrounding sentence.
+            [/(?:של\s*)?שני\s*ה?שלבים\s*(סטארשיפ|Starship)\s*רכב\s*ה?שיגור/g, 'של משגר $1 הדו-שלבי'],
+            // Google's other rendering of the same sentence puts the qualifier before the name
+            // ("רכב השיגור הדו-שלבי סטארשיפ"), which is back-to-front in Hebrew - the vehicle
+            // name has to come before its qualifier. Handled as its own rule so both phrasings
+            // land on the identical wording.
+            [/רכב\s*ה?שיגור\s*ה?דו[-\s]*שלבי\s*(סטארשיפ|Starship)/g, 'משגר $1 הדו-שלבי'],
+            [/(סטארשיפ|Starship)\s*רכב\s*ה?שיגור\s*ה?דו[-\s]*שלבי/g, 'משגר $1 הדו-שלבי'],
+            // Same wrong word on its own, wherever else it appears in mission prose - with and
+            // without the definite article, which Google adds or drops depending on the sentence.
+            [/רכב\s*השיגור/g, 'המשגר'],
+            [/רכב\s*שיגור/g, 'משגר'],
+            // "3rd flight of Starship V3" - Google spells the version out as "גרסה 3", which
+            // clashes with the vehicle designation used everywhere else on the site (V3).
+            [/(סטארשיפ|Starship)\s*גרסה\s*(\d+)/g, '$1 V$2'],
         ];
         function fixMistranslatedPhrases(root, currentLang) {
             if (!root) return;
@@ -14734,11 +14754,19 @@ fitTitleOneLine(document.getElementById('hero-name'));
             applyMissionPurposeHtml(document.getElementById('modal-description-detailed'), m.description, m.missionType, m.programNames, m.missionAgencies, document.documentElement.lang);
             document.getElementById('modal-includes').innerHTML = (m.objectives || []).map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${escapeHtml(i)}</span></div>`).join('');
 
-            // Falcon missions drop the separate "Key Flight Milestones" checklist section -
-            // Starship missions keep it. The "Mission Objectives and Payload Information"
-            // title (see HTML) is the same either way, so only visibility toggles here.
-            const isStarshipMission = m.category === 'starship' || (m.vehicle || '').toLowerCase().includes('starship') || (m.name || '').toLowerCase().includes('starship');
-            document.getElementById('modal-milestones-section').classList.toggle('hidden', !isStarshipMission);
+            // "Key Flight Milestones" is gone for every mission type now, Starship included.
+            // Falcon/Starlink/Dragon had already dropped it; Starship was the last one still
+            // showing it, and its list was a fixed five lines hardcoded per CATEGORY - every
+            // Starship flight rendered the identical checklist regardless of what that flight
+            // was actually doing, which reads as real per-mission detail while being nothing of
+            // the sort. Checked before removing whether it could be driven from real data
+            // instead: LL2 exposes no objectives/goals field at all (mission carries only id,
+            // name, description, launch_designator, type, orbit, agencies, info_urls, vid_urls -
+            // verified against both the list and the single-launch endpoint), so there is
+            // nothing to automate it from. The genuine per-mission text above it
+            // (applyMissionPurposeHtml, built from the API's own description) stays, and does
+            // update by itself whenever the API fills in more detail closer to launch.
+            document.getElementById('modal-milestones-section').classList.add('hidden');
 
             document.getElementById('modal-share-btn').onclick = () => shareMission(m);
             document.getElementById('modal-calendar-btn').onclick = () => saveToCalendar(m);
