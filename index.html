@@ -3398,25 +3398,37 @@
            nearly invisible - the labels especially. Lifted per theme here rather than by editing
            the SVG's own attributes, so the light theme keeps exactly the values it already had.
            The LEO ring is deliberately untouched: it is the highlighted one. */
-        #orbit-ring-MEO { stroke: #8b8b94 !important; opacity: 0.85 !important; }
-        #orbit-label-MEO { fill: #c4c4cc !important; }
-        #orbit-ring-GEO { stroke: #6e6e78 !important; opacity: 0.75 !important; }
-        #orbit-label-GEO { fill: #a8a8b2 !important; }
+        /* Every rule below is scoped to :not(.orbit-active) - applyOrbitRingVisual marks whichever
+           orbit the mission is actually flying to, and that one must keep its green highlight.
+           Applies to all three rings, since any of them can be the dimmed one depending on the
+           mission (LEO is dimmed whenever the target is MEO or GEO). */
+        #orbit-ring-LEO:not(.orbit-active) { stroke: #a5a5ae !important; opacity: 0.85 !important; }
+        #orbit-label-LEO:not(.orbit-active) { fill: #d4d4dc !important; }
+        #orbit-ring-MEO:not(.orbit-active) { stroke: #8b8b94 !important; opacity: 0.85 !important; }
+        #orbit-label-MEO:not(.orbit-active) { fill: #c4c4cc !important; }
+        #orbit-ring-GEO:not(.orbit-active) { stroke: #6e6e78 !important; opacity: 0.75 !important; }
+        #orbit-label-GEO:not(.orbit-active) { fill: #a8a8b2 !important; }
 
-        body.light-theme #orbit-ring-MEO { stroke: #52525b !important; opacity: 0.5 !important; }
-        body.light-theme #orbit-label-MEO { fill: #71717a !important; }
-        body.light-theme #orbit-ring-GEO { stroke: #3f3f46 !important; opacity: 0.4 !important; }
-        body.light-theme #orbit-label-GEO { fill: #52525b !important; }
+        body.light-theme #orbit-ring-LEO:not(.orbit-active) { stroke: #71717a !important; opacity: 0.55 !important; }
+        body.light-theme #orbit-label-LEO:not(.orbit-active) { fill: #71717a !important; }
+        body.light-theme #orbit-ring-MEO:not(.orbit-active) { stroke: #52525b !important; opacity: 0.5 !important; }
+        body.light-theme #orbit-label-MEO:not(.orbit-active) { fill: #71717a !important; }
+        body.light-theme #orbit-ring-GEO:not(.orbit-active) { stroke: #3f3f46 !important; opacity: 0.4 !important; }
+        body.light-theme #orbit-label-GEO:not(.orbit-active) { fill: #52525b !important; }
 
-        body.mars-theme #orbit-ring-MEO { stroke: #c98a6a !important; opacity: 0.85 !important; }
-        body.mars-theme #orbit-label-MEO { fill: #e4b79c !important; }
-        body.mars-theme #orbit-ring-GEO { stroke: #a86f52 !important; opacity: 0.75 !important; }
-        body.mars-theme #orbit-label-GEO { fill: #cf9d84 !important; }
+        body.mars-theme #orbit-ring-LEO:not(.orbit-active) { stroke: #d69b79 !important; opacity: 0.85 !important; }
+        body.mars-theme #orbit-label-LEO:not(.orbit-active) { fill: #eec4a9 !important; }
+        body.mars-theme #orbit-ring-MEO:not(.orbit-active) { stroke: #c98a6a !important; opacity: 0.85 !important; }
+        body.mars-theme #orbit-label-MEO:not(.orbit-active) { fill: #e4b79c !important; }
+        body.mars-theme #orbit-ring-GEO:not(.orbit-active) { stroke: #a86f52 !important; opacity: 0.75 !important; }
+        body.mars-theme #orbit-label-GEO:not(.orbit-active) { fill: #cf9d84 !important; }
 
-        body.moon-theme #orbit-ring-MEO { stroke: #8fa4c4 !important; opacity: 0.85 !important; }
-        body.moon-theme #orbit-label-MEO { fill: #c3d2e6 !important; }
-        body.moon-theme #orbit-ring-GEO { stroke: #71869f !important; opacity: 0.75 !important; }
-        body.moon-theme #orbit-label-GEO { fill: #a5b6cc !important; }
+        body.moon-theme #orbit-ring-LEO:not(.orbit-active) { stroke: #9db2d2 !important; opacity: 0.85 !important; }
+        body.moon-theme #orbit-label-LEO:not(.orbit-active) { fill: #cfdcee !important; }
+        body.moon-theme #orbit-ring-MEO:not(.orbit-active) { stroke: #8fa4c4 !important; opacity: 0.85 !important; }
+        body.moon-theme #orbit-label-MEO:not(.orbit-active) { fill: #c3d2e6 !important; }
+        body.moon-theme #orbit-ring-GEO:not(.orbit-active) { stroke: #71869f !important; opacity: 0.75 !important; }
+        body.moon-theme #orbit-label-GEO:not(.orbit-active) { fill: #a5b6cc !important; }
 
         /* Accent driven by a variable so the highlight matches whichever mode is active - it was
            hardcoded green, which clashed in Mars/Moon and was needlessly loud in light mode. */
@@ -15826,6 +15838,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 const ringEl = document.getElementById('orbit-ring-' + ring);
                 const dotEl = document.getElementById('orbit-dot-' + ring);
                 const labelEl = document.getElementById('orbit-label-' + ring);
+
+                // The per-theme brightening of the DIMMED rings lives in CSS, and CSS beats an
+                // SVG presentation attribute - so without this marker those rules also painted
+                // over the green the active ring is supposed to get, and a mission flying to MEO
+                // or GEO showed no highlight at all. The CSS is scoped to :not(.orbit-active),
+                // so whichever ring is current keeps the colours set here.
+                [ringEl, dotEl, labelEl].forEach(el => {
+                    if (el) el.classList.toggle('orbit-active', isActive);
+                });
 
                 if (ringEl) {
                     ringEl.setAttribute('stroke', style.stroke);
