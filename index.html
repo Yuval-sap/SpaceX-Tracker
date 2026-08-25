@@ -3319,6 +3319,31 @@
             overscroll-behavior: contain;
         }
 
+        /* Mission-status mode: the launch-window block is gone, so the status headline and its
+           label take that space instead of leaving the card half empty. Sizes stay in rem/px
+           rather than vw so they can't grow unbounded, and #hero-countdown keeps its existing
+           white-space:nowrap + overflow:hidden, with fitTitleOneLine already wired to shrink the
+           text if a long milestone name would otherwise be clipped. */
+        #countdown-box.mission-status-mode #hero-countdown {
+            font-size: clamp(1.75rem, 4.2vw, 3.25rem) !important;
+            line-height: 1.1 !important;
+            padding-top: 0.35rem !important;
+            padding-bottom: 0.35rem !important;
+        }
+        #i18n-countdown-to-launch.mission-status-mode {
+            font-size: 15px !important;
+            letter-spacing: 2px !important;
+        }
+        html[dir="rtl"] #i18n-countdown-to-launch.mission-status-mode {
+            font-size: 16px !important;
+        }
+        @media (max-width: 640px) {
+            #countdown-box.mission-status-mode #hero-countdown {
+                font-size: clamp(1.35rem, 7vw, 2.1rem) !important;
+            }
+            #i18n-countdown-to-launch.mission-status-mode { font-size: 13px !important; }
+        }
+
         /* Completed milestones get a filled tick; upcoming ones a dim hollow marker, so the row
            layout never shifts as the flight progresses. */
         #mission-status-breakdown .mission-timeline-check {
@@ -4070,7 +4095,10 @@
                 popup.style.setProperty('position', 'fixed', 'important');
                 popup.style.setProperty('max-width', `calc(100vw - ${margin * 2}px)`, 'important');
                 popup.style.setProperty('width', 'max-content', 'important');
-                popup.style.setProperty('top', (anchorRect.bottom + 8) + 'px', 'important');
+                // Vertical placement is left to clampMissionBreakdownHeight (called right after
+                // this), which anchors the panel to the top of the hero card - opening it just
+                // below the countdown box left it only ~100px of room before the card's
+                // overflow:hidden clipped it. Only the horizontal placement is decided here.
                 popup.style.setProperty('right', 'auto', 'important');
                 // Measure AFTER width/position are set (popup must already be visible - flex, not
                 // hidden - by the time this runs) so this reads the real rendered width, then
@@ -4097,10 +4125,33 @@
             // panel as closed exactly when it was open on screen, and the cap was never applied.
             if (!popup || getComputedStyle(popup).display === 'none') return;
             try {
-                const margin = 16;
-                const top = popup.getBoundingClientRect().top;
-                const avail = Math.max(140, window.innerHeight - top - margin);
-                popup.style.setProperty('max-height', avail + 'px', 'important');
+                const pad = 12;
+                // The real clipper is #hero-banner, not the viewport: it sets overflow:hidden AND
+                // carries a transform, which makes it the containing block for position:fixed too
+                // - so nothing rendered inside it can escape its bottom edge by any positioning
+                // trick. Every earlier attempt capped against the window and still looked cut off
+                // because the panel was being sliced at the hero card's edge, well above the fold.
+                // So the panel is fitted to the CARD instead: it starts at the card's top and is
+                // capped at the card's bottom (both intersected with the viewport, for when the
+                // card itself is partly scrolled off).
+                const banner = document.getElementById('hero-banner');
+                const box = document.getElementById('countdown-box');
+                const bRect = banner ? banner.getBoundingClientRect() : null;
+                const clipTop = bRect ? Math.max(bRect.top, 0) : 0;
+                const clipBottom = bRect ? Math.min(bRect.bottom, window.innerHeight) : window.innerHeight;
+
+                if (!bRect) return;
+                const desiredTop = clipTop + pad;
+                // Measured-and-corrected rather than computed from an assumed origin: this panel
+                // is absolutely positioned against #countdown-box on desktop but switched to
+                // position:fixed on mobile, and #hero-banner's transform makes it the containing
+                // block for the fixed case too - so "top" means something different in each path.
+                // Reading where the panel ACTUALLY landed and shifting by the difference gets the
+                // same result in every case without needing to know which origin applies.
+                const currentTopStyle = parseFloat(getComputedStyle(popup).top) || 0;
+                const actualTop = popup.getBoundingClientRect().top;
+                popup.style.setProperty('top', (currentTopStyle + (desiredTop - actualTop)) + 'px', 'important');
+                popup.style.setProperty('max-height', Math.max(140, clipBottom - desiredTop - pad) + 'px', 'important');
             } catch (e) { /* falls back to the CSS max-height */ }
         }
         window.addEventListener('resize', clampMissionBreakdownHeight);
@@ -6130,14 +6181,20 @@
                         <!-- Populated by JS -->
                     </div>
 
-                    <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
+                    <!-- Divider + launch window are wrapped together so both can be hidden as one
+                         unit once the rocket is actually flying: a launch WINDOW is only
+                         meaningful while waiting for liftoff, and dropping it frees the space for
+                         the live mission status above (see setCountdownLabel). -->
+                    <div id="hero-launch-window-block" class="w-full">
+                        <div class="w-full h-px bg-zinc-800/60 my-4 transition-colors duration-500"></div>
 
-                    <div id="i18n-launch-window"
-                        class="text-[11px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5 notranslate"
-                        translate="no" lang="en">LAUNCH WINDOW</div>
-                    <div id="hero-window"
-                        class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500 notranslate"
-                        dir="ltr" translate="no">--:-- - --:--</div>
+                        <div id="i18n-launch-window"
+                            class="text-[11px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5 notranslate"
+                            translate="no" lang="en">LAUNCH WINDOW</div>
+                        <div id="hero-window"
+                            class="font-mono text-sm sm:text-base font-semibold text-zinc-300 tracking-wider transition-colors duration-500 notranslate"
+                            dir="ltr" translate="no">--:-- - --:--</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -15796,6 +15853,15 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // launched (there's nothing to explain about a countdown that hasn't happened
                 // yet) - hidden the rest of the time, same as the label reverting above.
                 if (missionStatusInfoIcon) missionStatusInfoIcon.classList.toggle('hidden', !showMissionStatus);
+                // "Launch window" only means something before liftoff - hide it once the mission
+                // is flying and let the status text below claim the freed space. Restored
+                // automatically whenever this runs for a not-yet-launched mission, same as the
+                // label itself, so a mission switch needs no separate reset.
+                const launchWindowBlock = document.getElementById('hero-launch-window-block');
+                if (launchWindowBlock) launchWindowBlock.classList.toggle('hidden', !!showMissionStatus);
+                if (countdownLabelEl) countdownLabelEl.classList.toggle('mission-status-mode', !!showMissionStatus);
+                const countdownBoxEl = document.getElementById('countdown-box');
+                if (countdownBoxEl) countdownBoxEl.classList.toggle('mission-status-mode', !!showMissionStatus);
                 if (showMissionStatus) {
                     renderMissionStatusBreakdown(document.documentElement.lang);
                     if (typeof elapsedSec === 'number') updateMissionStatusBreakdownProgress(elapsedSec);
