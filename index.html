@@ -7502,7 +7502,7 @@
                         </div>
                         <img id="modal-patch" src="" alt=""
                             class="hidden shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full object-contain border border-transparent cursor-pointer hover:border-emerald-500/50 transition-colors"
-                            onclick="openPatchLightbox(this.src, this.alt, event)"
+                            onclick="openPatchLightbox(this.src, this.dataset.rawName || this.alt, event)"
                             onerror="this.classList.add('hidden')">
                     </div>
                 </div>
@@ -14590,6 +14590,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 if (m.patch) {
                     modalPatchEl.src = m.patch;
                     modalPatchEl.alt = m.name;
+                    // The lightbox this badge opens reads the mission name from here, NOT from
+                    // alt: Google's widget translates alt attributes too, so by the time the
+                    // badge is clicked alt has already become "חללית | טיסה 14" - the English
+                    // "Starship" is gone, and the localizer downstream has nothing left to
+                    // correct. data-* attributes are not translated, so this keeps a clean copy.
+                    modalPatchEl.dataset.rawName = m.name;
                     modalPatchEl.classList.remove('hidden');
                 } else {
                     modalPatchEl.removeAttribute('src');
