@@ -3393,6 +3393,31 @@
             color: #10b981 !important;
         }
 
+        /* The two context rings (MEO/GEO) and their labels are drawn in dark greys picked against
+           the light theme, where they read fine. On every dark-background mode they came out
+           nearly invisible - the labels especially. Lifted per theme here rather than by editing
+           the SVG's own attributes, so the light theme keeps exactly the values it already had.
+           The LEO ring is deliberately untouched: it is the highlighted one. */
+        #orbit-ring-MEO { stroke: #8b8b94 !important; opacity: 0.85 !important; }
+        #orbit-label-MEO { fill: #c4c4cc !important; }
+        #orbit-ring-GEO { stroke: #6e6e78 !important; opacity: 0.75 !important; }
+        #orbit-label-GEO { fill: #a8a8b2 !important; }
+
+        body.light-theme #orbit-ring-MEO { stroke: #52525b !important; opacity: 0.5 !important; }
+        body.light-theme #orbit-label-MEO { fill: #71717a !important; }
+        body.light-theme #orbit-ring-GEO { stroke: #3f3f46 !important; opacity: 0.4 !important; }
+        body.light-theme #orbit-label-GEO { fill: #52525b !important; }
+
+        body.mars-theme #orbit-ring-MEO { stroke: #c98a6a !important; opacity: 0.85 !important; }
+        body.mars-theme #orbit-label-MEO { fill: #e4b79c !important; }
+        body.mars-theme #orbit-ring-GEO { stroke: #a86f52 !important; opacity: 0.75 !important; }
+        body.mars-theme #orbit-label-GEO { fill: #cf9d84 !important; }
+
+        body.moon-theme #orbit-ring-MEO { stroke: #8fa4c4 !important; opacity: 0.85 !important; }
+        body.moon-theme #orbit-label-MEO { fill: #c3d2e6 !important; }
+        body.moon-theme #orbit-ring-GEO { stroke: #71869f !important; opacity: 0.75 !important; }
+        body.moon-theme #orbit-label-GEO { fill: #a5b6cc !important; }
+
         /* Accent driven by a variable so the highlight matches whichever mode is active - it was
            hardcoded green, which clashed in Mars/Moon and was needlessly loud in light mode. */
         .fleet-card-flash {
@@ -7948,24 +7973,50 @@
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
         <div id="orbit-modal-content" onclick="event.stopImmediatePropagation()"
             class="dossier-modal-shell card-modal-scroll bg-zinc-900 border w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col my-auto transition-colors duration-500">
-            <div
-                class="sticky top-0 z-40 px-5 py-4 sm:px-6 sm:py-5 flex justify-between items-center bg-zinc-950 border-b border-zinc-800/80 transition-colors duration-500">
-                <div>
-                    <div id="orbit-modal-title" translate="no" class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
-                        LEO (Low Earth Orbit)</div>
-                    <div id="i18n-orbit-dossier"
-                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
-                        translate="no" lang="en">ORBITAL MECHANICS DOSSIER</div>
-                </div>
-                <button onclick="closeOrbitSpecs()" title="Close"
-                    class="text-2xl sm:text-3xl px-3 py-1 text-zinc-400 md:hover:text-white transition-colors">&times;</button>
+            <!-- Floating close button + full-bleed hero, matching the rocket/site/landing modals
+                 (this one used to have its own bar-style header with the diagram boxed off
+                 below it). -->
+            <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
+                <button onclick="closeOrbitSpecs()"
+                    class="mission-modal-close flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-2 border-emerald-400 text-emerald-400 md:hover:bg-emerald-400/10 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors"
+                    title="Close">
+                    <i class="fa-solid fa-xmark text-lg leading-none"></i>
+                </button>
             </div>
-
-            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
-                <!-- SVG Animation Box -->
-                <div
-                    class="relative rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950 h-64 sm:h-80 flex items-center justify-center transition-colors duration-500 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
-                    <svg viewBox="0 0 400 300" class="w-full h-full max-w-full max-h-full">
+            <!-- No background class of its own: it inherits the modal shell's, so the diagram
+                 area and the panel below it are always the same surface. Giving it bg-zinc-950
+                 made it a visibly greyer block than the white body beneath in light mode.
+                 Taller box on phones (4:3) than on desktop (16:9): the caption underneath keeps
+                 roughly the same physical height on both, so on a 16:9 phone hero (~200px) it ate
+                 a third of the frame and forced the diagram down to a size that looked lost on
+                 desktop too. Giving the phone more vertical room lets one diagram size work on
+                 both, instead of shrinking it everywhere to satisfy the tighter case. -->
+            <div class="relative overflow-hidden aspect-[4/3] sm:aspect-video border-b border-zinc-800/80 shrink-0">
+                <!-- 16:9 window (matches the hero's aspect-video, so no letterboxing) with extra
+                     empty height BELOW the diagram. The drawing itself is untouched - rings stay
+                     centred on their original cx=200/cy=150 and the animations are unchanged -
+                     the viewBox just extends past the bottom of the artwork. That reserved strip
+                     is what the title and its fade sit over: at 300 tall the GEO ring reached
+                     y=290 of 300, so the fade and title were painted straight over the bottom of
+                     the circle and it read as cut off. At 420 tall the artwork ends at 69% of the
+                     height, leaving the lower third clear for the caption.
+                     Deliberately NOT matched to the container's 16:9. Widening it to 16:9 avoided
+                     letterboxing but padded ~33% of the width with empty space on each side and
+                     left the diagram tiny; with a flat themed background that letterboxing is
+                     invisible anyway, so the box stays tight around the artwork (x 60-340,
+                     y 10-290) and the drawing scales to fill.
+                     The room for the caption is made by insetting this element's BOTTOM rather
+                     than padding the viewBox: the caption is ~70px tall on every screen, while
+                     the hero's height is not, so a proportional reserve inside the viewBox was
+                     either too tight on a phone or left a large dead gap on desktop. A fixed
+                     inset tracks the thing it is actually reserving space for.
+                     x origin 40 + half of 320 = 200, matching the rings' own centre. -->
+                <!-- Height given explicitly rather than via a bottom inset: an <svg> is a
+                     REPLACED element with an intrinsic ratio from its viewBox, so with height
+                     auto the browser derives the height from the width and ignores `bottom`
+                     entirely - the drawing came out ~1.7x the hero's height and overflowed. -->
+                <svg viewBox="40 0 320 300"
+                    class="absolute top-0 left-0 w-full h-[calc(100%-74px)] sm:h-[calc(100%-82px)]"
                         <!-- Earth -->
                         <circle cx="200" cy="150" r="25" fill="#0ea5e9" opacity="0.9" />
                         <text x="200" y="153" text-anchor="middle" fill="#fff" font-size="10" font-family="monospace"
@@ -8001,9 +8052,24 @@
                         </circle>
                         <text id="orbit-label-GEO" x="200" y="22" text-anchor="middle" fill="#52525b" font-size="8"
                             letter-spacing="1">GEO</text>
-                    </svg>
+                </svg>
+                <!-- Deliberately NO modal-hero-fade here, unlike the photo-backed modals. That
+                     gradient exists to keep white caption text legible over a photograph; this
+                     hero is a flat themed colour, and the title already contrasts with it in all
+                     four modes on its own. Measured on the real element, the gradient is ~45%
+                     opaque at the height the outer GEO ring's lower arc sits, which quietly
+                     erased the bottom of the circle and made the diagram look cropped. -->
+                <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6 pointer-events-none">
+                    <div id="orbit-modal-title" translate="no"
+                        class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
+                        LEO (Low Earth Orbit)</div>
+                    <div id="i18n-orbit-dossier"
+                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                        translate="no" lang="en">ORBITAL MECHANICS DOSSIER</div>
                 </div>
+            </div>
 
+            <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 <!-- Specs Grid -->
                 <div
                     class="grid grid-cols-3 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
