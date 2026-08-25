@@ -4734,7 +4734,9 @@
     };
     const inkOverflows = () => isPlainTextEl && inkWidth() > el.clientWidth - SAFETY;
 
-    while ((inkOverflows() || el.scrollWidth > el.clientWidth + 1) && size > minSize && guard < 150) {
+    // Guard stays at the original 100 iterations: raising it changed how far a very long title
+    // could shrink for EVERY element, not just the hero, which is outside what was asked for.
+    while ((inkOverflows() || el.scrollWidth > el.clientWidth + 1) && size > minSize && guard < 100) {
         size -= 0.4;
         el.style.fontSize = size + 'px';
         void el.offsetWidth; // כפיית reflow
