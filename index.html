@@ -3318,6 +3318,20 @@
             overflow-y: auto !important;
             overscroll-behavior: contain;
         }
+        /* Invisible bridge across the gap between the label/icon and the panel. The panel is a
+           child of the hovered wrapper, so hovering the panel itself keeps it open - but the
+           0.5rem margin between them is NOT part of either, so the pointer left the wrapper
+           mid-way and the panel vanished before it could be reached (and therefore scrolled).
+           This pseudo-element makes that gap part of the panel's own hover area. Sized off the
+           same margin value, and pointer-events stay on so it actually registers. */
+        #mission-status-breakdown::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            inset-inline-end: -0.75rem;
+            width: 0.75rem;
+        }
 
         /* Mission-status mode: the launch-window block is gone, so the status headline and its
            label take that space instead of leaving the card half empty. Sizes stay in rem/px
@@ -3329,6 +3343,18 @@
             line-height: 1.1 !important;
             padding-top: 0.35rem !important;
             padding-bottom: 0.35rem !important;
+        }
+        /* The card is sized by its content, so a long headline made the whole box grow - English
+           "MISSION IN PROGRESS" pushed it from its usual 390px out to 673px, which both looked
+           oversized and stole the width the mission title needs (that title then truncated).
+           Capping the card near its normal countdown-mode width keeps the hero layout stable;
+           fitMissionStatusText() then shrinks the headline to whatever fits inside this. Only
+           applied where the hero is a side-by-side row - below that the card is full-width
+           anyway and this would do nothing but constrain it wrongly. */
+        @media (min-width: 1024px) {
+            #countdown-box.mission-status-mode {
+                max-width: 26rem !important;
+            }
         }
         #i18n-countdown-to-launch.mission-status-mode {
             font-size: 15px !important;
@@ -4117,6 +4143,50 @@
         // the bottom with its last milestones unreachable. Runs on both open paths - the desktop
         // CSS :hover (via mouseenter on the wrapper, since no JS is otherwise involved there) and
         // the mobile tap toggle - and on resize while it's open.
+        // Shrinks the big hero status headline until it fits the card's width. The enlarged
+        // mission-status size is a viewport-based clamp, which is fine for a short localized
+        // string but far too big for a long English one - "MISSION IN PROGRESS" ran straight past
+        // both edges of the card at the top of that clamp. fitTitleOneLine can't be reused here:
+        // it writes a plain inline font-size, which loses to the !important rule that sets this
+        // element's size in the first place, so the size is written with important as well.
+        function fitMissionStatusText() {
+            const el = document.getElementById('hero-countdown');
+            const box = document.getElementById('countdown-box');
+            if (!el || !box) return;
+            el.style.removeProperty('font-size');
+            if (!box.classList.contains('mission-status-mode')) return; // digits mode: leave as-is
+            // Measured with a Range over the element's own contents, NOT scrollWidth: this
+            // element is a centered flex row with no overflow clipping, so an oversized headline
+            // spills out past BOTH edges - and scrollWidth reports nothing for the part hanging
+            // off the start side, so it stayed exactly equal to clientWidth while the text was
+            // visibly running past the card. A Range measures the rendered text itself.
+            const textWidth = () => {
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    return range.getBoundingClientRect().width;
+                } catch (e) { return 0; }
+            };
+            // Compared against the CARD's inner width, not the headline element's own: that
+            // element shrink-wraps its text (its clientWidth always equals the text width), so
+            // measuring it against itself could never detect an overflow - the two were equal
+            // even while the words were visibly running past both edges of the card.
+            const boxCs = getComputedStyle(box);
+            const avail = box.clientWidth
+                - (parseFloat(boxCs.paddingLeft) || 0)
+                - (parseFloat(boxCs.paddingRight) || 0);
+            if (!avail || avail <= 0) return;
+            let size = parseFloat(getComputedStyle(el).fontSize) || 40;
+            let guard = 0;
+            while (textWidth() > avail - 2 && size > 12 && guard < 150) {
+                size -= 1;
+                el.style.setProperty('font-size', size + 'px', 'important');
+                void el.offsetWidth; // force reflow so the next measurement is current
+                guard++;
+            }
+        }
+        window.addEventListener('resize', fitMissionStatusText);
+
         function clampMissionBreakdownHeight() {
             const popup = document.getElementById('mission-status-breakdown');
             // Tested against the COMPUTED display, not the "hidden" class: the desktop hover path
@@ -15862,6 +15932,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 if (countdownLabelEl) countdownLabelEl.classList.toggle('mission-status-mode', !!showMissionStatus);
                 const countdownBoxEl = document.getElementById('countdown-box');
                 if (countdownBoxEl) countdownBoxEl.classList.toggle('mission-status-mode', !!showMissionStatus);
+                // Leaving mission-status mode: drop the shrink-to-fit size fitMissionStatusText
+                // may have written, so the countdown digits go back to their own CSS size.
+                if (!showMissionStatus && el) el.style.removeProperty('font-size');
                 if (showMissionStatus) {
                     renderMissionStatusBreakdown(document.documentElement.lang);
                     if (typeof elapsedSec === 'number') updateMissionStatusBreakdownProgress(elapsedSec);
@@ -16001,6 +16074,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         // all of them - the timeline appeared frozen until entry burn at T+361s.
                         setCountdownLabel(true, -diff / 1000);
                         el.innerHTML = el.dataset.launchNowText || 'LIFTOFF';
+                        fitMissionStatusText();
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                         stickyEls.forEach(stEl => {
                             stEl.innerText = el.dataset.launchNowText || 'LIFTOFF';
@@ -16020,6 +16094,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
                         setCountdownLabel(true, elapsedSec);
                         el.innerHTML = displayText;
+                        fitMissionStatusText();
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                         stickyEls.forEach(stEl => {
                             stEl.innerText = displayText;
