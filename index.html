@@ -4522,6 +4522,24 @@
             // clashes with the vehicle designation used everywhere else on the site (V3).
             [/(סטארשיפ|Starship)\s*גרסה\s*(\d+)/g, '$1 V$2'],
         ];
+        // String-level form of the DOM pass below. Needed because by the time the text is in the
+        // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
+        // sentence like "14th test flight of the two-stage Starship launch vehicle" into several
+        // separate text nodes. The DOM walker visits those nodes one at a time, so any rule whose
+        // pattern spans the vehicle name can never match there - only the single-word fallback
+        // fired, which turned "שני השלבים סטארשיפ רכב שיגור" into the still-wrong "שני השלבים
+        // סטארשיפ משגר". Applying the same rules to the whole translated string BEFORE it is
+        // inserted (and therefore before it is split) lets the word-order rules actually match.
+        function fixMistranslatedPhrasesText(text, currentLang) {
+            const key = (currentLang || '').split('-')[0];
+            if (!text || (key !== 'he' && key !== 'iw')) return text;
+            let out = text;
+            PHRASE_FIXES_HE.forEach(([pattern, replacement]) => {
+                out = out.replace(pattern, replacement);
+            });
+            return out;
+        }
+
         function fixMistranslatedPhrases(root, currentLang) {
             if (!root) return;
             const key = currentLang.split('-')[0];
@@ -4625,10 +4643,36 @@
         setTimeout(resyncTitleFitsForFonts, 1500);
 
         function applyPhraseFixes(currentLang) {
+            // MUST run before the per-text-node pass below. That pass would otherwise apply the
+            // single-word "רכב שיגור" fallback to the isolated fragment first, which repairs the
+            // wrong word but leaves the wrong word ORDER - and destroys the longer pattern this
+            // function needs in order to fix the order at all.
+            fixSplitPhrasesInDescriptions(currentLang);
             fixMistranslatedPhrases(document.getElementById('missions-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('past-launches-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('mission-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('landing-modal'), currentLang);
+        }
+
+        // Card descriptions are inserted as raw English and left to Google's on-page widget to
+        // translate in place - unlike the modal's description, which we translate ourselves. Once
+        // the widget has run, localizeStarshipTerm wraps each "Starship" in its own <span>, which
+        // chops the sentence into several text nodes. fixMistranslatedPhrases walks nodes one at
+        // a time, so a correction spanning the vehicle name can't match there: on the Starship
+        // card only the single-word fallback applied, leaving the still-wrong "שני השלבים
+        // סטארשיפ משגר". This works on the element's combined text instead, and only rewrites
+        // when a rule actually changed something. Writing plain text drops the term spans, which
+        // is harmless here - the word is already in Hebrew by then, so there is nothing left for
+        // the widget to mistranslate and nothing for localizeStarshipTerm to re-wrap.
+        function fixSplitPhrasesInDescriptions(currentLang) {
+            const key = (currentLang || '').split('-')[0];
+            if (key !== 'he' && key !== 'iw') return;
+            document.querySelectorAll('#missions-grid .mission-card-desc, #past-launches-grid .mission-card-desc').forEach(el => {
+                if (el.children.length === 0) return; // single node - the walker above already handled it
+                const original = el.textContent;
+                const fixed = fixMistranslatedPhrasesText(original, currentLang);
+                if (fixed !== original) el.textContent = fixed;
+            });
         }
 
         // "Starship" is a brand name, not a common noun, so Google Translate's automatic
@@ -5127,6 +5171,11 @@
                         const starshipTerm = STARSHIP_I18N[langKey] || STARSHIP_I18N.en;
                         translated = translated.replace(new RegExp(STARSHIP_MT_PLACEHOLDER, 'gi'), starshipTerm);
                     }
+                    // Applied here, on the whole sentence, rather than only after insertion:
+                    // once this text reaches the page it gets split across several text nodes by
+                    // the Starship-term wrapping, and multi-word corrections can no longer match.
+                    // See fixMistranslatedPhrasesText's own comment.
+                    translated = fixMistranslatedPhrasesText(translated, langKey);
                     missionDescTranslationCache.set(cacheKey, translated);
                     return translated;
                 })
@@ -11840,7 +11889,17 @@
             // mission's id whenever a good source provides them, and reuse the last-known good
             // value instead of blanking a field the current source doesn't have.
             let missionType = (launch.mission && launch.mission.type) || '';
+            // LL2 names the Starship program "SpaceX Starship", while every other SpaceX program
+            // it lists is just the program itself ("Starlink", "Commercial Crew Program"). That
+            // made the Starship modal read "Program: SpaceX Starship" against "Program: Starlink"
+            // elsewhere - the provider is already stated on its own line below, so the prefix is
+            // redundant. Stripped only when a program name would still be left over afterwards,
+            // so a program genuinely called just "SpaceX" (if one ever appears) isn't blanked.
             let programNames = Array.isArray(launch.program) ? launch.program.map(p => p.name).filter(Boolean) : [];
+            programNames = programNames.map(n => {
+                const stripped = n.replace(/^\s*SpaceX\s+/i, '').trim();
+                return stripped ? stripped : n;
+            });
             let missionAgencies = (launch.mission && Array.isArray(launch.mission.agencies)) ? launch.mission.agencies.map(a => a.name).filter(Boolean) : [];
 
             // Catches a real, separately-observed gap: even a genuine, un-degraded LL2 response
@@ -11868,6 +11927,18 @@
             if (!missionType && cachedPurpose.missionType) missionType = cachedPurpose.missionType;
             if (programNames.length === 0 && cachedPurpose.programNames) programNames = cachedPurpose.programNames;
             if (missionAgencies.length === 0 && cachedPurpose.missionAgencies) missionAgencies = cachedPurpose.missionAgencies;
+
+            // Last resort for the partners line: LL2 leaves mission.agencies[] empty on SpaceX's
+            // own in-house flights (Starship test flights have nobody else involved to list), so
+            // that row simply vanished on those missions while a Starlink flight right beside it
+            // showed "SpaceX". The launch provider is the operator either way, so fall back to it
+            // rather than dropping the row - this only fires when nothing at all was found, so a
+            // mission with real partners (NASA, SES...) is untouched, and SpaceX is never appended
+            // alongside them (see KNOWN_AGENCY_NAMES, which excludes it from detection on purpose).
+            if (missionAgencies.length === 0) {
+                const providerName = (launch.launch_service_provider && launch.launch_service_provider.name) || '';
+                if (providerName) missionAgencies = [providerName];
+            }
 
             if (missionType || programNames.length > 0 || missionAgencies.length > 0) {
                 purposeCache[purposeCacheKey] = { missionType, programNames, missionAgencies };
