@@ -14832,7 +14832,16 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // button hides when opening the SAME shared player - so closing the video after
                 // opening it via "Watch the Launch" left that button permanently hidden, for
                 // every mission modal opened for the rest of the session (it's a shared element,
-                // not per-mission). Now restores everything either open-path can hide.
+                // not per-mission).
+                //
+                // That restore was unconditional, though - a PURELY live mission (no archived
+                // video at all, wireModalYoutubePlayer never called for it - openMissionModal
+                // only calls that for isPastMission && m.youtubeId) still hit this same shared
+                // close handler after watching via the LIVE button, and the unconditional restore
+                // force-revealed "Watch the Launch" anyway: a second, unrelated play button
+                // sitting right next to the real live one, for a mission that was never eligible
+                // for it in the first place. Gated now on the archiveEligible flag openMissionModal
+                // sets only when it actually wired that path for the CURRENT mission.
                 videoCloseBtn.onclick = function () {
                     stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
                     if (videoSection) videoSection.classList.add('hidden');
@@ -14840,11 +14849,13 @@ fitTitleOneLine(document.getElementById('hero-name'));
                         videoUnconfirmedOverlay.classList.add('hidden');
                         videoUnconfirmedOverlay.classList.remove('flex');
                     }
-                    if (videoBtnWrap) videoBtnWrap.classList.remove('hidden');
-                    const btnRow = document.getElementById('modal-video-btn-row');
-                    if (btnRow) btnRow.classList.remove('hidden');
-                    const watchBtn = document.getElementById('modal-watch-launch-btn');
-                    if (watchBtn) watchBtn.classList.remove('hidden');
+                    if (videoBtnWrap && videoBtnWrap.dataset.archiveEligible === '1') {
+                        videoBtnWrap.classList.remove('hidden');
+                        const btnRow = document.getElementById('modal-video-btn-row');
+                        if (btnRow) btnRow.classList.remove('hidden');
+                        const watchBtn = document.getElementById('modal-watch-launch-btn');
+                        if (watchBtn) watchBtn.classList.remove('hidden');
+                    }
                     resetVideoControlsOverlay();
                 };
             }
@@ -15096,7 +15107,14 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
             if (videoSection) videoSection.classList.add('hidden');
-            if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
+            if (videoBtnWrap) {
+                videoBtnWrap.classList.add('hidden');
+                // Cleared here, set back below only for a mission that actually wires the
+                // archive-replay path - see wireModalLiveButton's close handler, which checks
+                // this flag before deciding whether it's allowed to re-reveal this (shared,
+                // singleton) row for the CURRENT mission.
+                delete videoBtnWrap.dataset.archiveEligible;
+            }
             if (videoYtLink) videoYtLink.classList.add('hidden');
             if (videoFallback) videoFallback.classList.add('hidden');
             window._pendingMissionYoutubeId = null;
@@ -15106,6 +15124,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             if (isPastMission && m.youtubeId) {
                 wireModalYoutubePlayer(m.youtubeId, 'https://www.youtube.com/watch?v=' + m.youtubeId);
+                if (videoBtnWrap) videoBtnWrap.dataset.archiveEligible = '1';
             } else if (isPastMission && m.videoUrl && (m.videoUrl.includes('x.com') || m.videoUrl.includes('twitter.com') || m.videoUrl.includes('youtube.com'))) {
                 if (videoFallback && videoFallbackLink) {
                     videoFallbackLink.href = m.videoUrl;
