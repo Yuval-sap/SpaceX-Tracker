@@ -124,6 +124,17 @@
         src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&hl=en"></script>
 
     <meta charset="UTF-8">
+    <!-- This whole site is a single static index.html with no build step and no versioned
+         filenames - every fix ships by overwriting this exact file in place, so a browser (or
+         CDN) that caches it aggressively means visitors keep seeing the pre-fix version until
+         they happen to hard-refresh. These headers ask the browser to always revalidate with the
+         server instead of serving a cached copy - a real server can still override this with its
+         own Cache-Control response header (which wins over an in-document meta tag), but for any
+         static host that doesn't set one explicitly, this is the only lever available from
+         inside the file itself. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpaceX Launch Tracker • Mission Control</title>
 
@@ -244,11 +255,31 @@
 #hero-name {
     display: block !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
+    /* Split axis-specific rather than the shorthand `overflow: hidden` - the shrink-to-fit loop
+       in fitTitleOneLine() only ever needs HORIZONTAL clipping (its overflow check is
+       scrollWidth > clientWidth); the shorthand clipped vertically too as an unrelated side
+       effect, silently slicing off the top/bottom of any glyph whose ink box doesn't line up
+       exactly with Tailwind's text-Nxl line-height:1 (measured live: text-5xl's 48px line-height
+       against this font's real ~54px content height - a descender like the "y" in "Heavy" losing
+       its tail is exactly this). `clip`, not `visible`, on the Y axis: CSS's overflow spec forces
+       a `visible` value back to a computed `auto` whenever the OTHER axis is non-visible (here,
+       overflow-x:hidden) - and `auto` genuinely means "show a scrollbar/stepper if content
+       overflows," which Windows Chrome did, literally, for the ~1px of residual overflow the
+       shrink-loop's own tolerance allows (scrollWidth > clientWidth + 1): a tiny native up/down
+       spinner rendered right next to the title (reported live). `clip` isn't subject to that
+       auto-computation rule at all - it clips without ever creating a scrollable region, so no
+       affordance can appear regardless of any residual sub-pixel overflow. Same axis-split
+       pattern already used for #mission-status-breakdown below, for the same reason. */
+    overflow-x: hidden !important;
+    overflow-y: clip !important;
     text-overflow: clip !important;
     max-width: 100% !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    /* Kept in addition to the axis split above - gives the line box a bit more natural room so
+       descenders/overshoot rarely need to rely on overflow-y being visible in the first place.
+       Unitless so it scales with fitTitleOneLine()'s dynamic font-size changes. */
+    line-height: 1.2 !important;
 }
 
 @media (max-width: 640px) {
