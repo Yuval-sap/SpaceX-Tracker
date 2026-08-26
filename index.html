@@ -4308,8 +4308,10 @@
         // website loads its "Launch, Landing, and Deployment" timeline for a mission from these
         // exact endpoints client-side, and - confirmed live, from this browser, against the real
         // endpoints - they answer real cross-origin fetches with actual data, no proxy needed.
-        // Two calls: the tiles list to find whichever mission is currently first (its "link"
-        // field is the slug the detail endpoint needs), then that mission's own detail document,
+        // Two calls: the tiles list to find whichever mission actually launches soonest (see
+        // pickSoonestUpcomingTile below - NOT just the first array element; confirmed live this
+        // array isn't reliably date-sorted) - its "link" field is the slug the detail endpoint
+        // needs - then that mission's own detail document,
         // which carries postLaunchTimeline.timelineEntries as [{time: "00:01:08", description}]
         // - note TIME IS A STRING here, not seconds, hence parseTimeToSeconds below. If either
         // call fails, times out, or the resulting title/slug doesn't obviously match the mission
@@ -4342,12 +4344,33 @@
             return parts[0] * 3600 + parts[1] * 60 + parts[2];
         }
 
+        // Picks whichever tile has the EARLIEST real launchDate+launchTime, not just the first
+        // array element - confirmed live that this array is NOT reliably sorted chronologically:
+        // several Starlink tiles with launchDate/launchTime both null (not yet scheduled to an
+        // exact time - presumably placeholders) sat ahead of Roman, which had a real, near-term
+        // confirmed date, in the raw response. A null-dated tile is, by definition, not
+        // confirmed to be sooner than one that has a real date, so it's skipped entirely rather
+        // than being treated as "soonest of all" by some other ordering accident.
+        function pickSoonestUpcomingTile(tiles) {
+            let best = null;
+            let bestTime = Infinity;
+            for (const t of tiles) {
+                if (!t || !t.link || !t.launchDate) continue;
+                const parsed = Date.parse(t.launchDate + 'T' + (t.launchTime || '00:00:00') + 'Z');
+                if (isNaN(parsed) || parsed >= bestTime) continue;
+                best = t;
+                bestTime = parsed;
+            }
+            return best;
+        }
+
         function fetchRealMissionTimeline() {
             fetch(SPACEX_UPCOMING_TILES_URL, { mode: 'cors' })
                 .then(res => { if (!res.ok) throw new Error('not ok'); return res.json(); })
                 .then(tiles => {
-                    if (!Array.isArray(tiles) || !tiles.length || !tiles[0].link) throw new Error('no upcoming tiles');
-                    const nextTile = tiles[0];
+                    if (!Array.isArray(tiles) || !tiles.length) throw new Error('no upcoming tiles');
+                    const nextTile = pickSoonestUpcomingTile(tiles);
+                    if (!nextTile) throw new Error('no tile with a confirmed date');
                     return fetch(SPACEX_MISSION_DETAIL_URL_BASE + encodeURIComponent(nextTile.link), { mode: 'cors' })
                         .then(res => { if (!res.ok) throw new Error('not ok'); return res.json(); })
                         .then(mission => {
@@ -4365,17 +4388,32 @@
         fetchRealMissionTimeline();
         setInterval(fetchRealMissionTimeline, REAL_MISSION_TIMELINE_REFRESH_MS);
 
+        // Reduces a mission name/title/slug to lowercase words separated by single spaces -
+        // this app's own naming uses "|" and spaces ("Starship | Flight 14"), SpaceX's CMS uses
+        // dashes in slugs ("starship-flight-14") and sometimes different spacing/punctuation in
+        // titles - none of that punctuation is meaningful for deciding "is this the same
+        // mission", but a plain substring check treats it as a hard mismatch. Confirmed live:
+        // without this, "Starship | Flight 14" vs SpaceX's own "starship-flight-14"/"Starship
+        // Flight 14" failed to match purely because of the "|" and dash, not because they're
+        // actually different missions - exactly the kind of one-off breakage that would have
+        // meant coming back to fix this again for every future Starship launch.
+        function normalizeForMatch(str) {
+            return (str || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        }
+
         // True only when realMissionTimelineData looks like it's actually describing the SAME
         // mission currently shown in the hero - a plain substring check both ways (either string
         // could be the more/less specific one, e.g. "Roman" vs "Nancy Grace Roman Space
-        // Telescope"), case-insensitive. Guards against briefly-stale feed data (mission just
-        // changed in the hero, feed hasn't caught up yet) silently attaching the WRONG mission's
-        // timeline instead of just falling back like it would if the feed were simply absent.
+        // Telescope"), on normalized text so punctuation differences between the two naming
+        // conventions can't cause a false mismatch. Guards against briefly-stale feed data
+        // (mission just changed in the hero, feed hasn't caught up yet) silently attaching the
+        // WRONG mission's timeline instead of just falling back like it would if the feed were
+        // simply absent.
         function realTimelineMatchesMission(missionName) {
             if (!realMissionTimelineData || !missionName) return false;
-            const a = (realMissionTimelineData.title || '').toLowerCase();
-            const b = missionName.toLowerCase();
-            const slug = (realMissionTimelineData.slug || '').toLowerCase();
+            const a = normalizeForMatch(realMissionTimelineData.title);
+            const b = normalizeForMatch(missionName);
+            const slug = normalizeForMatch(realMissionTimelineData.slug);
             if (a && (a.includes(b) || b.includes(a))) return true;
             if (slug && b.includes(slug)) return true;
             // SpaceX's own CMS title for a recurring mission family is often fully generic
@@ -4384,10 +4422,11 @@
             // name ("Falcon 9 | Starlink Group 15-23") even though it's plainly the same launch.
             // The SLUG usually still carries the flight-specific identifier though (e.g.
             // "sl-15-23"), just prefixed with a short program code the app's own naming doesn't
-            // use - stripping that leading "word-" prefix and matching just the remainder
-            // ("15-23") catches this. Length-guarded so a short/generic leftover after stripping
-            // (a single digit, say) can't loosely match all sorts of unrelated mission names.
-            const slugSuffix = slug.replace(/^[a-z]+-/, '');
+            // use - stripping that leading "word " prefix (normalized: dash already became a
+            // space above) and matching just the remainder ("15 23") catches this. Length-guarded
+            // so a short/generic leftover after stripping (a single digit, say) can't loosely
+            // match all sorts of unrelated mission names.
+            const slugSuffix = slug.replace(/^[a-z0-9]+ /, '');
             if (slugSuffix.length >= 4 && slugSuffix !== slug && b.includes(slugSuffix)) return true;
             return false;
         }
