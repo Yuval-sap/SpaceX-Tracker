@@ -4303,19 +4303,256 @@
             return { label, tSeconds: current.t };
         }
 
+        // ===== Real per-mission timeline, fetched directly from SpaceX's own public CMS =====
+        // Optional enhancement layered on top of STARLINK_ASDS_TIMELINE below: SpaceX's own
+        // website loads its "Launch, Landing, and Deployment" timeline for a mission from these
+        // exact endpoints client-side, and - confirmed live, from this browser, against the real
+        // endpoints - they answer real cross-origin fetches with actual data, no proxy needed.
+        // Two calls: the tiles list to find whichever mission is currently first (its "link"
+        // field is the slug the detail endpoint needs), then that mission's own detail document,
+        // which carries postLaunchTimeline.timelineEntries as [{time: "00:01:08", description}]
+        // - note TIME IS A STRING here, not seconds, hence parseTimeToSeconds below. If either
+        // call fails, times out, or the resulting title/slug doesn't obviously match the mission
+        // currently shown in the hero (a live mission switch racing a request in flight, most
+        // likely), this silently falls back to the existing STARLINK_ASDS_TIMELINE/plain-
+        // "MISSION IN PROGRESS" behavior further down, exactly as if this feature didn't exist.
+        const SPACEX_UPCOMING_TILES_URL = 'https://content.spacex.com/api/spacex-website/launches-page-tiles/upcoming';
+        const SPACEX_MISSION_DETAIL_URL_BASE = 'https://content.spacex.com/api/spacex-website/missions/';
+        // Hourly, not by-the-minute: postLaunchTimeline itself is published once per mission and
+        // doesn't change afterward (T+ events for a given flight profile are fixed well ahead of
+        // launch) - it's exactly as static, per mission, as the hand-written
+        // STARLINK_ASDS_TIMELINE below already is. The only thing that could ever change between
+        // refreshes is T0 itself (a delay/reschedule) or which mission is "next" at all, and the
+        // COUNTDOWN already tracks that live from the app's own existing mission data, not from
+        // this feed. Polling every 60s bought nothing but a much higher chance of SpaceX's own
+        // CDN rate-limiting or blocking this site outright.
+        const REAL_MISSION_TIMELINE_REFRESH_MS = 60 * 60 * 1000;
+        let realMissionTimelineData = null; // {title, slug, postLaunchTimeline: [{seconds, event}]}, or null if never fetched/unavailable
+        // Cache of this data's event labels translated into the CURRENT language - rebuilt only
+        // on an actual language change or new fetch, not on every per-second tick that reads it
+        // (same reasoning as lastRenderedMissionBreakdownLang just below).
+        const realMissionTimelineTranslated = { lang: null, entries: null, forData: null };
+
+        // "00:01:08" -> 68, "- 00:00:06" -> 6 (pre-launch times carry a leading "-"; harmless to
+        // strip here even though only postLaunchTimeline is actually used today).
+        function parseTimeToSeconds(timeStr) {
+            if (!timeStr) return NaN;
+            const parts = timeStr.trim().replace(/^-\s*/, '').split(':').map(Number);
+            if (parts.length !== 3 || parts.some(isNaN)) return NaN;
+            return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+
+        function fetchRealMissionTimeline() {
+            fetch(SPACEX_UPCOMING_TILES_URL, { mode: 'cors' })
+                .then(res => { if (!res.ok) throw new Error('not ok'); return res.json(); })
+                .then(tiles => {
+                    if (!Array.isArray(tiles) || !tiles.length || !tiles[0].link) throw new Error('no upcoming tiles');
+                    const nextTile = tiles[0];
+                    return fetch(SPACEX_MISSION_DETAIL_URL_BASE + encodeURIComponent(nextTile.link), { mode: 'cors' })
+                        .then(res => { if (!res.ok) throw new Error('not ok'); return res.json(); })
+                        .then(mission => {
+                            const rawEntries = mission.postLaunchTimeline && mission.postLaunchTimeline.timelineEntries;
+                            if (!Array.isArray(rawEntries)) throw new Error('malformed');
+                            const postLaunchTimeline = rawEntries
+                                .map(e => ({ seconds: parseTimeToSeconds(e.time), event: (e.description || '').trim() }))
+                                .filter(e => !isNaN(e.seconds) && e.event);
+                            if (!postLaunchTimeline.length) throw new Error('no usable entries');
+                            realMissionTimelineData = { title: mission.title || nextTile.title, slug: nextTile.link, postLaunchTimeline };
+                        });
+                })
+                .catch(() => { /* endpoint unreachable/shape changed/no timeline for this mission - the fallback path already covers this */ });
+        }
+        fetchRealMissionTimeline();
+        setInterval(fetchRealMissionTimeline, REAL_MISSION_TIMELINE_REFRESH_MS);
+
+        // True only when realMissionTimelineData looks like it's actually describing the SAME
+        // mission currently shown in the hero - a plain substring check both ways (either string
+        // could be the more/less specific one, e.g. "Roman" vs "Nancy Grace Roman Space
+        // Telescope"), case-insensitive. Guards against briefly-stale feed data (mission just
+        // changed in the hero, feed hasn't caught up yet) silently attaching the WRONG mission's
+        // timeline instead of just falling back like it would if the feed were simply absent.
+        function realTimelineMatchesMission(missionName) {
+            if (!realMissionTimelineData || !missionName) return false;
+            const a = (realMissionTimelineData.title || '').toLowerCase();
+            const b = missionName.toLowerCase();
+            const slug = (realMissionTimelineData.slug || '').toLowerCase();
+            if (a && (a.includes(b) || b.includes(a))) return true;
+            if (slug && b.includes(slug)) return true;
+            // SpaceX's own CMS title for a recurring mission family is often fully generic
+            // ("Starlink Mission" for every single Starlink launch, no flight number at all) -
+            // confirmed live, this genuinely fails to match this app's own more specific mission
+            // name ("Falcon 9 | Starlink Group 15-23") even though it's plainly the same launch.
+            // The SLUG usually still carries the flight-specific identifier though (e.g.
+            // "sl-15-23"), just prefixed with a short program code the app's own naming doesn't
+            // use - stripping that leading "word-" prefix and matching just the remainder
+            // ("15-23") catches this. Length-guarded so a short/generic leftover after stripping
+            // (a single digit, say) can't loosely match all sorts of unrelated mission names.
+            const slugSuffix = slug.replace(/^[a-z]+-/, '');
+            if (slugSuffix.length >= 4 && slugSuffix !== slug && b.includes(slugSuffix)) return true;
+            return false;
+        }
+
+        // Ensures realMissionTimelineTranslated has this language's translated event labels
+        // ready, kicking off the (async) translation once per language/data change and leaving
+        // English in place until it resolves - same instant-then-swap idiom as
+        // applyMissionPurposeHtml elsewhere in this file. Safe to call every tick: it's a no-op
+        // once already up to date for the current language and data.
+        function ensureRealMissionTimelineTranslated(currentLang) {
+            if (!realMissionTimelineData) return;
+            const key = (currentLang || 'en').split('-')[0];
+            const entries = realMissionTimelineData.postLaunchTimeline;
+            if (realMissionTimelineTranslated.lang === key && realMissionTimelineTranslated.forData === entries) return;
+            if (key === 'en') {
+                realMissionTimelineTranslated.lang = 'en';
+                realMissionTimelineTranslated.forData = entries;
+                realMissionTimelineTranslated.entries = entries.map(e => ({ tSeconds: e.seconds, label: e.event }));
+                return;
+            }
+            realMissionTimelineTranslated.lang = key;
+            realMissionTimelineTranslated.forData = entries;
+            realMissionTimelineTranslated.entries = entries.map(e => ({ tSeconds: e.seconds, label: e.event }));
+            translateBatchViaGoogle(entries.map(e => e.event), key).then(translated => {
+                // Bail if a newer fetch/language switch already superseded this in-flight request.
+                if (realMissionTimelineTranslated.lang !== key || realMissionTimelineTranslated.forData !== entries) return;
+                realMissionTimelineTranslated.entries = entries.map((e, i) => ({ tSeconds: e.seconds, label: translated[i] || e.event }));
+                // renderMissionStatusBreakdown's own dedup guard (lastRenderedMissionBreakdownLang/
+                // -Source) only knows "have I already rendered THIS language for THIS source" -
+                // it has no way to know the ENTRIES it rendered a moment ago were still the
+                // pre-translation English placeholder, so without forcing it here the popup would
+                // render once (English, since translation hasn't resolved yet) and then never
+                // again for this language - stuck in English until a language switch or mission
+                // change happened to invalidate the guard some other way. Forcing exactly one
+                // extra render right when the real translation actually lands fixes that, and is
+                // a no-op the many other times this fires with nothing currently depending on it
+                // (typeof guard covers this file being an older cached copy that predates this
+                // function's addition, though that's not expected to matter in practice).
+                if (typeof renderMissionStatusBreakdown === 'function') {
+                    lastRenderedMissionBreakdownLang = null;
+                    renderMissionStatusBreakdown(document.documentElement.lang);
+                }
+            });
+        }
+
+        // Same shape/contract as getCurrentMissionMilestone (returns {label, tSeconds} or null) -
+        // real per-mission data takes priority when available and matching; the caller falls
+        // back to getCurrentMissionMilestone (Starlink/ASDS only) or the plain "MISSION IN
+        // PROGRESS" text otherwise, exactly as before this feature existed.
+        function getCurrentRealMissionMilestone(elapsedSec, currentLang, missionName) {
+            if (!realTimelineMatchesMission(missionName)) return null;
+            ensureRealMissionTimelineTranslated(currentLang);
+            const list = realMissionTimelineTranslated.entries;
+            if (!list || list.length === 0) return null;
+            let current = null;
+            for (const entry of list) {
+                if (entry.tSeconds > elapsedSec) break;
+                current = entry;
+            }
+            if (!current) return null;
+            if (elapsedSec - current.tSeconds > MISSION_MILESTONE_STALE_AFTER_SEC && current === list[list.length - 1]) {
+                return null;
+            }
+            return { label: current.label, tSeconds: current.tSeconds };
+        }
+
+        // Best-effort split of a single freeform event string (all the real-timeline feed
+        // provides - see getCurrentRealMissionMilestone above) into a short "title" line and a
+        // longer "explanation" line below it, matching STARLINK_ASDS_TIMELINE's own two-line
+        // layout in the popup below instead of flattening every real event into one line. Two
+        // shapes cover essentially all of SpaceX's own phrasing for this: a short abbreviation
+        // trailing in parens ("Side booster engine cutoff (BECO)" -> title "BECO", explanation
+        // the descriptive lead-in) or a short human title leading with the parenthetical itself
+        // being the explanation ("Max Q (moment of peak...)" -> title "Max Q", explanation the
+        // parenthetical). Distinguished by the parenthetical's own shape: short/mostly-uppercase
+        // reads as an abbreviation (the TITLE), anything else reads as a descriptive explanation.
+        // Runs on the (possibly already-translated) label, not the raw English - verified live
+        // that machine translation leaves this parenthetical structure and untranslated
+        // abbreviations like "BECO"/"MECO" intact, matching how this file already treats
+        // technical abbreviations elsewhere (see MISSION_TIMELINE_I18N's own comment). Events
+        // with no parenthetical at all (roughly half this feed - "Side boosters separate",
+        // "Roman deploys") have nothing to split: the whole string becomes the title, no
+        // explanation line.
+        function splitRealTimelineEventText(text) {
+            const m = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(text);
+            if (!m) return { title: text, explain: '' };
+            const lead = m[1].trim();
+            const paren = m[2].trim();
+            const parenLooksLikeAbbreviation = paren.length <= 10 && /^[A-Z0-9][A-Z0-9\-]*$/.test(paren);
+            return parenLooksLikeAbbreviation
+                ? { title: paren, explain: lead }
+                : { title: lead, explain: paren };
+        }
+
         // Fills #mission-status-breakdown-list with the full STARLINK_ASDS_TIMELINE (label +
         // one-line explanation per event), for the hover popup next to the "Mission Status"
         // label. Only rebuilds when the language actually changed since the last call - this
         // runs from setCountdownLabel on every 1s tick while a mission is in progress, and a
         // full innerHTML rebuild every second (vs. only when needed) would be wasted work.
+        // Real per-mission data (see getCurrentRealMissionMilestone above) is checked FIRST and,
+        // when it matches the current hero mission, renders instead of the generic Starlink list
+        // below - otherwise the popup would show a completely different, wrong set of milestones
+        // than what the status text right next to it is actually displaying. The feed has no
+        // separate one-line explanation field (just an event name), so each row shows only that.
         let lastRenderedMissionBreakdownLang = null;
-        function renderMissionStatusBreakdown(currentLang) {
+        let lastRenderedMissionBreakdownSource = null; // 'real', 'starlink', or 'none' - forces a rebuild if the source itself changes, even at the same language
+        // Identifies WHICH real-feed dataset was last rendered (its postLaunchTimeline array
+        // reference) - the 'real' branch below used to key its own dedup purely on language+
+        // source, so a mission switch that swapped in a completely different real dataset (a
+        // new mission became "next" after the previous one launched) at the SAME language kept
+        // showing the PREVIOUS mission's milestones indefinitely, since neither language nor
+        // source ('real') had changed from the guard's point of view. Event counts genuinely
+        // differ per mission (this isn't a fixed-length list like STARLINK_ASDS_TIMELINE), so
+        // there's no length check that could have caught this either - only checking the actual
+        // data identity does.
+        let lastRenderedMissionBreakdownData = null;
+        // hasAsdsProfile mirrors updateHeroCountdown's own flag of the same name (Starlink
+        // category + an ASDS/droneship landing) - defaults to false for the one caller that
+        // doesn't have it handy (ensureRealMissionTimelineTranslated's post-translation re-
+        // render), which is harmless there since that call only ever fires once real data has
+        // already matched, taking the 'real' branch below regardless of this flag's value.
+        // Without gating on it, a non-Starlink mission with no matching real feed data (a
+        // science payload, a crew mission, anything else) fell through to showing the STARLINK
+        // list here anyway - wrong information for a launch that was never Starlink to begin
+        // with, even though the main status text right next to this popup already correctly
+        // showed the plain "Mission in Progress" fallback instead of Starlink milestones.
+        function renderMissionStatusBreakdown(currentLang, hasAsdsProfile) {
             const listEl = document.getElementById('mission-status-breakdown-list');
             if (!listEl) return;
             let key = (currentLang || 'en').split('-')[0];
             if (key === 'zh') key = 'zh';
-            if (lastRenderedMissionBreakdownLang === key) return;
+
+            if (realTimelineMatchesMission(window.currentActiveHeroMissionName)) {
+                ensureRealMissionTimelineTranslated(currentLang);
+                const currentData = realMissionTimelineData && realMissionTimelineData.postLaunchTimeline;
+                if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'real' && lastRenderedMissionBreakdownData === currentData) return;
+                lastRenderedMissionBreakdownLang = key;
+                lastRenderedMissionBreakdownSource = 'real';
+                lastRenderedMissionBreakdownData = currentData;
+                const list = realMissionTimelineTranslated.entries || [];
+                listEl.innerHTML = list.map(entry => {
+                    const { title, explain } = splitRealTimelineEventText(entry.label);
+                    return `
+                    <div class="mission-timeline-row flex flex-col gap-0.5" data-t="${entry.tSeconds}">
+                        <span class="flex items-center gap-1.5">
+                            <i class="mission-timeline-check fa-solid fa-circle-check text-[10px] shrink-0"></i>
+                            <span class="mission-timeline-label notranslate text-emerald-400 font-orbitron font-bold text-sm" translate="no">${escapeHtml(title)}</span>
+                        </span>
+                        ${explain ? `<span class="mission-timeline-explain notranslate text-zinc-400 text-[12.5px] leading-snug" translate="no">${escapeHtml(explain)}</span>` : ''}
+                    </div>`;
+                }).join('');
+                return;
+            }
+
+            if (!hasAsdsProfile) {
+                if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'none') return;
+                lastRenderedMissionBreakdownLang = key;
+                lastRenderedMissionBreakdownSource = 'none';
+                listEl.innerHTML = '';
+                return;
+            }
+
+            if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'starlink') return;
             lastRenderedMissionBreakdownLang = key;
+            lastRenderedMissionBreakdownSource = 'starlink';
 
             const labelDict = MISSION_TIMELINE_I18N[key] || MISSION_TIMELINE_I18N.en;
             const explainDict = MISSION_TIMELINE_EXPLAIN_I18N[key] || MISSION_TIMELINE_EXPLAIN_I18N.en;
@@ -14099,6 +14336,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 } catch (e) { }
 
                 window.currentActiveHeroSite = nextLaunch.site;
+                window.currentActiveHeroMissionName = nextLaunch.name;
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
                 if (heroDetailsTextEl) heroDetailsTextEl.innerHTML = `<span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
                 fetchLiveWeather(nextLaunch.siteLower, nextLaunch.probability);
@@ -16727,7 +16965,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // may have written, so the countdown digits go back to their own CSS size.
                 if (!showMissionStatus && el) el.style.removeProperty('font-size');
                 if (showMissionStatus) {
-                    renderMissionStatusBreakdown(document.documentElement.lang);
+                    renderMissionStatusBreakdown(document.documentElement.lang, hasAsdsProfile);
                     if (typeof elapsedSec === 'number') updateMissionStatusBreakdownProgress(elapsedSec);
                 }
             }
@@ -16852,17 +17090,22 @@ fitTitleOneLine(document.getElementById('hero-name'));
                             stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
                         });
                     } else if (diff > -3 * 60 * 1000 &&
-                        !(hasAsdsProfile && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang))) {
+                        !(hasAsdsProfile && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang)) &&
+                        !getCurrentRealMissionMilestone(-diff / 1000, document.documentElement.lang, window.currentActiveHeroMissionName)) {
                         // First 3 minutes after T-0: "LIFTOFF" - after that, "MISSION IN PROGRESS"
                         // takes over (below) until the mission is evicted from the hero per
                         // setupHeroBanner's grace-period rules. The mission has genuinely
                         // launched at this point, so the label above switches to "Mission
                         // Status".
-                        // The milestone check above yields this branch as soon as a tracked event
-                        // is reached: five of the nine milestones (MAX Q at T+67s through fairing
-                        // separation at T+176s) fall inside this same 3-minute window, and without
-                        // it this branch ran first and held "LIFTOFF" on screen straight through
-                        // all of them - the timeline appeared frozen until entry burn at T+361s.
+                        // The milestone checks above yield this branch as soon as a tracked event
+                        // is reached: five of the nine STARLINK_ASDS_TIMELINE milestones (MAX Q at
+                        // T+67s through fairing separation at T+176s) fall inside this same
+                        // 3-minute window, and a real per-mission feed's early events typically do
+                        // too (Max Q/BECO/booster separation are always this early regardless of
+                        // mission) - without checking both, this branch ran first and held
+                        // "LIFTOFF" on screen straight through all of them, real-timeline events
+                        // included, until whichever source's first post-180s event finally
+                        // interrupted it.
                         setCountdownLabel(true, -diff / 1000);
                         el.innerHTML = el.dataset.launchNowText || 'LIFTOFF';
                         fitMissionStatusText();
@@ -16872,15 +17115,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
                             stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
                         });
                     } else {
-                        // For a Starlink/ASDS mission, swap the generic "MISSION IN PROGRESS"
-                        // text for the current fixed-timeline milestone (see
-                        // STARLINK_ASDS_TIMELINE/getCurrentMissionMilestone) once elapsed time
-                        // since OUR OWN tracked liftoff moment (targetDate) reaches one - falls
-                        // back to the plain text before the first milestone, for any mission
-                        // that doesn't match the profile, and again once past the last tracked
-                        // milestone (SECO-1) where timing gets too mission-specific to trust.
+                        // Swaps the generic "MISSION IN PROGRESS" text for the current milestone
+                        // once elapsed time since OUR OWN tracked liftoff moment (targetDate)
+                        // reaches one. Real per-mission data (see getCurrentRealMissionMilestone,
+                        // above) is preferred when it's actually available and matches this
+                        // mission - works for ANY mission, not just Starlink - falling back to
+                        // the fixed STARLINK_ASDS_TIMELINE (Starlink/ASDS only) when it isn't,
+                        // and to the plain text when neither applies or once past the last
+                        // tracked milestone in either source, where timing gets too
+                        // mission-specific to trust.
                         const elapsedSec = -diff / 1000;
-                        const milestone = hasAsdsProfile ? getCurrentMissionMilestone(elapsedSec, document.documentElement.lang) : null;
+                        const milestone = getCurrentRealMissionMilestone(elapsedSec, document.documentElement.lang, window.currentActiveHeroMissionName) ||
+                            (hasAsdsProfile ? getCurrentMissionMilestone(elapsedSec, document.documentElement.lang) : null);
                         const displayText = milestone ? milestone.label : (el.dataset.inProgressText || 'MISSION IN PROGRESS');
 
                         setCountdownLabel(true, elapsedSec);
