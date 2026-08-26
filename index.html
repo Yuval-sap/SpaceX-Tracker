@@ -3660,6 +3660,18 @@
             background: rgba(18, 24, 38, 0.96) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
         }
+        /* Mobile tap path: the counter box is only ~68px wide, and the popup inherits that via
+           w-full. That's unreadable for "Falcon 9" / "Starship" once it actually opens on a
+           phone. Grow to content (still capped to the viewport) so the same two-row breakdown
+           the desktop hover already shows can be read. Desktop (>=768px) keeps w-full matching
+           the larger counter, unchanged. */
+        @media (max-width: 767px) {
+            #year-count-breakdown {
+                width: max-content !important;
+                min-width: 10.5rem !important;
+                max-width: calc(100vw - 2rem) !important;
+            }
+        }
 
         /* The breakdown's own text colours. The list is built in JS with dark-mode Tailwind
            classes (text-emerald-400 / text-zinc-400), and the light theme's global class remap
@@ -4827,6 +4839,42 @@
                 popup.classList.add('hidden');
                 popup.classList.remove('flex');
             }
+        });
+
+        // Same reason as toggleMissionStatusBreakdown above: #year-count-breakdown only opens
+        // through md:group-hover:flex, which never fires on a real touch device. One tap on the
+        // year-count box opens the Falcon 9 / Starship split; a second tap (or a tap outside)
+        // closes it. Desktop hover is left alone - the tap handler bails out wherever a real
+        // hover exists at md+, so clicking the counter on a mouse doesn't pin the panel open.
+        function isYearCountTapMode() {
+            try {
+                return window.matchMedia('(hover: none), (max-width: 767px)').matches;
+            } catch (e) {
+                return window.innerWidth < 768;
+            }
+        }
+        function setYearCountBreakdownOpen(open) {
+            const popup = document.getElementById('year-count-breakdown');
+            const box = document.getElementById('year-count-box');
+            if (!popup) return;
+            popup.classList.toggle('hidden', !open);
+            popup.classList.toggle('flex', open);
+            if (box) box.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        function toggleYearCountBreakdown(event) {
+            if (event) event.stopPropagation();
+            if (event && event.target && event.target.closest && event.target.closest('#year-count-breakdown')) return;
+            if (!isYearCountTapMode()) return;
+            const popup = document.getElementById('year-count-breakdown');
+            if (!popup) return;
+            setYearCountBreakdownOpen(popup.classList.contains('hidden'));
+        }
+        document.addEventListener('click', function (e) {
+            const popup = document.getElementById('year-count-breakdown');
+            const box = document.getElementById('year-count-box');
+            if (!popup || popup.classList.contains('hidden')) return;
+            if (box && box.contains(e.target)) return; // the box's own onclick already handles this tap
+            setYearCountBreakdownOpen(false);
         });
 
         let lastAppliedLaunchLabelLang = null;
@@ -7150,7 +7198,12 @@
                      it's the one that lines up with the title, with Scroll underneath it. -->
                 <div class="flex flex-col items-end gap-2">
                     <div id="year-count-box"
-                        class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm">
+                        class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm cursor-pointer select-none"
+                        style="touch-action: manipulation;"
+                        role="button" tabindex="0"
+                        aria-haspopup="dialog" aria-expanded="false" aria-controls="year-count-breakdown"
+                        aria-label="Launches this year breakdown"
+                        onclick="toggleYearCountBreakdown(event)" onkeydown="activateOnEnterOrSpace(event)">
                         <div class="flex items-center gap-1 mb-0.5 sm:mb-1">
                             <div id="i18n-upcoming-launches"
                                 class="text-[6px] sm:text-[10px] text-zinc-500 tracking-wide sm:tracking-widest font-bold uppercase whitespace-nowrap notranslate"
@@ -7160,8 +7213,9 @@
                         <div class="text-emerald-400 text-lg sm:text-4xl font-bold font-orbitron notranslate leading-none"
                             id="upcoming-count" translate="no">0</div>
 
-                        <!-- פירוט פלקון 9 מול סטארשיפ - מופיע רק בריחוף (דסקטופ בלבד, למכשירי מגע
-                             אין hover אמיתי) - ראו computeYearToDateLaunchCountByVehicle לחישוב.
+                        <!-- פירוט פלקון 9 מול סטארשיפ - בריחוף בדסקטופ (md:group-hover:flex),
+                             ובמובייל בלחיצה על התיבה (toggleYearCountBreakdown) כי אין hover.
+                             ראו computeYearToDateLaunchCountByVehicle לחישוב.
                              ממוקם בצד התיבה (לא מתחתיה) באמצעות end-full+me, שמתהפך אוטומטית בין
                              RTL ל-LTR - לא top-full/end-0 (זה היה פותח למטה, לא לצד). w-full (לא
                              min-w קבוע) משווה את הרוחב לזה של תיבת המונה עצמה (ההורה עם position:
