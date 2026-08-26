@@ -8779,26 +8779,32 @@
                 setTimeout(resyncTitleFitsForFonts, 600);
                 // Last-resort fallback, checked once the attempts above have all had their
                 // chance: if any title is STILL genuinely overflowing at this point (the font
-                // took longer to actually finish loading than any of this - reported live on
-                // mobile, where nothing fixed it short of a full manual page reload), rebuild
-                // the grids and hero banner from the mission data already sitting in memory
-                // (dbMissions/rawPastMissions/upcomingForGrid) instead of reaching for yet
-                // another targeted cache-clearing trick. This is the same DOM a real reload
-                // would produce - renderMissionsForCategory/setupHeroBanner only ever read from
-                // data that's already loaded, so it costs one card re-render (the entrance
-                // animation replays), not a single network request or API re-fetch.
-                setTimeout(() => {
-                    try {
-                        const hero = document.getElementById('hero-name');
-                        const stillOverflowing = (hero && hero.scrollWidth > hero.clientWidth + 1) ||
-                            [...document.querySelectorAll('.mission-title-fit, .section-title-fit')]
-                                .some(titleEl => titleEl.scrollWidth > titleEl.clientWidth + 1);
-                        if (stillOverflowing) {
-                            if (typeof renderMissionsForCategory === 'function') renderMissionsForCategory();
-                            if (typeof setupHeroBanner === 'function') setupHeroBanner();
-                        }
-                    } catch (e) { /* best-effort fallback only - the resync attempts above already ran */ }
-                }, 900);
+                // took longer to actually finish loading than any of this), rebuild the grids and
+                // hero banner from the mission data already sitting in memory (dbMissions/
+                // rawPastMissions/upcomingForGrid) instead of reaching for yet another targeted
+                // cache-clearing trick. This is the same DOM a real reload would produce -
+                // renderMissionsForCategory/setupHeroBanner only ever read from data that's
+                // already loaded, so it costs one card re-render (the entrance animation
+                // replays), not a single network request or API re-fetch.
+                // Mobile-only, deliberately: this was reported live specifically on mobile
+                // (slower devices/networks are where a font can realistically still be loading
+                // 900ms after a mode switch), and explicitly asked to be scoped there - desktop
+                // never showed this failure and doesn't need the re-render cost. Same breakpoint
+                // #missions-grid's own mobile-carousel media query above uses.
+                if (window.innerWidth < 768) {
+                    setTimeout(() => {
+                        try {
+                            const hero = document.getElementById('hero-name');
+                            const stillOverflowing = (hero && hero.scrollWidth > hero.clientWidth + 1) ||
+                                [...document.querySelectorAll('.mission-title-fit, .section-title-fit')]
+                                    .some(titleEl => titleEl.scrollWidth > titleEl.clientWidth + 1);
+                            if (stillOverflowing) {
+                                if (typeof renderMissionsForCategory === 'function') renderMissionsForCategory();
+                                if (typeof setupHeroBanner === 'function') setupHeroBanner();
+                            }
+                        } catch (e) { /* best-effort fallback only - the resync attempts above already ran */ }
+                    }, 900);
+                }
                 if (!opts.skipSwitchingClass) {
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
