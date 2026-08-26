@@ -3491,6 +3491,96 @@
         body.moon-theme #orbit-ring-GEO:not(.orbit-active) { stroke: #71869f !important; opacity: 0.75 !important; }
         body.moon-theme #orbit-label-GEO:not(.orbit-active) { fill: #a5b6cc !important; }
 
+        /* Orbit modal hero (diagram area): visible space depth + theme accent glow behind
+           the rings. Soft vignette edges keep it tied to the modal shell. A bottom ::after
+           fade blends the hero into the modal body colour so the hard edge under the title
+           disappears — kept short/soft so the GEO ring is not cropped the way a full
+           modal-hero-fade used to. */
+        .orbit-hero-area {
+            background:
+                radial-gradient(ellipse 55% 50% at 50% 38%,
+                    rgba(16, 185, 129, 0.22) 0%,
+                    rgba(16, 185, 129, 0.06) 45%,
+                    transparent 70%),
+                radial-gradient(ellipse 120% 100% at 50% 50%,
+                    #0a0c10 0%,
+                    #12141a 55%,
+                    #18181b 100%);
+        }
+        .orbit-hero-area::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 40%;
+            pointer-events: none;
+            z-index: 5;
+            background: linear-gradient(to top,
+                #18181b 0%,
+                rgba(24, 24, 27, 0.9) 28%,
+                rgba(24, 24, 27, 0.45) 58%,
+                rgba(24, 24, 27, 0.12) 82%,
+                transparent 100%);
+        }
+        body.light-theme .orbit-hero-area {
+            background:
+                radial-gradient(ellipse 55% 50% at 50% 38%,
+                    rgba(16, 185, 129, 0.14) 0%,
+                    rgba(16, 185, 129, 0.04) 45%,
+                    transparent 70%),
+                radial-gradient(ellipse 120% 100% at 50% 50%,
+                    #e8f0f2 0%,
+                    #f0f5f7 50%,
+                    #f8fafc 100%);
+        }
+        body.light-theme .orbit-hero-area::after {
+            background: linear-gradient(to top,
+                #ffffff 0%,
+                rgba(255, 255, 255, 0.92) 28%,
+                rgba(255, 255, 255, 0.5) 58%,
+                rgba(255, 255, 255, 0.15) 82%,
+                transparent 100%);
+        }
+        body.mars-theme .orbit-hero-area {
+            background:
+                radial-gradient(ellipse 55% 50% at 50% 38%,
+                    rgba(255, 107, 53, 0.24) 0%,
+                    rgba(255, 107, 53, 0.07) 45%,
+                    transparent 70%),
+                radial-gradient(ellipse 120% 100% at 50% 50%,
+                    #160a07 0%,
+                    #1f100c 55%,
+                    #271510 100%);
+        }
+        body.mars-theme .orbit-hero-area::after {
+            background: linear-gradient(to top,
+                #271510 0%,
+                rgba(39, 21, 16, 0.9) 28%,
+                rgba(39, 21, 16, 0.45) 58%,
+                rgba(39, 21, 16, 0.12) 82%,
+                transparent 100%);
+        }
+        body.moon-theme .orbit-hero-area {
+            background:
+                radial-gradient(ellipse 55% 50% at 50% 38%,
+                    rgba(63, 169, 245, 0.22) 0%,
+                    rgba(63, 169, 245, 0.06) 45%,
+                    transparent 70%),
+                radial-gradient(ellipse 120% 100% at 50% 50%,
+                    #070a10 0%,
+                    #0c1018 55%,
+                    #121826 100%);
+        }
+        body.moon-theme .orbit-hero-area::after {
+            background: linear-gradient(to top,
+                #121826 0%,
+                rgba(18, 24, 38, 0.9) 28%,
+                rgba(18, 24, 38, 0.45) 58%,
+                rgba(18, 24, 38, 0.12) 82%,
+                transparent 100%);
+        }
+
         /* Accent driven by a variable so the highlight matches whichever mode is active - it was
            hardcoded green, which clashed in Mars/Moon and was needlessly loud in light mode. */
         .fleet-card-flash {
@@ -8105,7 +8195,7 @@
                  a third of the frame and forced the diagram down to a size that looked lost on
                  desktop too. Giving the phone more vertical room lets one diagram size work on
                  both, instead of shrinking it everywhere to satisfy the tighter case. -->
-            <div class="relative overflow-hidden aspect-[4/3] sm:aspect-video border-b border-zinc-800/80 shrink-0">
+            <div class="orbit-hero-area relative overflow-hidden aspect-[4/3] sm:aspect-video border-b border-zinc-800/80 shrink-0">
                 <!-- 16:9 window (matches the hero's aspect-video, so no letterboxing) with extra
                      empty height BELOW the diagram. The drawing itself is untouched - rings stay
                      centred on their original cx=200/cy=150 and the animations are unchanged -
@@ -8173,12 +8263,9 @@
                         <text id="orbit-label-GEO" x="200" y="22" text-anchor="middle" fill="#52525b" font-size="8"
                             letter-spacing="1">GEO</text>
                 </svg>
-                <!-- Deliberately NO modal-hero-fade here, unlike the photo-backed modals. That
-                     gradient exists to keep white caption text legible over a photograph; this
-                     hero is a flat themed colour, and the title already contrasts with it in all
-                     four modes on its own. Measured on the real element, the gradient is ~45%
-                     opaque at the height the outer GEO ring's lower arc sits, which quietly
-                     erased the bottom of the circle and made the diagram look cropped. -->
+                <!-- Bottom fade is handled by .orbit-hero-area::after (theme-matched to the
+                     modal shell). Kept shorter/softer than the photo-backed .modal-hero-fade so
+                     the GEO ring is not cropped. Title sits above it at z-10. -->
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6 pointer-events-none">
                     <div id="orbit-modal-title" translate="no"
                         class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight">
