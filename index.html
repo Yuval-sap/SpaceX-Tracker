@@ -6255,37 +6255,52 @@
             // period timer against a 640ms window will do on nearly every single switch. Just
             // a one-tick (≤500ms) delay to the translation-sync work otherwise, well within
             // this loop's own normal cadence.
-            if (!window._tabTransitionInProgress) {
-                // fitTitleOneLine's cache keys ONLY on text+width, not font-family - it's blind
-                // to a pure font swap (switching to/from mars/moon's Zen Dots/Audiowide heading
-                // font) whenever neither the text nor the container's width also happens to
-                // change. resyncTitleFitsForFonts() clears that cache first specifically to
-                // handle this, but applyVisualMode only ever calls it a few fixed times right
-                // after a mode switch (immediately + fonts.ready + 150ms + 600ms) - if the font
-                // genuinely finishes loading later than that (a slower device/network - reported
-                // live specifically on mobile, where titles stayed clipped until a full page
-                // reload wiped the stale cache clean), nothing ever rechecks it again: the cheap
-                // per-element calls below would keep silently no-op'ing forever (cache hit) since
-                // neither key they check ever changes. Comparing the currently-computed heading
-                // font-family against what it was on the LAST tick catches that gap without
-                // paying for a full cache-clearing sweep on every single tick - only the one tick
-                // where the font family actually just changed does the expensive clear+refit;
-                // every other tick takes the normal cheap path.
-                const currentTitleFontFamily = getComputedStyle(document.getElementById('hero-name') || document.body).fontFamily;
-                if (window._lastTitleFontFamily && window._lastTitleFontFamily !== currentTitleFontFamily) {
-                    resyncTitleFitsForFonts();
-                } else {
-                    fitAllTitlesOneLine(document);
-                    fitAllSectionTitles(document);
-                    // #hero-name carries neither .mission-title-fit nor .section-title-fit, so
-                    // the two sweeps above skip it - see resyncTitleFitsForFonts's own call above
-                    // for the font-swap case; this cheap call still covers every OTHER reason its
-                    // available width could have changed (mission switch, sibling content
-                    // reflow, etc. - see this call's own history for why it's here at all).
-                    fitTitleOneLine(document.getElementById('hero-name'));
+            // Wrapped in its own try/catch, same reason and same pattern as the patch-title
+            // block much further up this same interval (see its own comment): applyPhraseFixes/
+            // localizeStarshipTerm just above run unguarded, and if either ever throws for a
+            // given tick, every statement after them - this whole block included - silently
+            // never runs, with no error visible anywhere and no retry until whatever made it
+            // throw stops happening. That failure mode was reported live before, for a different
+            // statement in this same interval (see that comment) - it's exactly the kind of bug
+            // that looks like "the fix doesn't work" when the fix's own code was never reached at
+            // all. This block specifically must survive that: it's the only thing keeping
+            // #hero-name and every card/section title correctly fitted for the entire rest of the
+            // session.
+            try {
+                if (!window._tabTransitionInProgress) {
+                    // fitTitleOneLine's cache keys ONLY on text+width, not font-family - it's
+                    // blind to a pure font swap (switching to/from mars/moon's Zen Dots/Audiowide
+                    // heading font) whenever neither the text nor the container's width also
+                    // happens to change. resyncTitleFitsForFonts() clears that cache first
+                    // specifically to handle this, but applyVisualMode only ever calls it a few
+                    // fixed times right after a mode switch (immediately + fonts.ready + 150ms +
+                    // 600ms) - if the font genuinely finishes loading later than that (a slower
+                    // device/network - reported live specifically on mobile, where titles stayed
+                    // clipped until a full page reload wiped the stale cache clean), nothing ever
+                    // rechecks it again: the cheap per-element calls below would keep silently
+                    // no-op'ing forever (cache hit) since neither key they check ever changes.
+                    // Comparing the currently-computed heading font-family against what it was on
+                    // the LAST tick catches that gap without paying for a full cache-clearing
+                    // sweep on every single tick - only the one tick where the font family
+                    // actually just changed does the expensive clear+refit; every other tick
+                    // takes the normal cheap path.
+                    const currentTitleFontFamily = getComputedStyle(document.getElementById('hero-name') || document.body).fontFamily;
+                    if (window._lastTitleFontFamily && window._lastTitleFontFamily !== currentTitleFontFamily) {
+                        resyncTitleFitsForFonts();
+                    } else {
+                        fitAllTitlesOneLine(document);
+                        fitAllSectionTitles(document);
+                        // #hero-name carries neither .mission-title-fit nor .section-title-fit,
+                        // so the two sweeps above skip it - see resyncTitleFitsForFonts's own
+                        // call above for the font-swap case; this cheap call still covers every
+                        // OTHER reason its available width could have changed (mission switch,
+                        // sibling content reflow, etc. - see this call's own history for why it's
+                        // here at all).
+                        fitTitleOneLine(document.getElementById('hero-name'));
+                    }
+                    window._lastTitleFontFamily = currentTitleFontFamily;
                 }
-                window._lastTitleFontFamily = currentTitleFontFamily;
-            }
+            } catch (e) { /* never let an upstream throw this tick silently disable title-fitting for the rest of the session */ }
 
             // Unit system follows the resolved language only. Google Translate's
             // translated-ltr/translated-rtl classes are internal bookkeeping (it adds
