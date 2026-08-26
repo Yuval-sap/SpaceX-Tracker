@@ -7820,8 +7820,7 @@
                         <button id="modal-watch-live-btn"
                             class="w-3/4 min-w-0 flex items-center justify-center gap-2 py-3.5 bg-red-600 md:hover:bg-red-500 md:hover:scale-[1.02] md:hover:shadow-[0_0_22px_rgba(239,68,68,0.55)] border border-red-500 md:hover:border-red-400 rounded-2xl text-sm sm:text-base font-semibold text-white transition-all duration-300 shadow-md">
                             <i class="fa-solid fa-play text-[10px] animate-pulse shrink-0"></i>
-                            <span id="modal-watch-live-label" class="min-w-0 text-center notranslate" translate="no"
-                                lang="en">WATCH LIVE</span>
+                            <span id="modal-watch-live-label" class="min-w-0 text-center">WATCH LIVE</span>
                         </button>
                         <a id="modal-live-yt-link" href="#" target="_blank" rel="noopener"
                             class="w-1/4 min-w-0 flex items-center justify-center text-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
@@ -14772,7 +14771,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     : (liveSrcUrl || youtubeOpenUrlFallback);
             }
 
-            liveBtn.onclick = function () {
+            const openLiveVideo = function () {
                 if (!videoIframe || !videoSection) return;
                 // Reuse the shared player: make sure the past-launch button row isn't
                 // also showing at the same time.
@@ -14821,43 +14820,42 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     }
                 });
             };
+            // Shared with #modal-video-close-btn's own handler below, so both the X button AND
+            // clicking WATCH LIVE again while the player is already open close it the same way -
+            // see liveBtn.onclick just below, which is what actually makes this a toggle.
+            const closeLiveVideo = function () {
+                stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
+                if (videoSection) videoSection.classList.add('hidden');
+                if (videoUnconfirmedOverlay) {
+                    videoUnconfirmedOverlay.classList.add('hidden');
+                    videoUnconfirmedOverlay.classList.remove('flex');
+                }
+                if (videoBtnWrap && videoBtnWrap.dataset.archiveEligible === '1') {
+                    videoBtnWrap.classList.remove('hidden');
+                    const btnRow = document.getElementById('modal-video-btn-row');
+                    if (btnRow) btnRow.classList.remove('hidden');
+                    const watchBtn = document.getElementById('modal-watch-launch-btn');
+                    if (watchBtn) watchBtn.classList.remove('hidden');
+                }
+                resetVideoControlsOverlay();
+            };
+            liveBtn.onclick = function () {
+                if (videoSection && !videoSection.classList.contains('hidden')) {
+                    closeLiveVideo();
+                } else {
+                    openLiveVideo();
+                }
+            };
             if (videoCloseBtn) {
                 // #modal-video-close-btn is a SINGLETON shared with wireModalYoutubePlayer's own
                 // close handler (this function is always called after that one for a given
                 // mission, so this .onclick assignment always wins when both wire) - a mission
                 // that's both past-but-still-in-the-extended-live-window AND has an attached
-                // YouTube video wires both. This handler used to only reset ITS OWN opened-state
-                // (videoUnconfirmedOverlay) without restoring #modal-video-btn-row/
-                // #modal-watch-launch-btn, which wireModalYoutubePlayer's "Watch the Launch"
-                // button hides when opening the SAME shared player - so closing the video after
-                // opening it via "Watch the Launch" left that button permanently hidden, for
-                // every mission modal opened for the rest of the session (it's a shared element,
-                // not per-mission).
-                //
-                // That restore was unconditional, though - a PURELY live mission (no archived
-                // video at all, wireModalYoutubePlayer never called for it - openMissionModal
-                // only calls that for isPastMission && m.youtubeId) still hit this same shared
-                // close handler after watching via the LIVE button, and the unconditional restore
-                // force-revealed "Watch the Launch" anyway: a second, unrelated play button
-                // sitting right next to the real live one, for a mission that was never eligible
-                // for it in the first place. Gated now on the archiveEligible flag openMissionModal
-                // sets only when it actually wired that path for the CURRENT mission.
-                videoCloseBtn.onclick = function () {
-                    stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
-                    if (videoSection) videoSection.classList.add('hidden');
-                    if (videoUnconfirmedOverlay) {
-                        videoUnconfirmedOverlay.classList.add('hidden');
-                        videoUnconfirmedOverlay.classList.remove('flex');
-                    }
-                    if (videoBtnWrap && videoBtnWrap.dataset.archiveEligible === '1') {
-                        videoBtnWrap.classList.remove('hidden');
-                        const btnRow = document.getElementById('modal-video-btn-row');
-                        if (btnRow) btnRow.classList.remove('hidden');
-                        const watchBtn = document.getElementById('modal-watch-launch-btn');
-                        if (watchBtn) watchBtn.classList.remove('hidden');
-                    }
-                    resetVideoControlsOverlay();
-                };
+                // YouTube video wires both. closeLiveVideo (defined above, also reused by
+                // liveBtn's own toggle) restores #modal-video-btn-wrap/#modal-watch-launch-btn
+                // only when archiveEligible was actually set for the CURRENT mission - see that
+                // flag's own comment in openMissionModal for the bug this gate fixes.
+                videoCloseBtn.onclick = closeLiveVideo;
             }
 
             setThreeUp(true);
