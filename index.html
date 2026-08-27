@@ -18328,11 +18328,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const RELOAD_CACHE_GRACE_MS = 2 * 60 * 1000;
             const cachedTimestamp = parseInt(localStorage.getItem(CACHE_KEY + '_timestamp') || '0', 10);
             const cachedLaunchData = localStorage.getItem(CACHE_KEY);
-            if (cachedLaunchData && (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS) {
-                try {
-                    processLaunchData(JSON.parse(cachedLaunchData));
-                } catch (e) {
-                    fetchLiveLaunches();
+            let parsedCachedLaunches = null;
+            if (cachedLaunchData) {
+                try { parsedCachedLaunches = JSON.parse(cachedLaunchData); } catch (e) { }
+            }
+            if (parsedCachedLaunches && (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS) {
+                processLaunchData(parsedCachedLaunches);
+                // The 2-minute skip avoids a duplicate API hit after a reload. It must
+                // not freeze a truncated past list (one 100-result page that ends in
+                // January) — that still needs a previous-launches backfill so visitors
+                // do not have to clear site data by hand.
+                if (!pastCacheCoversRollingYear(parsedCachedLaunches)) {
+                    fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
                 }
             } else {
                 fetchLiveLaunches();
