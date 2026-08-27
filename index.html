@@ -12231,11 +12231,32 @@
             return Array.from(byId.values());
         }
 
-        async function fetchPreviousLaunchPages(host, maxPages) {
+        // True only when the cached past list already reaches the far edge of the 12-month
+        // window. A count like 80-100 is NOT enough: that is only ~8 months of SpaceX
+        // traffic, and the 100th-newest launch currently sits around January — which looks
+        // like a calendar-year cutoff even though the filter is rolling.
+        function pastCacheCoversRollingYear(cached) {
+            if (!cached || !cached.length) return false;
+            const nowMs = Date.now();
+            const cutoff = pastLaunchCutoffMs();
+            let oldest = Infinity;
+            let count = 0;
+            for (let i = 0; i < cached.length; i++) {
+                const t = launchNetMs(cached[i]);
+                if (t <= 0 || t >= nowMs || t < cutoff) continue;
+                count++;
+                if (t < oldest) oldest = t;
+            }
+            if (count < 2) return false;
+            return oldest <= cutoff + 21 * 24 * 60 * 60 * 1000;
+        }
+
+        async function fetchPreviousLaunchPages(host, maxPages, startOffset) {
             const cutoffIso = new Date(pastLaunchCutoffMs()).toISOString();
             const collected = [];
             const limit = 100;
-            let offset = 0;
+            let offset = startOffset || 0;
+            let total = null;
             const pages = Math.max(1, Math.min(maxPages || 3, 3));
             for (let page = 0; page < pages; page++) {
                 const url = host + '/2.2.0/launch/previous/?lsp__id=121&limit=' + limit +
@@ -12246,8 +12267,11 @@
                     break;
                 }
                 const data = await res.json();
+                if (typeof data.count === 'number') total = data.count;
                 const rows = (data.results && data.results.length) ? data.results : [];
                 collected.push.apply(collected, rows);
+                if (!rows.length) break;
+                if (total != null && collected.length >= total) break;
                 if (!data.next || rows.length < limit) break;
                 offset += limit;
             }
@@ -12303,30 +12327,35 @@
                 if (cachedRawForSanityCheck) {
                     try { cachedCombinedForSanityCheck = JSON.parse(cachedRawForSanityCheck); } catch (e) { }
                 }
-                const nowMsForPastWindow = Date.now();
-                const cachedPastInWindowCount = cachedCombinedForSanityCheck
-                    ? cachedCombinedForSanityCheck.filter(m => {
-                        const t = launchNetMs(m);
-                        return t > 0 && t < nowMsForPastWindow && t >= pastLaunchCutoffMs();
-                    }).length
-                    : 0;
-                // A later "previous" refetch (YouTube catch-up, hero eviction) only needs the
-                // newest page: merge that onto the already-full year cache. First load, or a
-                // thin leftover from the old 50-item list, still paginates (max 3 pages of 100).
-                const previousMaxPages = cachedPastInWindowCount >= 80 ? 1 : 3;
+                // YouTube/hero previous refetches only need page 1 once the cache already
+                // reaches ~12 months back. A leftover 100-item page (ending in January) does not.
+                const previousMaxPages = pastCacheCoversRollingYear(cachedCombinedForSanityCheck) ? 1 : 3;
 
                 const fetchPreviousWithFallback = async () => {
+                    let rows = [];
                     try {
-                        const rows = await fetchPreviousLaunchPages('https://ll.thespacedevs.com', previousMaxPages);
-                        if (rows.length > 0) return rows;
+                        rows = await fetchPreviousLaunchPages('https://ll.thespacedevs.com', previousMaxPages);
                     } catch (e) { }
 
-                    try {
-                        const rows = await fetchPreviousLaunchPages('https://lldev.thespacedevs.com', previousMaxPages);
-                        if (rows.length > 0) return rows;
-                    } catch (e) { }
+                    // Primary host often returns the first 100 and then 429s the second page.
+                    // That truncated list ends around January and looks like a YTD cutoff.
+                    // Fill remaining pages from the dev mirror when we still need them.
+                    const stillShortOfYear = previousMaxPages > 1 && !pastCacheCoversRollingYear(rows) &&
+                        !pastCacheCoversRollingYear([...(rows || []), ...(cachedCombinedForSanityCheck || [])]);
+                    if (stillShortOfYear || !rows.length) {
+                        try {
+                            const fbOffset = rows.length >= 100 ? 100 : 0;
+                            const fbRows = await fetchPreviousLaunchPages('https://lldev.thespacedevs.com', previousMaxPages, fbOffset);
+                            if (fbRows.length) {
+                                const byId = new Map();
+                                rows.forEach(m => { if (m && m.id != null) byId.set(String(m.id), m); });
+                                fbRows.forEach(m => { if (m && m.id != null) byId.set(String(m.id), m); });
+                                rows = Array.from(byId.values());
+                            }
+                        } catch (e) { }
+                    }
 
-                    return null;
+                    return rows.length > 0 ? rows : null;
                 };
 
                 let [upcomingRaw, previousRaw] = await Promise.all([
