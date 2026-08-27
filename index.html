@@ -3685,17 +3685,33 @@
         body.light-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #047857; }
         body.mars-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #ff8c5a; }
         body.moon-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #6abffb; }
-        body.light-theme #year-count-breakdown {
+        body.light-theme #year-count-breakdown,
+        body.light-theme #starlink-biz-breakdown {
             background: rgba(255, 255, 255, 0.98) !important;
             border-color: #e2e8f0 !important;
         }
-        body.mars-theme #year-count-breakdown {
+        body.mars-theme #year-count-breakdown,
+        body.mars-theme #starlink-biz-breakdown {
             background: rgba(39, 21, 16, 0.96) !important;
             border-color: rgba(140, 65, 35, 0.55) !important;
         }
-        body.moon-theme #year-count-breakdown {
+        body.moon-theme #year-count-breakdown,
+        body.moon-theme #starlink-biz-breakdown {
             background: rgba(18, 24, 38, 0.96) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
+        }
+        body.light-theme #starlink-biz-breakdown .starlink-biz-row {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+        body.mars-theme #starlink-biz-breakdown .starlink-biz-row {
+            background: rgba(28, 14, 10, 0.85) !important;
+            border-color: rgba(140, 65, 35, 0.4) !important;
+        }
+        body.moon-theme #starlink-biz-breakdown .starlink-biz-row {
+            background: rgba(12, 16, 28, 0.9) !important;
+            border-color: rgba(80, 100, 140, 0.4) !important;
         }
         /* Mobile tap path: the counter box is only ~68px wide, and the popup inherits that via
            w-full. That's unreadable for "Falcon 9" / "Starship" once it actually opens on a
@@ -3707,6 +3723,16 @@
                 width: max-content !important;
                 min-width: 10.5rem !important;
                 max-width: calc(100vw - 2rem) !important;
+            }
+            #starlink-biz-breakdown {
+                top: 100% !important;
+                margin-top: 0.5rem !important;
+                inset-inline-start: auto !important;
+                inset-inline-end: 0 !important;
+                width: min(24rem, calc(100vw - 2rem)) !important;
+                max-width: calc(100vw - 2rem) !important;
+                max-height: min(70vh, calc(100vh - 5rem)) !important;
+                z-index: 90 !important;
             }
         }
 
@@ -3832,6 +3858,9 @@
         }
         html[dir="rtl"] .starlink-deployment-label {
             font-size: 12px !important;
+        }
+        html[dir="rtl"] #i18n-starlink-biz-btn {
+            font-size: 11px !important;
         }
         @media (min-width: 640px) {
             html[dir="rtl"] .did-you-know-label {
@@ -5337,6 +5366,55 @@
             hi: "स्टारलिंक", ar: "ستارلينك", tr: "Starlink"
         };
 
+        const STARLINK_BIZ_I18N = {
+            en: { btn: 'Business customers', title: 'Business customers', aviation: 'Aviation', maritime: 'Maritime', telecom: 'Telecom', loading: 'Loading Wikipedia…', error: 'Wikipedia could not be reached. Showing known names.', footnote: 'Publicly reported names — not an official SpaceX list. Wikipedia plus known additions.', source: 'Wikipedia' },
+            he: { btn: 'לקוחות עסקיים', title: 'לקוחות עסקיים', aviation: 'תעופה', maritime: 'ימי', telecom: 'סלולר', loading: 'טוען את ויקיפדיה…', error: 'לא ניתן לטעון את ויקיפדיה. מוצגים שמות ידועים.', footnote: 'שמות שפורסמו בציבור — לא רשימה רשמית של SpaceX. ויקיפדיה, בתוספת שמות ידועים שחסרים שם.', source: 'ויקיפדיה' },
+            iw: { btn: 'לקוחות עסקיים', title: 'לקוחות עסקיים', aviation: 'תעופה', maritime: 'ימי', telecom: 'סלולר', loading: 'טוען את ויקיפדיה…', error: 'לא ניתן לטעון את ויקיפדיה. מוצגים שמות ידועים.', footnote: 'שמות שפורסמו בציבור — לא רשימה רשמית של SpaceX. ויקיפדיה, בתוספת שמות ידועים שחסרים שם.', source: 'ויקיפדיה' },
+            es: { btn: 'Clientes empresariales', title: 'Clientes empresariales', aviation: 'Aviación', maritime: 'Marítimo', telecom: 'Telecom', loading: 'Cargando Wikipedia…', error: 'No se pudo cargar Wikipedia. Mostrando nombres conocidos.', footnote: 'Nombres publicados — no es una lista oficial de SpaceX. Wikipedia más añadidos conocidos.', source: 'Wikipedia' },
+            fr: { btn: 'Clients professionnels', title: 'Clients professionnels', aviation: 'Aviation', maritime: 'Maritime', telecom: 'Télécoms', loading: 'Chargement de Wikipédia…', error: 'Impossible de joindre Wikipédia. Affichage des noms connus.', footnote: 'Noms publiés — pas une liste officielle de SpaceX. Wikipédia plus des ajouts connus.', source: 'Wikipédia' },
+            de: { btn: 'Geschäftskunden', title: 'Geschäftskunden', aviation: 'Luftfahrt', maritime: 'Schifffahrt', telecom: 'Telekom', loading: 'Lade Wikipedia…', error: 'Wikipedia nicht erreichbar. Zeige bekannte Namen.', footnote: 'Öffentlich genannte Namen — keine offizielle SpaceX-Liste. Wikipedia plus bekannte Ergänzungen.', source: 'Wikipedia' },
+            ru: { btn: 'Бизнес-клиенты', title: 'Бизнес-клиенты', aviation: 'Авиация', maritime: 'Море', telecom: 'Связь', loading: 'Загрузка Википедии…', error: 'Не удалось загрузить Википедию. Показаны известные имена.', footnote: 'Публично названные компании — не официальный список SpaceX. Википедия плюс известные дополнения.', source: 'Википедия' },
+            zh: { btn: '企业客户', title: '企业客户', aviation: '航空', maritime: '海事', telecom: '电信', loading: '正在加载维基百科…', error: '无法连接维基百科。显示已知名称。', footnote: '公开报道的名称，并非 SpaceX 官方名单。维基百科及已知补充。', source: '维基百科' },
+            it: { btn: 'Clienti business', title: 'Clienti business', aviation: 'Aviazione', maritime: 'Marittimo', telecom: 'Telecom', loading: 'Caricamento Wikipedia…', error: 'Wikipedia non raggiungibile. Mostro i nomi noti.', footnote: 'Nomi pubblicati — non una lista ufficiale SpaceX. Wikipedia più aggiunte note.', source: 'Wikipedia' },
+            cs: { btn: 'Firemní zákazníci', title: 'Firemní zákazníci', aviation: 'Letectví', maritime: 'Námořní', telecom: 'Telekom', loading: 'Načítání Wikipedie…', error: 'Wikipedii se nepodařilo načíst. Zobrazuji známá jména.', footnote: 'Veřejně uvedená jména — neoficiální seznam SpaceX. Wikipedie plus známé doplňky.', source: 'Wikipedie' },
+            sv: { btn: 'Företagskunder', title: 'Företagskunder', aviation: 'Flyg', maritime: 'Sjöfart', telecom: 'Telekom', loading: 'Laddar Wikipedia…', error: 'Wikipedia gick inte att nå. Visar kända namn.', footnote: 'Offentligt rapporterade namn — inte en officiell SpaceX-lista. Wikipedia plus kända tillägg.', source: 'Wikipedia' },
+            nl: { btn: 'Zakelijke klanten', title: 'Zakelijke klanten', aviation: 'Luchtvaart', maritime: 'Maritiem', telecom: 'Telecom', loading: 'Wikipedia laden…', error: 'Wikipedia niet bereikbaar. Bekende namen worden getoond.', footnote: 'Openbaar genoemde namen — geen officiële SpaceX-lijst. Wikipedia plus bekende aanvullingen.', source: 'Wikipedia' },
+            da: { btn: 'Erhvervskunder', title: 'Erhvervskunder', aviation: 'Luftfart', maritime: 'Søfart', telecom: 'Telekom', loading: 'Indlæser Wikipedia…', error: 'Wikipedia kunne ikke nås. Viser kendte navne.', footnote: 'Offentligt nævnte navne — ikke en officiel SpaceX-liste. Wikipedia plus kendte tilføjelser.', source: 'Wikipedia' },
+            pt: { btn: 'Clientes empresariais', title: 'Clientes empresariais', aviation: 'Aviação', maritime: 'Marítimo', telecom: 'Telecom', loading: 'A carregar a Wikipédia…', error: 'Não foi possível aceder à Wikipédia. A mostrar nomes conhecidos.', footnote: 'Nomes reportados publicamente — não é uma lista oficial da SpaceX. Wikipédia mais acréscimos conhecidos.', source: 'Wikipédia' },
+            pl: { btn: 'Klienci biznesowi', title: 'Klienci biznesowi', aviation: 'Lotnictwo', maritime: 'Morski', telecom: 'Telekom', loading: 'Ładowanie Wikipedii…', error: 'Nie udało się wczytać Wikipedii. Pokazuję znane nazwy.', footnote: 'Publicznie podane nazwy — nieoficjalna lista SpaceX. Wikipedia plus znane uzupełnienia.', source: 'Wikipedia' },
+            hi: { btn: 'व्यावसायिक ग्राहक', title: 'व्यावसायिक ग्राहक', aviation: 'उड्डयन', maritime: 'समुद्री', telecom: 'टेलीकॉम', loading: 'विकिपीडिया लोड हो रहा है…', error: 'विकिपीडिया नहीं खुल सका। ज्ञात नाम दिखाए जा रहे हैं।', footnote: 'सार्वजनिक रूप से बताए गए नाम — SpaceX की आधिकारिक सूची नहीं। विकिपीडिया और ज्ञात जोड़।', source: 'विकिपीडिया' },
+            ar: { btn: 'عملاء الأعمال', title: 'عملاء الأعمال', aviation: 'طيران', maritime: 'بحري', telecom: 'اتصالات', loading: 'جارٍ تحميل ويكيبيديا…', error: 'تعذر الوصول إلى ويكيبيديا. تُعرض الأسماء المعروفة.', footnote: 'أسماء معلنة علنًا — ليست قائمة رسمية من SpaceX. ويكيبيديا مع إضافات معروفة.', source: 'ويكيبيديا' },
+            tr: { btn: 'Kurumsal müşteriler', title: 'Kurumsal müşteriler', aviation: 'Havacılık', maritime: 'Denizcilik', telecom: 'Telekom', loading: 'Wikipedia yükleniyor…', error: 'Wikipedia’ya ulaşılamadı. Bilinen adlar gösteriliyor.', footnote: 'Kamuya açıklanmış adlar — resmi bir SpaceX listesi değil. Wikipedia artı bilinen ekler.', source: 'Wikipedia' }
+        };
+
+        function getStarlinkBizDict(currentLang) {
+            let key = (currentLang || document.documentElement.lang || 'en').split('-')[0];
+            if (key === 'zh') key = 'zh';
+            return STARLINK_BIZ_I18N[key] || STARLINK_BIZ_I18N.en;
+        }
+
+        let lastAppliedStarlinkBizLang = null;
+        function applyStarlinkBizLabels(currentLang) {
+            let key = (currentLang || 'en').split('-')[0];
+            if (key === 'zh') key = 'zh';
+            if (lastAppliedStarlinkBizLang === key) return;
+            lastAppliedStarlinkBizLang = key;
+            const dict = getStarlinkBizDict(key);
+            const btn = document.getElementById('i18n-starlink-biz-btn');
+            if (btn) btn.textContent = dict.btn;
+            const title = document.getElementById('i18n-starlink-biz-title');
+            if (title) title.textContent = dict.title;
+            const footnote = document.getElementById('i18n-starlink-biz-footnote');
+            if (footnote) footnote.textContent = dict.footnote;
+            const loading = document.getElementById('i18n-starlink-biz-loading');
+            if (loading) loading.textContent = dict.loading;
+            const err = document.getElementById('i18n-starlink-biz-error');
+            if (err) err.textContent = dict.error;
+            if (typeof renderStarlinkBizGroups === 'function' && window._starlinkBizGroups) {
+                renderStarlinkBizGroups(window._starlinkBizGroups, dict);
+            }
+        }
+
         let lastAppliedStarlinkTitleLang = null;
         function applyStarlinkSectionTitleTranslation(currentLang) {
             let key = (currentLang || 'en').split('-')[0];
@@ -6556,6 +6634,7 @@
             applyNiceToKnowTranslations(currentLang);
             applyStarshipDocSubtitleTranslation(currentLang);
             applyStarlinkSectionTitleTranslation(currentLang);
+            if (typeof applyStarlinkBizLabels === 'function') applyStarlinkBizLabels(currentLang);
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             // Catches up the CRT-cutout hole (see updateAIComputeCrtHole) after any layout shift
             // that isn't a scroll/resize event - e.g. async content loading above this section
@@ -7484,7 +7563,7 @@
 
                 <!-- Customers (Private + Business) card -->
                 <div
-                    class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative group">
+                    class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-users text-cyan-500"></i>
@@ -7492,10 +7571,41 @@
                                 class="font-orbitron text-[10px] sm:text-[11px] font-bold tracking-widest text-cyan-500 uppercase">Customers
                                 (Private+Business)</span>
                         </div>
-                        <span
-                            class="px-2.5 py-1.5 bg-zinc-800/80 border border-zinc-700 text-[9px] sm:text-[10px] font-bold tracking-wider rounded-xl text-zinc-400 whitespace-nowrap">
-                            AUG 2026
-                        </span>
+                        <div id="starlink-biz-btn"
+                            class="group relative shrink-0 cursor-pointer select-none notranslate p-3 -m-3"
+                            style="touch-action: manipulation;"
+                            translate="no" lang="en" role="button" tabindex="0"
+                            aria-haspopup="dialog" aria-expanded="false" aria-controls="starlink-biz-breakdown"
+                            onclick="toggleStarlinkBizBreakdown(event)" onkeydown="activateOnEnterOrSpace(event)"
+                            onmouseenter="ensureStarlinkBizData()">
+                            <div class="px-2.5 py-1.5 bg-zinc-800/80 active:bg-cyan-500 active:text-black md:group-hover:bg-cyan-500 md:group-hover:text-black border border-zinc-700 active:border-cyan-500 md:group-hover:border-cyan-500 text-[9px] sm:text-[10px] font-bold tracking-wider rounded-xl transition-all flex items-center gap-1.5 shadow-sm text-zinc-300 whitespace-nowrap">
+                                <i class="fa-solid fa-building text-[8px] shrink-0"></i>
+                                <span id="i18n-starlink-biz-btn">Business customers</span>
+                            </div>
+                            <!-- Same hover/tap pattern as #year-count-breakdown: desktop CSS
+                                 hover (md:group-hover:flex), mobile tap. end-full (no me gap)
+                                 keeps the pointer on the group while moving onto the list. -->
+                            <div id="starlink-biz-breakdown"
+                                class="hidden md:group-hover:flex absolute top-3 end-full flex-col w-80 sm:w-96 max-h-[min(70vh,32rem)] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80] font-medium tracking-normal normal-case whitespace-normal"
+                                onclick="event.stopPropagation()">
+                                <div class="px-4 pt-3.5 pb-2.5 shrink-0">
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <i class="fa-solid fa-building text-cyan-400 text-base shrink-0"></i>
+                                        <div id="i18n-starlink-biz-title"
+                                            class="font-orbitron text-base sm:text-lg font-bold text-white tracking-tight notranslate" translate="no" lang="en">Business customers</div>
+                                    </div>
+                                    <p id="i18n-starlink-biz-footnote" class="text-xs sm:text-sm text-zinc-500 leading-relaxed font-normal notranslate" translate="no" lang="en">Publicly reported names — not an official SpaceX list. Wikipedia plus known additions.</p>
+                                </div>
+                                <div id="starlink-biz-loading" class="hidden px-4 pb-3 items-center gap-2 text-sm text-zinc-400 font-normal">
+                                    <i class="fa-solid fa-spinner fa-spin text-cyan-400"></i>
+                                    <span id="i18n-starlink-biz-loading" class="notranslate" translate="no" lang="en">Loading Wikipedia…</span>
+                                </div>
+                                <p id="starlink-biz-error" class="hidden px-4 pb-2 text-xs sm:text-sm text-amber-400 font-normal notranslate" translate="no" lang="en">
+                                    <span id="i18n-starlink-biz-error">Wikipedia could not be reached. Showing known names.</span>
+                                </p>
+                                <div id="starlink-biz-list" class="px-4 pb-3.5 space-y-3.5 overflow-y-auto flex-1 min-h-0" style="overscroll-behavior: contain;"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex justify-between items-end mb-4">
@@ -7504,10 +7614,10 @@
                                 class="text-3xl sm:text-4xl font-bold font-space text-white transition-colors duration-500 flex items-baseline">
                                 ~<span id="starlink-customers-count">13,000,000</span>
                             </div>
-                            <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">Active customers (self-serve)</div>
+                            <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">Active customers · updated August 2026</div>
                         </div>
                         <div class="text-right">
-                            <div class="text-base sm:text-lg font-mono font-semibold text-emerald-400">+1M+</div>
+                            <div class="text-base sm:text-lg font-mono font-semibold text-emerald-400">+1M</div>
                             <div class="text-[11px] sm:text-xs text-zinc-500 mt-1">since June 30</div>
                         </div>
                     </div>
@@ -11194,6 +11304,307 @@
                     }
                 });
         }
+
+        const STARLINK_BIZ_WIKI_JUNK = /^(CNBC|Reuters|The Independent|Federal Aviation Administration|Passenger Wi-Fi on airplanes|PR Newswire|The Chosun Ilbo|MS Freedom of the Seas|SMS|SpaceNews|SpaceX|Starlink|Hanjin Group)$/i;
+        const STARLINK_BIZ_NAME_MAP = {
+            'Emirates (airline)': 'Emirates',
+            'Iberia (airline)': 'Iberia',
+            'Level (airline)': 'LEVEL',
+            'Viking (cruise line)': 'Viking',
+            'T-Mobile US': 'T-Mobile',
+            'AirBaltic': 'airBaltic',
+            'Rogers Communications': 'Rogers',
+            'Carnival Corporation & plc': 'Carnival',
+            'Norwegian Cruise Line Holdings': 'Norwegian Cruise Line',
+            'Swiss International Air Lines': 'SWISS',
+            'FlyDubai': 'flydubai',
+            'Edelweiss Air': 'Edelweiss',
+            'International Airlines Group': 'IAG'
+        };
+        // Always merged AFTER Wikipedia names, so a wiki refresh can add/remove
+        // wiki-sourced entries without dropping these known omissions.
+        const STARLINK_BIZ_EXTRAS = {
+            aviation: ['JSX', 'Arajet', 'Japan Airlines'],
+            maritime: ['CMA CGM', 'Princess Cruises', 'Holland America Line', 'AIDA Cruises', 'Costa Cruises', 'Cunard', 'P&O Cruises', 'Seabourn'],
+            telecom: ['KDDI', 'Salt', 'Entel', 'Telefónica', 'Deutsche Telekom']
+        };
+
+        function displayStarlinkBizName(raw) {
+            const mapped = STARLINK_BIZ_NAME_MAP[raw] || raw;
+            return mapped.replace(/\s*\((airline|cruise line)\)\s*$/i, '').trim();
+        }
+
+        function mergeStarlinkBizNames(wikiNames, extras) {
+            const out = [];
+            const seen = new Set();
+            const push = (name) => {
+                const display = displayStarlinkBizName(name);
+                if (!display) return;
+                const key = display.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                out.push(display);
+            };
+            (wikiNames || []).forEach(push);
+            (extras || []).forEach(push);
+            out.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+            return out;
+        }
+
+        function parseStarlinkBizWikiLinks(links) {
+            return (links || [])
+                .filter(l => l && l.ns === 0 && l['*'] && !STARLINK_BIZ_WIKI_JUNK.test(l['*']) && !/^Help:|^Wikipedia:/.test(l['*']))
+                .map(l => l['*']);
+        }
+
+        async function fetchStarlinkBizWikiSection(sectionIndex) {
+            if (sectionIndex == null) return [];
+            const url = 'https://en.wikipedia.org/w/api.php?' + new URLSearchParams({
+                action: 'parse',
+                page: 'Starlink',
+                prop: 'links',
+                section: String(sectionIndex),
+                format: 'json',
+                origin: '*'
+            });
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('wiki links');
+            const data = await res.json();
+            return parseStarlinkBizWikiLinks(data && data.parse && data.parse.links);
+        }
+
+        async function loadStarlinkBizGroupsFromWikipedia() {
+            const tocUrl = 'https://en.wikipedia.org/w/api.php?' + new URLSearchParams({
+                action: 'parse',
+                page: 'Starlink',
+                prop: 'sections',
+                format: 'json',
+                origin: '*'
+            });
+            const tocRes = await fetch(tocUrl);
+            if (!tocRes.ok) throw new Error('wiki toc');
+            const toc = await tocRes.json();
+            const sections = (toc && toc.parse && toc.parse.sections) || [];
+            const findIdx = (re) => {
+                const hit = sections.find(s => re.test(s.line || ''));
+                return hit ? hit.index : null;
+            };
+            const aviationIdx = findIdx(/passenger wi-?fi on aircraft/i);
+            const maritimeIdx = findIdx(/^maritime$/i);
+            const telecomIdx = findIdx(/direct-to-cell/i);
+            const [aviation, maritime, telecom] = await Promise.all([
+                fetchStarlinkBizWikiSection(aviationIdx),
+                fetchStarlinkBizWikiSection(maritimeIdx),
+                fetchStarlinkBizWikiSection(telecomIdx)
+            ]);
+            return withStarlinkBizExtras({ aviation, maritime, telecom });
+        }
+
+        function extrasOnlyStarlinkBizGroups() {
+            return withStarlinkBizExtras({ aviation: [], maritime: [], telecom: [] });
+        }
+
+        function withStarlinkBizExtras(groups) {
+            return {
+                aviation: mergeStarlinkBizNames((groups && groups.aviation) || [], STARLINK_BIZ_EXTRAS.aviation),
+                maritime: mergeStarlinkBizNames((groups && groups.maritime) || [], STARLINK_BIZ_EXTRAS.maritime),
+                telecom: mergeStarlinkBizNames((groups && groups.telecom) || [], STARLINK_BIZ_EXTRAS.telecom)
+            };
+        }
+
+        function renderStarlinkBizGroups(groups, dict) {
+            const listEl = document.getElementById('starlink-biz-list');
+            if (!listEl) return;
+            groups = withStarlinkBizExtras(groups);
+            const sectors = [
+                { key: 'aviation', icon: 'fa-plane' },
+                { key: 'maritime', icon: 'fa-ship' },
+                { key: 'telecom', icon: 'fa-signal' }
+            ];
+            listEl.innerHTML = sectors.map(({ key, icon }) => {
+                const names = groups[key] || [];
+                if (!names.length) return '';
+                const items = names.map(name => `
+                    <div class="starlink-biz-row flex items-center bg-zinc-950 border border-zinc-800/50 rounded-lg px-3 py-2">
+                        <div class="min-w-0 flex-1 text-xs sm:text-sm font-semibold text-zinc-200 notranslate" translate="no" dir="ltr">${escapeHtml(name)}</div>
+                    </div>`).join('');
+                return `
+                    <div>
+                        <h4 class="font-orbitron text-xs sm:text-sm font-bold tracking-widest text-cyan-400 uppercase mb-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid ${icon} text-xs"></i>
+                            <span>${escapeHtml(dict[key] || key)}</span>
+                        </h4>
+                        <div class="space-y-1">${items}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        let starlinkBizCache = null;
+        let starlinkBizInflight = null;
+        let starlinkBizPopupHome = null;
+
+        function isStarlinkBizTapMode() {
+            return isYearCountTapMode();
+        }
+
+        function clearStarlinkBizPopupPin(popup) {
+            if (!popup) return;
+            ['position', 'top', 'left', 'right', 'bottom', 'width', 'max-width', 'max-height'].forEach(function (p) {
+                popup.style.removeProperty(p);
+            });
+        }
+
+        function restoreStarlinkBizPopupHome() {
+            const popup = document.getElementById('starlink-biz-breakdown');
+            if (!popup || !starlinkBizPopupHome) return;
+            const home = starlinkBizPopupHome;
+            starlinkBizPopupHome = null;
+            if (home.next && home.next.parentNode === home.parent) {
+                home.parent.insertBefore(popup, home.next);
+            } else {
+                home.parent.appendChild(popup);
+            }
+            clearStarlinkBizPopupPin(popup);
+        }
+
+        // Mobile has no hover, so the list only opens on tap. The Info Station panel uses
+        // transform/will-change (tab animation) and the page clips overflow-x, both of which
+        // trap a position:fixed child - so on a narrow screen the panel is moved to <body>
+        // for the open duration (same idea as pinPopupWithinViewport for the year-count
+        // popup). Desktop hover stays on the CSS path inside the button's group.
+        function pinStarlinkBizPopup(popup, anchorEl) {
+            try {
+                if (!isStarlinkBizTapMode()) {
+                    restoreStarlinkBizPopupHome();
+                    return;
+                }
+                if (!popup || !anchorEl) return;
+                if (popup.parentElement !== document.body) {
+                    starlinkBizPopupHome = { parent: popup.parentElement, next: popup.nextSibling };
+                    document.body.appendChild(popup);
+                }
+                const margin = 16;
+                const anchorRect = anchorEl.getBoundingClientRect();
+                popup.style.setProperty('position', 'fixed', 'important');
+                popup.style.setProperty('width', 'min(24rem, calc(100vw - ' + (margin * 2) + 'px))', 'important');
+                popup.style.setProperty('max-width', 'calc(100vw - ' + (margin * 2) + 'px)', 'important');
+                popup.style.setProperty('right', 'auto', 'important');
+                const spaceBelow = window.innerHeight - anchorRect.bottom - margin;
+                const spaceAbove = anchorRect.top - margin;
+                let top;
+                let maxH;
+                if (spaceBelow >= 180 || spaceBelow >= spaceAbove) {
+                    top = anchorRect.bottom + 8;
+                    maxH = Math.max(160, spaceBelow - 8);
+                } else {
+                    maxH = Math.max(160, spaceAbove - 8);
+                    top = Math.max(margin, anchorRect.top - maxH - 8);
+                }
+                popup.style.setProperty('top', top + 'px', 'important');
+                popup.style.setProperty('max-height', maxH + 'px', 'important');
+                const popupWidth = popup.getBoundingClientRect().width;
+                const maxLeft = window.innerWidth - popupWidth - margin;
+                const preferredLeft = anchorRect.right - popupWidth;
+                const left = Math.max(margin, Math.min(preferredLeft, maxLeft));
+                popup.style.setProperty('left', left + 'px', 'important');
+            } catch (e) { /* stay on the CSS position rather than swallowing the tap */ }
+        }
+
+        function setStarlinkBizBreakdownOpen(open) {
+            const popup = document.getElementById('starlink-biz-breakdown');
+            const box = document.getElementById('starlink-biz-btn');
+            if (!popup) return;
+            popup.classList.toggle('hidden', !open);
+            popup.classList.toggle('flex', open);
+            if (box) box.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) {
+                requestAnimationFrame(function () {
+                    pinStarlinkBizPopup(popup, box);
+                });
+            } else {
+                restoreStarlinkBizPopupHome();
+            }
+        }
+
+        function toggleStarlinkBizBreakdown(event) {
+            if (event) event.stopPropagation();
+            if (event && event.target && event.target.closest && event.target.closest('#starlink-biz-breakdown')) return;
+            if (!isStarlinkBizTapMode()) return;
+            const popup = document.getElementById('starlink-biz-breakdown');
+            if (!popup) return;
+            const opening = popup.classList.contains('hidden');
+            setStarlinkBizBreakdownOpen(opening);
+            if (opening) ensureStarlinkBizData();
+        }
+
+        document.addEventListener('click', function (e) {
+            const popup = document.getElementById('starlink-biz-breakdown');
+            const box = document.getElementById('starlink-biz-btn');
+            if (!popup || popup.classList.contains('hidden')) return;
+            if (box && box.contains(e.target)) return;
+            if (popup.contains(e.target)) return;
+            setStarlinkBizBreakdownOpen(false);
+        });
+        window.addEventListener('resize', function () {
+            const popup = document.getElementById('starlink-biz-breakdown');
+            const box = document.getElementById('starlink-biz-btn');
+            if (!popup) return;
+            if (!isStarlinkBizTapMode()) {
+                if (!popup.classList.contains('hidden')) setStarlinkBizBreakdownOpen(false);
+                return;
+            }
+            if (popup.classList.contains('hidden')) return;
+            pinStarlinkBizPopup(popup, box);
+        });
+
+        function paintStarlinkBizGroups(groups, showError) {
+            const dict = getStarlinkBizDict(document.documentElement.lang);
+            const loadingEl = document.getElementById('starlink-biz-loading');
+            const errorEl = document.getElementById('starlink-biz-error');
+            if (loadingEl) {
+                loadingEl.classList.add('hidden');
+                loadingEl.classList.remove('flex');
+            }
+            if (errorEl) errorEl.classList.toggle('hidden', !showError);
+            window._starlinkBizGroups = groups;
+            renderStarlinkBizGroups(groups, dict);
+        }
+
+        function ensureStarlinkBizData() {
+            if (starlinkBizCache) {
+                paintStarlinkBizGroups(starlinkBizCache, false);
+                return Promise.resolve(starlinkBizCache);
+            }
+            if (starlinkBizInflight) return starlinkBizInflight;
+
+            const loadingEl = document.getElementById('starlink-biz-loading');
+            const errorEl = document.getElementById('starlink-biz-error');
+            if (loadingEl) {
+                loadingEl.classList.remove('hidden');
+                loadingEl.classList.add('flex');
+            }
+            if (errorEl) errorEl.classList.add('hidden');
+
+            starlinkBizInflight = loadStarlinkBizGroupsFromWikipedia()
+                .then(groups => {
+                    starlinkBizCache = withStarlinkBizExtras(groups);
+                    paintStarlinkBizGroups(starlinkBizCache, false);
+                    return starlinkBizCache;
+                })
+                .catch(() => {
+                    const fallback = extrasOnlyStarlinkBizGroups();
+                    paintStarlinkBizGroups(fallback, true);
+                    return fallback;
+                })
+                .finally(() => {
+                    starlinkBizInflight = null;
+                });
+            return starlinkBizInflight;
+        }
+
+        setTimeout(function () {
+            if (typeof ensureStarlinkBizData === 'function') ensureStarlinkBizData();
+        }, 2500);
 
         // Shared by fallbackStarlinkStats and updateStarlinkStats' cached-fallback path -
         // estimates how many Starlink satellites have been added since a cutoff date by scanning
