@@ -3700,6 +3700,9 @@
             background: rgba(18, 24, 38, 0.96) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
         }
+        #starlink-biz-breakdown {
+            overscroll-behavior: contain;
+        }
         body.light-theme #starlink-biz-breakdown .starlink-biz-row {
             background: #f8fafc !important;
             border-color: #e2e8f0 !important;
@@ -11556,6 +11559,20 @@
             if (popup.classList.contains('hidden')) return;
             pinStarlinkBizPopup(popup, box);
         });
+
+        // Desktop: the title/footnote sit above the scrollable list, so a wheel over that
+        // header (or anywhere else in the panel) was hitting the page behind it. Forward
+        // every wheel on the panel into the list and swallow it so the site does not move.
+        (function bindStarlinkBizWheel() {
+            const popup = document.getElementById('starlink-biz-breakdown');
+            const list = document.getElementById('starlink-biz-list');
+            if (!popup || !list) return;
+            popup.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                list.scrollTop += e.deltaY;
+            }, { passive: false });
+        })();
 
         function paintStarlinkBizGroups(groups, showError) {
             const dict = getStarlinkBizDict(document.documentElement.lang);
