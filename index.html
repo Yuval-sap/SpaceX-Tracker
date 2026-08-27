@@ -3230,6 +3230,33 @@
             }
         }
 
+        /* Desktop-only mission share menu. Never shown below the md breakpoint so the
+           mobile Share button keeps calling navigator.share with no extra UI. */
+        @media (max-width: 767px) {
+            #modal-desktop-share-menu { display: none !important; }
+        }
+        #modal-desktop-share-menu:not(.hidden) {
+            display: block;
+        }
+        body.light-theme #modal-desktop-share-menu {
+            background: rgba(255, 255, 255, 0.98) !important;
+            border-color: #e2e8f0 !important;
+        }
+        body.light-theme .desktop-share-option {
+            color: #334155 !important;
+        }
+        body.light-theme .desktop-share-option:hover {
+            background: rgba(15, 23, 42, 0.06) !important;
+        }
+        body.mars-theme #modal-desktop-share-menu {
+            background: rgba(39, 21, 16, 0.96) !important;
+            border-color: rgba(140, 65, 35, 0.55) !important;
+        }
+        body.moon-theme #modal-desktop-share-menu {
+            background: rgba(18, 24, 38, 0.96) !important;
+            border-color: rgba(80, 100, 140, 0.5) !important;
+        }
+
 
         /* Extra emerald hover utilities → Mars / Moon accents (buttons, borders, groups) */
         @media (min-width: 768px) {
@@ -5007,6 +5034,10 @@
             if (patchesSearchEl) {
                 const wanted = dict.patchesSearch || LAUNCH_LABEL_I18N.en.patchesSearch;
                 if (patchesSearchEl.placeholder !== wanted) patchesSearchEl.placeholder = wanted;
+            }
+
+            if (typeof applyDesktopShareMenuLabels === 'function') {
+                applyDesktopShareMenuLabels(currentLang);
             }
 
         }
@@ -8279,7 +8310,8 @@
                 </div>
                 <div id="modal-action-btn-row">
                     <button id="modal-share-btn"
-                        class="flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300">
+                        class="flex items-center justify-center gap-1 sm:gap-2 px-2 py-3 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 rounded-2xl text-[11px] sm:text-sm font-semibold tracking-wide text-zinc-200 transition-all duration-300"
+                        aria-haspopup="menu" aria-expanded="false" aria-controls="modal-desktop-share-menu">
                         <i class="fa-solid fa-share-nodes shrink-0"></i> <span class="min-w-0 text-center">Share
                             Mission</span>
                     </button>
@@ -8497,6 +8529,46 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Desktop-only mission share targets. Lives outside #mission-modal-content so the
+         modal's overflow-x-hidden cannot clip it. Hidden with CSS below 768px; mobile still
+         uses navigator.share via shareMission() and never sees this panel. -->
+    <div id="modal-desktop-share-menu" role="menu" aria-label="Share mission"
+        class="hidden fixed z-[180] min-w-[220px] py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl notranslate"
+        translate="no">
+        <a id="desktop-share-whatsapp" role="menuitem" href="#" target="_blank" rel="noopener noreferrer"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-brands fa-whatsapp w-4 text-center text-emerald-400"></i><span>WhatsApp</span>
+        </a>
+        <a id="desktop-share-telegram" role="menuitem" href="#" target="_blank" rel="noopener noreferrer"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-brands fa-telegram w-4 text-center text-sky-400"></i><span>Telegram</span>
+        </a>
+        <a id="desktop-share-x" role="menuitem" href="#" target="_blank" rel="noopener noreferrer"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-brands fa-x-twitter w-4 text-center text-zinc-200"></i><span>X</span>
+        </a>
+        <a id="desktop-share-facebook" role="menuitem" href="#" target="_blank" rel="noopener noreferrer"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-brands fa-facebook w-4 text-center text-blue-500"></i><span>Facebook</span>
+        </a>
+        <a id="desktop-share-instagram" role="menuitem" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-brands fa-instagram w-4 text-center text-pink-400"></i><span>Instagram</span>
+        </a>
+        <a id="desktop-share-tiktok" role="menuitem" href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-brands fa-tiktok w-4 text-center text-zinc-100"></i><span>TikTok</span>
+        </a>
+        <a id="desktop-share-mail" role="menuitem" href="#"
+            class="desktop-share-option flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors no-underline">
+            <i class="fa-solid fa-envelope w-4 text-center text-amber-300"></i><span id="desktop-share-mail-label">Email</span>
+        </a>
+        <button type="button" id="desktop-share-copy" role="menuitem"
+            class="desktop-share-option w-full flex items-center gap-2.5 px-3 py-2 text-start text-xs font-semibold text-zinc-300 md:hover:bg-zinc-800 transition-colors">
+            <i class="fa-solid fa-link w-4 text-center text-emerald-300"></i><span id="desktop-share-copy-label">Copy link</span>
+        </button>
     </div>
 
     <!-- Rocket Modal -->
@@ -15730,7 +15802,18 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // update by itself whenever the API fills in more detail closer to launch.
             document.getElementById('modal-milestones-section').classList.add('hidden');
 
-            document.getElementById('modal-share-btn').onclick = () => shareMission(m);
+            document.getElementById('modal-share-btn').onclick = (event) => {
+                // Desktop: custom share menu. Mobile: unchanged native shareMission().
+                if (typeof isDesktopShareMenu === 'function' && isDesktopShareMenu()) {
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    toggleDesktopShareMenu(m);
+                    return;
+                }
+                shareMission(m);
+            };
             document.getElementById('modal-calendar-btn').onclick = () => saveToCalendar(m);
             document.getElementById('modal-poster-btn').onclick = () => downloadMissionPoster(m);
 
@@ -15886,6 +15969,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (videoFallback) videoFallback.classList.add('hidden');
             resetVideoControlsOverlay();
             window._pendingMissionYoutubeId = null;
+            if (typeof setDesktopShareMenuOpen === 'function') setDesktopShareMenuOpen(false);
         }
 
         // Points at the static per-mission preview page (see generate_mission_cards.py at the
@@ -15902,6 +15986,268 @@ fitTitleOneLine(document.getElementById('hero-name'));
         function buildMissionShareUrl(m) {
             return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html`;
         }
+
+        // Desktop share menu labels only (brand names stay in English). Mobile never
+        // shows this UI, so these strings are unused below the md breakpoint.
+        const DESKTOP_SHARE_I18N = {
+            en: { mail: "Email", copy: "Copy link", copied: "Copied!", igHint: "Copies the caption and link, then opens Instagram", ttHint: "Copies the caption and link, then opens TikTok" },
+            he: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הכיתוב והקישור ואז פותח את Instagram", ttHint: "מעתיק את הכיתוב והקישור ואז פותח את TikTok" },
+            iw: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הכיתוב והקישור ואז פותח את Instagram", ttHint: "מעתיק את הכיתוב והקישור ואז פותח את TikTok" },
+            es: { mail: "Correo", copy: "Copiar enlace", copied: "¡Copiado!" },
+            fr: { mail: "E-mail", copy: "Copier le lien", copied: "Copié !" },
+            de: { mail: "E-Mail", copy: "Link kopieren", copied: "Kopiert!" },
+            ru: { mail: "Почта", copy: "Копировать ссылку", copied: "Скопировано!" },
+            zh: { mail: "邮件", copy: "复制链接", copied: "已复制！" },
+            it: { mail: "Email", copy: "Copia link", copied: "Copiato!" },
+            cs: { mail: "E-mail", copy: "Kopírovat odkaz", copied: "Zkopírováno!" },
+            sv: { mail: "E-post", copy: "Kopiera länk", copied: "Kopierad!" },
+            nl: { mail: "E-mail", copy: "Link kopiëren", copied: "Gekopieerd!" },
+            da: { mail: "E-mail", copy: "Kopiér link", copied: "Kopieret!" },
+            pt: { mail: "E-mail", copy: "Copiar link", copied: "Copiado!" },
+            pl: { mail: "E-mail", copy: "Kopiuj link", copied: "Skopiowano!" },
+            hi: { mail: "ईमेल", copy: "लिंक कॉपी करें", copied: "कॉपी हो गया!" },
+            ar: { mail: "بريد", copy: "نسخ الرابط", copied: "تم النسخ!" },
+            tr: { mail: "E-posta", copy: "Bağlantıyı kopyala", copied: "Kopyalandı!" }
+        };
+
+        let desktopSharePayload = null;
+        let desktopShareCopyResetTimer = null;
+
+        function isDesktopShareMenu() {
+            try {
+                return window.matchMedia('(min-width: 768px)').matches;
+            } catch (e) {
+                return window.innerWidth >= 768;
+            }
+        }
+
+        function getDesktopShareDict(currentLang) {
+            const lang = (currentLang || document.documentElement.lang || 'en').split('-')[0];
+            const key = lang === 'iw' ? 'iw' : lang;
+            return DESKTOP_SHARE_I18N[key] || DESKTOP_SHARE_I18N.en;
+        }
+
+        function applyDesktopShareMenuLabels(currentLang) {
+            const dict = getDesktopShareDict(currentLang);
+            const mailLabel = document.getElementById('desktop-share-mail-label');
+            const copyLabel = document.getElementById('desktop-share-copy-label');
+            if (mailLabel && mailLabel.innerText !== dict.mail) mailLabel.innerText = dict.mail;
+            if (copyLabel && !copyLabel.dataset.copied && copyLabel.innerText !== dict.copy) {
+                copyLabel.innerText = dict.copy;
+            }
+            const ig = document.getElementById('desktop-share-instagram');
+            const tt = document.getElementById('desktop-share-tiktok');
+            const igHint = dict.igHint || DESKTOP_SHARE_I18N.en.igHint;
+            const ttHint = dict.ttHint || DESKTOP_SHARE_I18N.en.ttHint;
+            if (ig && ig.getAttribute('title') !== igHint) ig.setAttribute('title', igHint);
+            if (tt && tt.getAttribute('title') !== ttHint) tt.setAttribute('title', ttHint);
+        }
+
+        function buildDesktopSharePayload(m) {
+            const shareTitle = `SpaceX • ${m.name}`;
+            const shareUrl = buildMissionShareUrl(m);
+            const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!\n${shareUrl}`;
+            return { shareTitle, shareUrl, shareText };
+        }
+
+        function buildXShareHref(payload) {
+            const caption = String(payload.shareText || '')
+                .replace(/\r?\n/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
+        }
+
+        function copyDesktopShareClipboard(text, onDone) {
+            const value = String(text || '');
+            const fallbackCopy = function () {
+                const ta = document.createElement('textarea');
+                ta.value = value;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch (err) { }
+                ta.remove();
+            };
+            const done = typeof onDone === 'function' ? onDone : function () {};
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(done).catch(function () {
+                    fallbackCopy();
+                    done();
+                });
+            } else {
+                fallbackCopy();
+                done();
+            }
+        }
+
+        function wireDesktopShareMenuLinks(payload) {
+            const encodedText = encodeURIComponent(payload.shareText);
+            const encodedUrl = encodeURIComponent(payload.shareUrl);
+            const encodedTitle = encodeURIComponent(payload.shareTitle);
+            const wa = document.getElementById('desktop-share-whatsapp');
+            const tg = document.getElementById('desktop-share-telegram');
+            const x = document.getElementById('desktop-share-x');
+            const fb = document.getElementById('desktop-share-facebook');
+            const mail = document.getElementById('desktop-share-mail');
+            if (wa) wa.href = `https://wa.me/?text=${encodedText}`;
+            if (tg) tg.href = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`;
+            // Single `text` param (caption + URL). A separate `url` param, an encoded
+            // newline (%0A), or the old twitter.com/intent/tweet redirect all make X
+            // open an empty composer — especially the Windows desktop app, which
+            // truncates the intent URI at %0A and drops the query string.
+            if (x) x.href = buildXShareHref(payload);
+            if (fb) fb.href = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+            if (mail) mail.href = `mailto:?subject=${encodedTitle}&body=${encodeURIComponent(payload.shareText)}`;
+        }
+
+        function positionDesktopShareMenu() {
+            const menu = document.getElementById('modal-desktop-share-menu');
+            const btn = document.getElementById('modal-share-btn');
+            if (!menu || !btn || menu.classList.contains('hidden')) return;
+            const rect = btn.getBoundingClientRect();
+            const rtl = document.documentElement.getAttribute('dir') === 'rtl';
+            const gap = 8;
+            menu.style.top = `${Math.round(rect.bottom + gap)}px`;
+            menu.style.bottom = 'auto';
+            const menuWidth = menu.offsetWidth || 220;
+            if (rtl) {
+                let right = window.innerWidth - rect.right;
+                if (rect.right - menuWidth < 12) right = Math.max(12, window.innerWidth - menuWidth - 12);
+                menu.style.right = `${Math.round(right)}px`;
+                menu.style.left = 'auto';
+            } else {
+                let left = rect.left;
+                if (left + menuWidth > window.innerWidth - 12) left = Math.max(12, window.innerWidth - menuWidth - 12);
+                menu.style.left = `${Math.round(left)}px`;
+                menu.style.right = 'auto';
+            }
+        }
+
+        function setDesktopShareMenuOpen(open) {
+            const menu = document.getElementById('modal-desktop-share-menu');
+            const btn = document.getElementById('modal-share-btn');
+            if (!menu) return;
+            const shouldOpen = !!(open && isDesktopShareMenu());
+            menu.classList.toggle('hidden', !shouldOpen);
+            if (btn) btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            if (shouldOpen) {
+                applyDesktopShareMenuLabels(document.documentElement.lang || 'en');
+                positionDesktopShareMenu();
+            }
+        }
+
+        function toggleDesktopShareMenu(m) {
+            const menu = document.getElementById('modal-desktop-share-menu');
+            if (!menu) return;
+            const willOpen = menu.classList.contains('hidden');
+            if (willOpen) {
+                desktopSharePayload = buildDesktopSharePayload(m);
+                wireDesktopShareMenuLinks(desktopSharePayload);
+                const copyLabel = document.getElementById('desktop-share-copy-label');
+                if (copyLabel) delete copyLabel.dataset.copied;
+            }
+            setDesktopShareMenuOpen(willOpen);
+        }
+
+        (function wireDesktopShareMenuChrome() {
+            const menu = document.getElementById('modal-desktop-share-menu');
+            const copyBtn = document.getElementById('desktop-share-copy');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const url = desktopSharePayload && desktopSharePayload.shareUrl;
+                    if (!url) return;
+                    const markCopied = function () {
+                        const copyLabel = document.getElementById('desktop-share-copy-label');
+                        const dict = getDesktopShareDict(document.documentElement.lang || 'en');
+                        if (copyLabel) {
+                            copyLabel.dataset.copied = '1';
+                            copyLabel.innerText = dict.copied;
+                        }
+                        if (desktopShareCopyResetTimer) clearTimeout(desktopShareCopyResetTimer);
+                        desktopShareCopyResetTimer = setTimeout(function () {
+                            if (copyLabel) {
+                                delete copyLabel.dataset.copied;
+                                copyLabel.innerText = dict.copy;
+                            }
+                        }, 1600);
+                    };
+                    const fallbackCopy = function () {
+                        const ta = document.createElement('textarea');
+                        ta.value = url;
+                        ta.setAttribute('readonly', '');
+                        ta.style.position = 'fixed';
+                        ta.style.left = '-9999px';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch (err) { }
+                        ta.remove();
+                    };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(url).then(markCopied).catch(function () {
+                            fallbackCopy();
+                            markCopied();
+                        });
+                    } else {
+                        fallbackCopy();
+                        markCopied();
+                    }
+                });
+            }
+            if (menu) {
+                menu.querySelectorAll('a.desktop-share-option').forEach(function (a) {
+                    a.addEventListener('click', function (e) {
+                        if (a.id === 'desktop-share-x' || a.id === 'desktop-share-facebook') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const href = a.getAttribute('href') || '';
+                            setDesktopShareMenuOpen(false);
+                            if (href && href !== '#') {
+                                const name = a.id === 'desktop-share-facebook' ? 'spacex_fb_share' : 'spacex_x_share';
+                                const size = a.id === 'desktop-share-facebook' ? 'width=640,height=720' : 'width=550,height=650';
+                                window.open(href, name, size + ',noopener,noreferrer');
+                            }
+                            return;
+                        }
+                        if (a.id === 'desktop-share-instagram' || a.id === 'desktop-share-tiktok') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const href = a.getAttribute('href') || '';
+                            const payload = desktopSharePayload;
+                            const text = payload ? (payload.shareText || payload.shareUrl) : '';
+                            setDesktopShareMenuOpen(false);
+                            copyDesktopShareClipboard(text, function () {
+                                if (href) window.open(href, '_blank', 'noopener,noreferrer');
+                            });
+                            return;
+                        }
+                        setDesktopShareMenuOpen(false);
+                    });
+                });
+            }
+            document.addEventListener('click', function (e) {
+                const menuEl = document.getElementById('modal-desktop-share-menu');
+                if (!menuEl || menuEl.classList.contains('hidden')) return;
+                const btn = document.getElementById('modal-share-btn');
+                if (menuEl.contains(e.target) || (btn && btn.contains(e.target))) return;
+                setDesktopShareMenuOpen(false);
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') setDesktopShareMenuOpen(false);
+            });
+            window.addEventListener('resize', function () {
+                if (!isDesktopShareMenu()) setDesktopShareMenuOpen(false);
+                else positionDesktopShareMenu();
+            });
+            const modal = document.getElementById('mission-modal');
+            const content = document.getElementById('mission-modal-content');
+            if (modal) modal.addEventListener('scroll', positionDesktopShareMenu, { passive: true });
+            if (content) content.addEventListener('scroll', positionDesktopShareMenu, { passive: true });
+        })();
 
         function shareMission(m) {
             const shareTitle = `SpaceX • ${m.name}`;
