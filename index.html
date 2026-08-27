@@ -9047,6 +9047,7 @@
         let upcomingForGrid = [];
         let currentFilter = 'all';
         let countdownIntervals = [];
+        let cardCountdownMissions = [];
         let refreshIntervalId = null;
         // The timestamp the currently-scheduled refresh is due to fire at - set every time
         // updateRefreshSchedule() (re)arms the timer. Read by the visibilitychange catch-up
@@ -14722,6 +14723,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             countdownIntervals.forEach(clearInterval);
             countdownIntervals = [];
+            cardCountdownMissions = [];
 
             // Manual translation for the card's "Countdown to launch" label — same
             // rationale as applyPastLaunchDetailsLabels below: these cards are rebuilt
@@ -14942,37 +14944,48 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
         }
 
-        function startCountdowns(missionList) {
-            missionList.forEach(m => {
+        function paintMissionCardCountdowns() {
+            const now = new Date();
+            cardCountdownMissions.forEach(m => {
                 const el = document.getElementById(`countdown-${m.id}`);
                 if (!el) return;
-
-                const target = new Date(m.date);
-
-                const update = () => {
-                    const diff = target - new Date();
-                    const sLower = m.status.toLowerCase();
-
-                    if (diff <= 0) {
-                        if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
-                            el.innerHTML = 'HOLD / DELAYED';
-                            el.className = "countdown-small text-lg font-bold tabular-nums text-amber-500 animate-pulse";
-                        } else {
-                            el.innerHTML = 'IN PROGRESS';
-                            el.className = "countdown-small text-lg font-bold tabular-nums text-emerald-400 animate-pulse-calm";
-                        }
-                        return;
+                const diff = new Date(m.date) - now;
+                const sLower = (m.status || '').toLowerCase();
+                let stamp;
+                let html;
+                let className;
+                if (diff <= 0) {
+                    if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
+                        stamp = 'hold';
+                        html = 'HOLD / DELAYED';
+                        className = "countdown-small text-lg font-bold tabular-nums text-amber-500 animate-pulse";
+                    } else {
+                        stamp = 'live';
+                        html = 'IN PROGRESS';
+                        className = "countdown-small text-lg font-bold tabular-nums text-emerald-400 animate-pulse-calm";
                     }
+                } else {
                     const d = Math.floor(diff / 86400000);
                     const h = Math.floor((diff % 86400000) / 3600000);
                     const min = Math.floor((diff % 3600000) / 60000);
-                    el.innerHTML = `${d}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">d</span> ${h}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">h</span> ${min}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">m</span>`;
-                };
-
-                update();
-                const interval = setInterval(update, 30000);
-                countdownIntervals.push(interval);
+                    stamp = `${d}:${h}:${min}`;
+                    html = `${d}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">d</span> ${h}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">h</span> ${min}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">m</span>`;
+                    className = "countdown-small text-lg font-bold tabular-nums text-emerald-400";
+                }
+                if (el.dataset.cdStamp === stamp) return;
+                el.dataset.cdStamp = stamp;
+                el.className = className;
+                el.innerHTML = html;
             });
+        }
+
+        function startCountdowns(missionList) {
+            // Same look as before (d/h/m only). Tick every second off the same cadence as
+            // the hero clock, and re-find each card in the live DOM so a re-render or
+            // translator wrap cannot freeze a stale node until the next full refresh.
+            cardCountdownMissions = missionList || [];
+            paintMissionCardCountdowns();
+            countdownIntervals.push(setInterval(paintMissionCardCountdowns, 1000));
         }
 
         // Multilingual keyword groups used both for exact-word smart search (translate a full
@@ -17727,7 +17740,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
             };
 
             update();
-            heroInterval = setInterval(update, 1000);
+            if (typeof paintMissionCardCountdowns === 'function') paintMissionCardCountdowns();
+            heroInterval = setInterval(() => {
+                update();
+                if (typeof paintMissionCardCountdowns === 'function') paintMissionCardCountdowns();
+            }, 1000);
         }
 
         // Shows the sticky-nav mini countdown (#sticky-countdown-wrap) only once the hero's
