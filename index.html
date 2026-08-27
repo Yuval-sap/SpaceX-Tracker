@@ -9123,21 +9123,6 @@
         </div>
     </div>
 
-    <!-- Shown when checkForNewSiteVersion() (see below) detects the deployed page has changed
-         since this tab loaded - GitHub Pages' CDN can keep a tab that's been open a while on an
-         old build well after a new one ships, with no other signal that a refresh is worthwhile. -->
-    <div id="update-available-banner" class="hidden fixed bottom-4 inset-x-0 z-[300] justify-center px-4 pointer-events-none">
-        <div class="pointer-events-auto flex items-center gap-3 bg-zinc-900 border border-emerald-500/40 text-white text-sm rounded-xl shadow-lg px-4 py-3">
-            <span>גרסה חדשה של האתר זמינה</span>
-            <button type="button" onclick="location.reload()"
-                class="bg-emerald-500 text-black font-semibold text-xs px-3 py-1.5 rounded-lg hover:bg-emerald-400 transition-colors shrink-0">רענן</button>
-            <button type="button" onclick="document.getElementById('update-available-banner').classList.add('hidden')"
-                title="Dismiss" class="text-zinc-400 hover:text-white shrink-0">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    </div>
-
     <script>
         let userTimezone = 'Asia/Jerusalem';
         try {
@@ -18245,38 +18230,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     return origScrollTo(a, b);
                 };
             })();
-
-            // GitHub Pages' CDN can keep serving an old build for a while after a new one ships -
-            // a tab left open (or even a fresh load hitting a not-yet-expired CDN edge) has no
-            // other signal that a refresh would actually get something newer. A HEAD request with
-            // cache:'no-store' bypasses this PAGE's own browser cache for the check itself (an
-            // intermediate CDN edge cache is a different layer, outside this page's control
-            // either way - this can only ever be as fresh as whatever the CDN is currently
-            // serving, not a guarantee of instant propagation) and compares the response's
-            // ETag/Last-Modified against whatever was current when the first check ran. No manual
-            // version number to remember to bump on every deploy - the server's own headers are
-            // the source of truth.
-            let siteVersionMarker = null;
-            async function checkForNewSiteVersion() {
-                try {
-                    const res = await fetch(location.href, { method: 'HEAD', cache: 'no-store' });
-                    const marker = res.headers.get('etag') || res.headers.get('last-modified');
-                    if (!marker) return;
-                    if (siteVersionMarker === null) { siteVersionMarker = marker; return; } // first run just establishes the baseline
-                    if (marker !== siteVersionMarker) {
-                        const banner = document.getElementById('update-available-banner');
-                        if (banner) { banner.classList.remove('hidden'); banner.classList.add('flex'); }
-                    }
-                } catch (e) { }
-            }
-            checkForNewSiteVersion();
-            setInterval(checkForNewSiteVersion, 5 * 60 * 1000);
-            // Same "a backgrounded tab's timers can't be trusted to fire on schedule" reasoning
-            // as the launch-data refresh catch-up above - check the instant the tab is actually
-            // looked at again, instead of waiting for whatever's left of a throttled interval.
-            document.addEventListener('visibilitychange', function () {
-                if (document.visibilityState === 'visible') checkForNewSiteVersion();
-            });
 
             // A browser refresh (F5 / the reload button) shouldn't cost an API call if we
             // already fetched moments ago - that's the exact same LL2 request budget the
