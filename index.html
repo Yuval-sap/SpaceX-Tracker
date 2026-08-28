@@ -222,7 +222,7 @@
            experiment made Orbitron the site-wide default before being scaled back to just those
            specific spots, which is why it's still loaded here even though body/.font-space no
            longer reference it directly. */
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&family=Audiowide&family=Zen+Dots&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&family=Audiowide&family=Zen+Dots&family=Michroma&display=swap');
 
         /* Font weight LABELS aren't visually equivalent across typefaces - Rubik's "600" is a
            notably rounder/heavier cut than Space Grotesk's "600", so in a mixed-script line
@@ -501,6 +501,9 @@
             }
             body.moon-theme #radar-box-click:hover #radar-map-box {
                 border-color: #3fa9f5 !important;
+            }
+            body.heatshield-theme #radar-box-click:hover #radar-map-box {
+                border-color: #e89a4a !important;
             }
         }
 
@@ -2692,6 +2695,9 @@
         body.moon-theme .booster-bar-fill {
             background-image: linear-gradient(to right, #175582, #3fa9f5);
         }
+        body.heatshield-theme .booster-bar-fill {
+            background-image: linear-gradient(to right, #8a4a18, #e89a4a);
+        }
         .booster-sn {
             transition: filter 0.3s ease;
         }
@@ -2703,6 +2709,9 @@
         }
         body.moon-theme #booster-leaderboard .group:hover .booster-sn {
             filter: drop-shadow(0 0 8px rgba(63, 169, 245, 0.9));
+        }
+        body.heatshield-theme #booster-leaderboard .group:hover .booster-sn {
+            filter: drop-shadow(0 0 8px rgba(232, 154, 74, 0.9));
         }
 
         /* Mars — Booster Flight Leaderboard chrome */
@@ -3035,6 +3044,270 @@
             border-top-color: rgba(80, 100, 140, 0.4) !important;
         }
 
+        /* ==================================================
+           HEATSHIELD MODE — exclusive (not stacked on day/night).
+           Backdrop: the Starship TPS hex-tile photo. Headings use Michroma
+           (wide technical caps in the SpaceX/Starship wordmark family) with
+           Rubik for Hebrew.
+           ================================================== */
+        body.heatshield-theme {
+            --hs-accent: #e89a4a;
+            --hs-accent-soft: #f0b56a;
+            --hs-accent-deep: #c4722a;
+            background-color: #080808 !important;
+            color: #f3efe8 !important;
+        }
+        body.heatshield-theme .font-orbitron,
+        body.heatshield-theme #hero-name,
+        body.heatshield-theme #hero-countdown,
+        body.heatshield-theme .mission-title-fit,
+        body.heatshield-theme .main-tab-btn,
+        body.heatshield-theme .countdown-small,
+        body.heatshield-theme #site-title,
+        body.heatshield-theme #rocket-modal-name,
+        body.heatshield-theme #site-modal-name,
+        body.heatshield-theme #orbit-modal-title,
+        body.heatshield-theme #landing-modal-name,
+        body.heatshield-theme #astro-modal-name,
+        body.heatshield-theme #i18n-countdown-to-launch,
+        body.heatshield-theme #i18n-launch-window,
+        body.heatshield-theme .milestones-title,
+        body.heatshield-theme #doc-ep1-title,
+        body.heatshield-theme #doc-ep2-title,
+        body.heatshield-theme #doc-ep3-title,
+        body.heatshield-theme .modal-subhead,
+        body.heatshield-theme #sticky-countdown,
+        body.heatshield-theme #sticky-countdown-mobile {
+            font-family: 'Michroma', 'Rubik', system_ui, sans-serif !important;
+            font-weight: 400 !important;
+            letter-spacing: 0.16em;
+        }
+        body.heatshield-theme .text-emerald-400\/70 {
+            color: rgba(232, 154, 74, 0.7) !important;
+        }
+        body.heatshield-theme.light-theme {
+            background-color: #080808 !important;
+            color: #f3efe8 !important;
+        }
+        body.heatshield-theme .stars-container {
+            opacity: 1 !important;
+            background-color: #050505;
+            background-image:
+                radial-gradient(ellipse at 50% 18%, rgba(20, 18, 16, 0.11) 0%, rgba(6, 6, 6, 0.42) 62%, rgba(0, 0, 0, 0.64) 100%),
+                linear-gradient(180deg, rgba(12, 10, 8, 0.15) 0%, rgba(4, 4, 4, 0.37) 100%),
+                url('heatshield-bg.png');
+            background-position: center, center, center;
+            /* Photo a notch under the viewport, then tiled so the leftover
+               edges still fill. Stronger edge vignette hides the joins.
+               Overlay sits between the first (heavy) dim and the last pass. */
+            background-size: cover, cover, 87% 87%;
+            background-repeat: no-repeat, no-repeat, repeat;
+            transition: background 0.6s ease, opacity 0.5s ease;
+        }
+        @media (max-width: 640px) {
+            body.heatshield-theme .stars-container {
+                background-position: center, center, center !important;
+                background-size: cover, cover, 87% 87% !important;
+                background-repeat: no-repeat, no-repeat, repeat !important;
+                background-image:
+                    radial-gradient(ellipse at 50% 25%, rgba(20, 18, 16, 0.06) 0%, rgba(6, 6, 6, 0.37) 58%, rgba(0, 0, 0, 0.68) 100%),
+                    linear-gradient(180deg, rgba(10, 8, 6, 0.13) 0%, rgba(4, 4, 4, 0.37) 100%),
+                    url('heatshield-bg.png') !important;
+            }
+        }
+        body.heatshield-theme .star {
+            display: none !important;
+        }
+        body.heatshield-theme .bg-zinc-950 { background-color: #0c0c0c !important; }
+        body.heatshield-theme .bg-zinc-950\/70 { background-color: rgba(12, 12, 12, 0.84) !important; }
+        body.heatshield-theme .bg-zinc-950\/80 { background-color: rgba(12, 12, 12, 0.9) !important; }
+        body.heatshield-theme .bg-zinc-950\/40 { background-color: rgba(12, 12, 12, 0.55) !important; }
+        body.heatshield-theme .bg-zinc-950\/60 { background-color: rgba(12, 12, 12, 0.72) !important; }
+        body.heatshield-theme .bg-zinc-900 { background-color: #161412 !important; }
+        body.heatshield-theme .bg-zinc-900\/50 { background-color: rgba(22, 20, 18, 0.68) !important; }
+        body.heatshield-theme .bg-zinc-850 { background-color: #12110f !important; }
+        body.heatshield-theme .bg-zinc-800 { background-color: #221e1a !important; }
+        body.heatshield-theme .bg-zinc-800\/80 { background-color: rgba(34, 30, 26, 0.88) !important; }
+        body.heatshield-theme .bg-black { background-color: #0a0a0a !important; }
+        body.heatshield-theme .bg-black\/90 { background-color: rgba(8, 8, 8, 0.92) !important; }
+        body.heatshield-theme .bg-black\/95 { background-color: rgba(8, 8, 8, 0.96) !important; }
+        body.heatshield-theme .bg-black\/60 { background-color: rgba(8, 8, 8, 0.65) !important; }
+        body.heatshield-theme .border-zinc-900,
+        body.heatshield-theme .border-zinc-900\/80,
+        body.heatshield-theme .border-zinc-850 { border-color: rgba(70, 62, 52, 0.7) !important; }
+        body.heatshield-theme .border-zinc-800,
+        body.heatshield-theme .border-zinc-800\/80,
+        body.heatshield-theme .border-zinc-800\/60,
+        body.heatshield-theme .border-zinc-800\/50 { border-color: rgba(90, 78, 62, 0.45) !important; }
+        body.heatshield-theme .border-zinc-700 { border-color: rgba(120, 100, 72, 0.5) !important; }
+        body.heatshield-theme .text-white { color: #f6f1ea !important; }
+        body.heatshield-theme .text-zinc-200 { color: #e8e0d4 !important; }
+        body.heatshield-theme .text-zinc-300 { color: #cfc4b4 !important; }
+        body.heatshield-theme .text-zinc-400 { color: #a89884 !important; }
+        body.heatshield-theme .text-zinc-500 { color: #8a7c6a !important; }
+        body.heatshield-theme .text-zinc-600 { color: #6a5e50 !important; }
+        body.heatshield-theme .text-emerald-400,
+        body.heatshield-theme .text-emerald-500 { color: #e89a4a !important; }
+        body.heatshield-theme .text-emerald-300 { color: #f0b56a !important; }
+        @media (min-width: 768px) {
+            body.heatshield-theme #hero-details-btn:hover .fa-circle-info {
+                color: #6a3a12 !important;
+            }
+        }
+        body.heatshield-theme .bg-emerald-500,
+        body.heatshield-theme .bg-emerald-400 { background-color: #c4722a !important; }
+        body.heatshield-theme .bg-emerald-500\/10 { background-color: rgba(232, 154, 74, 0.14) !important; }
+        body.heatshield-theme .bg-emerald-500\/15 { background-color: rgba(232, 154, 74, 0.18) !important; }
+        body.heatshield-theme .border-emerald-500,
+        body.heatshield-theme .border-emerald-400,
+        body.heatshield-theme .border-emerald-500\/40,
+        body.heatshield-theme .border-emerald-500\/50 { border-color: rgba(232, 154, 74, 0.5) !important; }
+        body.heatshield-theme .border-emerald-500\/20 { border-color: rgba(232, 154, 74, 0.28) !important; }
+        body.heatshield-theme .shadow-\[0_0_8px_\#10b981\],
+        body.heatshield-theme .shadow-\[0_0_12px_rgba\(16\,185\,129\,0\.3\)\] {
+            box-shadow: 0 0 14px rgba(232, 154, 74, 0.4) !important;
+        }
+        body.heatshield-theme .hover\:border-emerald-500\/50:hover { border-color: rgba(232, 154, 74, 0.55) !important; }
+        body.heatshield-theme .text-cyan-400,
+        body.heatshield-theme .text-cyan-500 { color: #f0b56a !important; }
+        body.heatshield-theme .from-cyan-400 { --tw-gradient-from: #e89a4a !important; }
+        body.heatshield-theme .mission-card {
+            box-shadow: 0 18px 34px -8px rgba(0, 0, 0, 0.7), 0 8px 18px -6px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(232, 154, 74, 0.08) inset !important;
+        }
+        body.heatshield-theme #past-launches-grid .mission-card:hover,
+        body.heatshield-theme #past-launches-grid .mission-card:active {
+            box-shadow: 0 8px 16px -8px rgba(232, 154, 74, 0.35), 0 0 8px 1px rgba(232, 154, 74, 0.22) !important;
+        }
+        body.heatshield-theme .milestone-card:hover,
+        body.heatshield-theme .milestone-card:active {
+            box-shadow: 0 10px 22px -10px rgba(232, 154, 74, 0.4), 0 0 14px 1px rgba(232, 154, 74, 0.28) !important;
+            border-color: rgba(232, 154, 74, 0.6) !important;
+        }
+        body.heatshield-theme .mission-card-fade {
+            background: linear-gradient(to top,
+                #161412 0%, #161412 25%, rgba(22, 20, 18, 0.88) 55%,
+                rgba(22, 20, 18, 0.4) 70%, rgba(22, 20, 18, 0.1) 85%, transparent 100%);
+        }
+        body.heatshield-theme .modal-hero-fade {
+            background: linear-gradient(to top,
+                #161412 0%, #161412 16%, rgba(22, 20, 18, 0.78) 31%,
+                rgba(22, 20, 18, 0.35) 46%, rgba(22, 20, 18, 0.08) 61%, transparent 100%);
+        }
+        body.heatshield-theme .skel { background: rgba(232, 154, 74, 0.08); }
+        body.heatshield-theme .skel::after {
+            background: linear-gradient(90deg, transparent, rgba(232, 154, 74, 0.32), transparent);
+        }
+        body.heatshield-theme .milestones-scrollbox::-webkit-scrollbar-thumb,
+        body.heatshield-theme .card-modal-scroll::-webkit-scrollbar-thumb,
+        body.heatshield-theme .hide-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(232, 154, 74, 0.42);
+        }
+        body.heatshield-theme .milestones-scrollbox,
+        body.heatshield-theme .card-modal-scroll,
+        body.heatshield-theme .hide-scrollbar {
+            scrollbar-color: rgba(232, 154, 74, 0.42) transparent;
+        }
+        body.heatshield-theme #sticky-countdown-wrap.is-visible {
+            box-shadow: 0 0 22px rgba(232, 154, 74, 0.35);
+        }
+        body.heatshield-theme .hero-pill {
+            background-color: rgba(232, 154, 74, 0.14) !important;
+            border-color: rgba(232, 154, 74, 0.45) !important;
+            color: #f0b56a !important;
+        }
+        body.heatshield-theme #news-ticker-wrap { border-color: rgba(232, 154, 74, 0.28) !important; }
+        body.heatshield-theme #news-ticker-label-wrap { background-color: rgba(232, 154, 74, 0.12) !important; }
+        body.heatshield-theme #news-ticker-label-wrap .text-emerald-400 { color: #e89a4a !important; }
+        body.heatshield-theme nav {
+            background-color: rgba(8, 8, 8, 0.82) !important;
+            border-color: rgba(70, 62, 52, 0.55) !important;
+        }
+        body.heatshield-theme .goog-te-combo {
+            background-color: #161412 !important;
+            border-color: rgba(90, 78, 62, 0.5) !important;
+            color: #f0b56a !important;
+        }
+        body.heatshield-theme .timeline-track { background-color: rgba(60, 50, 40, 0.6) !important; }
+        body.heatshield-theme .node-empty {
+            background-color: #161412 !important;
+            border-color: rgba(90, 78, 62, 0.55) !important;
+        }
+        body.heatshield-theme::before {
+            opacity: 0.2;
+            background: linear-gradient(rgba(40, 28, 16, 0) 50%, rgba(12, 8, 4, 0.28) 50%),
+                linear-gradient(90deg, rgba(232, 154, 74, 0.03), rgba(200, 160, 100, 0.015), rgba(160, 90, 40, 0.025));
+            background-size: 100% 4px, 6px 100%;
+        }
+        body.heatshield-theme #main-tabs {
+            background: rgba(22, 20, 18, 0.92) !important;
+            border-color: rgba(90, 78, 62, 0.55) !important;
+            box-shadow: inset 0 1px 0 rgba(232, 154, 74, 0.06) !important;
+        }
+        body.heatshield-theme .main-tab-btn { color: #a89884 !important; }
+        body.heatshield-theme .main-tab-btn.is-active {
+            color: #f0b56a !important;
+            border-color: rgba(232, 154, 74, 0.55) !important;
+            background: transparent !important;
+        }
+        @media (hover: hover) and (pointer: fine) {
+            body.heatshield-theme .main-tab-btn:hover {
+                color: #f6f1ea !important;
+                background: rgba(50, 40, 30, 0.55) !important;
+            }
+            body.heatshield-theme .main-tab-btn:hover i { color: #e89a4a !important; }
+        }
+        body.heatshield-theme #booster-leaderboard {
+            background-color: #161412 !important;
+            border-color: rgba(90, 78, 62, 0.5) !important;
+        }
+        body.heatshield-theme #booster-leaderboard .booster-bar-track {
+            background-color: rgba(34, 30, 26, 0.85) !important;
+            border-color: rgba(120, 100, 72, 0.3) !important;
+        }
+        body.heatshield-theme .ai3d-card {
+            background: #161412 !important;
+            border-color: rgba(90, 78, 62, 0.45) !important;
+            color: #f3efe8 !important;
+            box-shadow:
+                0 0 0 1px rgba(232, 154, 74, 0.05) inset,
+                0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+        }
+        body.heatshield-theme .ai3d-legend-row {
+            background: rgba(232, 154, 74, 0.04) !important;
+        }
+        body.heatshield-theme .ai3d-legend-row:hover,
+        body.heatshield-theme .ai3d-legend-row.ai3d-active {
+            background: rgba(232, 154, 74, 0.1) !important;
+            border-color: rgba(232, 154, 74, 0.28) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32), 0 0 26px -2px rgba(232, 154, 74, 0.28) !important;
+        }
+        body.heatshield-theme .ai3d-center-hud .ai3d-value {
+            background: linear-gradient(180deg, #ffffff 20%, #e89a4a 100%) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            text-shadow: 0 0 40px rgba(232, 154, 74, 0.22) !important;
+        }
+        body.heatshield-theme .ai3d-center-hud .ai3d-unit,
+        body.heatshield-theme .ai3d-client-name,
+        body.heatshield-theme .ai3d-monthly-price,
+        body.heatshield-theme .ai3d-annual-value {
+            color: #f3efe8 !important;
+        }
+        body.heatshield-theme .ai3d-client-power,
+        body.heatshield-theme .ai3d-period-label,
+        body.heatshield-theme .ai3d-annual-label,
+        body.heatshield-theme .ai3d-legend-heading {
+            color: #a89884 !important;
+        }
+        body.heatshield-theme .ai3d-center-hud .ai3d-sub-year,
+        body.heatshield-theme .ai3d-client-specs,
+        body.heatshield-theme .ai3d-footer-note {
+            color: #8a7c6a !important;
+        }
+        body.heatshield-theme .ai3d-annual-summary {
+            border-top-color: rgba(90, 78, 62, 0.45) !important;
+        }
+
         /* Mission patch strip hover glow — themed (was hard-coded emerald) */
         .patch-hover-glow {
             background-color: transparent;
@@ -3053,6 +3326,10 @@
                 background-color: rgba(63, 169, 245, 0.55);
                 filter: blur(12px);
             }
+            body.heatshield-theme .group\/patch:hover .patch-hover-glow {
+                background-color: rgba(232, 154, 74, 0.55);
+                filter: blur(12px);
+            }
             body.light-theme .group\/patch:hover .patch-hover-glow {
                 background-color: rgba(4, 120, 87, 0.45);
                 filter: blur(12px);
@@ -3068,6 +3345,10 @@
         }
         body.moon-theme .group\/patch:active .patch-hover-glow {
             background-color: rgba(63, 169, 245, 0.55);
+            filter: blur(12px);
+        }
+        body.heatshield-theme .group\/patch:active .patch-hover-glow {
+            background-color: rgba(232, 154, 74, 0.55);
             filter: blur(12px);
         }
         /* Hide patch tiles that don't match the desktop search box. `hidden` (display:none)
@@ -3104,6 +3385,10 @@
         body.moon-theme .dossier-modal-shell {
             border-color: rgba(63, 169, 245, 0.3);
             box-shadow: 0 20px 50px rgba(63, 169, 245, 0.2);
+        }
+        body.heatshield-theme .dossier-modal-shell {
+            border-color: rgba(232, 154, 74, 0.32);
+            box-shadow: 0 20px 50px rgba(232, 154, 74, 0.2);
         }
         body.light-theme .dossier-modal-shell {
             border-color: rgba(4, 120, 87, 0.25);
@@ -3189,6 +3474,18 @@
             color: #6abffb !important;
         }
 
+        body.heatshield-theme .next-launch-tag {
+            background: transparent;
+            border-color: rgba(232, 154, 74, 0.38);
+        }
+        body.heatshield-theme .next-launch-tag::before,
+        body.heatshield-theme .next-launch-tag::after {
+            border-color: #f0b56a;
+        }
+        body.heatshield-theme .next-launch-tag i {
+            color: #f0b56a !important;
+        }
+
         /* Mission modal's Share/Save to Calendar/Download poster row - see the HTML comment on
            #modal-action-btn-row for why this is plain CSS instead of Tailwind grid/width
            utilities. Explicit `width` (not flex-basis percentages - tried first, and its
@@ -3256,6 +3553,10 @@
             background: rgba(18, 24, 38, 0.96) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
         }
+        body.heatshield-theme #modal-desktop-share-menu {
+            background: rgba(22, 20, 18, 0.96) !important;
+            border-color: rgba(90, 78, 62, 0.55) !important;
+        }
 
 
         /* Extra emerald hover utilities → Mars / Moon accents (buttons, borders, groups) */
@@ -3286,6 +3587,19 @@
             body.moon-theme .md\:hover\:bg-emerald-500\/10:hover {
                 background-color: rgba(63, 169, 245, 0.12) !important;
             }
+            body.heatshield-theme .md\:hover\:bg-emerald-500:hover {
+                background-color: #c4722a !important;
+                color: #0a0a0a !important;
+            }
+            body.heatshield-theme .md\:hover\:border-emerald-500:hover {
+                border-color: #e89a4a !important;
+            }
+            body.heatshield-theme .md\:hover\:text-emerald-400:hover {
+                color: #f0b56a !important;
+            }
+            body.heatshield-theme .md\:hover\:bg-emerald-500\/10:hover {
+                background-color: rgba(232, 154, 74, 0.12) !important;
+            }
         }
         body.mars-theme .group:hover .group-hover\:border-emerald-400,
         body.mars-theme .group-hover\:border-emerald-400:hover {
@@ -3303,6 +3617,14 @@
         body.moon-theme .group-hover\:text-emerald-400:hover {
             color: #6abffb !important;
         }
+        body.heatshield-theme .group:hover .group-hover\:border-emerald-400,
+        body.heatshield-theme .group-hover\:border-emerald-400:hover {
+            border-color: #e89a4a !important;
+        }
+        body.heatshield-theme .group:hover .group-hover\:text-emerald-400,
+        body.heatshield-theme .group-hover\:text-emerald-400:hover {
+            color: #f0b56a !important;
+        }
         body.mars-theme .mission-card:hover,
         body.mars-theme .mission-card:active {
             box-shadow: 0 20px 40px -15px rgba(255, 107, 53, 0.35), 0 0 25px 3px rgba(255, 107, 53, 0.22) !important;
@@ -3312,6 +3634,11 @@
         body.moon-theme .mission-card:active {
             box-shadow: 0 20px 40px -15px rgba(63, 169, 245, 0.3), 0 0 25px 3px rgba(63, 169, 245, 0.18) !important;
             border-color: rgba(63, 169, 245, 0.5) !important;
+        }
+        body.heatshield-theme .mission-card:hover,
+        body.heatshield-theme .mission-card:active {
+            box-shadow: 0 20px 40px -15px rgba(232, 154, 74, 0.32), 0 0 25px 3px rgba(232, 154, 74, 0.2) !important;
+            border-color: rgba(232, 154, 74, 0.52) !important;
         }
 
         /* ---- Mode menu (Day / Night / Mars city / Moon base) ---- */
@@ -3328,6 +3655,11 @@
         body.moon-theme #mode-menu-btn {
             color: #6abffb;
             border-color: rgba(63, 169, 245, 0.45);
+        }
+        body.heatshield-theme #mode-menu-btn:hover,
+        body.heatshield-theme #mode-menu-btn {
+            color: #f0b56a;
+            border-color: rgba(232, 154, 74, 0.45);
         }
         body.light-theme #mode-menu-btn {
             background-color: #ffffff !important;
@@ -3351,6 +3683,10 @@
         body.moon-theme #mode-menu {
             background: rgba(18, 24, 38, 0.96) !important;
             border-color: rgba(80, 100, 140, 0.5) !important;
+        }
+        body.heatshield-theme #mode-menu {
+            background: rgba(22, 20, 18, 0.96) !important;
+            border-color: rgba(90, 78, 62, 0.55) !important;
         }
         /* Hover/tap breakdown popup (#mission-status-breakdown) - positioned with plain
            hand-written CSS + real @media blocks instead of Tailwind's md: utility variants,
@@ -3750,6 +4086,8 @@
         body.mars-theme #mission-status-breakdown .mission-timeline-explain { color: #d8b9a8 !important; }
         body.moon-theme #mission-status-breakdown .mission-timeline-label { color: #6abffb !important; }
         body.moon-theme #mission-status-breakdown .mission-timeline-explain { color: #aebdd4 !important; }
+        body.heatshield-theme #mission-status-breakdown .mission-timeline-label { color: #f0b56a !important; }
+        body.heatshield-theme #mission-status-breakdown .mission-timeline-explain { color: #d4c4b0 !important; }
         .mode-option.is-selected {
             background: rgba(16, 185, 129, 0.12);
             color: #34d399 !important;
@@ -3761,6 +4099,10 @@
         body.moon-theme .mode-option.is-selected {
             background: rgba(63, 169, 245, 0.12);
             color: #6abffb !important;
+        }
+        body.heatshield-theme .mode-option.is-selected {
+            background: rgba(232, 154, 74, 0.14);
+            color: #f0b56a !important;
         }
         body.light-theme .mode-option.is-selected {
             background: rgba(4, 120, 87, 0.1);
@@ -5230,7 +5572,7 @@
     // the identical overflow once Orbitron was extended to it too - not just those first two).
     // Lowered only for these three fonts, with margin, rather than lowering the shared floor for
     // every font unconditionally.
-    const minSize = /Zen Dots|Audiowide|Orbitron/.test(computedFontFamily) ? 7 : 10;
+    const minSize = /Zen Dots|Audiowide|Orbitron|Michroma/.test(computedFontFamily) ? 7 : 10;
     let guard = 0;
 
     // Overflow is judged on the text's real painted extent (a Range over the element's contents),
@@ -6880,8 +7222,8 @@
             }
             const html = document.documentElement;
             const body = document.body;
-            html.classList.remove('light-theme', 'mars-theme', 'moon-theme');
-            body.classList.remove('light-theme', 'mars-theme', 'moon-theme');
+            html.classList.remove('light-theme', 'mars-theme', 'moon-theme', 'heatshield-theme');
+            body.classList.remove('light-theme', 'mars-theme', 'moon-theme', 'heatshield-theme');
             if (mode === 'day') {
                 html.classList.add('light-theme');
                 body.classList.add('light-theme');
@@ -6891,6 +7233,9 @@
             } else if (mode === 'moon') {
                 html.classList.add('moon-theme');
                 body.classList.add('moon-theme');
+            } else if (mode === 'heatshield') {
+                html.classList.add('heatshield-theme');
+                body.classList.add('heatshield-theme');
             }
             // night = default (no extra class)
             sessionStorage.setItem('spacex-visual-mode', mode);
@@ -6994,6 +7339,10 @@
                         <button type="button" role="option" data-mode="moon"
                             class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
                             <i class="fa-solid fa-circle w-4 text-center text-slate-300"></i><span class="mode-option-label">Moon base</span>
+                        </button>
+                        <button type="button" role="option" data-mode="heatshield"
+                            class="mode-option w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors">
+                            <i class="fa-solid fa-shield-halved w-4 text-center text-amber-400"></i><span class="mode-option-label">Heatshield</span>
                         </button>
                     </div>
                 </div>
@@ -9188,30 +9537,31 @@
             const b = document.body;
             if (b.classList.contains('mars-theme')) return 'mars';
             if (b.classList.contains('moon-theme')) return 'moon';
+            if (b.classList.contains('heatshield-theme')) return 'heatshield';
             if (b.classList.contains('light-theme')) return 'day';
             return 'night';
         }
 
         // Mode labels translated with the rest of the UI (Day / Night / Mars city / Moon base)
         const MODE_LABEL_I18N = {
-            en: { mode: 'Mode', day: 'Day', night: 'Night', mars: 'Mars city', moon: 'Moon base' },
-            he: { mode: 'מצב', day: 'יום', night: 'לילה', mars: 'עיר מאדים', moon: 'בסיס ירח' },
-            iw: { mode: 'מצב', day: 'יום', night: 'לילה', mars: 'עיר מאדים', moon: 'בסיס ירח' },
-            es: { mode: 'Modo', day: 'Día', night: 'Noche', mars: 'Ciudad Marte', moon: 'Base lunar' },
-            fr: { mode: 'Mode', day: 'Jour', night: 'Nuit', mars: 'Ville Mars', moon: 'Base lunaire' },
-            de: { mode: 'Modus', day: 'Tag', night: 'Nacht', mars: 'Mars-Stadt', moon: 'Mondbasis' },
-            ru: { mode: 'Режим', day: 'День', night: 'Ночь', mars: 'Город Марс', moon: 'Лунная база' },
-            zh: { mode: '模式', day: '白天', night: '夜晚', mars: '火星城市', moon: '月球基地' },
-            it: { mode: 'Modalità', day: 'Giorno', night: 'Notte', mars: 'Città Marte', moon: 'Base lunare' },
-            cs: { mode: 'Režim', day: 'Den', night: 'Noc', mars: 'Město Mars', moon: 'Měsíční základna' },
-            sv: { mode: 'Läge', day: 'Dag', night: 'Natt', mars: 'Marsstad', moon: 'Månbas' },
-            nl: { mode: 'Modus', day: 'Dag', night: 'Nacht', mars: 'Marsstad', moon: 'Maanbasis' },
-            da: { mode: 'Tilstand', day: 'Dag', night: 'Nat', mars: 'Marsby', moon: 'Månebase' },
-            pt: { mode: 'Modo', day: 'Dia', night: 'Noite', mars: 'Cidade Marte', moon: 'Base lunar' },
-            pl: { mode: 'Tryb', day: 'Dzień', night: 'Noc', mars: 'Miasto Mars', moon: 'Baza księżycowa' },
-            hi: { mode: 'मोड', day: 'दिन', night: 'रात', mars: 'मंगल नगर', moon: 'चंद्र बेस' },
-            ar: { mode: 'الوضع', day: 'نهار', night: 'ليل', mars: 'مدينة المريخ', moon: 'قاعدة القمر' },
-            tr: { mode: 'Mod', day: 'Gündüz', night: 'Gece', mars: 'Mars şehri', moon: 'Ay üssü' }
+            en: { mode: 'Mode', day: 'Day', night: 'Night', mars: 'Mars city', moon: 'Moon base', heatshield: 'Heatshield' },
+            he: { mode: 'מצב', day: 'יום', night: 'לילה', mars: 'עיר מאדים', moon: 'בסיס ירח', heatshield: 'מגן חום' },
+            iw: { mode: 'מצב', day: 'יום', night: 'לילה', mars: 'עיר מאדים', moon: 'בסיס ירח', heatshield: 'מגן חום' },
+            es: { mode: 'Modo', day: 'Día', night: 'Noche', mars: 'Ciudad Marte', moon: 'Base lunar', heatshield: 'Escudo térmico' },
+            fr: { mode: 'Mode', day: 'Jour', night: 'Nuit', mars: 'Ville Mars', moon: 'Base lunaire', heatshield: 'Bouclier thermique' },
+            de: { mode: 'Modus', day: 'Tag', night: 'Nacht', mars: 'Mars-Stadt', moon: 'Mondbasis', heatshield: 'Hitzeschild' },
+            ru: { mode: 'Режим', day: 'День', night: 'Ночь', mars: 'Город Марс', moon: 'Лунная база', heatshield: 'Теплозащита' },
+            zh: { mode: '模式', day: '白天', night: '夜晚', mars: '火星城市', moon: '月球基地', heatshield: '热盾' },
+            it: { mode: 'Modalità', day: 'Giorno', night: 'Notte', mars: 'Città Marte', moon: 'Base lunare', heatshield: 'Scudo termico' },
+            cs: { mode: 'Režim', day: 'Den', night: 'Noc', mars: 'Město Mars', moon: 'Měsíční základna', heatshield: 'Tepelný štít' },
+            sv: { mode: 'Läge', day: 'Dag', night: 'Natt', mars: 'Marsstad', moon: 'Månbas', heatshield: 'Värmesköld' },
+            nl: { mode: 'Modus', day: 'Dag', night: 'Nacht', mars: 'Marsstad', moon: 'Maanbasis', heatshield: 'Hitteschild' },
+            da: { mode: 'Tilstand', day: 'Dag', night: 'Nat', mars: 'Marsby', moon: 'Månebase', heatshield: 'Varmeskjold' },
+            pt: { mode: 'Modo', day: 'Dia', night: 'Noite', mars: 'Cidade Marte', moon: 'Base lunar', heatshield: 'Escudo térmico' },
+            pl: { mode: 'Tryb', day: 'Dzień', night: 'Noc', mars: 'Miasto Mars', moon: 'Baza księżycowa', heatshield: 'Osłona termiczna' },
+            hi: { mode: 'मोड', day: 'दिन', night: 'रात', mars: 'मंगल नगर', moon: 'चंद्र बेस', heatshield: 'हीटशील्ड' },
+            ar: { mode: 'الوضع', day: 'نهار', night: 'ليل', mars: 'مدينة المريخ', moon: 'قاعدة القمر', heatshield: 'الدرع الحراري' },
+            tr: { mode: 'Mod', day: 'Gündüz', night: 'Gece', mars: 'Mars şehri', moon: 'Ay üssü', heatshield: 'Isı kalkanı' }
         };
 
         function getModeLabels() {
@@ -9229,7 +9579,8 @@
                 day: 'fa-sun',
                 night: 'fa-moon',
                 mars: 'fa-globe',
-                moon: 'fa-circle'
+                moon: 'fa-circle',
+                heatshield: 'fa-shield-halved'
             };
             if (label) label.textContent = labels[mode] || labels.mode || 'Mode';
             if (icon) {
@@ -9251,14 +9602,14 @@
 
         function applyVisualMode(mode, opts) {
             opts = opts || {};
-            if (!['day', 'night', 'mars', 'moon'].includes(mode)) mode = 'night';
+            if (!['day', 'night', 'mars', 'moon', 'heatshield'].includes(mode)) mode = 'night';
             const body = document.body;
             const doc = document.documentElement;
 
             const doApply = () => {
                 if (!opts.skipSwitchingClass) doc.classList.add('theme-switching');
-                body.classList.remove('light-theme', 'mars-theme', 'moon-theme');
-                doc.classList.remove('light-theme', 'mars-theme', 'moon-theme');
+                body.classList.remove('light-theme', 'mars-theme', 'moon-theme', 'heatshield-theme');
+                doc.classList.remove('light-theme', 'mars-theme', 'moon-theme', 'heatshield-theme');
                 if (mode === 'day') {
                     body.classList.add('light-theme');
                     doc.classList.add('light-theme');
@@ -9268,6 +9619,9 @@
                 } else if (mode === 'moon') {
                     body.classList.add('moon-theme');
                     doc.classList.add('moon-theme');
+                } else if (mode === 'heatshield') {
+                    body.classList.add('heatshield-theme');
+                    doc.classList.add('heatshield-theme');
                 }
                 // night: no extra class
                 window.currentVisualMode = mode;
@@ -9282,6 +9636,7 @@
                             mode === 'day' ? '#f1f5f9'
                             : mode === 'mars' ? '#140806'
                             : mode === 'moon' ? '#080c14'
+                            : mode === 'heatshield' ? '#080808'
                             : '#09090b');
                     }
                 } catch (e) { /* cosmetic only - never block the mode switch */ }
@@ -9432,6 +9787,7 @@
             schedule(function () {
                 new Image().src = 'https://imgix.bustle.com/uploads/image/2022/4/11/9acdc0da-c0f3-4e5a-a635-7f9e7f676c5f-screenshot-2022-04-11-at-17-24-18-spacex.jpg?w=920&h=560&fit=crop&crop=faces&dpr=2';
                 new Image().src = 'https://i.redd.it/dgantnoqqtp31.jpg';
+                new Image().src = 'heatshield-bg.png';
             });
         }
 
@@ -16056,9 +16412,27 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 }
             }
 
+            // Same past/upcoming split used later for the archive-video path. Computed
+            // once here so the date line can show the actual T-0 (with year) for flown
+            // missions, while upcoming still shows the planned launch window.
+            const isPastMission = (m.status || '').toLowerCase().includes('completed') ||
+                (m.date && new Date(m.date).getTime() < Date.now() - 90 * 60 * 1000);
+
             let dateStr = '';
             try {
-                dateStr = `${new Date(m.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${m.window}`;
+                const net = new Date(m.date);
+                if (isPastMission) {
+                    const datePart = net.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                    const timePart = net.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone, hour12: false });
+                    let tzCode = 'Local Time';
+                    try {
+                        const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(net);
+                        tzCode = parts.find(p => p.type === 'timeZoneName')?.value || 'Local Time';
+                    } catch (e) { }
+                    dateStr = `${datePart} • ${timePart} (${tzCode})`;
+                } else {
+                    dateStr = `${net.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${m.window}`;
+                }
             } catch (e) { dateStr = m.window; }
 
             document.getElementById('modal-date').innerText = dateStr;
@@ -16273,9 +16647,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (videoYtLink) videoYtLink.classList.add('hidden');
             if (videoFallback) videoFallback.classList.add('hidden');
             window._pendingMissionYoutubeId = null;
-
-            const isPastMission = (m.status || '').toLowerCase().includes('completed') ||
-                (m.date && new Date(m.date).getTime() < Date.now() - 90 * 60 * 1000);
 
             if (isPastMission && m.youtubeId) {
                 wireModalYoutubePlayer(m.youtubeId, 'https://www.youtube.com/watch?v=' + m.youtubeId);
