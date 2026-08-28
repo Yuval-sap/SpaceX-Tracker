@@ -3082,6 +3082,14 @@
             font-weight: 400 !important;
             letter-spacing: 0.16em;
         }
+        /* Countdown clocks keep Michroma but not the heading tracking — 0.16em
+           opened a visible hole between the day digit and its "d" on mobile. */
+        body.heatshield-theme #hero-countdown,
+        body.heatshield-theme .countdown-small,
+        body.heatshield-theme #sticky-countdown,
+        body.heatshield-theme #sticky-countdown-mobile {
+            letter-spacing: 0;
+        }
         body.heatshield-theme .text-emerald-400\/70 {
             color: rgba(232, 154, 74, 0.7) !important;
         }
@@ -3106,13 +3114,49 @@
         }
         @media (max-width: 640px) {
             body.heatshield-theme .stars-container {
-                background-position: center, center, center !important;
-                background-size: cover, cover, 87% 87% !important;
-                background-repeat: no-repeat, no-repeat, repeat !important;
+                /* Portrait viewport + landscape tile photo: any %/% size stretches
+                   the hexagons. cover keeps proportions and still fills the screen. */
+                background-position: center, center, 40% center !important;
+                background-size: cover, cover, cover !important;
+                background-repeat: no-repeat, no-repeat, no-repeat !important;
                 background-image:
                     radial-gradient(ellipse at 50% 25%, rgba(20, 18, 16, 0.06) 0%, rgba(6, 6, 6, 0.37) 58%, rgba(0, 0, 0, 0.68) 100%),
                     linear-gradient(180deg, rgba(10, 8, 6, 0.13) 0%, rgba(4, 4, 4, 0.37) 100%),
                     url('heatshield-bg.png') !important;
+            }
+            /* Michroma + 0.16em tracking is far too wide for a phone title row
+               (hero + mission modal) — it ran through the patch and the edges. */
+            body.heatshield-theme .font-orbitron,
+            body.heatshield-theme #hero-name,
+            body.heatshield-theme .mission-title-fit,
+            body.heatshield-theme .main-tab-btn,
+            body.heatshield-theme #site-title,
+            body.heatshield-theme #rocket-modal-name,
+            body.heatshield-theme #site-modal-name,
+            body.heatshield-theme #orbit-modal-title,
+            body.heatshield-theme #landing-modal-name,
+            body.heatshield-theme #astro-modal-name,
+            body.heatshield-theme #i18n-countdown-to-launch,
+            body.heatshield-theme #i18n-launch-window,
+            body.heatshield-theme .milestones-title,
+            body.heatshield-theme #doc-ep1-title,
+            body.heatshield-theme #doc-ep2-title,
+            body.heatshield-theme #doc-ep3-title,
+            body.heatshield-theme .modal-subhead {
+                letter-spacing: 0.05em;
+            }
+            body.heatshield-theme #mission-modal-content > .aspect-video {
+                flex: none;
+                width: 100%;
+                height: auto;
+                aspect-ratio: 16 / 9;
+            }
+            body.heatshield-theme #modal-image img {
+                display: block;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                object-position: center 19%;
             }
         }
         body.heatshield-theme .star {
@@ -4185,6 +4229,24 @@
            gap look tighter than the same gap next to a wider 2-digit h/m/s block. */
         html[dir="rtl"] #hero-countdown .ml-\[5px\].mr-2 {
             margin-left: 5px !important;
+        }
+
+        /* The extra 1px on the days unit (ml-[5px] vs ml-1) over-opens on a phone
+           next to a single-digit day. Pull "2d" tighter; h/m/s stay as they are.
+           The day number also drops tabular figures so a "1" isn't padded to "0"
+           width, which left a hole of empty glyph advance before the "d". */
+        @media (max-width: 640px) {
+            #hero-countdown .cd-day-num-single {
+                font-variant-numeric: proportional-nums;
+            }
+            /* Single-digit days (especially "1") leave empty advance in the figure
+               slot; pull the unit letter back so "1d" doesn't look like "1  d". */
+            #hero-countdown .cd-day-num-single + span {
+                margin-left: -6px !important;
+            }
+            html[dir="rtl"] #hero-countdown .cd-day-num-single + span.mr-2 {
+                margin-left: -6px !important;
+            }
         }
 
         /* Seconds unit letter is 1px tighter than the rest (ml-[3px] vs ml-1). Still
@@ -5594,7 +5656,7 @@
     //   In both cases "ink > container - SAFETY" is true on the first pass and the loop shrinks
     //   the text all the way down to the size floor - which is exactly what happened to the tab
     //   labels and the site title.
-    const isPlainTextEl = el.id === 'hero-name' && el.childElementCount === 0;
+    const isPlainTextEl = (el.id === 'hero-name' || el.id === 'modal-name') && el.childElementCount === 0;
     const SAFETY = 3;
     const inkWidth = () => {
         try {
@@ -16733,6 +16795,17 @@ fitTitleOneLine(document.getElementById('hero-name'));
             modalEl.style.display = 'flex';
             lockBodyScroll();
             setTimeout(() => { if (missionModalContentEl) missionModalContentEl.scrollTop = 0; }, 10);
+            // Fitted while the modal was display:none, clientWidth is 0 and the
+            // size is cached too large. Remeasure now that the title row is visible —
+            // Heatshield's Michroma + tracking needs this on mobile or the name
+            // runs through the patch and the card edge.
+            requestAnimationFrame(() => {
+                if (!modalNameEl) return;
+                modalNameEl.style.fontSize = '';
+                delete modalNameEl.dataset.fitForText;
+                delete modalNameEl.dataset.fitForWidth;
+                fitTitleOneLine(modalNameEl);
+            });
         }
 
         function handleModalFeatures(m) {
@@ -18589,7 +18662,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 el.classList.toggle('animate-pulse-calm', pulseOuter);
 
                 el.innerHTML = `
-                    <span class="${timeColor}">${d}</span><span class="text-sm sm:text-2xl font-normal ml-[5px] mr-2 text-zinc-400">d</span>
+                    <span class="${timeColor}${d < 10 ? ' cd-day-num-single' : ''}">${d}</span><span class="text-sm sm:text-2xl font-normal ml-[5px] mr-2 text-zinc-400">d</span>
                     <span class="${timeColor} tracking-[1px]">${h.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal ml-1 mr-2 text-zinc-400">h</span>
                     <span class="${timeColor} tracking-[1px]">${m.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal ml-1 mr-[7px] text-zinc-400">m</span>
                     <span class="cd-digit ${timeColor} tracking-[1px]">${s.toString().padStart(2, '0')}</span><span class="text-sm sm:text-2xl font-normal ml-[3px] mr-2 text-zinc-400">s</span>
