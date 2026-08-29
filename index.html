@@ -8555,10 +8555,14 @@
                             </div>
                             <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
                         </div>
-                        <img id="modal-patch" src="" alt=""
-                            class="hidden shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full object-contain border border-transparent cursor-pointer hover:border-emerald-500/50 transition-colors"
-                            onclick="openPatchLightbox(this.src, this.dataset.rawName || this.alt, event)"
-                            onerror="this.classList.add('hidden')">
+                        <div id="modal-patch-wrap"
+                            class="hidden relative shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center group/patch cursor-pointer"
+                            onclick="openPatchLightbox(document.getElementById('modal-patch').src, document.getElementById('modal-patch').dataset.rawName || document.getElementById('modal-patch').alt, event)">
+                            <div class="absolute inset-1 rounded-full patch-hover-glow transition-all duration-300 pointer-events-none"></div>
+                            <img id="modal-patch" src="" alt=""
+                                class="relative w-11 h-11 sm:w-12 sm:h-12 object-contain transition-transform duration-300 group-active/patch:-translate-y-0.5 group-active/patch:scale-105 md:group-hover/patch:-translate-y-0.5 md:group-hover/patch:scale-105"
+                                onerror="this.closest('#modal-patch-wrap').classList.add('hidden')">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -9994,6 +9998,16 @@
             try { localStorage.setItem(MISSION_PATCH_CACHE_KEY, JSON.stringify(missionPatchCache)); } catch (e) { }
             missionPatchCacheDirty = false;
         }
+
+        // One-off official patches Launch Library has not published yet. Applied after the
+        // generic Starlink/Starship fallback so a real badge wins. Roman FH (2026-08-30)
+        // is the current hole — remove this entry once the API carries mission_patches.
+        const MANUAL_MISSION_PATCHES = {
+            '521f3a1c-f977-4306-9b7f-495858719adf': 'patches/nancy-grace-roman.webp',
+            'falcon heavy | nancy grace roman space telescope': 'patches/nancy-grace-roman.webp',
+            '18441371-8b2e-457c-afb5-1ec1b11ab630': 'patches/crew-13.webp',
+            'falcon 9 block 5 | crew-13': 'patches/crew-13.webp'
+        };
 
         const masterFacts = [
             "More than 300 times, Falcon 9 boosters have been landed by SpaceX. Reusability is no longer experimental — it is the standard.",
@@ -13274,6 +13288,10 @@
                 patchUrl = missionPatchCache[patchCacheKey];
             }
             if (GENERIC_PATCH_IMAGES[category]) patchUrl = GENERIC_PATCH_IMAGES[category];
+            const manualPatch = MANUAL_MISSION_PATCHES[id]
+                || MANUAL_MISSION_PATCHES[launch && launch.id]
+                || MANUAL_MISSION_PATCHES[patchCacheKey];
+            if (manualPatch) patchUrl = manualPatch;
 
             const details = generateDetailedMissionPurpose(launch.name || "SpaceX Mission", category, missionDesc, vehicleName);
 
@@ -16322,6 +16340,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             localizeStarshipTerm(modalNameEl);
 
             const modalPatchEl = document.getElementById('modal-patch');
+            const modalPatchWrap = document.getElementById('modal-patch-wrap');
             if (modalPatchEl) {
                 if (m.patch) {
                     modalPatchEl.src = m.patch;
@@ -16333,9 +16352,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     // correct. data-* attributes are not translated, so this keeps a clean copy.
                     modalPatchEl.dataset.rawName = m.name;
                     modalPatchEl.classList.remove('hidden');
+                    if (modalPatchWrap) modalPatchWrap.classList.remove('hidden');
                 } else {
                     modalPatchEl.removeAttribute('src');
                     modalPatchEl.classList.add('hidden');
+                    if (modalPatchWrap) modalPatchWrap.classList.add('hidden');
                 }
             }
 
