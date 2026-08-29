@@ -3928,21 +3928,15 @@
             margin-left: 5px !important;
         }
 
-        /* The extra 1px on the days unit (ml-[5px] vs ml-1) over-opens on a phone
-           next to a single-digit day. Pull "2d" tighter; h/m/s stay as they are.
-           The day number also drops tabular figures so a "1" isn't padded to "0"
-           width, which left a hole of empty glyph advance before the "d". */
+        /* Single-digit days drop tabular figures so a narrow "1" isn't padded to
+           "0" width (that left a hole of empty glyph advance before the "d").
+           A previous mobile-only -6px pull on the unit letter closed that hole
+           for "1" but parked "d" on top of a wide "0" — worst in Mars/Zen Dots,
+           whose 0 ink already overflows the advance box. Proportional figures
+           are enough; do not pull the letter back. */
         @media (max-width: 640px) {
             #hero-countdown .cd-day-num-single {
                 font-variant-numeric: proportional-nums;
-            }
-            /* Single-digit days (especially "1") leave empty advance in the figure
-               slot; pull the unit letter back so "1d" doesn't look like "1  d". */
-            #hero-countdown .cd-day-num-single + span {
-                margin-left: -6px !important;
-            }
-            html[dir="rtl"] #hero-countdown .cd-day-num-single + span.mr-2 {
-                margin-left: -6px !important;
             }
         }
 
