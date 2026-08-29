@@ -638,6 +638,42 @@
         #past-launches-grid .mission-card:active {
             box-shadow: 0 8px 16px -8px rgba(16, 185, 129, 0.3), 0 0 8px 1px rgba(16, 185, 129, 0.2);
         }
+        /* Desktop: the page column is padded (max-w-screen-2xl + px-8), which used to clip this
+           row at the gutter instead of the window. Pull the strip into those side margins with
+           negative margin (not 100vw — that overshoots by the scrollbar and misaligns the first
+           card). Spacers + scroll-padding keep the first/last card lined up with the heading
+           when the row is at rest (flex overflow ignores padding on the snap axis). */
+        @media (min-width: 768px) {
+            .past-launches-bleed {
+                --past-edge-pad: calc(max(0px, (100vw - 1536px) / 2) + 2rem);
+                overflow: visible;
+            }
+            #past-launches-grid {
+                width: auto;
+                max-width: none;
+                margin-left: calc(-1 * var(--past-edge-pad)) !important;
+                margin-right: calc(-1 * var(--past-edge-pad)) !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                scroll-padding-inline-start: var(--past-edge-pad) !important;
+                scroll-padding-inline-end: var(--past-edge-pad) !important;
+            }
+            #past-launches-grid::before,
+            #past-launches-grid::after {
+                content: '';
+                flex: 0 0 var(--past-edge-pad);
+                width: var(--past-edge-pad);
+                pointer-events: none;
+            }
+            /* sm:gap-5 also sits between the spacer and the first/last card. Cancel it so the
+               card lines up with the heading, not heading + one gap. */
+            #past-launches-grid::before {
+                margin-inline-end: -1.25rem;
+            }
+            #past-launches-grid::after {
+                margin-inline-start: -1.25rem;
+            }
+        }
 
         /* Four earlier attempts all tried to blend a SEAM between two separate regions (a top
            image strip + a bottom text panel) - two overlay-gradient versions (one with a real
@@ -917,6 +953,7 @@
             display: flex;
             align-items: flex-start;
             gap: 0.75rem;
+            --milestone-gap: 0.75rem;
             scroll-snap-type: x mandatory;
         }
 
@@ -945,41 +982,20 @@
            (text-sm/text-xs/text-[10px], p-3.5/p-4) for the same properties, injected by the
            Play CDN AFTER this inline stylesheet, so a plain override loses the cascade tie. */
         @media (min-width: 1024px) {
-            /* Padding on the scrollBOX itself (not the cards) so the hover glow
-               (.milestone-card:hover's box-shadow: 0 10px 22px -10px + 0 0 14px 1px, translateY
-               -2px) has room to render without being clipped by overflow-y:hidden (top/bottom)
-               or overflow-x:auto (left/right, specifically the first/last card AT EACH SCROLL
-               EXTREME - the rightmost card in LTR / leftmost in RTL sits flush against the
-               scroll boundary with no adjacent card's own gap to absorb the glow, regardless of
-               which side that is for the current language/direction). Horizontal padding was
-               first set to 12px, copied from #past-launches-grid's own desktop padding on the
-               theory that its BIGGER hover effect proved 12px was already enough - user
-               confirmed by real testing that the edge card's glow was STILL visibly clipped on
-               its outer side at 12px, so that analogy didn't hold in practice (possibly because
-               Past Launches' cards have other surrounding whitespace this section doesn't).
-               Bumped to a value sized directly against this glow's own numbers instead of by
-               analogy: the symmetric glow's declared reach is blur+spread = 14+1 = 15px, so 28px
-               leaves a real ~13px safety margin beyond that on both sides. */
+            /* Vertical padding only: hover lift/glow still needs room top and bottom. Horizontal
+               inset is the bleed spacers, so the row clips at the window instead of the column. */
             .milestones-scrollbox {
+                --milestone-gap: 1rem;
                 gap: 1rem;
-                padding: 16px 28px 32px 28px !important;
-                /* The REAL reason the glow kept clipping despite the padding above: with
-                   scroll-snap-type:x mandatory and scroll-snap-align:start on the first/last
-                   card, the browser's snap calculation targets the CONTENT edge, not the
-                   padding edge - confirmed live by forcing scrollLeft=0 and watching the
-                   browser immediately snap it back to 28 (the padding value), landing the first
-                   card flush with a MEASURED 0px gap at the actual resting position a user would
-                   hover at. Plain `padding` only reserves scrollable space; it doesn't tell the
-                   snap machinery to treat that space as part of the "start"/"end" resting
-                   position. `scroll-padding` is the CSS property built specifically for this -
-                   it shifts where scroll-snap considers the scrollport's edges to be, so the
-                   snapped rest position now genuinely leaves this much visible buffer instead of
-                   scrolling straight past it. */
-                scroll-padding-left: 28px;
-                scroll-padding-right: 28px;
+                /* Horizontal inset is the bleed spacers + scroll-padding (see .milestones-bleed
+                   below), not 28px on this box - that used to clip the row at the column gutter.
+                   Vertical padding stays so the hover lift/glow is not clipped top/bottom. */
+                padding: 16px 0 32px 0 !important;
             }
             .milestones-scrollbox > .milestone-card {
-                width: calc((100% - 3 * 1rem) / 4);
+                /* 100cqw is the title column (.milestones-bleed), not the full-bleed strip, so
+                   exactly 4 cards still fill the heading row and a 5th peeks into the gutter. */
+                width: calc((100cqw - 3 * 1rem) / 4);
                 /* Card size/height was NEVER meant to keep growing on its own - only the WIDTH
                    is deliberately fixed (so exactly 4 fill the row); the height is just
                    whatever the text needs at a reasonable font size, re-measured live below.
@@ -1030,6 +1046,40 @@
         @media (hover: none) {
             .milestones-scrollbox .milestone-card:hover {
                 transform: none !important;
+            }
+        }
+
+        /* Same full-bleed as #past-launches-grid: heading stays in the padded column, the
+           card row is pulled into the side gutters and clips at the window. Spacers +
+           scroll-padding keep the first/last card lined up with the heading at rest. */
+        @media (min-width: 768px) {
+            .milestones-bleed {
+                --milestone-edge-pad: calc(max(0px, (100vw - 1536px) / 2) + 2rem);
+                overflow: visible;
+                container-type: inline-size;
+            }
+            .milestones-scrollbox {
+                width: auto;
+                max-width: none;
+                margin-left: calc(-1 * var(--milestone-edge-pad)) !important;
+                margin-right: calc(-1 * var(--milestone-edge-pad)) !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                scroll-padding-inline-start: var(--milestone-edge-pad) !important;
+                scroll-padding-inline-end: var(--milestone-edge-pad) !important;
+            }
+            .milestones-scrollbox::before,
+            .milestones-scrollbox::after {
+                content: '';
+                flex: 0 0 var(--milestone-edge-pad);
+                width: var(--milestone-edge-pad);
+                pointer-events: none;
+            }
+            .milestones-scrollbox::before {
+                margin-inline-end: calc(-1 * var(--milestone-gap, 0.75rem));
+            }
+            .milestones-scrollbox::after {
+                margin-inline-start: calc(-1 * var(--milestone-gap, 0.75rem));
             }
         }
 
@@ -1240,7 +1290,10 @@
            year-long row of siblings. Kill that for the gesture only. */
         .drag-scroll-active .mission-card,
         .drag-scroll-active .mission-card:hover,
-        .drag-scroll-active .mission-card:active {
+        .drag-scroll-active .mission-card:active,
+        .drag-scroll-active .milestone-card,
+        .drag-scroll-active .milestone-card:hover,
+        .drag-scroll-active .milestone-card:active {
             transform: none !important;
             box-shadow: none !important;
             transition: none !important;
@@ -7399,9 +7452,9 @@
                 </div>
             </div>
 
-            <div class="relative">
+            <div class="relative past-launches-bleed">
                 <div id="past-launches-grid"
-                    class="flex gap-4 sm:gap-5 overflow-x-auto pt-2 sm:pt-6 pb-8 -mx-4 px-6 md:mx-0 md:px-3 scroll-ps-6 scroll-pe-6 md:scroll-ps-3 md:scroll-pe-3 hide-scrollbar snap-x snap-mandatory">
+                    class="flex gap-4 sm:gap-5 overflow-x-auto pt-2 sm:pt-6 pb-8 -mx-4 px-6 scroll-ps-6 scroll-pe-6 hide-scrollbar snap-x snap-mandatory">
                     <div
                         class="w-[75vw] max-w-[280px] md:w-64 shrink-0 snap-start bg-zinc-900/50 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
                         <div class="skel h-28 rounded-xl"></div>
@@ -7727,6 +7780,7 @@
                     class="text-sm text-zinc-400 transition-colors duration-500 notranslate" translate="no" lang="en">
                     Key firsts on the road to reusable spaceflight — scroll for more</p>
             </div>
+            <div class="relative milestones-bleed">
             <div class="milestones-scrollbox hide-scrollbar max-h-[268px] sm:max-h-[280px] overflow-y-auto pr-1.5 space-y-2.5 notranslate"
                 translate="no" lang="en">
                 <div class="milestone-card flex items-start gap-3 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 cursor-pointer"
@@ -7935,6 +7989,7 @@
                             Heavy booster is caught mid-air by &quot;Mechazilla.&quot;</p>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
 
