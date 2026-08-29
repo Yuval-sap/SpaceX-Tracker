@@ -607,7 +607,6 @@
             transform: translateY(20px) scale(1);
             animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             z-index: 60;
-            will-change: transform, box-shadow, border-color;
             overflow: visible;
         }
 
@@ -1234,6 +1233,17 @@
         */
         .drag-scroll-active> * {
             pointer-events: none;
+        }
+        /* The grabbed card's hover/active lift (translateY + scale + glow, with a 1.6s
+           transition) was still running during click-drag on #past-launches-grid, so every
+           scrollLeft write also had to composite a transforming, glowing card against a
+           year-long row of siblings. Kill that for the gesture only. */
+        .drag-scroll-active .mission-card,
+        .drag-scroll-active .mission-card:hover,
+        .drag-scroll-active .mission-card:active {
+            transform: none !important;
+            box-shadow: none !important;
+            transition: none !important;
         }
 
         .stars-container {
@@ -13431,6 +13441,8 @@
             let velocity = 0; // px/ms, +right / -left, in drag-gesture terms (see scrollLeft math below)
             let momentumFrame = null;
             let momentumGeneration = 0; // see the 3s safety-net setTimeout below
+            let dragMoveRaf = null;
+            let pendingDx = 0;
 
             function stopMomentum() {
                 if (momentumFrame !== null) {
@@ -13439,10 +13451,22 @@
                 }
             }
 
+            function flushDragScroll() {
+                if (dragMoveRaf !== null) {
+                    cancelAnimationFrame(dragMoveRaf);
+                    dragMoveRaf = null;
+                }
+                el.scrollLeft = startScrollLeft - pendingDx;
+            }
+
             function settle() {
                 stopMomentum();
                 el.style.scrollSnapType = ''; // hand snapping back to the stylesheet's snap-proximity
                 el.classList.remove('drag-scroll-active'); // re-enable hover/click on the cards
+                // CRT mask was frozen for the gesture (see scheduleCrtHoleUpdate) so the drag
+                // wasn't rebuilding a full-page SVG mask on every pixel. Punch the holes again
+                // now that the row has stopped.
+                if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
             }
 
             function runMomentum() {
@@ -13476,6 +13500,11 @@
                 lastT = performance.now();
                 velocity = 0;
                 startScrollLeft = el.scrollLeft;
+                pendingDx = 0;
+                if (dragMoveRaf !== null) {
+                    cancelAnimationFrame(dragMoveRaf);
+                    dragMoveRaf = null;
+                }
                 el.style.scrollSnapType = 'none';
                 el.style.cursor = 'grabbing';
                 el.style.userSelect = 'none';
@@ -13501,7 +13530,17 @@
                     // never reaches this branch at all (moved never becomes true), so the class
                     // no longer touches plain clicks in any way.
                     el.classList.add('drag-scroll-active');
-                    el.scrollLeft = startScrollLeft - dx;
+                    pendingDx = dx;
+                    // High-rate mice fire pointermove far faster than the screen refreshes.
+                    // Writing scrollLeft on every event forced layout + the CRT-hole listener
+                    // (attached to this same element) more often than a frame, which is what
+                    // made grabbing a past-launch card and dragging it feel syrupy.
+                    if (dragMoveRaf === null) {
+                        dragMoveRaf = requestAnimationFrame(() => {
+                            dragMoveRaf = null;
+                            el.scrollLeft = startScrollLeft - pendingDx;
+                        });
+                    }
 
                     const now = performance.now();
                     const dt = now - lastT;
@@ -13514,6 +13553,7 @@
             function onPointerUp(e) {
                 if (!isDown || (e && e.pointerType && e.pointerType !== 'mouse')) return;
                 isDown = false;
+                if (moved) flushDragScroll();
                 el.style.cursor = 'grab';
                 el.style.userSelect = '';
                 if (moved && Math.abs(velocity) > 0.02) {
@@ -14310,8 +14350,20 @@
             const parts = [`M0 0H${vw}V${vh}H0Z`];
             let any = false;
             const pad = 1;
+            const pastGrid = document.getElementById('past-launches-grid');
+            const pastIsCarousel = pastGrid && pastGrid.scrollWidth > pastGrid.clientWidth + 8;
+            const pastVisL = pastIsCarousel ? pastGrid.scrollLeft - 120 : 0;
+            const pastVisR = pastIsCarousel ? pastGrid.scrollLeft + pastGrid.clientWidth + 120 : 0;
             cards.forEach((el) => {
                 if (el.classList.contains('hidden')) return;
+                // A year of past-launch cards all sit in one overflow row. Measuring every
+                // off-screen sibling (getBoundingClientRect) on each CRT refresh is what made
+                // click-dragging that row hitch — skip ones clearly outside the carousel window.
+                if (pastIsCarousel && el.parentElement === pastGrid) {
+                    const left = el.offsetLeft;
+                    const right = left + el.offsetWidth;
+                    if (right < pastVisL || left > pastVisR) return;
+                }
                 const r = el.getBoundingClientRect();
                 if (r.width < 2 || r.height < 2) return;
                 if (r.bottom < -pad || r.top > vh + pad || r.right < -pad || r.left > vw + pad) return;
@@ -14354,9 +14406,14 @@
         }
         let _crtHoleRaf = 0;
         function scheduleCrtHoleUpdate() {
+            // Rebuilding the CRT SVG mask (and reading layout for every card) during a
+            // mouse-drag of #past-launches-grid was competing with the scroll itself.
+            // Frozen holes for the gesture are cheaper than a hitch on every pixel.
+            if (document.querySelector('.drag-scroll-active')) return;
             if (_crtHoleRaf) return;
             _crtHoleRaf = requestAnimationFrame(() => {
                 _crtHoleRaf = 0;
+                if (document.querySelector('.drag-scroll-active')) return;
                 updateAIComputeCrtHole();
             });
         }
