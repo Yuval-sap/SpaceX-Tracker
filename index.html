@@ -1299,6 +1299,25 @@
             transition: none !important;
         }
 
+        .community-donate-btn {
+            box-shadow: 0 0 22px rgba(16, 185, 129, 0.22);
+        }
+        .community-donate-btn:hover {
+            box-shadow: 0 0 28px rgba(16, 185, 129, 0.4);
+        }
+        body.mars-theme .community-donate-btn {
+            box-shadow: 0 0 22px rgba(232, 121, 74, 0.22);
+        }
+        body.mars-theme .community-donate-btn:hover {
+            box-shadow: 0 0 28px rgba(232, 121, 74, 0.4);
+        }
+        body.moon-theme .community-donate-btn {
+            box-shadow: 0 0 22px rgba(63, 169, 245, 0.22);
+        }
+        body.moon-theme .community-donate-btn:hover {
+            box-shadow: 0 0 28px rgba(63, 169, 245, 0.4);
+        }
+
         .stars-container {
             position: fixed;
             top: 0;
@@ -6211,6 +6230,113 @@
             if (labelEl) labelEl.textContent = dict.factLabel;
         }
 
+        const COMMUNITY_SUPPORT_I18N = {
+            en: {
+                title: 'Support the Tracker',
+                subtitle: 'We are an independent, ad-free fan site, not affiliated with SpaceX. If you enjoyed the content, we\'d appreciate a donation to help cover the site\'s operating costs.',
+                donate: 'Donate',
+            },
+            he: {
+                title: 'תמיכה באתר',
+                subtitle: 'אנחנו אתר עצמאי ללא פרסומות, שלא קשור ל-SpaceX. אם נהניתם מהתוכן, נשמח לתרומות שיעזרו לכיסוי עלויות תפעול האתר.',
+                donate: 'תרומה',
+            },
+            iw: {
+                title: 'תמיכה באתר',
+                subtitle: 'אנחנו אתר עצמאי ללא פרסומות, שלא קשור ל-SpaceX. אם נהניתם מהתוכן, נשמח לתרומות שיעזרו לכיסוי עלויות תפעול האתר.',
+                donate: 'תרומה',
+            },
+            es: {
+                title: 'Apoya el Tracker',
+                subtitle: 'Somos un sitio de fans independiente y sin anuncios, no afiliado a SpaceX. Si te gustó el contenido, las donaciones que ayuden a cubrir los costos de operación son bienvenidas.',
+                donate: 'Donar',
+            },
+            fr: {
+                title: 'Soutenir le Tracker',
+                subtitle: 'Nous sommes un site de fans indépendant, sans publicité, et non affilié à SpaceX. Si le contenu vous a plu, les dons qui aident à couvrir les frais de fonctionnement sont les bienvenus.',
+                donate: 'Faire un don',
+            },
+            de: {
+                title: 'Den Tracker unterstützen',
+                subtitle: 'Wir sind eine unabhängige, werbefreie Fan-Seite und nicht mit SpaceX verbunden. Wenn dir der Inhalt gefallen hat, helfen Spenden, die Betriebskosten der Seite zu decken.',
+                donate: 'Spenden',
+            },
+            ru: {
+                title: 'Поддержать трекер',
+                subtitle: 'Мы независимый фан-сайт без рекламы, не связанный со SpaceX. Если вам понравился контент, пожертвования помогут покрыть расходы на работу сайта.',
+                donate: 'Поддержать',
+            },
+            zh: {
+                title: '支持本站',
+                subtitle: '我们是独立、无广告的粉丝网站，与 SpaceX 无关。如果你喜欢这些内容，欢迎捐赠以帮助覆盖网站运营成本。',
+                donate: '捐赠',
+            },
+            it: {
+                title: 'Sostieni il Tracker',
+                subtitle: 'Siamo un sito di fan indipendente, senza pubblicità e non affiliato a SpaceX. Se ti è piaciuto il contenuto, le donazioni che aiutano a coprire i costi di gestione sono benvenute.',
+                donate: 'Dona',
+            },
+            cs: {
+                title: 'Podpořte Tracker',
+                subtitle: 'Jsme nezávislý fandovský web bez reklam, nijak nespjatý se SpaceX. Pokud se vám obsah líbil, příspěvky pomohou pokrýt provozní náklady webu.',
+                donate: 'Přispět',
+            },
+            sv: {
+                title: 'Stöd Trackern',
+                subtitle: 'Vi är en oberoende, reklamfri fansajt utan koppling till SpaceX. Om du tyckte om innehållet är donationer som hjälper till att täcka driftkostnaderna välkomna.',
+                donate: 'Donera',
+            },
+            nl: {
+                title: 'Steun de Tracker',
+                subtitle: 'Wij zijn een onafhankelijke, advertentievrije fansite, niet verbonden aan SpaceX. Als je van de inhoud hebt genoten, helpen donaties de operationele kosten te dekken.',
+                donate: 'Doneer',
+            },
+            da: {
+                title: 'Støt Trackeren',
+                subtitle: 'Vi er et uafhængigt, reklamefrit fansite uden tilknytning til SpaceX. Hvis du nød indholdet, hjælper donationer med at dække driftomkostningerne.',
+                donate: 'Donér',
+            },
+            pt: {
+                title: 'Apoie o Tracker',
+                subtitle: 'Somos um site de fãs independente, sem anúncios e sem vínculo com a SpaceX. Se você gostou do conteúdo, doações que ajudam a cobrir os custos de operação são bem-vindas.',
+                donate: 'Doar',
+            },
+            pl: {
+                title: 'Wesprzyj Tracker',
+                subtitle: 'Jesteśmy niezależną stroną fanowską bez reklam, niezwiązaną ze SpaceX. Jeśli treść Ci się podobała, darowizny pomogą pokryć koszty utrzymania strony.',
+                donate: 'Wesprzyj',
+            },
+            hi: {
+                title: 'ट्रैकर का समर्थन करें',
+                subtitle: 'हम SpaceX से असंबद्ध, विज्ञापन-मुक्त स्वतंत्र फैन साइट हैं। यदि आपको सामग्री पसंद आई, तो दान साइट चलाने के खर्च पूरे करने में मदद करते हैं।',
+                donate: 'दान करें',
+            },
+            ar: {
+                title: 'ادعم المتتبع',
+                subtitle: 'نحن موقع معجبين مستقل بلا إعلانات وغير تابع لـ SpaceX. إذا استمتعتم بالمحتوى، نرحب بالتبرعات التي تساعد في تغطية تكاليف تشغيل الموقع.',
+                donate: 'تبرّع',
+            },
+            tr: {
+                title: 'Tracker’ı Destekle',
+                subtitle: 'SpaceX ile bağlantısı olmayan, reklamsız bağımsız bir hayran sitesiyiz. İçerikten keyif aldıysanız, işletme giderlerini karşılamaya yardımcı bağışlara seviniriz.',
+                donate: 'Bağış yap',
+            },
+        };
+
+        let lastAppliedCommunitySupportLang = null;
+        function applyCommunitySupportTranslations(currentLang) {
+            const key = currentLang.split('-')[0];
+            if (lastAppliedCommunitySupportLang === key) return;
+            lastAppliedCommunitySupportLang = key;
+            const dict = COMMUNITY_SUPPORT_I18N[key] || COMMUNITY_SUPPORT_I18N.en;
+            const titleEl = document.getElementById('i18n-community-support-title');
+            if (titleEl) titleEl.textContent = dict.title;
+            const subtitleEl = document.getElementById('i18n-community-support-subtitle');
+            if (subtitleEl) subtitleEl.textContent = dict.subtitle;
+            const donateEl = document.getElementById('i18n-community-support-donate');
+            if (donateEl) donateEl.textContent = dict.donate;
+        }
+
         // Real photos for each milestone, sourced from Wikimedia Commons (same order as
         // the cards in the milestones list). Special:FilePath resolves to the current
         // full file regardless of the underlying storage path, so these links stay valid
@@ -6717,6 +6843,7 @@
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
             applyNiceToKnowTranslations(currentLang);
+            applyCommunitySupportTranslations(currentLang);
             applyStarshipDocSubtitleTranslation(currentLang);
             applyStarlinkSectionTitleTranslation(currentLang);
             if (typeof applyStarlinkBizLabels === 'function') applyStarlinkBizLabels(currentLang);
@@ -8260,20 +8387,44 @@
     </div>
 
     <footer
-        class="mt-auto py-8 border-t border-zinc-900/60 bg-zinc-950/40 text-center text-xs text-zinc-500 relative z-10 font-space tracking-wide space-y-4 px-4 transition-colors duration-500">
+        class="mt-auto py-8 border-t border-zinc-900/60 bg-zinc-950/40 text-center text-xs text-zinc-500 relative z-10 font-space tracking-wide space-y-6 px-4 transition-colors duration-500">
 
-        <div
-            class="flex items-center justify-center gap-2 text-sm font-semibold text-zinc-400 transition-colors duration-500">
-            <span>Follow us on X</span>
-            <a href="https://x.com/SpaceXFanTrack" target="_blank"
-                class="text-[#1da1f2] md:hover:text-white transition-colors duration-300 inline-flex items-center gap-1.5 bg-[#1da1f2]/10 md:hover:bg-[#1da1f2] px-3 py-1.5 rounded-full border border-[#1da1f2]/30 notranslate"
-                translate="no">
-                <i class="fa-brands fa-x-twitter"></i> @SpaceXFanTrack
-            </a>
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-32 items-start">
+            <section id="community-support" class="text-center md:text-start md:-ms-6">
+                <h3 class="font-orbitron font-semibold text-base sm:text-lg flex items-center justify-center md:justify-start gap-x-2 text-white transition-colors duration-500">
+                    <i class="fa-solid fa-heart text-emerald-400 shrink-0"></i>
+                    <span id="i18n-community-support-title" class="notranslate section-title-fit" translate="no" lang="en">Support the Tracker</span>
+                </h3>
+                <div class="mt-2 flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                    <p id="i18n-community-support-subtitle"
+                        class="text-sm text-zinc-400 flex-1 min-w-0 transition-colors duration-500 notranslate"
+                        translate="no" lang="en">We are an independent, ad-free fan site, not affiliated with SpaceX. If you enjoyed the content, we'd appreciate a donation to help cover the site's operating costs.</p>
+                    <a id="community-donate-link" href="https://www.paypal.com/ncp/payment/7MJGKKN5HG3EY"
+                        target="_blank" rel="noopener noreferrer"
+                        class="community-donate-btn shrink-0 inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-500 text-black font-orbitron font-semibold text-sm tracking-wide rounded-2xl border border-emerald-500 md:hover:brightness-110 transition-all duration-300">
+                        <i class="fa-solid fa-heart"></i>
+                        <span id="i18n-community-support-donate" class="notranslate" translate="no" lang="en">Donate</span>
+                    </a>
+                </div>
+            </section>
+
+            <div class="flex justify-center md:justify-end md:-me-6">
+                <div class="flex flex-col items-center text-center">
+                    <h3 aria-label="Follow us on X" class="font-orbitron font-semibold text-base sm:text-lg flex items-center justify-center gap-x-2 text-white transition-colors duration-500">
+                        <span>Follow us on</span>
+                        <i class="fa-brands fa-x-twitter text-[#1da1f2] shrink-0" aria-hidden="true"></i>
+                    </h3>
+                    <a href="https://x.com/SpaceXFanTrack" target="_blank"
+                        class="mt-3 text-base text-[#1da1f2] md:hover:text-white transition-colors duration-300 inline-flex items-center gap-2 bg-[#1da1f2]/10 md:hover:bg-[#1da1f2] px-5 py-2.5 rounded-full border border-[#1da1f2]/30 notranslate"
+                        translate="no">
+                        <i class="fa-brands fa-x-twitter text-lg"></i> @SpaceXFanTrack
+                    </a>
+                </div>
+            </div>
         </div>
 
-        <div class="pt-2">© 2026 SpaceX Launch Tracker. All Rights Reserved.</div>
-        <div class="text-[10px] text-zinc-600 max-w-3xl mx-auto italic font-sans px-4">
+        <div>© 2026 SpaceX Launch Tracker. All Rights Reserved.</div>
+        <div class="text-[10px] text-zinc-600 max-w-3xl mx-auto italic font-sans">
             Disclaimer: This website is not affiliated with, authorized, or endorsed by SpaceX (Space Exploration
             Technologies Corp). All trademarks belong to their respective owners.
         </div>
