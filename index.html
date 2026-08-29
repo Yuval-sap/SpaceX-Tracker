@@ -5422,6 +5422,7 @@
             fixMistranslatedPhrases(document.getElementById('past-launches-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('mission-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('landing-modal'), currentLang);
+            fixMistranslatedPhrases(document.getElementById('patch-mission-modal'), currentLang);
         }
 
         // Card descriptions are inserted as raw English and left to Google's on-page widget to
@@ -6522,8 +6523,20 @@
                 renderLocalizedMissionName(nameEl, m.name, document.documentElement.lang);
             }
 
+            // Same path as the rocket/site/orbit spec modals (translateModalDescriptions): write
+            // the English API blurb, then translate the WHOLE sentence ourselves. Leaving this
+            // paragraph for the on-page Google Translate widget is what scrambled Crew-13 in
+            // Hebrew — leftover English tokens (Crew, Dragon, Crew-13) sitting mid-sentence
+            // flip RTL word order and park the period at the start of the next line. The
+            // element is notranslate so the widget never gets a second pass at it.
             const descEl = document.getElementById('patch-mission-modal-desc');
-            if (descEl) descEl.innerText = m.description || '';
+            window.currentOpenPatchMissionDescription = m.description || '';
+            if (descEl) {
+                descEl.innerText = window.currentOpenPatchMissionDescription;
+                const langNow = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                descEl.dataset.renderedStamp = langNow + '|' + window.currentOpenPatchMissionDescription;
+                translateModalDescriptions('patch', [descEl], document.documentElement.lang);
+            }
 
             const dateEl = document.getElementById('patch-mission-modal-date');
             if (dateEl) {
@@ -6799,6 +6812,20 @@
                     nameEl2.dataset.renderedStamp = stamp;
                     renderLocalizedMissionName(nameEl2, rawName, currentLang);
                 });
+
+                // Patch-summary card description is notranslate (see openPatchMissionCard) —
+                // re-translate it ourselves when the language changes while the card is open.
+                const patchModalEl = document.getElementById('patch-mission-modal');
+                const patchDescEl = document.getElementById('patch-mission-modal-desc');
+                if (patchModalEl && !patchModalEl.classList.contains('hidden') && patchDescEl
+                    && window.currentOpenPatchMissionDescription !== undefined) {
+                    const descStamp = langNow + '|' + window.currentOpenPatchMissionDescription;
+                    if (patchDescEl.dataset.renderedStamp !== descStamp) {
+                        patchDescEl.dataset.renderedStamp = descStamp;
+                        patchDescEl.innerText = window.currentOpenPatchMissionDescription;
+                        translateModalDescriptions('patch', [patchDescEl], currentLang);
+                    }
+                }
 
                 // Same for the patches strip's tile names (also notranslate now).
                 const stripEl = document.getElementById('mission-patches-strip');
@@ -8517,7 +8544,8 @@
                 </div>
                 <div id="patch-mission-modal-name" translate="no"
                     class="notranslate font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight mb-2"></div>
-                <p id="patch-mission-modal-desc" class="text-sm text-zinc-400 leading-relaxed"></p>
+                <p id="patch-mission-modal-desc" translate="no"
+                    class="notranslate text-sm text-zinc-400 leading-relaxed"></p>
                 <div
                     class="flex flex-col items-center gap-1.5 mt-4 pt-4 border-t border-zinc-800/80 text-xs sm:text-sm text-zinc-400">
                     <div class="flex items-center gap-2"><i class="fa-solid fa-calendar-days text-emerald-400/80"></i>
