@@ -5962,9 +5962,9 @@
         // fired, which turned "שני השלבים סטארשיפ רכב שיגור" into the still-wrong "שני השלבים
         // סטארשיפ משגר". Applying the same rules to the whole translated string BEFORE it is
         // inserted (and therefore before it is split) lets the word-order rules actually match.
-            function normalizeMissionPipeSpacing(text) {
-            if (!text) return text;
-            return text.replace(/\s*\|\s*/g, ' | ');
+        function normalizeMissionPipeSpacing(text) {
+            if (!text || String(text).includes('|||')) return text;
+            return String(text).replace(/\s*\|\s*/g, ' | ');
         }
         function normalizePipeSpacingInElement(el) {
             if (!el) return;
@@ -5981,13 +5981,16 @@
         }
         function fixMistranslatedPhrasesText(text, currentLang) {
             const key = (currentLang || '').split('-')[0];
-            if (!text) return text;
-            if (key !== 'he' && key !== 'iw') return normalizeMissionPipeSpacing(text);
+            if (!text || (key !== 'he' && key !== 'iw')) return text;
+            // Never rewrite the batch-translate payload (fields joined with " ||| ").
+            // normalizeMissionPipeSpacing would turn those separators into " | | | " and
+            // the split would fail, so every modal field fell back to English.
+            if (String(text).includes('|||')) return text;
             let out = text;
             PHRASE_FIXES_HE.forEach(([pattern, replacement]) => {
                 out = out.replace(pattern, replacement);
             });
-            return normalizeMissionPipeSpacing(out);
+            return out;
         }
 
         function fixMistranslatedPhrases(root, currentLang) {
@@ -6735,8 +6738,11 @@
                     // Applied here, on the whole sentence, rather than only after insertion:
                     // once this text reaches the page it gets split across several text nodes by
                     // the Starship-term wrapping, and multi-word corrections can no longer match.
-                    // See fixMistranslatedPhrasesText's own comment.
-                    translated = fixMistranslatedPhrasesText(translated, langKey);
+                    // See fixMistranslatedPhrasesText's own comment. Skip while this is
+                    // still the joined batch string — phrase fixes run per field after split.
+                    if (!String(text).includes('|||')) {
+                        translated = fixMistranslatedPhrasesText(translated, langKey);
+                    }
                     missionDescTranslationCache.set(cacheKey, translated);
                     return translated;
                 })
@@ -6775,7 +6781,7 @@
                     return texts.slice();
                 }
                 let i = 0;
-                return texts.map(t => (t ? parts[i++] : t));
+                return texts.map(t => (t ? fixMistranslatedPhrasesText(parts[i++], langKey) : t));
             });
         }
 
