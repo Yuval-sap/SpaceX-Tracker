@@ -815,29 +815,6 @@
             }
         }
 
-        /* First swap from the pulse placeholders to real cards: fade the grid out, replace,
-           fade it back. Cache-first paint used to wipe the placeholders in one frame, which
-           read as a hard pop. Later refreshes skip this (data-revealed) so a live update
-           does not replay the motion. */
-        #missions-grid.grid-reveal-out,
-        #past-launches-grid.grid-reveal-out {
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.28s ease, transform 0.28s ease;
-        }
-        #missions-grid.grid-reveal-in,
-        #past-launches-grid.grid-reveal-in {
-            opacity: 1;
-            transform: translateY(0);
-            transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        #missions-grid[data-revealed="1"] .mission-card,
-        #past-launches-grid[data-revealed="1"] .mission-card {
-            opacity: 1;
-            animation: none;
-            transform: none;
-        }
-
         /* Gives the sticky/backdrop-blur nav its own stable compositing layer so mobile
            Safari doesn't leave it (and the theme toggle button inside it) rendered in a
            stale position for a frame right after an orientation change. */
@@ -5950,9 +5927,6 @@
             [/טלסקופ\s+החלל\s+הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'טלסקופ החלל ננסי גרייס רומן'],
             [/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן'],
             [/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן'],
-            // Google (and the Roman notranslate wrap) often glue the next word to "|"
-            // ("פלקון כבד |טלסקופ...") while every other mission keeps " | ".
-            [/\|\s*(?=[\u0590-\u05FFA-Za-z])/g, '| '],
         ];
         // String-level form of the DOM pass below. Needed because by the time the text is in the
         // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
@@ -5962,30 +5936,9 @@
         // fired, which turned "שני השלבים סטארשיפ רכב שיגור" into the still-wrong "שני השלבים
         // סטארשיפ משגר". Applying the same rules to the whole translated string BEFORE it is
         // inserted (and therefore before it is split) lets the word-order rules actually match.
-        function normalizeMissionPipeSpacing(text) {
-            if (!text || String(text).includes('|||')) return text;
-            return String(text).replace(/\s*\|\s*/g, ' | ');
-        }
-        function normalizePipeSpacingInElement(el) {
-            if (!el) return;
-            if (!el.children.length) {
-                const t = el.textContent;
-                const n = normalizeMissionPipeSpacing(t);
-                if (n !== t) el.textContent = n;
-                return;
-            }
-            const first = el.firstChild;
-            if (first && first.nodeType === 3 && /\|$/.test(first.nodeValue) && first.nextSibling) {
-                first.nodeValue = first.nodeValue.replace(/\s*\|$/, ' | ');
-            }
-        }
         function fixMistranslatedPhrasesText(text, currentLang) {
             const key = (currentLang || '').split('-')[0];
             if (!text || (key !== 'he' && key !== 'iw')) return text;
-            // Never rewrite the batch-translate payload (fields joined with " ||| ").
-            // normalizeMissionPipeSpacing would turn those separators into " | | | " and
-            // the split would fail, so every modal field fell back to English.
-            if (String(text).includes('|||')) return text;
             let out = text;
             PHRASE_FIXES_HE.forEach(([pattern, replacement]) => {
                 out = out.replace(pattern, replacement);
@@ -6139,7 +6092,6 @@
             fixMistranslatedPhrases(document.getElementById('mission-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('landing-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('patch-mission-modal'), currentLang);
-            document.querySelectorAll('#hero-name, #modal-name, .mission-title-fit').forEach(normalizePipeSpacingInElement);
         }
 
         // Card descriptions are inserted as raw English and left to Google's on-page widget to
@@ -6156,14 +6108,10 @@
             const key = (currentLang || '').split('-')[0];
             if (key !== 'he' && key !== 'iw') return;
             document.querySelectorAll('#hero-name, #modal-name, #patch-mission-modal-name, #patch-mission-modal-desc, .mission-title-fit, #missions-grid .mission-card-desc, #past-launches-grid .mission-card-desc').forEach(el => {
-                if (el.children.length === 0) {
-                    normalizePipeSpacingInElement(el);
-                    return;
-                }
+                if (el.children.length === 0) return; // single node - the walker above already handled it
                 const original = el.textContent;
                 const fixed = fixMistranslatedPhrasesText(original, currentLang);
                 if (fixed !== original) el.textContent = fixed;
-                else normalizePipeSpacingInElement(el);
             });
         }
 
@@ -6738,11 +6686,8 @@
                     // Applied here, on the whole sentence, rather than only after insertion:
                     // once this text reaches the page it gets split across several text nodes by
                     // the Starship-term wrapping, and multi-word corrections can no longer match.
-                    // See fixMistranslatedPhrasesText's own comment. Skip while this is
-                    // still the joined batch string — phrase fixes run per field after split.
-                    if (!String(text).includes('|||')) {
-                        translated = fixMistranslatedPhrasesText(translated, langKey);
-                    }
+                    // See fixMistranslatedPhrasesText's own comment.
+                    translated = fixMistranslatedPhrasesText(translated, langKey);
                     missionDescTranslationCache.set(cacheKey, translated);
                     return translated;
                 })
@@ -6781,7 +6726,7 @@
                     return texts.slice();
                 }
                 let i = 0;
-                return texts.map(t => (t ? fixMistranslatedPhrasesText(parts[i++], langKey) : t));
+                return texts.map(t => (t ? parts[i++] : t));
             });
         }
 
@@ -7348,7 +7293,7 @@
                     .replace(/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן')
                     .replace(/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן');
             }
-            return normalizeMissionPipeSpacing(out);
+            return out;
         }
 
         // Renders a mission name into a notranslate element in two stages, the same instant-then-
@@ -7563,7 +7508,7 @@
             while ((n = walker.nextNode())) nodes.push(n);
             const pieceRe = /(Nancy Grace Roman Space Telescope|טלסקופ החלל הרומ(?:י|אי) ננסי גרייס|Nancy Grace Roman|הרומ(?:י|אי) ננסי גרייס|ננסי גרייס הרומ(?:י|אי))/gi;
             nodes.forEach(node => {
-                const parts = normalizeMissionPipeSpacing(node.nodeValue).split(pieceRe);
+                const parts = node.nodeValue.split(pieceRe);
                 if (parts.length === 1) return;
                 const frag = document.createDocumentFragment();
                 parts.forEach(part => {
@@ -13355,38 +13300,28 @@
 
         async function fetchPreviousLaunchPages(host, maxPages, startOffset) {
             const cutoffIso = new Date(pastLaunchCutoffMs()).toISOString();
+            const collected = [];
             const limit = 100;
+            let offset = startOffset || 0;
+            let total = null;
             const pages = Math.max(1, Math.min(maxPages || 3, 3));
-            const firstOffset = startOffset || 0;
-
-            const fetchPage = async (offset) => {
+            for (let page = 0; page < pages; page++) {
                 const url = host + '/2.2.0/launch/previous/?lsp__id=121&limit=' + limit +
                     '&offset=' + offset + '&mode=detailed&net__gte=' + encodeURIComponent(cutoffIso);
                 const res = await fetchWithTimeout(url, { timeout: 15000 });
-                if (!res.ok) throw new Error('previous ' + res.status);
-                return res.json();
-            };
-
-            // Page 1 stays serial on purpose. Firing every offset at once (1+2+3 plus the
-            // upcoming request) is what the free LL2 host tends to 429; we already see that
-            // on a sequential page-2 follow-up. Extra pages after we know page 1 has a `next`
-            // run in parallel with each other only — one fewer round-trip than 1-then-2-then-3,
-            // without a four-request burst on first paint.
-            const first = await fetchPage(firstOffset);
-            const collected = (first.results && first.results.length) ? first.results.slice() : [];
-            const total = typeof first.count === 'number' ? first.count : null;
-            if (!collected.length) return collected;
-            if (total != null && collected.length >= total) return collected;
-            if (!first.next || collected.length < limit) return collected;
-            if (pages <= 1) return collected;
-
-            const extraOffsets = [];
-            for (let i = 1; i < pages; i++) extraOffsets.push(firstOffset + i * limit);
-            const extras = await Promise.all(extraOffsets.map(off => fetchPage(off).then(d => d, () => null)));
-            extras.forEach(data => {
-                const rows = data && data.results && data.results.length ? data.results : [];
-                if (rows.length) collected.push.apply(collected, rows);
-            });
+                if (!res.ok) {
+                    if (page === 0) throw new Error('previous ' + res.status);
+                    break;
+                }
+                const data = await res.json();
+                if (typeof data.count === 'number') total = data.count;
+                const rows = (data.results && data.results.length) ? data.results : [];
+                collected.push.apply(collected, rows);
+                if (!rows.length) break;
+                if (total != null && collected.length >= total) break;
+                if (!data.next || rows.length < limit) break;
+                offset += limit;
+            }
             return collected;
         }
 
@@ -13470,143 +13405,105 @@
                     return rows.length > 0 ? rows : null;
                 };
 
-                // Shared merge + paint used both when a half arrives early (upcoming, usually)
-                // and when the slower previous-year pages finish. upcomingRaw/previousRaw null
-                // still means "use cache for that half" — same as a skipped or failed fetch.
-                const applyLiveLaunchHalves = (upcomingRaw, previousRaw) => {
-                    // The previous-launches API is a free, rate-limited public API. Under rate
-                    // limiting it can return a "successful" response (200 OK) with far fewer
-                    // results than normal instead of a hard failure — that wouldn't be caught by
-                    // a null check, but would still silently overwrite a good, fuller cached list
-                    // with a degraded one. Merge by id with the in-window cache so a 100-result
-                    // page cannot replace a fuller year list, and a truncated response still keeps
-                    // what we already have. cachedCombinedForSanityCheck holds RAW API objects
-                    // (as originally fetched, pre-mapLaunchToSchema) - those use "net" for the
-                    // launch time, not "date".
-                    if (previousRaw !== null) {
-                        previousRaw = mergePreviousLaunches(previousRaw, cachedCombinedForSanityCheck);
+                let [upcomingRaw, previousRaw] = await Promise.all([
+                    fetchUpcoming ? fetchUpcomingWithFallback() : Promise.resolve(null),
+                    fetchPrevious ? fetchPreviousWithFallback() : Promise.resolve(null)
+                ]);
+
+                if (upcomingRaw === null && previousRaw === null) {
+                    throw new Error("All APIs failed or timed out.");
+                }
+
+                // The previous-launches API is a free, rate-limited public API. Under rate
+                // limiting it can return a "successful" response (200 OK) with far fewer
+                // results than normal instead of a hard failure — that wouldn't be caught by
+                // a null check, but would still silently overwrite a good, fuller cached list
+                // with a degraded one. Merge by id with the in-window cache so a 100-result
+                // page cannot replace a fuller year list, and a truncated response still keeps
+                // what we already have. cachedCombinedForSanityCheck holds RAW API objects
+                // (as originally fetched, pre-mapLaunchToSchema) - those use "net" for the
+                // launch time, not "date".
+                if (previousRaw !== null) {
+                    previousRaw = mergePreviousLaunches(previousRaw, cachedCombinedForSanityCheck);
+                }
+                if (upcomingRaw !== null && cachedCombinedForSanityCheck) {
+                    const nowMsCheck = Date.now();
+                    const cachedUpcomingCount = cachedCombinedForSanityCheck.filter(m => new Date(m.net).getTime() >= nowMsCheck).length;
+                    if (cachedUpcomingCount >= 3 && upcomingRaw.length < cachedUpcomingCount * 0.5) {
+                        upcomingRaw = null;
                     }
-                    if (upcomingRaw !== null && cachedCombinedForSanityCheck) {
-                        const nowMsCheck = Date.now();
-                        const cachedUpcomingCount = cachedCombinedForSanityCheck.filter(m => new Date(m.net).getTime() >= nowMsCheck).length;
-                        if (cachedUpcomingCount >= 3 && upcomingRaw.length < cachedUpcomingCount * 0.5) {
-                            upcomingRaw = null;
-                        }
+                }
+
+                // "upcoming" and "previous" are fetched independently — it's possible for one
+                // to fail (or now, be detected as suspiciously degraded) while the other is
+                // fine. Previously this silently rendered with an empty past (or empty
+                // upcoming) section until the next scheduled refresh — now we backfill just
+                // the missing half from the last successful cache instead of losing it.
+                if ((upcomingRaw === null || previousRaw === null) && cachedCombinedForSanityCheck) {
+                    const nowMs = Date.now();
+                    if (upcomingRaw === null) {
+                        // Also restores a mission that has ALREADY lifted off but is still inside
+                        // its flight window, not just genuinely-future ones. A strict `net >= now`
+                        // filter dropped exactly the mission the hero should still be showing:
+                        // once it launches its cached net is in the past, so it fell out of the
+                        // restored "upcoming" half - while the live "previous" endpoint typically
+                        // hasn't picked it up yet either (that listing lags liftoff by a while).
+                        // The mission then existed in NEITHER half and vanished from the data
+                        // altogether, so the hero skipped straight to the next scheduled launch
+                        // minutes after liftoff instead of running the full grace period. Only an
+                        // in-memory fallback was masking this, which a page reload wipes - so
+                        // reloading during an API block is what made it visible.
+                        // 90 minutes is the longest window any vehicle gets (Starship); the real
+                        // per-vehicle classification still happens in processLaunchData, which
+                        // moves anything genuinely finished into the past list as usual.
+                        const MAX_FLIGHT_WINDOW_MS = 90 * 60 * 1000;
+                        upcomingRaw = cachedCombinedForSanityCheck.filter(m => {
+                            const t = new Date(m.net).getTime();
+                            return t >= nowMs || (nowMs - t) <= MAX_FLIGHT_WINDOW_MS;
+                        });
                     }
-
-                    // "upcoming" and "previous" are fetched independently — it's possible for one
-                    // to fail (or now, be detected as suspiciously degraded) while the other is
-                    // fine. Previously this silently rendered with an empty past (or empty
-                    // upcoming) section until the next scheduled refresh — now we backfill just
-                    // the missing half from the last successful cache instead of losing it.
-                    if ((upcomingRaw === null || previousRaw === null) && cachedCombinedForSanityCheck) {
-                        const nowMs = Date.now();
-                        if (upcomingRaw === null) {
-                            // Also restores a mission that has ALREADY lifted off but is still inside
-                            // its flight window, not just genuinely-future ones. A strict `net >= now`
-                            // filter dropped exactly the mission the hero should still be showing:
-                            // once it launches its cached net is in the past, so it fell out of the
-                            // restored "upcoming" half - while the live "previous" endpoint typically
-                            // hasn't picked it up yet either (that listing lags liftoff by a while).
-                            // The mission then existed in NEITHER half and vanished from the data
-                            // altogether, so the hero skipped straight to the next scheduled launch
-                            // minutes after liftoff instead of running the full grace period. Only an
-                            // in-memory fallback was masking this, which a page reload wipes - so
-                            // reloading during an API block is what made it visible.
-                            // 90 minutes is the longest window any vehicle gets (Starship); the real
-                            // per-vehicle classification still happens in processLaunchData, which
-                            // moves anything genuinely finished into the past list as usual.
-                            const MAX_FLIGHT_WINDOW_MS = 90 * 60 * 1000;
-                            upcomingRaw = cachedCombinedForSanityCheck.filter(m => {
-                                const t = new Date(m.net).getTime();
-                                return t >= nowMs || (nowMs - t) <= MAX_FLIGHT_WINDOW_MS;
-                            });
-                        }
-                        if (previousRaw === null) {
-                            previousRaw = cachedCombinedForSanityCheck.filter(m => {
-                                const t = new Date(m.net).getTime();
-                                return t < nowMs && t >= pastLaunchCutoffMs();
-                            });
-                        }
+                    if (previousRaw === null) {
+                        previousRaw = cachedCombinedForSanityCheck.filter(m => {
+                            const t = new Date(m.net).getTime();
+                            return t < nowMs && t >= pastLaunchCutoffMs();
+                        });
                     }
+                }
 
-                    // De-duplicated by id: when BOTH halves are restored from the same cache, a
-                    // just-launched mission now legitimately matches the upcoming filter (above) and
-                    // the previous one, and would otherwise be processed twice.
-                    const combinedData = [];
-                    const seenLaunchIds = new Set();
-                    [...(upcomingRaw || []), ...(previousRaw || [])].forEach(m => {
-                        const key = m && m.id;
-                        if (key != null) {
-                            if (seenLaunchIds.has(key)) return;
-                            seenLaunchIds.add(key);
-                        }
-                        combinedData.push(m);
-                    });
-
-                    if (combinedData.length > 0) {
-                        // Render first, persist second - and persisting can never undo the render.
-                        // Previously the two setItem calls ran BEFORE processLaunchData and weren't
-                        // wrapped in try/catch: if either threw (this app keeps a lot in localStorage
-                        // - patch archive, crew cache, weather, currency rates, favorites, reminders...
-                        // a QuotaExceededError here is a real risk), the exception
-                        // skipped processLaunchData(combinedData) entirely and fell into the outer
-                        // catch below, which re-renders from whatever was last cached successfully.
-                        // A perfectly good live fetch - e.g. one that would've shown 97 launches -
-                        // could silently downgrade to a stale cached count (e.g. 95), indistinguishable
-                        // from the API actually being unreachable. Persisting is a nice-to-have for
-                        // the *next* failed fetch, not a prerequisite for showing what's already in
-                        // hand, so it's now isolated in its own try/catch after the render.
-                        processLaunchData(combinedData);
-                        try {
-                            localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
-                            localStorage.setItem(CACHE_KEY + '_timestamp', Date.now().toString());
-                        } catch (e) { }
-                        return true;
+                // De-duplicated by id: when BOTH halves are restored from the same cache, a
+                // just-launched mission now legitimately matches the upcoming filter (above) and
+                // the previous one, and would otherwise be processed twice.
+                const combinedData = [];
+                const seenLaunchIds = new Set();
+                [...(upcomingRaw || []), ...(previousRaw || [])].forEach(m => {
+                    const key = m && m.id;
+                    if (key != null) {
+                        if (seenLaunchIds.has(key)) return;
+                        seenLaunchIds.add(key);
                     }
-                    return false;
-                };
+                    combinedData.push(m);
+                });
 
-                const upcomingPromise = fetchUpcoming ? fetchUpcomingWithFallback() : Promise.resolve(null);
-                const previousPromise = fetchPrevious ? fetchPreviousWithFallback() : Promise.resolve(null);
-
-                if (fetchUpcoming && fetchPrevious) {
-                    // Paint whichever half lands first (almost always upcoming: one small
-                    // request) using cache for the other half, then paint again when previous
-                    // finishes. Waiting on Promise.all kept the upcoming row empty for the
-                    // whole previous-year download.
-                    let upcomingRaw = null;
-                    let previousRaw = null;
-                    let gotUpcoming = false;
-                    let gotPrevious = false;
-                    let applied = false;
-                    const takeHalf = (half, value) => {
-                        if (half === 'upcoming') {
-                            upcomingRaw = value;
-                            gotUpcoming = true;
-                        } else {
-                            previousRaw = value;
-                            gotPrevious = true;
-                        }
-                        try {
-                            if (applyLiveLaunchHalves(gotUpcoming ? upcomingRaw : null, gotPrevious ? previousRaw : null)) {
-                                applied = true;
-                            }
-                        } catch (e) { /* a later half can still succeed */ }
-                    };
-                    await Promise.all([
-                        upcomingPromise.then(v => takeHalf('upcoming', v), () => takeHalf('upcoming', null)),
-                        previousPromise.then(v => takeHalf('previous', v), () => takeHalf('previous', null))
-                    ]);
-                    if (!applied) throw new Error("All APIs failed or timed out.");
+                if (combinedData.length > 0) {
+                    // Render first, persist second - and persisting can never undo the render.
+                    // Previously the two setItem calls ran BEFORE processLaunchData and weren't
+                    // wrapped in try/catch: if either threw (this app keeps a lot in localStorage
+                    // - patch archive, crew cache, weather, currency rates, favorites, reminders...
+                    // a QuotaExceededError here is a real risk), the exception
+                    // skipped processLaunchData(combinedData) entirely and fell into the outer
+                    // catch below, which re-renders from whatever was last cached successfully.
+                    // A perfectly good live fetch - e.g. one that would've shown 97 launches -
+                    // could silently downgrade to a stale cached count (e.g. 95), indistinguishable
+                    // from the API actually being unreachable. Persisting is a nice-to-have for
+                    // the *next* failed fetch, not a prerequisite for showing what's already in
+                    // hand, so it's now isolated in its own try/catch after the render.
+                    processLaunchData(combinedData);
+                    try {
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
+                        localStorage.setItem(CACHE_KEY + '_timestamp', Date.now().toString());
+                    } catch (e) { }
                 } else {
-                    let [upcomingRaw, previousRaw] = await Promise.all([upcomingPromise, previousPromise]);
-                    if (upcomingRaw === null && previousRaw === null) {
-                        throw new Error("All APIs failed or timed out.");
-                    }
-                    if (!applyLiveLaunchHalves(upcomingRaw, previousRaw)) {
-                        throw new Error("No data returned from APIs");
-                    }
+                    throw new Error("No data returned from APIs");
                 }
 
             } catch (error) {
@@ -16418,32 +16315,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
             renderWeatherHTML();
         }
 
-        function paintLaunchGridWithReveal(grid, paint) {
-            if (!grid) return;
-            if (grid.dataset.revealed === '1') {
-                paint();
-                return;
-            }
-            grid._pendingPaint = paint;
-            if (grid.dataset.revealPending === '1') return;
-            grid.dataset.revealPending = '1';
-            grid.classList.add('grid-reveal-out');
-            setTimeout(() => {
-                const fn = grid._pendingPaint || paint;
-                grid._pendingPaint = null;
-                fn();
-                grid.dataset.revealed = '1';
-                delete grid.dataset.revealPending;
-                grid.classList.remove('grid-reveal-out');
-                void grid.offsetWidth;
-                grid.classList.add('grid-reveal-in');
-            }, 240);
-        }
-
         function renderMissions(filteredMissions) {
             const grid = document.getElementById('missions-grid');
             if (!grid) return;
-            paintLaunchGridWithReveal(grid, function () {
             grid.innerHTML = '';
 
             countdownIntervals.forEach(clearInterval);
@@ -16561,7 +16435,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
             startCountdowns(filteredMissions);
             fitAllTitlesOneLine(grid);
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
-            });
         }
 
         function renderPastMissions(filteredPast) {
@@ -16578,7 +16451,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 pastGrid.dataset.dragEnabled = 'true';
             }
 
-            paintLaunchGridWithReveal(pastGrid, function () {
             pastGrid.innerHTML = '';
 
             if (filteredPast.length === 0) {
@@ -16671,7 +16543,6 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             fitAllTitlesOneLine(pastGrid);
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
-            });
         }
 
         function paintMissionCardCountdowns() {
@@ -19583,11 +19454,12 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 };
             })();
 
-            // Paint last visit's cards immediately whenever a cache exists, then refresh in
-            // the background. The 2-minute grace still skips a duplicate API hit after a
-            // reload (same LL2 budget as updateRefreshSchedule) — but a stale cache used to
-            // mean an empty grid until the live fetch finished (often 7-10s). First visits
-            // with no cache still wait on the network, same as before.
+            // A browser refresh (F5 / the reload button) shouldn't cost an API call if we
+            // already fetched moments ago - that's the exact same LL2 request budget the
+            // tiered scheduling above is protecting, and reloading the page doesn't create any
+            // new need for fresher data than what a refresh a couple minutes ago already gave
+            // us. Only skip the network fetch when there's a recent, valid cache to fall back
+            // on - anything else (first visit, stale cache, corrupt cache) still fetches live.
             const CACHE_KEY = 'spacex_launches_cache';
             const RELOAD_CACHE_GRACE_MS = 2 * 60 * 1000;
             const cachedTimestamp = parseInt(localStorage.getItem(CACHE_KEY + '_timestamp') || '0', 10);
@@ -19596,17 +19468,14 @@ fitTitleOneLine(document.getElementById('hero-name'));
             if (cachedLaunchData) {
                 try { parsedCachedLaunches = JSON.parse(cachedLaunchData); } catch (e) { }
             }
-            if (parsedCachedLaunches) {
+            if (parsedCachedLaunches && (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS) {
                 processLaunchData(parsedCachedLaunches);
-                const cacheIsFresh = (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS;
-                if (cacheIsFresh) {
-                    // Fresh cache: no upcoming refetch. Still backfill previous if the stored
-                    // past list is a truncated 100-item page that ends mid-year.
-                    if (!pastCacheCoversRollingYear(parsedCachedLaunches)) {
-                        fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
-                    }
-                } else {
-                    fetchLiveLaunches();
+                // The 2-minute skip avoids a duplicate API hit after a reload. It must
+                // not freeze a truncated past list (one 100-result page that ends in
+                // January) — that still needs a previous-launches backfill so visitors
+                // do not have to clear site data by hand.
+                if (!pastCacheCoversRollingYear(parsedCachedLaunches)) {
+                    fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
                 }
             } else {
                 fetchLiveLaunches();
