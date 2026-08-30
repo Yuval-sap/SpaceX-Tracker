@@ -881,6 +881,26 @@
             opacity: 1;
         }
 
+        /* After liftoff the sticky pill is a live status readout (same swap as the hero card).
+           Pointer cursor only then, so a pre-launch countdown doesn't look tappable. */
+        #sticky-countdown-wrap.mission-status-mode.is-visible,
+        #sticky-countdown-wrap-mobile.mission-status-mode.is-visible {
+            cursor: pointer;
+        }
+
+        /* Sibling of <nav>, position:fixed, so it can sit under the pill on any tab / scroll
+           position. Not a child of either wrap: the mobile row is overflow:hidden, and the
+           hero panel's own CSS is left completely alone. */
+        #sticky-status-breakdown {
+            position: fixed;
+            z-index: 120;
+            width: min(23rem, calc(100vw - 2rem));
+            max-width: calc(100vw - 2rem);
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
         .countdown-small {
             font-family: 'Orbitron', 'Rubik', monospace;
             font-feature-settings: "tnum";
@@ -3494,7 +3514,9 @@
             display: none !important;
         }
         #mission-status-breakdown .mission-timeline-explain,
-        #mission-status-breakdown .mission-timeline-label {
+        #mission-status-breakdown .mission-timeline-label,
+        #sticky-status-breakdown .mission-timeline-explain,
+        #sticky-status-breakdown .mission-timeline-label {
             overflow-wrap: anywhere;
             word-break: normal;
             white-space: normal;
@@ -3752,22 +3774,30 @@
 
         /* Completed milestones get a filled tick; upcoming ones a dim hollow marker, so the row
            layout never shifts as the flight progresses. */
-        #mission-status-breakdown .mission-timeline-check {
+        #mission-status-breakdown .mission-timeline-check,
+        #sticky-status-breakdown .mission-timeline-check {
             color: #3f3f46;
             opacity: 0.5;
         }
-        #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check {
+        #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check,
+        #sticky-status-breakdown .mission-timeline-row.is-done .mission-timeline-check {
             color: #34d399;
             opacity: 1;
         }
         #mission-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-label,
-        #mission-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-explain {
+        #mission-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-explain,
+        #sticky-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-label,
+        #sticky-status-breakdown .mission-timeline-row:not(.is-done) .mission-timeline-explain {
             opacity: 0.55;
         }
-        body.light-theme #mission-status-breakdown .mission-timeline-check { color: #cbd5e1; }
-        body.light-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #047857; }
-        body.mars-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #ff8c5a; }
-        body.moon-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #6abffb; }
+        body.light-theme #mission-status-breakdown .mission-timeline-check,
+        body.light-theme #sticky-status-breakdown .mission-timeline-check { color: #cbd5e1; }
+        body.light-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check,
+        body.light-theme #sticky-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #047857; }
+        body.mars-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check,
+        body.mars-theme #sticky-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #ff8c5a; }
+        body.moon-theme #mission-status-breakdown .mission-timeline-row.is-done .mission-timeline-check,
+        body.moon-theme #sticky-status-breakdown .mission-timeline-row.is-done .mission-timeline-check { color: #6abffb; }
         body.light-theme #year-count-breakdown,
         body.light-theme #starlink-biz-breakdown {
             background: rgba(255, 255, 255, 0.98) !important;
@@ -3827,12 +3857,18 @@
            doesn't reach them because the markup is injected after load - so the panel rendered
            as light-grey-on-white once the background above turned light. Accent + body text are
            set per theme here instead, keyed off the container rather than the utility classes. */
-        body.light-theme #mission-status-breakdown .mission-timeline-label { color: #047857 !important; }
-        body.light-theme #mission-status-breakdown .mission-timeline-explain { color: #475569 !important; }
-        body.mars-theme #mission-status-breakdown .mission-timeline-label { color: #ff8c5a !important; }
-        body.mars-theme #mission-status-breakdown .mission-timeline-explain { color: #d8b9a8 !important; }
-        body.moon-theme #mission-status-breakdown .mission-timeline-label { color: #6abffb !important; }
-        body.moon-theme #mission-status-breakdown .mission-timeline-explain { color: #aebdd4 !important; }
+        body.light-theme #mission-status-breakdown .mission-timeline-label,
+        body.light-theme #sticky-status-breakdown .mission-timeline-label { color: #047857 !important; }
+        body.light-theme #mission-status-breakdown .mission-timeline-explain,
+        body.light-theme #sticky-status-breakdown .mission-timeline-explain { color: #475569 !important; }
+        body.mars-theme #mission-status-breakdown .mission-timeline-label,
+        body.mars-theme #sticky-status-breakdown .mission-timeline-label { color: #ff8c5a !important; }
+        body.mars-theme #mission-status-breakdown .mission-timeline-explain,
+        body.mars-theme #sticky-status-breakdown .mission-timeline-explain { color: #d8b9a8 !important; }
+        body.moon-theme #mission-status-breakdown .mission-timeline-label,
+        body.moon-theme #sticky-status-breakdown .mission-timeline-label { color: #6abffb !important; }
+        body.moon-theme #mission-status-breakdown .mission-timeline-explain,
+        body.moon-theme #sticky-status-breakdown .mission-timeline-explain { color: #aebdd4 !important; }
         .mode-option.is-selected {
             background: rgba(16, 185, 129, 0.12);
             color: #34d399 !important;
@@ -5171,6 +5207,19 @@
         // list here anyway - wrong information for a launch that was never Starlink to begin
         // with, even though the main status text right next to this popup already correctly
         // showed the plain "Mission in Progress" fallback instead of Starlink milestones.
+        function writeMissionStatusBreakdownHtml(html) {
+            const listEl = document.getElementById('mission-status-breakdown-list');
+            const stickyList = document.getElementById('sticky-status-breakdown-list');
+            if (listEl) listEl.innerHTML = html;
+            if (stickyList) stickyList.innerHTML = html;
+        }
+        function syncStickyStatusBreakdownList() {
+            const listEl = document.getElementById('mission-status-breakdown-list');
+            const stickyList = document.getElementById('sticky-status-breakdown-list');
+            if (listEl && stickyList && !stickyList.children.length && listEl.children.length) {
+                stickyList.innerHTML = listEl.innerHTML;
+            }
+        }
         function renderMissionStatusBreakdown(currentLang, hasAsdsProfile) {
             const listEl = document.getElementById('mission-status-breakdown-list');
             if (!listEl) return;
@@ -5180,12 +5229,15 @@
             if (realTimelineMatchesMission(window.currentActiveHeroMissionName)) {
                 ensureRealMissionTimelineTranslated(currentLang);
                 const currentData = realMissionTimelineData && realMissionTimelineData.postLaunchTimeline;
-                if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'real' && lastRenderedMissionBreakdownData === currentData) return;
+                if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'real' && lastRenderedMissionBreakdownData === currentData) {
+                    syncStickyStatusBreakdownList();
+                    return;
+                }
                 lastRenderedMissionBreakdownLang = key;
                 lastRenderedMissionBreakdownSource = 'real';
                 lastRenderedMissionBreakdownData = currentData;
                 const list = realMissionTimelineTranslated.entries || [];
-                listEl.innerHTML = list.map(entry => {
+                writeMissionStatusBreakdownHtml(list.map(entry => {
                     const { title, explain } = splitRealTimelineEventText(entry.label);
                     return `
                     <div class="mission-timeline-row flex flex-col gap-0.5" data-t="${entry.tSeconds}">
@@ -5195,26 +5247,35 @@
                         </span>
                         ${explain ? `<span class="mission-timeline-explain notranslate text-zinc-400 text-[12.5px] leading-snug" translate="no">${escapeHtml(explain)}</span>` : ''}
                     </div>`;
-                }).join('');
+                }).join(''));
+                if (typeof window.lastMissionElapsedSec === 'number') {
+                    updateMissionStatusBreakdownProgress(window.lastMissionElapsedSec);
+                }
                 return;
             }
 
             if (!hasAsdsProfile) {
-                if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'none') return;
+                if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'none') {
+                    syncStickyStatusBreakdownList();
+                    return;
+                }
                 lastRenderedMissionBreakdownLang = key;
                 lastRenderedMissionBreakdownSource = 'none';
-                listEl.innerHTML = '';
+                writeMissionStatusBreakdownHtml('');
                 return;
             }
 
-            if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'starlink') return;
+            if (lastRenderedMissionBreakdownLang === key && lastRenderedMissionBreakdownSource === 'starlink') {
+                syncStickyStatusBreakdownList();
+                return;
+            }
             lastRenderedMissionBreakdownLang = key;
             lastRenderedMissionBreakdownSource = 'starlink';
 
             const labelDict = MISSION_TIMELINE_I18N[key] || MISSION_TIMELINE_I18N.en;
             const explainDict = MISSION_TIMELINE_EXPLAIN_I18N[key] || MISSION_TIMELINE_EXPLAIN_I18N.en;
 
-            listEl.innerHTML = STARLINK_ASDS_TIMELINE.map(entry => {
+            writeMissionStatusBreakdownHtml(STARLINK_ASDS_TIMELINE.map(entry => {
                 const label = entry.fixedLabel || labelDict[entry.labelKey] || MISSION_TIMELINE_I18N.en[entry.labelKey];
                 const explain = explainDict[entry.explainKey] || MISSION_TIMELINE_EXPLAIN_I18N.en[entry.explainKey];
                 // notranslate on both: the label is either a fixed acronym that must stay as-is
@@ -5230,7 +5291,7 @@
                         </span>
                         <span class="mission-timeline-explain notranslate text-zinc-400 text-[12.5px] leading-snug" translate="no">${escapeHtml(explain)}</span>
                     </div>`;
-            }).join('');
+            }).join(''));
             // A freshly rebuilt list has no completed-state yet (this only reruns on a language
             // change, which can happen mid-flight) - repaint it right away from the last known
             // elapsed time so the ticks don't all vanish until the next tick.
@@ -5243,12 +5304,14 @@
         // renderer above because that one deliberately only rebuilds on a language change, while
         // this has to run every second - it only flips a class per row, no innerHTML work.
         function updateMissionStatusBreakdownProgress(elapsedSec) {
-            const listEl = document.getElementById('mission-status-breakdown-list');
-            if (!listEl) return;
             window.lastMissionElapsedSec = elapsedSec;
-            listEl.querySelectorAll('.mission-timeline-row').forEach(row => {
-                const t = parseFloat(row.getAttribute('data-t'));
-                row.classList.toggle('is-done', typeof elapsedSec === 'number' && !isNaN(t) && elapsedSec >= t);
+            ['mission-status-breakdown-list', 'sticky-status-breakdown-list'].forEach(id => {
+                const listEl = document.getElementById(id);
+                if (!listEl) return;
+                listEl.querySelectorAll('.mission-timeline-row').forEach(row => {
+                    const t = parseFloat(row.getAttribute('data-t'));
+                    row.classList.toggle('is-done', typeof elapsedSec === 'number' && !isNaN(t) && elapsedSec >= t);
+                });
             });
         }
 
@@ -5446,6 +5509,156 @@
                 popup.classList.remove('flex');
             }
         });
+
+        // Sticky-nav status pill → same milestone list as #mission-status-breakdown, parked
+        // under that pill with position:fixed (viewport coords). Separate from the hero panel
+        // on purpose: moving or reusing that node would break the card's own hover.
+        function isStickyStatusTapMode() {
+            try {
+                return window.matchMedia('(hover: none), (max-width: 767px)').matches;
+            } catch (e) {
+                return window.innerWidth < 768;
+            }
+        }
+        function isStickyStatusAnchorUsable(el) {
+            if (!el || !el.classList.contains('is-visible') || !el.classList.contains('mission-status-mode')) return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0;
+        }
+        function getVisibleStickyStatusAnchor() {
+            const desktop = document.getElementById('sticky-countdown-wrap');
+            const mobile = document.getElementById('sticky-countdown-wrap-mobile');
+            if (window.innerWidth >= 1024) {
+                if (isStickyStatusAnchorUsable(desktop)) return desktop;
+                if (isStickyStatusAnchorUsable(mobile)) return mobile;
+            } else {
+                if (isStickyStatusAnchorUsable(mobile)) return mobile;
+                if (isStickyStatusAnchorUsable(desktop)) return desktop;
+            }
+            return null;
+        }
+        function positionStickyStatusBreakdown(anchorEl) {
+            const panel = document.getElementById('sticky-status-breakdown');
+            if (!panel || !anchorEl) return;
+            const margin = 8;
+            const gap = 6;
+            const r = anchorEl.getBoundingClientRect();
+            const pw = panel.getBoundingClientRect().width || Math.min(368, window.innerWidth - margin * 2);
+            let left = r.left + (r.width / 2) - (pw / 2);
+            left = Math.max(margin, Math.min(left, window.innerWidth - pw - margin));
+            const top = r.bottom + gap;
+            const maxH = Math.max(80, window.innerHeight - top - margin);
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+            panel.style.right = 'auto';
+            panel.style.maxHeight = maxH + 'px';
+        }
+        function setStickyStatusBreakdownOpen(open) {
+            const panel = document.getElementById('sticky-status-breakdown');
+            if (!panel) return;
+            const anchor = getVisibleStickyStatusAnchor();
+            if (open && !anchor) open = false;
+            if (open) {
+                // Do not call renderMissionStatusBreakdown from here without hasAsdsProfile:
+                // that flag is what stops a non-Starlink flight from getting the Starlink
+                // list (and the inverse: omitting it is treated as false, which would wipe
+                // an already-built Starlink list back to empty). The hero tick already
+                // writes both lists; only copy across if this panel was still empty.
+                syncStickyStatusBreakdownList();
+                if (typeof window.lastMissionElapsedSec === 'number') {
+                    updateMissionStatusBreakdownProgress(window.lastMissionElapsedSec);
+                }
+                const stickyList = document.getElementById('sticky-status-breakdown-list');
+                if (!stickyList || !stickyList.children.length) {
+                    open = false;
+                }
+            }
+            panel.classList.toggle('hidden', !open);
+            panel.classList.toggle('flex', open);
+            if (open) {
+                positionStickyStatusBreakdown(anchor);
+                requestAnimationFrame(function () { positionStickyStatusBreakdown(anchor); });
+            }
+            [document.getElementById('sticky-countdown-wrap'), document.getElementById('sticky-countdown-wrap-mobile')].forEach(el => {
+                if (el) el.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+        function closeStickyStatusBreakdown() {
+            setStickyStatusBreakdownOpen(false);
+        }
+        function toggleStickyStatusBreakdown(event) {
+            if (event) event.stopPropagation();
+            const panel = document.getElementById('sticky-status-breakdown');
+            if (!panel) return;
+            setStickyStatusBreakdownOpen(panel.classList.contains('hidden'));
+        }
+        function initStickyStatusBreakdown() {
+            const panel = document.getElementById('sticky-status-breakdown');
+            const wraps = [
+                document.getElementById('sticky-countdown-wrap'),
+                document.getElementById('sticky-countdown-wrap-mobile')
+            ].filter(Boolean);
+            if (!panel || !wraps.length) return;
+
+            let leaveTimer = null;
+            const cancelLeave = () => { if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; } };
+            const scheduleLeave = () => {
+                cancelLeave();
+                leaveTimer = setTimeout(() => {
+                    if (isStickyStatusTapMode()) return;
+                    closeStickyStatusBreakdown();
+                }, 140);
+            };
+
+            wraps.forEach(wrap => {
+                wrap.setAttribute('aria-haspopup', 'dialog');
+                wrap.setAttribute('aria-controls', 'sticky-status-breakdown');
+                wrap.setAttribute('aria-expanded', 'false');
+                wrap.addEventListener('mouseenter', () => {
+                    if (isStickyStatusTapMode()) return;
+                    if (!isStickyStatusAnchorUsable(wrap)) return;
+                    cancelLeave();
+                    setStickyStatusBreakdownOpen(true);
+                });
+                wrap.addEventListener('mouseleave', () => {
+                    if (isStickyStatusTapMode()) return;
+                    scheduleLeave();
+                });
+                wrap.addEventListener('click', (event) => {
+                    if (!isStickyStatusTapMode()) return;
+                    if (!isStickyStatusAnchorUsable(wrap)) return;
+                    toggleStickyStatusBreakdown(event);
+                });
+            });
+
+            panel.addEventListener('mouseenter', () => {
+                if (isStickyStatusTapMode()) return;
+                cancelLeave();
+            });
+            panel.addEventListener('mouseleave', () => {
+                if (isStickyStatusTapMode()) return;
+                scheduleLeave();
+            });
+
+            document.addEventListener('click', (e) => {
+                if (panel.classList.contains('hidden')) return;
+                if (panel.contains(e.target)) return;
+                if (wraps.some(w => w.contains(e.target))) return;
+                closeStickyStatusBreakdown();
+            });
+
+            const repos = () => {
+                if (panel.classList.contains('hidden')) return;
+                const anchor = getVisibleStickyStatusAnchor();
+                if (!anchor) {
+                    closeStickyStatusBreakdown();
+                    return;
+                }
+                positionStickyStatusBreakdown(anchor);
+            };
+            window.addEventListener('resize', repos);
+            window.addEventListener('scroll', repos, { passive: true });
+        }
 
         // Same reason as toggleMissionStatusBreakdown above: #year-count-breakdown only opens
         // through md:group-hover:flex, which never fires on a real touch device. One tap on the
@@ -7792,6 +8005,15 @@
                 translate="no">--:--:--</span>
         </div>
     </nav>
+
+    <!-- Same milestone list as #mission-status-breakdown, but owned by the sticky-nav status
+         pill: position:fixed under that pill (see positionStickyStatusBreakdown) so it works
+         on any tab and any scroll position. Kept as a sibling of <nav>, not inside either
+         wrap, because the mobile row clips overflow. -->
+    <div id="sticky-status-breakdown" translate="no" role="dialog" aria-label="Mission status timeline"
+        class="notranslate hidden flex-col gap-2.5 py-3.5 px-4 rounded-2xl border border-zinc-800/80 bg-zinc-950 backdrop-blur-lg shadow-xl text-start">
+        <div id="sticky-status-breakdown-list" class="flex flex-col gap-2.5"></div>
+    </div>
 
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-16 flex-grow w-full relative z-10">
 
@@ -18900,6 +19122,11 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 if (countdownLabelEl) countdownLabelEl.classList.toggle('mission-status-mode', !!showMissionStatus);
                 const countdownBoxEl = document.getElementById('countdown-box');
                 if (countdownBoxEl) countdownBoxEl.classList.toggle('mission-status-mode', !!showMissionStatus);
+                [document.getElementById('sticky-countdown-wrap'), document.getElementById('sticky-countdown-wrap-mobile')]
+                    .forEach(stickyWrapEl => {
+                        if (stickyWrapEl) stickyWrapEl.classList.toggle('mission-status-mode', !!showMissionStatus);
+                    });
+                if (!showMissionStatus && typeof closeStickyStatusBreakdown === 'function') closeStickyStatusBreakdown();
                 // Leaving mission-status mode: drop the shrink-to-fit size fitMissionStatusText
                 // may have written, so the countdown digits go back to their own CSS size.
                 if (!showMissionStatus && el) el.style.removeProperty('font-size');
@@ -19177,6 +19404,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                     const showSticky = entry.intersectionRatio < 1 && entry.boundingClientRect.top < 0;
                     wrap.classList.toggle('is-visible', showSticky);
                     if (wrapMobile) wrapMobile.classList.toggle('is-visible', showSticky);
+                    if (!showSticky && typeof closeStickyStatusBreakdown === 'function') closeStickyStatusBreakdown();
                 });
             }, { threshold: [0, 1] });
             observer.observe(target);
@@ -19190,6 +19418,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             generateProceduralStars();
             initDidYouKnow();
             initStickyCountdown();
+            initStickyStatusBreakdown();
 
             // Mobile scroll-to-top storm guard: while the user is actively touch-scrolling,
             // ignore any window.scrollTo({top:0}) / scrollTo(0,0) calls (tab switch, third-party
@@ -19502,6 +19731,7 @@ if (heroNameEl) {
                     const showSticky = !fullyInView && rect.top < 0;
                     stickyWrap.classList.toggle('is-visible', showSticky);
                     if (stickyMobile) stickyMobile.classList.toggle('is-visible', showSticky);
+                    if (!showSticky && typeof closeStickyStatusBreakdown === 'function') closeStickyStatusBreakdown();
                 }
             }
 
