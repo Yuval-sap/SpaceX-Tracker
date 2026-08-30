@@ -9345,9 +9345,9 @@
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div class="flex items-center gap-6 min-w-0">
-                        <div class="min-w-0">
-                            <div id="modal-name"
-                                class="mission-title-fit whitespace-nowrap overflow-hidden font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                        <div class="flex-1 min-w-0">
+                            <div id="modal-name" translate="no"
+                                class="notranslate mission-title-fit whitespace-nowrap overflow-hidden font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
                             </div>
                             <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
                         </div>
@@ -10194,7 +10194,18 @@
         // Tracks whichever mission is CURRENTLY showing as "In Progress" in the hero (see
         // setupHeroBanner) - lets that function detect the exact moment a mission stops being
         // shown there (evicted per its grace period), which is when past launches should refresh.
-        let lastHeroInProgressId = null;
+        // Persisted to localStorage (see LAST_HERO_INPROGRESS_ID_KEY) and seeded from it below
+        // instead of always starting at null, so this eviction detection also catches a mission
+        // that finished and left the hero while the site was closed - not just ones that happen
+        // to leave the hero during a session that's already open. Without that, a cold page load
+        // had no way to know "previous" might be missing a mission and needs a one-time refetch.
+        const LAST_HERO_INPROGRESS_ID_KEY = 'spacex_last_hero_inprogress_id';
+        let lastHeroInProgressId = (function () {
+            try {
+                const stored = localStorage.getItem(LAST_HERO_INPROGRESS_ID_KEY);
+                return stored ? stored : null;
+            } catch (e) { return null; }
+        })();
         // The full mission object last shown as "In Progress" in the hero (not just its id) -
         // see setupHeroBanner's fallback branch for why this needs to be the actual data, not a
         // lookup: rawPastMissions can be stale (a launch's "previous" refetch only happens when
@@ -16100,10 +16111,17 @@
             // timer. Detected by comparing against whichever mission was showing last time this
             // ran: if that one was in-progress and isn't anymore, it just got evicted.
             const currentInProgressId = (nextLaunch && nextLaunch.status === 'In Progress') ? nextLaunch.id : null;
-            if (lastHeroInProgressId && currentInProgressId !== lastHeroInProgressId) {
+            // String-normalized: lastHeroInProgressId may have just been seeded from
+            // localStorage (always a string) while currentInProgressId is a live mission id
+            // (could be a number) - comparing the raw values would falsely detect an eviction
+            // on the very first run after a cold load even when nothing actually changed.
+            if (lastHeroInProgressId && String(currentInProgressId) !== String(lastHeroInProgressId)) {
                 fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
             }
             lastHeroInProgressId = currentInProgressId;
+            try {
+                localStorage.setItem(LAST_HERO_INPROGRESS_ID_KEY, currentInProgressId == null ? '' : String(currentInProgressId));
+            } catch (e) { }
             // Kept for the stale-data fallback above - see lastHeroInProgressMission's own comment.
             lastHeroInProgressMission = currentInProgressId ? nextLaunch : null;
 
@@ -17130,15 +17148,20 @@ fitTitleOneLine(document.getElementById('hero-name'));
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
             const modalNameEl = document.getElementById('modal-name');
-            modalNameEl.innerText = m.name;
-            // Protect "Starship" synchronously, before this tick ends - Google Translate's
-            // MutationObserver only fires once the current script finishes, so wrapping it here
-            // (same as the card templates already do before insertion) reliably wins the race.
-            // Waiting for the 500ms "Bulletproof Timer" sweep is too late: by the time it runs,
-            // Google may have already replaced the word with its own mistranslation, and merely
-            // wrapping the word afterward can't undo damage that's already been done.
-            localizeStarshipTerm(modalNameEl);
-            protectRomanTelescopeName(modalNameEl);
+            // Same instant-then-upgrade pattern as the patch modal's title (see
+            // renderLocalizedMissionName's own comment) instead of a plain innerText assignment
+            // left for Google's on-page widget to translate in place. That widget was leaving
+            // this element in an inconsistent multi-step translation for freshly-inserted text
+            // (the exact instability renderLocalizedMissionName was built to avoid elsewhere) -
+            // each intermediate step has a different width, and the 500ms "Bulletproof Timer"
+            // sweep below re-fits fitTitleOneLine on every one of them, which is what made the
+            // title visibly flash through the wrong (usually too-small) size before settling.
+            // #modal-name is now notranslate (see the HTML) so Google never touches it at all -
+            // no more per-word race to win here, so the old localizeStarshipTerm/
+            // protectRomanTelescopeName calls that used to guard against that are gone too;
+            // localizeMissionName (called inside renderLocalizedMissionName) already covers both
+            // terms for every language on its own.
+            renderLocalizedMissionName(modalNameEl, m.name, document.documentElement.lang);
 
             const modalPatchEl = document.getElementById('modal-patch');
             const modalPatchWrap = document.getElementById('modal-patch-wrap');
@@ -19477,6 +19500,31 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 if (!pastCacheCoversRollingYear(parsedCachedLaunches)) {
                     fetchLiveLaunches({ fetchUpcoming: false, fetchPrevious: true });
                 }
+            } else if (parsedCachedLaunches) {
+                // Cache exists but is past the 2-minute reload grace window - still render it
+                // immediately instead of leaving the page blank until the network round-trip
+                // finishes, since past launches barely ever change day to day. "upcoming" is
+                // always re-fetched fresh right after (cheap, a single small request) because
+                // its freshness actually matters for the countdown; "previous" is only
+                // re-fetched when there's a concrete reason to think it's stale:
+                //  - the cached "previous" list doesn't reach back a full rolling year, or
+                //  - a recently-past mission in it is still missing its YouTube video, in the
+                //    same two windows (70min-3h, then up to 7 days) that needsPastVideoRecheck /
+                //    startPastVideoLongTailRecheck already keep checking on an ongoing basis for
+                //    an open tab - checked once here too so a visitor who loads the page cold
+                //    (or bounces before those timers get a chance to fire) still gets it fixed on
+                //    this very first fetch instead of waiting on them.
+                // A mission that left the hero while the site was closed is caught separately,
+                // by setupHeroBanner() itself (now primed with a persisted lastHeroInProgressId)
+                // once the "upcoming" fetch below resolves and calls processLaunchData again.
+                processLaunchData(parsedCachedLaunches);
+                const cachedPastNeedsVideoRecheck = (rawPastMissions || []).some(m => {
+                    if (m.youtubeId) return false;
+                    const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
+                    return hoursSinceLaunch >= (70 / 60) && hoursSinceLaunch <= 168;
+                });
+                const previousNeedsRefresh = !pastCacheCoversRollingYear(parsedCachedLaunches) || cachedPastNeedsVideoRecheck;
+                fetchLiveLaunches({ fetchUpcoming: true, fetchPrevious: previousNeedsRefresh });
             } else {
                 fetchLiveLaunches();
             }
