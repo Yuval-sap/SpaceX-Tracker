@@ -5253,6 +5253,13 @@
             // "3rd flight of Starship V3" - Google spells the version out as "גרסה 3", which
             // clashes with the vehicle designation used everywhere else on the site (V3).
             [/(סטארשיפ|Starship)\s*גרסה\s*(\d+)/g, '$1 V$2'],
+            // "Nancy Grace Roman Space Telescope" — Google reads the surname as the adjective
+            // for ancient Rome ("הרומי" / "הרומאי") and then parks it BEFORE the given names,
+            // producing "טלסקופ החלל הרומי ננסי גרייס". The telescope is named after Nancy
+            // Grace Roman; Hebrew keeps the surname as רומן at the end.
+            [/טלסקופ\s+החלל\s+הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'טלסקופ החלל ננסי גרייס רומן'],
+            [/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן'],
+            [/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן'],
         ];
         // String-level form of the DOM pass below. Needed because by the time the text is in the
         // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
@@ -5412,6 +5419,7 @@
             // wrong word but leaves the wrong word ORDER - and destroys the longer pattern this
             // function needs in order to fix the order at all.
             fixSplitPhrasesInDescriptions(currentLang);
+            fixMistranslatedPhrases(document.getElementById('hero-name'), currentLang);
             fixMistranslatedPhrases(document.getElementById('missions-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('past-launches-grid'), currentLang);
             fixMistranslatedPhrases(document.getElementById('mission-modal'), currentLang);
@@ -5432,7 +5440,7 @@
         function fixSplitPhrasesInDescriptions(currentLang) {
             const key = (currentLang || '').split('-')[0];
             if (key !== 'he' && key !== 'iw') return;
-            document.querySelectorAll('#missions-grid .mission-card-desc, #past-launches-grid .mission-card-desc').forEach(el => {
+            document.querySelectorAll('#hero-name, #modal-name, #patch-mission-modal-name, #patch-mission-modal-desc, .mission-title-fit, #missions-grid .mission-card-desc, #past-launches-grid .mission-card-desc').forEach(el => {
                 if (el.children.length === 0) return; // single node - the walker above already handled it
                 const original = el.textContent;
                 const fixed = fixMistranslatedPhrasesText(original, currentLang);
@@ -5958,6 +5966,25 @@
         // target language - then swapped back for the correct localized term once the
         // translation resolves, before caching.
         const STARSHIP_MT_PLACEHOLDER = 'XSTARSHIPZQ9X';
+        // Same class of problem as Starship: Google's MT reads the surname "Roman" as the
+        // adjective for ancient Rome. Longest phrase first so "Nancy Grace Roman Space
+        // Telescope" is not left as a leftover "Space Telescope" after the shorter name swap.
+        const ROMAN_RST_MT_PLACEHOLDER = 'XROMANRSTZQ9X';
+        const ROMAN_NAME_MT_PLACEHOLDER = 'XROMANNAMEZQ9X';
+        function shieldRomanTelescopeForMt(text) {
+            return String(text || '')
+                .replace(/Nancy Grace Roman Space Telescope/gi, ROMAN_RST_MT_PLACEHOLDER)
+                .replace(/Nancy Grace Roman/gi, ROMAN_NAME_MT_PLACEHOLDER);
+        }
+        function restoreRomanTelescopeFromMt(text, langKey) {
+            let key = (langKey || '').split('-')[0];
+            if (key === 'iw') key = 'he';
+            const rst = key === 'he' ? 'טלסקופ החלל ננסי גרייס רומן' : 'Nancy Grace Roman Space Telescope';
+            const name = key === 'he' ? 'ננסי גרייס רומן' : 'Nancy Grace Roman';
+            return String(text || '')
+                .replace(new RegExp(ROMAN_RST_MT_PLACEHOLDER, 'gi'), rst)
+                .replace(new RegExp(ROMAN_NAME_MT_PLACEHOLDER, 'gi'), name);
+        }
         function translateTextViaGoogle(text, langKey) {
             if (!text) return Promise.resolve(text);
             if (!langKey || langKey === 'en') return Promise.resolve(text);
@@ -5966,7 +5993,10 @@
                 return Promise.resolve(missionDescTranslationCache.get(cacheKey));
             }
             const hasStarship = /\bstarship\b/i.test(text);
-            const textToSend = hasStarship ? text.replace(/\bstarship\b/gi, STARSHIP_MT_PLACEHOLDER) : text;
+            const hasRoman = /Nancy Grace Roman/i.test(text);
+            let textToSend = text;
+            if (hasRoman) textToSend = shieldRomanTelescopeForMt(textToSend);
+            if (hasStarship) textToSend = textToSend.replace(/\bstarship\b/gi, STARSHIP_MT_PLACEHOLDER);
             const googleLang = GOOGLE_TRANSLATE_LANG_MAP[langKey] || langKey;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -5985,6 +6015,7 @@
                         const starshipTerm = STARSHIP_I18N[langKey] || STARSHIP_I18N.en;
                         translated = translated.replace(new RegExp(STARSHIP_MT_PLACEHOLDER, 'gi'), starshipTerm);
                     }
+                    if (hasRoman) translated = restoreRomanTelescopeFromMt(translated, langKey);
                     // Applied here, on the whole sentence, rather than only after insertion:
                     // once this text reaches the page it gets split across several text nodes by
                     // the Starship-term wrapping, and multi-word corrections can no longer match.
@@ -6583,9 +6614,19 @@
             // "Flight" first: doing "Starship" first would leave a localized term sitting next to
             // the still-English "Flight N", and some languages' flight template starts with the
             // number (tr: "{n}. Uçuş"), so the two substitutions must not overlap.
-            return rawName
+            let out = rawName
                 .replace(/\bFlight\s+(\d+)/gi, (_, n) => flTemplate.replace('{n}', n))
                 .replace(/starship/gi, starTerm);
+            // Surname, not the adjective for Rome — see PHRASE_FIXES_HE / shieldRomanTelescopeForMt.
+            if (key === 'he') {
+                out = out
+                    .replace(/Nancy Grace Roman Space Telescope/gi, 'טלסקופ החלל ננסי גרייס רומן')
+                    .replace(/Nancy Grace Roman/gi, 'ננסי גרייס רומן')
+                    .replace(/טלסקופ\s+החלל\s+הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'טלסקופ החלל ננסי גרייס רומן')
+                    .replace(/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן')
+                    .replace(/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן');
+            }
+            return out;
         }
 
         // Renders a mission name into a notranslate element in two stages, the same instant-then-
@@ -6758,6 +6799,61 @@
                         span.dataset.spaceBefore = hasBefore ? '1' : '0';
                         span.dataset.spaceAfter = hasAfter ? '1' : '0';
                         span.textContent = (hasBefore ? ' ' : '') + term + (hasAfter ? ' ' : '');
+                        frag.appendChild(span);
+                    } else {
+                        frag.appendChild(document.createTextNode(part));
+                    }
+                });
+                node.parentNode.replaceChild(frag, node);
+            });
+        }
+
+        // Same job as localizeStarshipTerm, for the Roman telescope surname. Google Translate
+        // turns "Roman" into הרומי ("the Roman" as in ancient Rome) and flips it in front of
+        // the given names. Wrap the English (or already-garbled Hebrew) phrase in a
+        // notranslate span and supply the real name ourselves so the widget cannot keep
+        // rewriting it. Hebrew only differs; other languages keep the English proper name.
+        function protectRomanTelescopeName(root) {
+            root = root || document.body;
+            if (!root) return;
+            let key = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (key === 'iw') key = 'he';
+            const rstTerm = key === 'he' ? 'טלסקופ החלל ננסי גרייס רומן' : 'Nancy Grace Roman Space Telescope';
+            const nameTerm = key === 'he' ? 'ננסי גרייס רומן' : 'Nancy Grace Roman';
+
+            root.querySelectorAll('.roman-telescope-term').forEach(el => {
+                const wanted = el.dataset.romanKind === 'rst' ? rstTerm : nameTerm;
+                if (el.textContent !== wanted) el.textContent = wanted;
+            });
+
+            if (!/Nancy Grace Roman|טלסקופ החלל הרומ|הרומי ננסי|הרומאי ננסי|ננסי גרייס הרומ/i.test(root.textContent || '')) return;
+
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    if (!node.nodeValue || !/Nancy Grace Roman|טלסקופ החלל הרומ|הרומי ננסי|הרומאי ננסי|ננסי גרייס הרומ/i.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+                    const p = node.parentElement;
+                    if (!p || p.closest('.roman-telescope-term') || p.closest('.lang-en-lock') || p.closest('.no-starship-protect') || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            let n;
+            while ((n = walker.nextNode())) nodes.push(n);
+            const pieceRe = /(Nancy Grace Roman Space Telescope|טלסקופ החלל הרומ(?:י|אי) ננסי גרייס|Nancy Grace Roman|הרומ(?:י|אי) ננסי גרייס|ננסי גרייס הרומ(?:י|אי))/gi;
+            nodes.forEach(node => {
+                const parts = node.nodeValue.split(pieceRe);
+                if (parts.length === 1) return;
+                const frag = document.createDocumentFragment();
+                parts.forEach(part => {
+                    if (!part) return;
+                    const isRst = /^Nancy Grace Roman Space Telescope$/i.test(part) || /^טלסקופ החלל הרומ(?:י|אי) ננסי גרייס$/.test(part);
+                    const isName = /^Nancy Grace Roman$/i.test(part) || /^הרומ(?:י|אי) ננסי גרייס$/.test(part) || /^ננסי גרייס הרומ(?:י|אי)$/.test(part);
+                    if (isRst || isName) {
+                        const span = document.createElement('span');
+                        span.className = 'roman-telescope-term notranslate';
+                        span.setAttribute('translate', 'no');
+                        span.dataset.romanKind = isRst ? 'rst' : 'name';
+                        span.textContent = isRst ? rstTerm : nameTerm;
                         frag.appendChild(span);
                     } else {
                         frag.appendChild(document.createTextNode(part));
@@ -6970,6 +7066,7 @@
             // is two getElementById calls and a string compare per tick.
             applyPhraseFixes(currentLang);
             localizeStarshipTerm(document.body);
+            protectRomanTelescopeName(document.body);
             // Skipped while a tab-switch transition is in flight (see switchMainTab's own
             // settleAfterPanelTransition) - this runs on a fixed 500ms tick regardless of tab
             // switching, and fitTitleOneLine's forced-reflow path (see its own comment) is
@@ -7051,6 +7148,7 @@
         // as soon as the DOM is ready, protects that static content before Google gets to it.
         document.addEventListener('DOMContentLoaded', () => {
             localizeStarshipTerm(document.body);
+            protectRomanTelescopeName(document.body);
         });
 
     </script>
@@ -12302,6 +12400,7 @@
             // observer will translate it on the fly, so this must run synchronously,
             // right now, before that has a chance to run and mangle "Starship".
             localizeStarshipTerm(tickerTrack);
+            protectRomanTelescopeName(tickerTrack);
             tickerWrap.classList.remove('hidden');
 
             // Keep scroll speed consistent (~55px/sec) no matter how much content
@@ -15338,6 +15437,7 @@
         heroNameEl.innerText = nextLaunch.name;
         // Protect "Starship" synchronously - see the matching comment in openMissionModal().
         localizeStarshipTerm(heroNameEl);
+        protectRomanTelescopeName(heroNameEl);
     }
 
     // מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
@@ -15643,6 +15743,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // word in its protected notranslate span first, so Google never sees the
                 // raw English text to mistranslate in the first place.
                 localizeStarshipTerm(card);
+                protectRomanTelescopeName(card);
                 grid.appendChild(card);
             });
 
@@ -15754,6 +15855,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 // into the live document, so Google Translate's mutation-watching never
                 // gets a chance to mistranslate it first.
                 localizeStarshipTerm(card);
+                protectRomanTelescopeName(card);
                 pastGrid.appendChild(card);
             });
 
@@ -16360,6 +16462,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             // Google may have already replaced the word with its own mistranslation, and merely
             // wrapping the word afterward can't undo damage that's already been done.
             localizeStarshipTerm(modalNameEl);
+            protectRomanTelescopeName(modalNameEl);
 
             const modalPatchEl = document.getElementById('modal-patch');
             const modalPatchWrap = document.getElementById('modal-patch-wrap');
