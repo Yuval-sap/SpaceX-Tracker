@@ -5428,7 +5428,19 @@
                 const clipBottom = bRect ? Math.min(bRect.bottom, window.innerHeight) : window.innerHeight;
 
                 if (!bRect) return;
-                const desiredTop = clipTop + pad;
+                let desiredTop = clipTop + pad;
+                // Mobile only: the panel is parked at the hero card's top so it isn't clipped,
+                // but that is the same corner as .next-launch-tag ("השיגור הבא"), which sits at
+                // z-20 above the whole hero content and painted over the first milestone. Start
+                // just below that tag so the list is readable. Desktop keeps the side-opening
+                // path and is not shifted.
+                if (window.innerWidth < 768) {
+                    const tag = document.querySelector('#hero-banner .next-launch-tag');
+                    if (tag) {
+                        const tagBottom = tag.getBoundingClientRect().bottom;
+                        if (tagBottom > clipTop) desiredTop = Math.max(desiredTop, tagBottom + 8);
+                    }
+                }
                 // Measured-and-corrected rather than computed from an assumed origin: this panel
                 // is absolutely positioned against #countdown-box on desktop but switched to
                 // position:fixed on mobile, and #hero-banner's transform makes it the containing
