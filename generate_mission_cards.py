@@ -14,14 +14,12 @@ Two jobs, both needing the same per-mission static page:
    every mission would be the exact same site-wide tags without a page that's different per
    mission.
 
-2. SEO - each of these pages is meant to be its own independently-rankable page, not just a
-   bridge back to the homepage. Earlier versions of this page did `location.replace(...)` to
-   immediately forward every visitor (bot included) into the main app - correct for humans, but
-   it meant Google's crawler treated the page as a redirect and indexed the target instead of
-   this page's own content, so none of these pages could ever rank on their own. There is no
-   redirect here anymore: a visitor who lands on one of these (from a search result or a shared
-   link) sees a real, readable page about that specific mission, with an explicit "open the live
-   tracker" button instead of being auto-forwarded.
+2. Human click-through. The shared URL stays on this static page so preview bots still see
+   the per-mission image/title. A real person clicking the link is forwarded immediately
+   (JS location.replace, skipped for known preview-bot user-agents) to
+   index.html?mission=<id>, which opens that mission's modal. The visible "Open in Live
+   Tracker" button stays as a no-JS fallback. We used to skip that forward so Google would
+   index these pages as standalone articles; that extra landing step is no longer wanted.
 
 Usage:
     python generate_mission_cards.py
@@ -131,6 +129,12 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta name="twitter:image" content="{image_escaped}">
 
 <script type="application/ld+json">{jsonld}</script>
+<script>
+(function(){{
+  if (/Twitterbot|facebookexternalhit|Facebot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Discordbot|Pinterest|SkypeUriPreview|Applebot/i.test(navigator.userAgent||"")) return;
+  location.replace("{app_url_escaped}");
+}})();
+</script>
 
 <style>
 :root{{color-scheme:dark}}
@@ -199,6 +203,11 @@ def build_page(mission_id: str, name: str, vehicle: str, site: str, net: str) ->
     # startDate: None serializes as JSON null, which is valid JSON-LD (means "unknown") rather
     # than omitting the key entirely - simpler than conditionally building the dict above.
     jsonld = json.dumps(jsonld_obj, ensure_ascii=False)
+    # json.dumps doesn't escape "</" - if a mission name/description ever contained the literal
+    # substring "</script>", it would close the JSON-LD script tag early and let the rest of the
+    # string be parsed as HTML on this publicly indexed, auto-committed page. The escaped form is
+    # still valid inside a JSON string and un-escapes back to "</" when parsed as JSON.
+    jsonld = jsonld.replace("</", "<\\/")
 
     return PAGE_TEMPLATE.format(
         title_escaped=html.escape(title),
@@ -271,6 +280,16 @@ def main():
         written_safe_ids.append(safe_id)
 
     print(f"Wrote {written} mission preview pages to {OUTPUT_DIR}/")
+
+    # Guard against a "successful" fetch (HTTP 200, non-empty lists) that nonetheless yields zero
+    # usable missions - e.g. an LL2 schema change that renames/drops the "id" field would make
+    # every record fail the `if not mission_id` check above, leaving written_safe_ids empty. That
+    # must never reach the pruning step below: with an empty keep-set, pruning would delete every
+    # existing m/*.html file and the sitemap would be written with only the homepage URL, and
+    # both would then be auto-committed by the scheduled workflow with no human review.
+    if not written_safe_ids:
+        print("No usable missions extracted from a non-empty API response - aborting without touching existing files.", file=sys.stderr)
+        sys.exit(1)
 
     # Remove any leftover page from a previous run whose mission has since aged out of both the
     # upcoming and previous LL2 windows - otherwise old pages (some still in the old redirect

@@ -4607,45 +4607,491 @@
             return false;
         }
 
-        // Ensures realMissionTimelineTranslated has this language's translated event labels
-        // ready, kicking off the (async) translation once per language/data change and leaving
-        // English in place until it resolves - same instant-then-swap idiom as
-        // applyMissionPurposeHtml elsewhere in this file. Safe to call every tick: it's a no-op
-        // once already up to date for the current language and data.
+        // Hand-translated SpaceX CMS timeline phrases for every language in the site's
+        // translate widget. Google must never touch this list: "fairing"/"burn"/"flip" come
+        // back as street-fair / skin-burn / "fling" garbage (caught live on Falcon Heavy).
+        // Exact CMS strings first; leftover English is rewritten by the longest-first
+        // patterns below. An event we have never seen stays in English rather than going
+        // through Google. Acronyms (MECO, SES-1, BECO, Max Q) stay Latin in every language.
+        const REAL_TIMELINE_I18N = {
+            maxQ: {
+                en: "Max Q (moment of peak mechanical stress on the rocket)",
+                he: "Max Q (שיא העומס המכני על הרקטה)",
+                es: "Max Q (momento de máxima tensión mecánica en el cohete)",
+                fr: "Max Q (pic de contrainte mécanique sur la fusée)",
+                de: "Max Q (höchste mechanische Belastung der Rakete)",
+                ru: "Max Q (пик механической нагрузки на ракету)",
+                zh: "Max Q（火箭机械应力峰值）",
+                it: "Max Q (picco di stress meccanico sul razzo)",
+                cs: "Max Q (okamžik nejvyššího mechanického namáhání rakety)",
+                sv: "Max Q (ögonblicket med högst mekanisk påfrestning på raketen)",
+                nl: "Max Q (piek van mechanische belasting op de raket)",
+                da: "Max Q (øjeblikket med højest mekanisk belastning på raketten)",
+                pt: "Max Q (momento de pico de tensão mecânica no foguete)",
+                pl: "Max Q (szczyt naprężenia mechanicznego rakiety)",
+                hi: "Max Q (रॉकेट पर अधिकतम यांत्रिक तनाव)",
+                ar: "Max Q (ذروة الإجهاد الميكانيكي على الصاروخ)",
+                tr: "Max Q (roket üzerindeki en yüksek mekanik gerilim)",
+            },
+            beco: {
+                en: "Side booster engine cutoff (BECO)",
+                he: "כיבוי מנועי הבוסטרים הצדדיים (BECO)",
+                es: "Apagado de motores de los propulsores laterales (BECO)",
+                fr: "Extinction des moteurs des propulseurs latéraux (BECO)",
+                de: "Abschaltung der Seitenbooster-Triebwerke (BECO)",
+                ru: "Выключение двигателей боковых ускорителей (BECO)",
+                zh: "侧助推器发动机关机 (BECO)",
+                it: "Spegnimento motori dei booster laterali (BECO)",
+                cs: "Vypnutí motorů bočních boosterů (BECO)",
+                sv: "Sidoboostrarnas motorer stängs av (BECO)",
+                nl: "Uitschakeling motoren zijboosters (BECO)",
+                da: "Sideboosternes motorer slukkes (BECO)",
+                pt: "Desligamento dos motores dos boosters laterais (BECO)",
+                pl: "Wyłączenie silników boosterów bocznych (BECO)",
+                hi: "साइड बूस्टर इंजन बंद (BECO)",
+                ar: "إيقاف محركات المعززات الجانبية (BECO)",
+                tr: "Yan güçlendirici motorları kapanışı (BECO)",
+            },
+            sideBoostersSeparate: {
+                en: "Side boosters separate",
+                he: "הבוסטרים הצדדיים נפרדים",
+                es: "Los propulsores laterales se separan",
+                fr: "Les propulseurs latéraux se séparent",
+                de: "Seitenbooster trennen sich",
+                ru: "Боковые ускорители отделяются",
+                zh: "侧助推器分离",
+                it: "I booster laterali si separano",
+                cs: "Boční boostery se oddělují",
+                sv: "Sidoboostrarna separerar",
+                nl: "Zijboosters scheiden",
+                da: "Sideboosterne adskilles",
+                pt: "Os boosters laterais se separam",
+                pl: "Boostery boczne oddzielają się",
+                hi: "साइड बूस्टर अलग होते हैं",
+                ar: "المعززات الجانبية تنفصل",
+                tr: "Yan güçlendiriciler ayrılıyor",
+            },
+            sideBoostersFlip: {
+                en: "Side boosters flip",
+                he: "הבוסטרים הצדדיים מתהפכים",
+                es: "Los propulsores laterales se voltean",
+                fr: "Les propulseurs latéraux se retournent",
+                de: "Seitenbooster drehen sich um",
+                ru: "Боковые ускорители разворачиваются",
+                zh: "侧助推器翻转",
+                it: "I booster laterali si capovolgono",
+                cs: "Boční boostery se otáčejí",
+                sv: "Sidoboostrarna vänder",
+                nl: "Zijboosters keren om",
+                da: "Sideboosterne vender",
+                pt: "Os boosters laterais viram",
+                pl: "Boostery boczne obracają się",
+                hi: "साइड बूस्टर पलटते हैं",
+                ar: "المعززات الجانبية تنقلب",
+                tr: "Yan güçlendiriciler ters dönüyor",
+            },
+            boostbackBegins: {
+                en: "Side boosters boostback burn begins",
+                he: "מתחילה שריפת החזרה של הבוסטרים הצדדיים",
+                es: "Comienza la quema de retorno de los propulsores laterales",
+                fr: "Début de la combustion de retour des propulseurs latéraux",
+                de: "Rückzündungen der Seitenbooster beginnen",
+                ru: "Начинается возвратный манёвр боковых ускорителей",
+                zh: "侧助推器返场点火开始",
+                it: "Inizia la combustione di ritorno dei booster laterali",
+                cs: "Začíná návratový zážeh bočních boosterů",
+                sv: "Sidoboostrarnas återvändningsbränning börjar",
+                nl: "Terugkeerverbranding van de zijboosters begint",
+                da: "Sideboosternes tilbagevendingsforbrænding begynder",
+                pt: "Começa a queima de retorno dos boosters laterais",
+                pl: "Rozpoczyna się manewr powrotny boosterów bocznych",
+                hi: "साइड बूस्टर की वापसी दहन शुरू",
+                ar: "تبدأ مناورة عودة المعززات الجانبية",
+                tr: "Yan güçlendiricilerin dönüş yanması başlıyor",
+            },
+            boostbackEnds: {
+                en: "Side boosters boostback burn ends",
+                he: "מסתיימת שריפת החזרה של הבוסטרים הצדדיים",
+                es: "Termina la quema de retorno de los propulsores laterales",
+                fr: "Fin de la combustion de retour des propulseurs latéraux",
+                de: "Rückzündungen der Seitenbooster enden",
+                ru: "Заканчивается возвратный манёвр боковых ускорителей",
+                zh: "侧助推器返场点火结束",
+                it: "Termina la combustione di ritorno dei booster laterali",
+                cs: "Končí návratový zážeh bočních boosterů",
+                sv: "Sidoboostrarnas återvändningsbränning slutar",
+                nl: "Terugkeerverbranding van de zijboosters eindigt",
+                da: "Sideboosternes tilbagevendingsforbrænding slutter",
+                pt: "Termina a queima de retorno dos boosters laterais",
+                pl: "Kończy się manewr powrotny boosterów bocznych",
+                hi: "साइड बूस्टर की वापसी दहन समाप्त",
+                ar: "تنتهي مناورة عودة المعززات الجانبية",
+                tr: "Yan güçlendiricilerin dönüş yanması bitiyor",
+            },
+            meco: {
+                en: "1st stage main engine cutoff (MECO)",
+                he: "כיבוי מנוע השלב הראשון (MECO)",
+                es: "Apagado del motor principal de la primera etapa (MECO)",
+                fr: "Extinction du moteur principal du premier étage (MECO)",
+                de: "Abschaltung des Erststufen-Haupttriebwerks (MECO)",
+                ru: "Выключение основного двигателя первой ступени (MECO)",
+                zh: "一级主发动机关机 (MECO)",
+                it: "Spegnimento del motore principale del primo stadio (MECO)",
+                cs: "Vypnutí hlavního motoru prvního stupně (MECO)",
+                sv: "Första stegets huvudmotor stängs av (MECO)",
+                nl: "Uitschakeling hoofdmotor eerste trap (MECO)",
+                da: "Første trins hovedmotor slukkes (MECO)",
+                pt: "Desligamento do motor principal do primeiro estágio (MECO)",
+                pl: "Wyłączenie silnika głównego pierwszego stopnia (MECO)",
+                hi: "पहले चरण का मुख्य इंजन बंद (MECO)",
+                ar: "إيقاف المحرك الرئيسي للمرحلة الأولى (MECO)",
+                tr: "Birinci kademe ana motor kapanışı (MECO)",
+            },
+            stagesSeparate: {
+                en: "1st and 2nd stages separate",
+                he: "השלב הראשון והשני נפרדים",
+                es: "La primera y la segunda etapa se separan",
+                fr: "Le premier et le second étage se séparent",
+                de: "Erste und zweite Stufe trennen sich",
+                ru: "Первая и вторая ступени разделяются",
+                zh: "一二级分离",
+                it: "Il primo e il secondo stadio si separano",
+                cs: "První a druhý stupeň se oddělují",
+                sv: "Första och andra steget separerar",
+                nl: "Eerste en tweede trap scheiden",
+                da: "Første og andet trin adskilles",
+                pt: "O primeiro e o segundo estágio se separam",
+                pl: "Pierwszy i drugi stopień się oddzielają",
+                hi: "पहला और दूसरा चरण अलग होते हैं",
+                ar: "المرحلة الأولى والثانية تنفصلان",
+                tr: "Birinci ve ikinci kademe ayrılıyor",
+            },
+            ses1: {
+                en: "2nd stage engine starts (SES-1)",
+                he: "התנעת מנוע השלב השני (SES-1)",
+                es: "Encendido del motor de la segunda etapa (SES-1)",
+                fr: "Allumage du moteur du second étage (SES-1)",
+                de: "Zündung des Zweitstufentriebwerks (SES-1)",
+                ru: "Запуск двигателя второй ступени (SES-1)",
+                zh: "二级发动机点火 (SES-1)",
+                it: "Accensione del motore del secondo stadio (SES-1)",
+                cs: "Zážeh motoru druhého stupně (SES-1)",
+                sv: "Andra stegets motor startar (SES-1)",
+                nl: "Motor tweede trap start (SES-1)",
+                da: "Andet trins motor starter (SES-1)",
+                pt: "Ignição do motor do segundo estágio (SES-1)",
+                pl: "Zapłon silnika drugiego stopnia (SES-1)",
+                hi: "दूसरे चरण का इंजन चालू (SES-1)",
+                ar: "تشغيل محرك المرحلة الثانية (SES-1)",
+                tr: "İkinci kademe motoru çalışıyor (SES-1)",
+            },
+            ses2: {
+                en: "2nd stage engine starts (SES-2)",
+                he: "התנעת מנוע השלב השני (SES-2)",
+                es: "Encendido del motor de la segunda etapa (SES-2)",
+                fr: "Allumage du moteur du second étage (SES-2)",
+                de: "Zündung des Zweitstufentriebwerks (SES-2)",
+                ru: "Запуск двигателя второй ступени (SES-2)",
+                zh: "二级发动机点火 (SES-2)",
+                it: "Accensione del motore del secondo stadio (SES-2)",
+                cs: "Zážeh motoru druhého stupně (SES-2)",
+                sv: "Andra stegets motor startar (SES-2)",
+                nl: "Motor tweede trap start (SES-2)",
+                da: "Andet trins motor starter (SES-2)",
+                pt: "Ignição do motor do segundo estágio (SES-2)",
+                pl: "Zapłon silnika drugiego stopnia (SES-2)",
+                hi: "दूसरे चरण का इंजन चालू (SES-2)",
+                ar: "تشغيل محرك المرحلة الثانية (SES-2)",
+                tr: "İkinci kademe motoru çalışıyor (SES-2)",
+            },
+            fairingSep: {
+                en: "Fairing separation",
+                he: "הפרדת מכסה המגן",
+                es: "Separación del carenado",
+                fr: "Séparation de la coiffe",
+                de: "Trennung der Nutzlastverkleidung",
+                ru: "Сброс обтекателя",
+                zh: "整流罩分离",
+                it: "Separazione dell'ogiva",
+                cs: "Oddělení krytu",
+                sv: "Kåpseparation",
+                nl: "Neuskap-scheiding",
+                da: "Kappe-separation",
+                pt: "Separação da coifa",
+                pl: "Oddzielenie owiewki",
+                hi: "फेयरिंग पृथक्करण",
+                ar: "فصل الغطاء الواقي",
+                tr: "Burun konisi ayrımı",
+            },
+            entryBurnBegins: {
+                en: "Side boosters entry burn begins",
+                he: "מתחילה שריפת הכניסה של הבוסטרים הצדדיים",
+                es: "Comienza la quema de reentrada de los propulsores laterales",
+                fr: "Début de la combustion de rentrée des propulseurs latéraux",
+                de: "Wiedereintrittszündung der Seitenbooster beginnt",
+                ru: "Начинается тормозной манёвр боковых ускорителей",
+                zh: "侧助推器再入点火开始",
+                it: "Inizia la combustione di rientro dei booster laterali",
+                cs: "Začíná brzdicí zážeh bočních boosterů",
+                sv: "Sidoboostrarnas återinträdesbränning börjar",
+                nl: "Terugkeerverbranding van de zijboosters begint",
+                da: "Sideboosternes genindtrædningsforbrænding begynder",
+                pt: "Começa a queima de reentrada dos boosters laterais",
+                pl: "Rozpoczyna się manewr wejścia boosterów bocznych",
+                hi: "साइड बूस्टर का पुनः प्रवेश दहन शुरू",
+                ar: "تبدأ مناورة دخول المعززات الجانبية",
+                tr: "Yan güçlendiricilerin yeniden giriş yanması başlıyor",
+            },
+            entryBurnEnds: {
+                en: "Side boosters entry burn ends",
+                he: "מסתיימת שריפת הכניסה של הבוסטרים הצדדיים",
+                es: "Termina la quema de reentrada de los propulsores laterales",
+                fr: "Fin de la combustion de rentrée des propulseurs latéraux",
+                de: "Wiedereintrittszündung der Seitenbooster endet",
+                ru: "Заканчивается тормозной манёвр боковых ускорителей",
+                zh: "侧助推器再入点火结束",
+                it: "Termina la combustione di rientro dei booster laterali",
+                cs: "Končí brzdicí zážeh bočních boosterů",
+                sv: "Sidoboostrarnas återinträdesbränning slutar",
+                nl: "Terugkeerverbranding van de zijboosters eindigt",
+                da: "Sideboosternes genindtrædningsforbrænding slutter",
+                pt: "Termina a queima de reentrada dos boosters laterais",
+                pl: "Kończy się manewr wejścia boosterów bocznych",
+                hi: "साइड बूस्टर का पुनः प्रवेश दहन समाप्त",
+                ar: "تنتهي مناورة دخول المعززات الجانبية",
+                tr: "Yan güçlendiricilerin yeniden giriş yanması bitiyor",
+            },
+            landingBurnsStart: {
+                en: "Side boosters landing burns start",
+                he: "מתחילות שריפות הנחיתה של הבוסטרים הצדדיים",
+                es: "Comienzan las quemas de aterrizaje de los propulsores laterales",
+                fr: "Début des combustions d'atterrissage des propulseurs latéraux",
+                de: "Landezündungen der Seitenbooster beginnen",
+                ru: "Начинается посадочный манёвр боковых ускорителей",
+                zh: "侧助推器着陆点火开始",
+                it: "Iniziano le combustioni di atterraggio dei booster laterali",
+                cs: "Začínají přistávací zážehy bočních boosterů",
+                sv: "Sidoboostrarnas landningsbränningar börjar",
+                nl: "Landingsverbrandingen van de zijboosters beginnen",
+                da: "Sideboosternes landingsforbrændinger begynder",
+                pt: "Começam as queimas de pouso dos boosters laterais",
+                pl: "Rozpoczynają się manewry lądowania boosterów bocznych",
+                hi: "साइड बूस्टर की लैंडिंग दहन शुरू",
+                ar: "تبدأ مناورة هبوط المعززات الجانبية",
+                tr: "Yan güçlendiricilerin iniş yanması başlıyor",
+            },
+            sideBoostersLanding: {
+                en: "Side boosters landing",
+                he: "נחיתת הבוסטרים הצדדיים",
+                es: "Aterrizaje de los propulsores laterales",
+                fr: "Atterrissage des propulseurs latéraux",
+                de: "Landung der Seitenbooster",
+                ru: "Посадка боковых ускорителей",
+                zh: "侧助推器着陆",
+                it: "Atterraggio dei booster laterali",
+                cs: "Přistání bočních boosterů",
+                sv: "Sidoboostrarna landar",
+                nl: "Landing van de zijboosters",
+                da: "Sideboosterne lander",
+                pt: "Pouso dos boosters laterais",
+                pl: "Lądowanie boosterów bocznych",
+                hi: "साइड बूस्टर लैंडिंग",
+                ar: "هبوط المعززات الجانبية",
+                tr: "Yan güçlendiriciler iniyor",
+            },
+            seco1: {
+                en: "2nd stage engine cutoff (SECO-1)",
+                he: "כיבוי מנוע השלב השני (SECO-1)",
+                es: "Apagado del motor de la segunda etapa (SECO-1)",
+                fr: "Extinction du moteur du second étage (SECO-1)",
+                de: "Abschaltung des Zweitstufentriebwerks (SECO-1)",
+                ru: "Выключение двигателя второй ступени (SECO-1)",
+                zh: "二级发动机关机 (SECO-1)",
+                it: "Spegnimento del motore del secondo stadio (SECO-1)",
+                cs: "Vypnutí motoru druhého stupně (SECO-1)",
+                sv: "Andra stegets motor stängs av (SECO-1)",
+                nl: "Uitschakeling motor tweede trap (SECO-1)",
+                da: "Andet trins motor slukkes (SECO-1)",
+                pt: "Desligamento do motor do segundo estágio (SECO-1)",
+                pl: "Wyłączenie silnika drugiego stopnia (SECO-1)",
+                hi: "दूसरे चरण का इंजन बंद (SECO-1)",
+                ar: "إيقاف محرك المرحلة الثانية (SECO-1)",
+                tr: "İkinci kademe motor kapanışı (SECO-1)",
+            },
+            seco2: {
+                en: "2nd stage engine cutoff (SECO-2)",
+                he: "כיבוי מנוע השלב השני (SECO-2)",
+                es: "Apagado del motor de la segunda etapa (SECO-2)",
+                fr: "Extinction du moteur du second étage (SECO-2)",
+                de: "Abschaltung des Zweitstufentriebwerks (SECO-2)",
+                ru: "Выключение двигателя второй ступени (SECO-2)",
+                zh: "二级发动机关机 (SECO-2)",
+                it: "Spegnimento del motore del secondo stadio (SECO-2)",
+                cs: "Vypnutí motoru druhého stupně (SECO-2)",
+                sv: "Andra stegets motor stängs av (SECO-2)",
+                nl: "Uitschakeling motor tweede trap (SECO-2)",
+                da: "Andet trins motor slukkes (SECO-2)",
+                pt: "Desligamento do motor do segundo estágio (SECO-2)",
+                pl: "Wyłączenie silnika drugiego stopnia (SECO-2)",
+                hi: "दूसरे चरण का इंजन बंद (SECO-2)",
+                ar: "إيقاف محرك المرحلة الثانية (SECO-2)",
+                tr: "İkinci kademe motor kapanışı (SECO-2)",
+            },
+            romanDeploys: {
+                en: "Roman deploys",
+                he: "פריסת ננסי גרייס רומן",
+                es: "Despliegue de Roman",
+                fr: "Déploiement de Roman",
+                de: "Roman wird ausgesetzt",
+                ru: "Развёртывание Roman",
+                zh: "Roman 展开",
+                it: "Rilascio di Roman",
+                cs: "Vypuštění Roman",
+                sv: "Roman fälls ut",
+                nl: "Roman wordt uitgevouwen",
+                da: "Roman udfoldes",
+                pt: "Roman é implantado",
+                pl: "Rozłożenie Roman",
+                hi: "Roman तैनात",
+                ar: "نشر Roman",
+                tr: "Roman ayrılıyor",
+            },
+            fairingWord: {
+                en: "fairing", he: "מכסה המגן", es: "carenado", fr: "coiffe", de: "Nutzlastverkleidung",
+                ru: "обтекатель", zh: "整流罩", it: "ogiva", cs: "kryt", sv: "kåpa", nl: "neuskap",
+                da: "kappe", pt: "coifa", pl: "owiewka", hi: "फेयरिंग", ar: "الغطاء الواقي", tr: "burun konisi",
+            },
+            boostbackBurn: {
+                en: "boostback burn", he: "שריפת החזרה", es: "quema de retorno", fr: "combustion de retour",
+                de: "Rückzündung", ru: "возвратный манёвр", zh: "返场点火", it: "combustione di ritorno",
+                cs: "návratový zážeh", sv: "återvändningsbränning", nl: "terugkeerverbranding",
+                da: "tilbagevendingsforbrænding", pt: "queima de retorno", pl: "manewr powrotny",
+                hi: "वापसी दहन", ar: "مناورة العودة", tr: "dönüş yanması",
+            },
+            entryBurn: {
+                en: "entry burn", he: "שריפת כניסה", es: "quema de reentrada", fr: "combustion de rentrée",
+                de: "Wiedereintrittszündung", ru: "тормозной манёвр", zh: "再入点火", it: "combustione di rientro",
+                cs: "brzdicí zážeh", sv: "återinträdesbränning", nl: "terugkeerverbranding",
+                da: "genindtrædningsforbrænding", pt: "queima de reentrada", pl: "manewr wejścia",
+                hi: "पुनः प्रवेश दहन", ar: "مناورة الدخول", tr: "yeniden giriş yanması",
+            },
+            landingBurn: {
+                en: "landing burn", he: "שריפת נחיתה", es: "quema de aterrizaje", fr: "combustion d'atterrissage",
+                de: "Landezündung", ru: "посадочный манёвр", zh: "着陆点火", it: "combustione di atterraggio",
+                cs: "přistávací zážeh", sv: "landningsbränning", nl: "landingsverbranding",
+                da: "landingsforbrænding", pt: "queima de pouso", pl: "manewr lądowania",
+                hi: "लैंडिंग दहन", ar: "مناورة الهبوط", tr: "iniş yanması",
+            },
+            sideBoosters: {
+                en: "side boosters", he: "הבוסטרים הצדדיים", es: "propulsores laterales", fr: "propulseurs latéraux",
+                de: "Seitenbooster", ru: "боковые ускорители", zh: "侧助推器", it: "booster laterali",
+                cs: "boční boostery", sv: "sidoboostrar", nl: "zijboosters", da: "sideboostere",
+                pt: "boosters laterais", pl: "boostery boczne", hi: "साइड बूस्टर", ar: "المعززات الجانبية",
+                tr: "yan güçlendiriciler",
+            },
+            stageSep: {
+                en: "Stage separation", he: "הפרדת שלבים", es: "Separación de etapas", fr: "Séparation des étages",
+                de: "Stufentrennung", ru: "Разделение ступеней", zh: "级间分离", it: "Separazione degli stadi",
+                cs: "Oddělení stupňů", sv: "Stegseparation", nl: "Trapscheiding", da: "Trinseparation",
+                pt: "Separação de estágios", pl: "Oddzielenie stopni", hi: "चरण पृथक्करण", ar: "فصل المراحل",
+                tr: "Kademe ayrımı",
+            },
+            boosterLanding: {
+                en: "Booster landing", he: "נחיתת הבוסטר", es: "Aterrizaje del booster", fr: "Atterrissage du booster",
+                de: "Booster-Landung", ru: "Посадка бустера", zh: "助推器着陆", it: "Atterraggio del booster",
+                cs: "Přistání boosteru", sv: "Boosterlandning", nl: "Boosterlanding", da: "Boosterlanding",
+                pt: "Pouso do booster", pl: "Lądowanie boostera", hi: "बूस्टर लैंडिंग", ar: "هبوط المعزز",
+                tr: "Güçlendirici inişi",
+            },
+        };
+        const REAL_TIMELINE_EXACT = {
+            'max q (moment of peak mechanical stress on the rocket)': 'maxQ',
+            'side booster engine cutoff (beco)': 'beco',
+            'side boosters separate': 'sideBoostersSeparate',
+            'side boosters flip': 'sideBoostersFlip',
+            'side boosters boostback burn begins': 'boostbackBegins',
+            'side boosters boostback burn ends': 'boostbackEnds',
+            '1st stage main engine cutoff (meco)': 'meco',
+            '1st and 2nd stages separate': 'stagesSeparate',
+            '2nd stage engine starts (ses-1)': 'ses1',
+            '2nd stage engine starts (ses-2)': 'ses2',
+            'fairing separation': 'fairingSep',
+            'side boosters entry burn begins': 'entryBurnBegins',
+            'side boosters entry burn ends': 'entryBurnEnds',
+            'side boosters landing burns start': 'landingBurnsStart',
+            'side boosters landing': 'sideBoostersLanding',
+            '2nd stage engine cutoff (seco-1)': 'seco1',
+            '2nd stage engine cutoff (seco-2)': 'seco2',
+            'roman deploys': 'romanDeploys',
+            'stage separation': 'stageSep',
+            'entry burn': 'entryBurn',
+            'landing burn': 'landingBurn',
+            'booster landing': 'boosterLanding',
+        };
+        const REAL_TIMELINE_PATTERNS = [
+            [/side boosters boostback burn begins/gi, 'boostbackBegins'],
+            [/side boosters boostback burn ends/gi, 'boostbackEnds'],
+            [/side boosters entry burn begins/gi, 'entryBurnBegins'],
+            [/side boosters entry burn ends/gi, 'entryBurnEnds'],
+            [/side boosters landing burns start/gi, 'landingBurnsStart'],
+            [/side booster engine cutoff/gi, 'beco'],
+            [/side boosters separate/gi, 'sideBoostersSeparate'],
+            [/side boosters flip/gi, 'sideBoostersFlip'],
+            [/side boosters landing/gi, 'sideBoostersLanding'],
+            [/1st stage main engine cutoff/gi, 'meco'],
+            [/1st and 2nd stages separate/gi, 'stagesSeparate'],
+            [/2nd stage engine starts/gi, 'ses1'],
+            [/2nd stage engine cutoff/gi, 'seco1'],
+            [/fairing separation/gi, 'fairingSep'],
+            [/stage separation/gi, 'stageSep'],
+            [/booster landing/gi, 'boosterLanding'],
+            [/\broman deploys\b/gi, 'romanDeploys'],
+            [/\bboostback burn\b/gi, 'boostbackBurn'],
+            [/\bentry burn\b/gi, 'entryBurn'],
+            [/\blanding burns?\b/gi, 'landingBurn'],
+            [/\bside boosters\b/gi, 'sideBoosters'],
+            [/\bfairing\b/gi, 'fairingWord'],
+        ];
+        function timelineI18nLang(langKey) {
+            let key = (langKey || 'en').split('-')[0];
+            if (key === 'iw') key = 'he';
+            return key;
+        }
+        function realTimelinePhrase(id, langKey) {
+            const dict = REAL_TIMELINE_I18N[id];
+            if (!dict) return null;
+            const key = timelineI18nLang(langKey);
+            return dict[key] || dict.en;
+        }
+        function localizeRealTimelineEventLabel(text, langKey) {
+            if (!text) return text;
+            const key = timelineI18nLang(langKey);
+            const norm = String(text).replace(/\s+/g, ' ').trim();
+            if (key === 'en') return norm;
+            const exactId = REAL_TIMELINE_EXACT[norm.toLowerCase()];
+            if (exactId) return realTimelinePhrase(exactId, key) || norm;
+            let out = norm;
+            REAL_TIMELINE_PATTERNS.forEach(([pattern, id]) => {
+                const phrase = realTimelinePhrase(id, key);
+                if (phrase) out = out.replace(pattern, phrase);
+            });
+            return out;
+        }
+
+        // Site-owned translations only - never Google. The rendered list is also marked
+        // notranslate so the on-page widget cannot rewrite a phrase we already localized
+        // (or leave an unknown leftover in English, which is better than a mistranslation).
         function ensureRealMissionTimelineTranslated(currentLang) {
             if (!realMissionTimelineData) return;
             const key = (currentLang || 'en').split('-')[0];
             const entries = realMissionTimelineData.postLaunchTimeline;
             if (realMissionTimelineTranslated.lang === key && realMissionTimelineTranslated.forData === entries) return;
-            if (key === 'en') {
-                realMissionTimelineTranslated.lang = 'en';
-                realMissionTimelineTranslated.forData = entries;
-                realMissionTimelineTranslated.entries = entries.map(e => ({ tSeconds: e.seconds, label: e.event }));
-                return;
-            }
             realMissionTimelineTranslated.lang = key;
             realMissionTimelineTranslated.forData = entries;
-            realMissionTimelineTranslated.entries = entries.map(e => ({ tSeconds: e.seconds, label: e.event }));
-            translateBatchViaGoogle(entries.map(e => e.event), key).then(translated => {
-                // Bail if a newer fetch/language switch already superseded this in-flight request.
-                if (realMissionTimelineTranslated.lang !== key || realMissionTimelineTranslated.forData !== entries) return;
-                realMissionTimelineTranslated.entries = entries.map((e, i) => ({ tSeconds: e.seconds, label: translated[i] || e.event }));
-                // renderMissionStatusBreakdown's own dedup guard (lastRenderedMissionBreakdownLang/
-                // -Source) only knows "have I already rendered THIS language for THIS source" -
-                // it has no way to know the ENTRIES it rendered a moment ago were still the
-                // pre-translation English placeholder, so without forcing it here the popup would
-                // render once (English, since translation hasn't resolved yet) and then never
-                // again for this language - stuck in English until a language switch or mission
-                // change happened to invalidate the guard some other way. Forcing exactly one
-                // extra render right when the real translation actually lands fixes that, and is
-                // a no-op the many other times this fires with nothing currently depending on it
-                // (typeof guard covers this file being an older cached copy that predates this
-                // function's addition, though that's not expected to matter in practice).
-                if (typeof renderMissionStatusBreakdown === 'function') {
-                    lastRenderedMissionBreakdownLang = null;
-                    renderMissionStatusBreakdown(document.documentElement.lang);
-                }
-            });
+            realMissionTimelineTranslated.entries = entries.map(e => ({
+                tSeconds: e.seconds,
+                label: localizeRealTimelineEventLabel(e.event, key)
+            }));
         }
 
         // Same shape/contract as getCurrentMissionMilestone (returns {label, tSeconds} or null) -
@@ -4679,10 +5125,8 @@
         // being the explanation ("Max Q (moment of peak...)" -> title "Max Q", explanation the
         // parenthetical). Distinguished by the parenthetical's own shape: short/mostly-uppercase
         // reads as an abbreviation (the TITLE), anything else reads as a descriptive explanation.
-        // Runs on the (possibly already-translated) label, not the raw English - verified live
-        // that machine translation leaves this parenthetical structure and untranslated
-        // abbreviations like "BECO"/"MECO" intact, matching how this file already treats
-        // technical abbreviations elsewhere (see MISSION_TIMELINE_I18N's own comment). Events
+        // Runs on the already site-localized label, not the raw English. Abbreviations like
+        // "BECO"/"MECO" stay Latin (see MISSION_TIMELINE_I18N). Events
         // with no parenthetical at all (roughly half this feed - "Side boosters separate",
         // "Roman deploys") have nothing to split: the whole string becomes the title, no
         // explanation line.
@@ -4720,10 +5164,8 @@
         // data identity does.
         let lastRenderedMissionBreakdownData = null;
         // hasAsdsProfile mirrors updateHeroCountdown's own flag of the same name (Starlink
-        // category + an ASDS/droneship landing) - defaults to false for the one caller that
-        // doesn't have it handy (ensureRealMissionTimelineTranslated's post-translation re-
-        // render), which is harmless there since that call only ever fires once real data has
-        // already matched, taking the 'real' branch below regardless of this flag's value.
+        // category + an ASDS/droneship landing). Optional because the real-feed branch
+        // below does not use it; callers that only have language handy can omit it.
         // Without gating on it, a non-Starlink mission with no matching real feed data (a
         // science payload, a crew mission, anything else) fell through to showing the STARLINK
         // list here anyway - wrong information for a launch that was never Starlink to begin
@@ -7534,8 +7976,8 @@
                              them is what keeps this panel the same shade as the status box beside
                              it in all four modes automatically, instead of needing a hand-picked
                              colour per theme that then drifts out of sync. -->
-                        <div id="mission-status-breakdown"
-                            class="hidden md:group-hover:flex flex-col gap-2.5 py-3.5 px-4 rounded-2xl border border-zinc-800/80 bg-zinc-950 backdrop-blur-lg shadow-xl text-start">
+                        <div id="mission-status-breakdown" translate="no"
+                            class="notranslate hidden md:group-hover:flex flex-col gap-2.5 py-3.5 px-4 rounded-2xl border border-zinc-800/80 bg-zinc-950 backdrop-blur-lg shadow-xl text-start">
                             <div id="mission-status-breakdown-list" class="flex flex-col gap-2.5"></div>
                         </div>
                     </div>
@@ -16946,9 +17388,9 @@ fitTitleOneLine(document.getElementById('hero-name'));
         // running any JavaScript, so pointing them at index.html itself would only ever show
         // this app's one site-wide preview, identical for every mission (the exact "just the
         // general site link" problem being fixed here). A real visitor who opens the link still
-        // ends up in the full interactive app, on the right mission - the static page's own
-        // meta-refresh/JS immediately forwards to index.html?mission=<id>, which
-        // handleDeepLinkMission() (see near processLaunchData) picks up and opens.
+        // ends up in the full interactive app, on the right mission - the static page
+        // immediately JS-forwards humans (not preview bots) to index.html?mission=<id>,
+        // which handleDeepLinkMission() (see near processLaunchData) picks up and opens.
         function buildMissionShareUrl(m) {
             return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html`;
         }
