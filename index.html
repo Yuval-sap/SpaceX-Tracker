@@ -5981,8 +5981,39 @@
     // "Forced reflow"/"setInterval handler took Nms" בגלל זה בדיוק. שינוי טקסט אמיתי (תרגום
     // חדש, שם שיגור חדש) או רוחב (resize) עדיין יגרום להתאמה מחדש כרגיל.
     const text = el.textContent;
-    const width = el.clientWidth;
+    let width = el.clientWidth;
     if (el.dataset.fitForText === text && el.dataset.fitForWidth === String(width)) return;
+
+    // #modal-name sits in a flex row next to an optional patch badge (#modal-patch-wrap), inside
+    // a wrapper div with no fixed width of its own - it (and #modal-name itself, which just fills
+    // that wrapper) is shrink-to-fit, sized off its OWN text's current rendered width. That makes
+    // el.clientWidth here circular with the very font-size this loop is about to change: shrink
+    // the font -> the shrink-to-fit wrapper follows it down -> clientWidth barely improves
+    // relative to the now-also-smaller ink width -> the loop keeps seeing "overflow" all the way
+    // to the size floor, regardless of how much room the modal actually has (measured live: a
+    // title that fits comfortably around 20px was shrinking to 6.8px purely from this). Break the
+    // circularity by pinning #modal-name to the row's REAL available width (independent of its
+    // own font size) just for this fit, then releasing it once the size is settled - the wrapper
+    // (and the patch badge next to it) then naturally shrink-wraps back around whatever width the
+    // text actually ends up needing, so the patch stays next to the title instead of being pushed
+    // out to the far edge of the modal (a first attempt that left the wrapper permanently
+    // flex-1'd fixed the shrinking but caused exactly that - the badge drifting away from a
+    // shorter title, since a permanently-widened box doesn't shrink back around short text).
+    let modalNameWidthPinned = false;
+    if (el.id === 'modal-name') {
+        const row = el.closest('.flex.items-center.gap-6');
+        if (row) {
+            const patchWrap = document.getElementById('modal-patch-wrap');
+            const patchVisible = patchWrap && !patchWrap.classList.contains('hidden');
+            const gapPx = parseFloat(getComputedStyle(row).columnGap) || 0;
+            const patchWidth = patchVisible ? patchWrap.offsetWidth : 0;
+            const available = row.clientWidth - patchWidth - (patchVisible ? gapPx : 0);
+            if (available > 0) {
+                el.style.width = available + 'px';
+                modalNameWidthPinned = true;
+            }
+        }
+    }
 
     // איפוס
     el.style.fontSize = '';
@@ -6040,6 +6071,18 @@
         el.style.fontSize = size + 'px';
         void el.offsetWidth; // כפיית reflow
         guard++;
+    }
+
+    // Release the temporary pin now that the font-size is settled - the wrapper (and the patch
+    // badge beside it) re-collapses around the now-stable, already-correctly-sized text instead
+    // of staying stretched to the row's full available width. Re-measure width AFTER releasing
+    // it, not before: caching the pinned (row-width) value here would make every future call
+    // think the container is still that wide and skip re-fitting even though the real,
+    // shrink-wrapped width has since changed back.
+    if (modalNameWidthPinned) {
+        el.style.width = '';
+        void el.offsetWidth;
+        width = el.clientWidth;
     }
 
     el.dataset.fitForText = text;
@@ -9345,7 +9388,7 @@
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div class="flex items-center gap-6 min-w-0">
-                        <div class="flex-1 min-w-0">
+                        <div class="min-w-0">
                             <div id="modal-name" translate="no"
                                 class="notranslate mission-title-fit whitespace-nowrap overflow-hidden font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
                             </div>
