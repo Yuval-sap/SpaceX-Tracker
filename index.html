@@ -4123,6 +4123,17 @@
         #hero-skeleton.skel-fade-out {
             opacity: 0;
             pointer-events: none;
+            /* Pulled out of normal flow the INSTANT the fade starts, not just once the delayed
+               .hidden (display:none) lands 320ms later (see setupHeroBanner) - otherwise it kept
+               occupying its layout space for that whole window while #hero-banner (the real card)
+               had already unhidden right next to it, so the real card rendered shoved down below
+               the still-in-flow skeleton and visibly jumped up once display:none finally landed.
+               Anchored to the plain wrapper div around just these two elements (see the HTML) -
+               its own height doesn't matter here since this is already fading to invisible. */
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
         }
 
         /* Both #hero-skeleton and #hero-banner carry lg:flex (for vertical centering at
@@ -8092,6 +8103,16 @@
 
         <div id="tab-panel-launches" role="tabpanel" aria-labelledby="tab-btn-launches">
 
+        <!-- Wraps just the skeleton + real hero card (not the whole tab panel) so the skeleton
+             can be pulled out of normal flow the instant it starts fading out, below - without
+             this, #hero-skeleton keeps occupying its layout space for the ~320ms opacity
+             transition even after #hero-banner (the real card) has already unhidden next to it,
+             so the real card renders shoved down below the still-in-flow skeleton and visibly
+             jumps up once the skeleton's delayed display:none finally lands. See .skel-fade-out
+             below - relative here purely to give that absolute positioning a scoped anchor,
+             deliberately not on the much bigger #tab-panel-launches, to avoid re-anchoring any
+             unrelated .absolute descendant elsewhere in that panel. -->
+        <div class="relative">
         <div id="hero-skeleton"
             class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 transition-all duration-300 lg:min-h-[380px] lg:flex lg:items-center">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 lg:w-full">
@@ -8295,6 +8316,7 @@
                     </div>
                 </div>
             </div>
+        </div>
         </div>
 
         <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-end mb-6">
@@ -16189,8 +16211,20 @@ setTimeout(() => {
 setTimeout(() => {
     fitTitleOneLine(document.getElementById('hero-name'));
 }, 1800);
-// מקטין את הפונט עד שהכותרת נכנסת בשורה אחת בלי לחתוך
-fitTitleOneLine(document.getElementById('hero-name'));
+                // NOTE: there used to be an extra *synchronous* fitTitleOneLine() call right here,
+                // on top of the requestAnimationFrame one above - removed because it ran BEFORE
+                // heroBanner.classList.remove('hidden') further down this same function, at a
+                // point where #hero-banner (and #hero-name inside it) was still display:none from
+                // the .hidden class - hero-name's clientWidth was 0, so fitTitleOneLine shrank it
+                // to the size floor and cached that bogus result (keyed to width "0"). The
+                // requestAnimationFrame call one tick later would eventually re-measure against
+                // the real, now-visible width and correct it - but not instantly, which is exactly
+                // what showed up as the title rendering tiny/misplaced for a moment and then
+                // jumping to its real size once one of the later calls (rAF/800ms/1800ms) fixed
+                // the cached value. Previously easy to miss because the hero only ever appeared
+                // after a slow network fetch, by which point layout had long since settled; the
+                // instant cache-render path now makes this whole sequence run within the same
+                // frame the page loads in, so the bad intermediate state became visible.
                 let dateStr = 'TBD';
                 try {
                     dateStr = new Date(nextLaunch.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
