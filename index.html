@@ -815,6 +815,29 @@
             }
         }
 
+        /* First swap from the pulse placeholders to real cards: fade the grid out, replace,
+           fade it back. Cache-first paint used to wipe the placeholders in one frame, which
+           read as a hard pop. Later refreshes skip this (data-revealed) so a live update
+           does not replay the motion. */
+        #missions-grid.grid-reveal-out,
+        #past-launches-grid.grid-reveal-out {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
+        }
+        #missions-grid.grid-reveal-in,
+        #past-launches-grid.grid-reveal-in {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #missions-grid[data-revealed="1"] .mission-card,
+        #past-launches-grid[data-revealed="1"] .mission-card {
+            opacity: 1;
+            animation: none;
+            transform: none;
+        }
+
         /* Gives the sticky/backdrop-blur nav its own stable compositing layer so mobile
            Safari doesn't leave it (and the theme toggle button inside it) rendered in a
            stale position for a frame right after an orientation change. */
@@ -5927,6 +5950,9 @@
             [/טלסקופ\s+החלל\s+הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'טלסקופ החלל ננסי גרייס רומן'],
             [/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן'],
             [/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן'],
+            // Google (and the Roman notranslate wrap) often glue the next word to "|"
+            // ("פלקון כבד |טלסקופ...") while every other mission keeps " | ".
+            [/\|\s*(?=[\u0590-\u05FFA-Za-z])/g, '| '],
         ];
         // String-level form of the DOM pass below. Needed because by the time the text is in the
         // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
@@ -5936,14 +5962,32 @@
         // fired, which turned "שני השלבים סטארשיפ רכב שיגור" into the still-wrong "שני השלבים
         // סטארשיפ משגר". Applying the same rules to the whole translated string BEFORE it is
         // inserted (and therefore before it is split) lets the word-order rules actually match.
+            function normalizeMissionPipeSpacing(text) {
+            if (!text) return text;
+            return text.replace(/\s*\|\s*/g, ' | ');
+        }
+        function normalizePipeSpacingInElement(el) {
+            if (!el) return;
+            if (!el.children.length) {
+                const t = el.textContent;
+                const n = normalizeMissionPipeSpacing(t);
+                if (n !== t) el.textContent = n;
+                return;
+            }
+            const first = el.firstChild;
+            if (first && first.nodeType === 3 && /\|$/.test(first.nodeValue) && first.nextSibling) {
+                first.nodeValue = first.nodeValue.replace(/\s*\|$/, ' | ');
+            }
+        }
         function fixMistranslatedPhrasesText(text, currentLang) {
             const key = (currentLang || '').split('-')[0];
-            if (!text || (key !== 'he' && key !== 'iw')) return text;
+            if (!text) return text;
+            if (key !== 'he' && key !== 'iw') return normalizeMissionPipeSpacing(text);
             let out = text;
             PHRASE_FIXES_HE.forEach(([pattern, replacement]) => {
                 out = out.replace(pattern, replacement);
             });
-            return out;
+            return normalizeMissionPipeSpacing(out);
         }
 
         function fixMistranslatedPhrases(root, currentLang) {
@@ -6092,6 +6136,7 @@
             fixMistranslatedPhrases(document.getElementById('mission-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('landing-modal'), currentLang);
             fixMistranslatedPhrases(document.getElementById('patch-mission-modal'), currentLang);
+            document.querySelectorAll('#hero-name, #modal-name, .mission-title-fit').forEach(normalizePipeSpacingInElement);
         }
 
         // Card descriptions are inserted as raw English and left to Google's on-page widget to
@@ -6108,10 +6153,14 @@
             const key = (currentLang || '').split('-')[0];
             if (key !== 'he' && key !== 'iw') return;
             document.querySelectorAll('#hero-name, #modal-name, #patch-mission-modal-name, #patch-mission-modal-desc, .mission-title-fit, #missions-grid .mission-card-desc, #past-launches-grid .mission-card-desc').forEach(el => {
-                if (el.children.length === 0) return; // single node - the walker above already handled it
+                if (el.children.length === 0) {
+                    normalizePipeSpacingInElement(el);
+                    return;
+                }
                 const original = el.textContent;
                 const fixed = fixMistranslatedPhrasesText(original, currentLang);
                 if (fixed !== original) el.textContent = fixed;
+                else normalizePipeSpacingInElement(el);
             });
         }
 
@@ -7293,7 +7342,7 @@
                     .replace(/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן')
                     .replace(/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן');
             }
-            return out;
+            return normalizeMissionPipeSpacing(out);
         }
 
         // Renders a mission name into a notranslate element in two stages, the same instant-then-
@@ -7508,7 +7557,7 @@
             while ((n = walker.nextNode())) nodes.push(n);
             const pieceRe = /(Nancy Grace Roman Space Telescope|טלסקופ החלל הרומ(?:י|אי) ננסי גרייס|Nancy Grace Roman|הרומ(?:י|אי) ננסי גרייס|ננסי גרייס הרומ(?:י|אי))/gi;
             nodes.forEach(node => {
-                const parts = node.nodeValue.split(pieceRe);
+                const parts = normalizeMissionPipeSpacing(node.nodeValue).split(pieceRe);
                 if (parts.length === 1) return;
                 const frag = document.createDocumentFragment();
                 parts.forEach(part => {
@@ -16363,9 +16412,32 @@ fitTitleOneLine(document.getElementById('hero-name'));
             renderWeatherHTML();
         }
 
+        function paintLaunchGridWithReveal(grid, paint) {
+            if (!grid) return;
+            if (grid.dataset.revealed === '1') {
+                paint();
+                return;
+            }
+            grid._pendingPaint = paint;
+            if (grid.dataset.revealPending === '1') return;
+            grid.dataset.revealPending = '1';
+            grid.classList.add('grid-reveal-out');
+            setTimeout(() => {
+                const fn = grid._pendingPaint || paint;
+                grid._pendingPaint = null;
+                fn();
+                grid.dataset.revealed = '1';
+                delete grid.dataset.revealPending;
+                grid.classList.remove('grid-reveal-out');
+                void grid.offsetWidth;
+                grid.classList.add('grid-reveal-in');
+            }, 240);
+        }
+
         function renderMissions(filteredMissions) {
             const grid = document.getElementById('missions-grid');
             if (!grid) return;
+            paintLaunchGridWithReveal(grid, function () {
             grid.innerHTML = '';
 
             countdownIntervals.forEach(clearInterval);
@@ -16483,6 +16555,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
             startCountdowns(filteredMissions);
             fitAllTitlesOneLine(grid);
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
+            });
         }
 
         function renderPastMissions(filteredPast) {
@@ -16499,6 +16572,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
                 pastGrid.dataset.dragEnabled = 'true';
             }
 
+            paintLaunchGridWithReveal(pastGrid, function () {
             pastGrid.innerHTML = '';
 
             if (filteredPast.length === 0) {
@@ -16591,6 +16665,7 @@ fitTitleOneLine(document.getElementById('hero-name'));
 
             fitAllTitlesOneLine(pastGrid);
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
+            });
         }
 
         function paintMissionCardCountdowns() {
