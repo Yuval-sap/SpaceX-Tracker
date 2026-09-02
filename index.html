@@ -887,6 +887,11 @@
         #sticky-countdown-wrap-mobile.mission-status-mode.is-visible {
             cursor: pointer;
         }
+        /* Same idea on the hero card: once it is a live status readout, the whole box (not
+           the tiny (i) icon) is the hover/tap target for the milestone list. */
+        #countdown-box.mission-status-mode {
+            cursor: pointer;
+        }
 
         /* Sibling of <nav>, position:fixed, so it can sit under the pill on any tab / scroll
            position. Not a child of either wrap: the mobile row is overflow:hidden, and the
@@ -3510,7 +3515,7 @@
            over the card before launch popped open an empty panel. setCountdownLabel puts
            .mission-status-mode on the card exactly when the label flips to "Mission Status", so
            gating on it keeps the two in step automatically. */
-        #countdown-box:not(.mission-status-mode) #mission-status-breakdown {
+        #countdown-box:not(.mission-status-mode) #hero-status-explain {
             display: none !important;
         }
         #mission-status-breakdown .mission-timeline-explain,
@@ -4521,9 +4526,10 @@
             }
             let key = (currentLang || 'en').split('-')[0];
             if (key === 'zh') key = 'zh';
-            const dict = MISSION_TIMELINE_I18N[key] || MISSION_TIMELINE_I18N.en;
-            const label = current.fixedLabel || dict[current.labelKey] || MISSION_TIMELINE_I18N.en[current.labelKey];
-            return { label, tSeconds: current.t };
+            const explainDict = MISSION_TIMELINE_EXPLAIN_I18N[key] || MISSION_TIMELINE_EXPLAIN_I18N.en;
+            const label = current.fixedLabel || MISSION_TIMELINE_I18N.en[current.labelKey];
+            const explain = explainDict[current.explainKey] || MISSION_TIMELINE_EXPLAIN_I18N.en[current.explainKey] || '';
+            return { label, explain, tSeconds: current.t };
         }
 
         // ===== Real per-mission timeline, fetched directly from SpaceX's own public CMS =====
@@ -5135,10 +5141,15 @@
             if (realMissionTimelineTranslated.lang === key && realMissionTimelineTranslated.forData === entries) return;
             realMissionTimelineTranslated.lang = key;
             realMissionTimelineTranslated.forData = entries;
-            realMissionTimelineTranslated.entries = entries.map(e => ({
-                tSeconds: e.seconds,
-                label: localizeRealTimelineEventLabel(e.event, key)
-            }));
+            realMissionTimelineTranslated.entries = entries.map(e => {
+                const english = splitRealTimelineEventText(e.event);
+                const localized = splitRealTimelineEventText(localizeRealTimelineEventLabel(e.event, key));
+                return {
+                    tSeconds: e.seconds,
+                    label: english.title,
+                    explain: localized.explain || ''
+                };
+            });
         }
 
         // Same shape/contract as getCurrentMissionMilestone (returns {label, tSeconds} or null) -
@@ -5159,7 +5170,7 @@
             if (elapsedSec - current.tSeconds > MISSION_MILESTONE_STALE_AFTER_SEC && current === list[list.length - 1]) {
                 return null;
             }
-            return { label: current.label, tSeconds: current.tSeconds };
+            return { label: current.label, explain: current.explain || '', tSeconds: current.tSeconds };
         }
 
         // Best-effort split of a single freeform event string (all the real-timeline feed
@@ -5249,7 +5260,8 @@
                 lastRenderedMissionBreakdownData = currentData;
                 const list = realMissionTimelineTranslated.entries || [];
                 writeMissionStatusBreakdownHtml(list.map(entry => {
-                    const { title, explain } = splitRealTimelineEventText(entry.label);
+                    const title = entry.label;
+                    const explain = entry.explain || '';
                     return `
                     <div class="mission-timeline-row flex flex-col gap-0.5" data-t="${entry.tSeconds}">
                         <span class="flex items-center gap-1.5">
@@ -5283,17 +5295,14 @@
             lastRenderedMissionBreakdownLang = key;
             lastRenderedMissionBreakdownSource = 'starlink';
 
-            const labelDict = MISSION_TIMELINE_I18N[key] || MISSION_TIMELINE_I18N.en;
             const explainDict = MISSION_TIMELINE_EXPLAIN_I18N[key] || MISSION_TIMELINE_EXPLAIN_I18N.en;
 
             writeMissionStatusBreakdownHtml(STARLINK_ASDS_TIMELINE.map(entry => {
-                const label = entry.fixedLabel || labelDict[entry.labelKey] || MISSION_TIMELINE_I18N.en[entry.labelKey];
+                const label = entry.fixedLabel || MISSION_TIMELINE_I18N.en[entry.labelKey];
                 const explain = explainDict[entry.explainKey] || MISSION_TIMELINE_EXPLAIN_I18N.en[entry.explainKey];
-                // notranslate on both: the label is either a fixed acronym that must stay as-is
-                // (Google was transliterating "MAX Q" into Hebrew letters - "מקס קיו") or already
-                // localized from MISSION_TIMELINE_I18N above, and the explanation likewise comes
-                // pre-translated from MISSION_TIMELINE_EXPLAIN_I18N. Letting the widget near
-                // either one can only re-translate already-translated text.
+                // Titles stay English (acronyms and the English milestone names). Only the
+                // one-line explanation is localized. notranslate on both so the live widget
+                // cannot rewrite either.
                 return `
                     <div class="mission-timeline-row flex flex-col gap-0.5" data-t="${entry.t}">
                         <span class="flex items-center gap-1.5">
@@ -5483,7 +5492,8 @@
         // the first hover after returning to the tab.
         document.addEventListener('mouseover', function (e) {
             if (!e.target || !e.target.closest) return;
-            if (!e.target.closest('#mission-status-hover-wrap')) return;
+            const box = e.target.closest('#countdown-box');
+            if (!box || !box.classList.contains('mission-status-mode')) return;
             clampMissionBreakdownHeight();
             setTimeout(clampMissionBreakdownHeight, 0);
             setTimeout(clampMissionBreakdownHeight, 120);
@@ -5524,14 +5534,25 @@
         }
         document.addEventListener('click', function (e) {
             const popup = document.getElementById('mission-status-breakdown');
-            const icon = document.getElementById('mission-status-info-icon');
+            const box = document.getElementById('countdown-box');
             if (!popup || popup.classList.contains('hidden')) return;
-            if (icon && icon.contains(e.target)) return; // the icon's own onclick already handles this tap
-            if (!popup.contains(e.target)) {
-                popup.classList.add('hidden');
-                popup.classList.remove('flex');
-            }
+            if (box && box.contains(e.target)) return;
+            if (popup.contains(e.target)) return;
+            popup.classList.add('hidden');
+            popup.classList.remove('flex');
         });
+
+        function initHeroStatusBreakdown() {
+            const box = document.getElementById('countdown-box');
+            if (!box || box.dataset.statusHoverBound) return;
+            box.dataset.statusHoverBound = '1';
+            box.addEventListener('click', function (event) {
+                if (!box.classList.contains('mission-status-mode')) return;
+                if (typeof isStickyStatusTapMode === 'function' && !isStickyStatusTapMode()) return;
+                if (event.target.closest && event.target.closest('#mission-status-breakdown')) return;
+                toggleMissionStatusBreakdown(event);
+            });
+        }
 
         // Sticky-nav status pill → same milestone list as #mission-status-breakdown, parked
         // under that pill with position:fixed (viewport coords). Separate from the hero panel
@@ -8264,10 +8285,8 @@
                             class="text-[12px] uppercase tracking-[3px] text-zinc-500 font-bold text-center notranslate"
                             translate="no" lang="en">Countdown to launch</div>
                         <i id="mission-status-info-icon"
-                            class="hidden fa-solid fa-circle-info text-emerald-400/70 text-[10px] cursor-pointer"
-                            style="touch-action: manipulation;"
-                            role="button" tabindex="0" aria-label="Mission status timeline"
-                            onclick="toggleMissionStatusBreakdown(event)" onkeydown="activateOnEnterOrSpace(event)"></i>
+                            class="hidden fa-solid fa-circle-info text-emerald-400/70 text-[10px]"
+                            aria-hidden="true"></i>
                         <!-- bg/border classes deliberately identical to #countdown-box's own
                              (bg-zinc-950 + border-zinc-800/80) rather than this popup's original
                              zinc-900/95: every theme remaps those exact class names, so matching
@@ -8284,6 +8303,8 @@
                         translate="no">
                         <!-- Populated by JS -->
                     </div>
+                    <div id="hero-status-explain" translate="no"
+                        class="hidden notranslate text-[11px] sm:text-xs text-zinc-400 leading-snug mt-1.5 px-1 text-center max-w-full"></div>
 
                     <!-- Hero only - deliberately NOT mirrored in the sticky-nav mini countdown
                          (#sticky-countdown-wrap/-mobile), which stays digits-only. Shown only
@@ -19174,6 +19195,13 @@ setTimeout(() => {
             // own parameters.
             const countdownLabelEl = document.getElementById('i18n-countdown-to-launch');
             const missionStatusInfoIcon = document.getElementById('mission-status-info-icon');
+            function setHeroStatusExplain(text) {
+                const explainEl = document.getElementById('hero-status-explain');
+                if (!explainEl) return;
+                const trimmed = (text || '').trim();
+                explainEl.textContent = trimmed;
+                explainEl.classList.toggle('hidden', !trimmed);
+            }
             // elapsedSec (seconds since liftoff) is passed in rather than read from the tick's
             // own `diff`, which is declared inside the nested tick function below and is not in
             // scope here.
@@ -19200,10 +19228,11 @@ setTimeout(() => {
                             ? (dict.status || LAUNCH_LABEL_I18N.en.status)
                             : (dict.nextLaunch || LAUNCH_LABEL_I18N.en.nextLaunch);
                     });
-                // The (i) icon + hover breakdown only make sense once the mission has actually
-                // launched (there's nothing to explain about a countdown that hasn't happened
-                // yet) - hidden the rest of the time, same as the label reverting above.
-                if (missionStatusInfoIcon) missionStatusInfoIcon.classList.toggle('hidden', !showMissionStatus);
+                // The whole status card is the hover/tap target now (see initHeroStatusBreakdown).
+                // The old (i) icon is left in the markup but always hidden so it cannot look
+                // like the only way to open the list.
+                if (missionStatusInfoIcon) missionStatusInfoIcon.classList.add('hidden');
+                if (!showMissionStatus) setHeroStatusExplain('');
                 // "Launch window" only means something before liftoff - hide it once the mission
                 // is flying and let the status text below claim the freed space. Restored
                 // automatically whenever this runs for a not-yet-launched mission, same as the
@@ -19239,6 +19268,13 @@ setTimeout(() => {
                         if (stickyWrapEl) stickyWrapEl.classList.toggle('mission-status-mode', !!showMissionStatus);
                     });
                 if (!showMissionStatus && typeof closeStickyStatusBreakdown === 'function') closeStickyStatusBreakdown();
+                if (!showMissionStatus) {
+                    const heroPopup = document.getElementById('mission-status-breakdown');
+                    if (heroPopup) {
+                        heroPopup.classList.add('hidden');
+                        heroPopup.classList.remove('flex');
+                    }
+                }
                 // Leaving mission-status mode: drop the shrink-to-fit size fitMissionStatusText
                 // may have written, so the countdown digits go back to their own CSS size.
                 if (!showMissionStatus && el) el.style.removeProperty('font-size');
@@ -19361,6 +19397,7 @@ setTimeout(() => {
                         // Still pre-launch (the mission hasn't actually flown), so the label
                         // above stays "Countdown to Launch", not "Mission Status".
                         setCountdownLabel(false);
+                        setHeroStatusExplain('');
                         el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
                         el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                         stickyEls.forEach(stEl => {
@@ -19385,6 +19422,7 @@ setTimeout(() => {
                         // included, until whichever source's first post-180s event finally
                         // interrupted it.
                         setCountdownLabel(true, -diff / 1000);
+                        setHeroStatusExplain('');
                         el.innerHTML = el.dataset.launchNowText || 'LIFTOFF';
                         fitMissionStatusText();
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
@@ -19409,6 +19447,7 @@ setTimeout(() => {
 
                         setCountdownLabel(true, elapsedSec);
                         el.innerHTML = displayText;
+                        setHeroStatusExplain(milestone && milestone.explain ? milestone.explain : '');
                         fitMissionStatusText();
                         el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
                         stickyEls.forEach(stEl => {
@@ -19531,6 +19570,7 @@ setTimeout(() => {
             initDidYouKnow();
             initStickyCountdown();
             initStickyStatusBreakdown();
+            initHeroStatusBreakdown();
 
             // Mobile scroll-to-top storm guard: while the user is actively touch-scrolling,
             // ignore any window.scrollTo({top:0}) / scrollTo(0,0) calls (tab switch, third-party
