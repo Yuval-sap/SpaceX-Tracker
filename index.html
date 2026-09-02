@@ -3515,6 +3515,7 @@
            over the card before launch popped open an empty panel. setCountdownLabel puts
            .mission-status-mode on the card exactly when the label flips to "Mission Status", so
            gating on it keeps the two in step automatically. */
+        #countdown-box:not(.mission-status-mode) #mission-status-breakdown,
         #countdown-box:not(.mission-status-mode) #hero-status-explain {
             display: none !important;
         }
@@ -19228,10 +19229,11 @@ setTimeout(() => {
                             ? (dict.status || LAUNCH_LABEL_I18N.en.status)
                             : (dict.nextLaunch || LAUNCH_LABEL_I18N.en.nextLaunch);
                     });
-                // The whole status card is the hover/tap target now (see initHeroStatusBreakdown).
-                // The old (i) icon is left in the markup but always hidden so it cannot look
-                // like the only way to open the list.
-                if (missionStatusInfoIcon) missionStatusInfoIcon.classList.add('hidden');
+                // The whole status card is the hover/tap target (see initHeroStatusBreakdown).
+                // The (i) icon is shown again as a hint that a timeline exists, but it is not
+                // the only hit target. Hidden before liftoff so a countdown does not look like
+                // it has extra status details.
+                if (missionStatusInfoIcon) missionStatusInfoIcon.classList.toggle('hidden', !showMissionStatus);
                 if (!showMissionStatus) setHeroStatusExplain('');
                 // "Launch window" only means something before liftoff - hide it once the mission
                 // is flying and let the status text below claim the freed space. Restored
