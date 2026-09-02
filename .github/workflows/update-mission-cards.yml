@@ -1,10 +1,16 @@
 name: Update mission share cards
 
+# Keeps the m/ folder (per-mission share preview pages, see generate_mission_cards.py at the
+# repo root) in sync with the current launch schedule automatically - runs on GitHub's own
+# servers on a timer, no local machine or manual step involved. Also runnable by hand any time
+# from the repo's "Actions" tab (Run workflow button) via workflow_dispatch below.
 on:
   schedule:
-    - cron: "0 */4 * * *"
+    - cron: "0 */4 * * *" # every 4 hours
   workflow_dispatch:
 
+# Lets this workflow push its own commits back to the repo (GitHub's built-in, auto-issued
+# token - nothing to create or paste in yourself).
 permissions:
   contents: write
 
@@ -21,11 +27,21 @@ jobs:
       - name: Generate mission cards
         run: python generate_mission_cards.py
 
+      # Mission-purpose text for every site language in the launch modal. The key stays in
+      # GitHub Secrets (GEMINI_API_KEY) and is never written into index.html. If the secret
+      # is missing the script exits 0 and leaves the JSON file as-is; the modal then keeps
+      # using Google.
+      - name: Translate mission purpose with Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python translate_mission_purpose.py
+        continue-on-error: true
+
       - name: Commit and push if anything changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add m/ sitemap.xml
+          git add m/ sitemap.xml mission-purpose-gemini.json
           git diff --staged --quiet && exit 0
           git commit -m "Update mission share cards"
           git pull --rebase origin main

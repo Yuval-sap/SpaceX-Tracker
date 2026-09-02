@@ -6869,15 +6869,45 @@
         }
 
         // Renders #modal-description-detailed immediately with the raw (English) values - no
-        // flash of emptiness while translation is in flight - then swaps in the fully
-        // Google-translated version once translateMissionFieldsViaGoogle resolves. A generation
-        // token (same pattern as renderCurrentFact's _factRenderGeneration above) makes sure a
-        // stale in-flight translation from a mission/language the user has since navigated away
-        // from can never clobber whatever's showing now. missionType/program/agencies get
-        // translated too (not just the description) - per explicit user feedback, a paragraph
-        // that's translated everywhere except a couple of short trailing lines looks unfinished/
-        // inconsistent, even though those values are themselves just brief API strings.
+        // flash of emptiness while translation is in flight - then swaps in a translation.
+        // Prefers mission-purpose-gemini.json (written by translate_mission_purpose.py on
+        // GitHub Actions, keyed by SHA-256 of the English description) for every site
+        // language except English. Google remains the fallback when that file has no
+        // match for the current language. A generation token makes sure a stale
+        // in-flight translation from a mission/language the user has since navigated
+        // away from cannot clobber whatever is showing now.
         let _missionPurposeGen = 0;
+        let _geminiPurposeMap = null;
+        let _geminiPurposeLoad = null;
+        function loadGeminiPurposeMap() {
+            if (_geminiPurposeLoad) return _geminiPurposeLoad;
+            _geminiPurposeLoad = fetch('mission-purpose-gemini.json', { cache: 'no-cache' })
+                .then(res => (res && res.ok ? res.json() : { entries: {} }))
+                .then(data => {
+                    _geminiPurposeMap = (data && data.entries) || {};
+                    return _geminiPurposeMap;
+                })
+                .catch(() => {
+                    _geminiPurposeMap = {};
+                    return _geminiPurposeMap;
+                });
+            return _geminiPurposeLoad;
+        }
+        function sha256hex(text) {
+            if (!window.crypto || !crypto.subtle) return Promise.reject(new Error('no subtle crypto'));
+            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(buf =>
+                Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+            );
+        }
+        function lookupGeminiPurpose(map, description, langKey) {
+            let lang = (langKey || '').split('-')[0];
+            if (lang === 'iw') lang = 'he';
+            if (!lang || lang === 'en' || !map || !description) return Promise.resolve(null);
+            return sha256hex(description).then(hash => {
+                const hit = map[hash] && map[hash][lang];
+                return (hit && hit.description) ? hit : null;
+            }).catch(() => null);
+        }
         function applyMissionPurposeHtml(el, description, missionType, programNames, missionAgencies, currentLang) {
             if (!el) return;
             let key = (currentLang || 'en').split('-')[0];
@@ -6892,11 +6922,33 @@
             const hasDescription = !!(description && description.length > 30);
             if (!hasDescription || key === 'en') return;
 
-            translateMissionFieldsViaGoogle(description, missionType, programStr, agenciesStr, key)
-                .then(t => {
-                    if (_missionPurposeGen !== myGen) return; // superseded by a newer render
-                    el.innerHTML = buildMissionPurposeHtml(t.description, t.missionType, t.programStr, t.agenciesStr, dict);
+            const paintTranslated = (t) => {
+                if (_missionPurposeGen !== myGen) return;
+                el.innerHTML = buildMissionPurposeHtml(t.description, t.missionType, t.programStr, t.agenciesStr, dict);
+            };
+            const paintGoogle = () => {
+                translateMissionFieldsViaGoogle(description, missionType, programStr, agenciesStr, key)
+                    .then(paintTranslated);
+            };
+            const lang = key === 'iw' ? 'he' : key;
+
+            const applyGeminiOrGoogle = (map) => {
+                lookupGeminiPurpose(map, description, lang).then(hit => {
+                    if (_missionPurposeGen !== myGen) return;
+                    if (!hit) {
+                        paintGoogle();
+                        return;
+                    }
+                    paintTranslated({
+                        description: fixMistranslatedPhrasesText(hit.description, key),
+                        missionType: fixMistranslatedPhrasesText(hit.missionType || missionType, key),
+                        programStr: fixMistranslatedPhrasesText(hit.programStr || programStr, key),
+                        agenciesStr: fixMistranslatedPhrasesText(hit.agenciesStr || agenciesStr, key)
+                    });
                 });
+            };
+            if (_geminiPurposeMap) applyGeminiOrGoogle(_geminiPurposeMap);
+            else loadGeminiPurposeMap().then(applyGeminiOrGoogle);
         }
 
         let lastAppliedMilestonesLang = null;
@@ -19573,6 +19625,7 @@ setTimeout(() => {
             initStickyCountdown();
             initStickyStatusBreakdown();
             initHeroStatusBreakdown();
+            loadGeminiPurposeMap();
 
             // Mobile scroll-to-top storm guard: while the user is actively touch-scrolling,
             // ignore any window.scrollTo({top:0}) / scrollTo(0,0) calls (tab switch, third-party
