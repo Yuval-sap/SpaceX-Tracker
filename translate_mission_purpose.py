@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,8 +30,28 @@ LL2_UPCOMING_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=1
 LL2_PREVIOUS_URL = "https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=50&mode=detailed"
 
 GENERIC_DESCRIPTION = "SpaceX operational launch deployment mission."
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+# gemini-2.0-flash is retired for new AI Studio keys (HTTP 404). Prefer 3.8 Flash
+# (the current public Flash). Also try 4.8 if a studio screen lists that id.
+_DEFAULT_MODELS = [
+    os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash",
+    "gemini-4.8-flash",
+    "gemini-flash-latest",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+]
+GEMINI_MODELS = []
+for _name in _DEFAULT_MODELS:
+    if _name and _name not in GEMINI_MODELS:
+        GEMINI_MODELS.append(_name)
+_active_model = GEMINI_MODELS[0]
+
+
+class GeminiAuthError(RuntimeError):
+    """API key rejected — do not keep calling."""
+
+
+def gemini_url(model: str) -> str:
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 # Must match MISSION_PURPOSE_I18N in index.html (except en, and iw which is the same as he).
 LANG_NAMES = {
@@ -215,43 +236,72 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
         },
     }
     payload = json.dumps(body).encode("utf-8")
+    global _active_model
+    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
     last_error = None
-    for attempt in range(3):
-        try:
-            req = urllib.request.Request(
-                GEMINI_URL,
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": api_key,
-                    "User-Agent": "spacexfantracker-gemini-purpose/1.0",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            text = (
-                data.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [{}])[0]
-                .get("text", "")
-            )
-            parsed = json.loads(strip_json_fences(text))
-            if not isinstance(parsed, dict):
-                raise ValueError("Gemini did not return a JSON object")
-            out = {}
-            for lang in langs:
-                block = normalize_lang_block(parsed.get(lang))
-                if block.get("description"):
-                    out[lang] = block
-            if not out:
-                raise ValueError("Gemini returned no usable language blocks")
-            return out
-        except Exception as e:
-            last_error = e
-            wait = 8 * (attempt + 1)
-            print(f"Warning: Gemini call failed ({e}); retrying in {wait}s...", file=sys.stderr)
-            time.sleep(wait)
+    for model in models_to_try:
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    gemini_url(model),
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": api_key,
+                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                text = (
+                    data.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+                parsed = json.loads(strip_json_fences(text))
+                if not isinstance(parsed, dict):
+                    raise ValueError("Gemini did not return a JSON object")
+                out = {}
+                for lang in langs:
+                    block = normalize_lang_block(parsed.get(lang))
+                    if block.get("description"):
+                        out[lang] = block
+                if not out:
+                    raise ValueError("Gemini returned no usable language blocks")
+                if model != _active_model:
+                    print(f"Using Gemini model {model}")
+                    _active_model = model
+                return out
+            except urllib.error.HTTPError as e:
+                detail = ""
+                try:
+                    detail = e.read().decode("utf-8", errors="replace")[:400]
+                except Exception:
+                    detail = str(e)
+                last_error = RuntimeError(f"HTTP {e.code} {model}: {detail}")
+                if e.code in (401, 403):
+                    raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
+                if e.code in (404, 400) and attempt == 0:
+                    print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    break
+                if e.code == 429:
+                    wait = 15 * (attempt + 1)
+                    print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                if attempt < 2:
+                    wait = 8 * (attempt + 1)
+                    print(f"Warning: Gemini call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                break
+            except Exception as e:
+                last_error = e
+                wait = 8 * (attempt + 1)
+                print(f"Warning: Gemini call failed ({e}); retrying in {wait}s...", file=sys.stderr)
+                time.sleep(wait)
     raise RuntimeError(last_error)
 
 
@@ -308,6 +358,12 @@ def main() -> int:
             try:
                 merged.update(call_gemini_batch(api_key, fields, batch))
                 time.sleep(1.5)
+            except GeminiAuthError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                if entries:
+                    store["entries"] = entries
+                    write_output(store)
+                return 1
             except Exception as e:
                 batch_ok = False
                 print(f"Warning: skipped {name} languages {','.join(batch)}: {e}", file=sys.stderr)
@@ -326,6 +382,13 @@ def main() -> int:
             print(f"Partial: {name}")
 
     store["entries"] = entries
+    if translated == 0 and failed > 0 and not any(entries.values()):
+        print(
+            f"Error: Gemini produced no translations (new=0 reused={reused} "
+            f"skipped={skipped} failed={failed}). Leaving the JSON file unchanged.",
+            file=sys.stderr,
+        )
+        return 1
     write_output(store)
     print(
         f"Done. new={translated} reused={reused} skipped={skipped} failed={failed} "
