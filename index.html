@@ -6951,6 +6951,58 @@
             else loadGeminiPurposeMap().then(applyGeminiOrGoogle);
         }
 
+        // Upcoming-card descriptions (.mission-card-desc in #missions-grid) reuse the SAME
+        // Gemini map as applyMissionPurposeHtml above - m.description is exactly the raw text
+        // that map is keyed on (both come from the same mission_description/mission.description
+        // field), so no separate data pipeline is needed here, just this lookup-and-swap. Cards
+        // used to leave this text for Google's on-page widget to translate in place instead -
+        // marked notranslate now (see the template) so that widget never touches it and can't
+        // race this function's own swap. Batches every card that misses the Gemini map into ONE
+        // translateBatchViaGoogle call (not one request per card) - same rate-limit reasoning as
+        // every other batched call in this file.
+        let _cardDescGen = 0;
+        function applyCardDescriptionsTranslation(grid, missions, currentLang) {
+            if (!grid || !missions || !missions.length) return;
+            let lang = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (lang === 'en') return;
+            if (lang === 'iw') lang = 'he';
+            const myGen = ++_cardDescGen;
+
+            const targets = missions
+                .filter(m => m.description && m.description.length > 30)
+                .map(m => ({ m, el: grid.querySelector(`.mission-card[data-mission-id="${m.id}"] .mission-card-desc`) }))
+                .filter(t => t.el);
+            if (!targets.length) return;
+
+            const mapPromise = _geminiPurposeMap ? Promise.resolve(_geminiPurposeMap) : loadGeminiPurposeMap();
+            mapPromise.then(map => {
+                if (_cardDescGen !== myGen) return;
+                return Promise.all(targets.map(t =>
+                    lookupGeminiPurpose(map, t.m.description, lang).then(hit => ({ el: t.el, description: t.m.description, hit }))
+                ));
+            }).then(results => {
+                if (!results || _cardDescGen !== myGen) return;
+                const needsGoogle = [];
+                results.forEach(({ el, description, hit }) => {
+                    if (!el.isConnected) return;
+                    if (hit && hit.description) {
+                        el.textContent = fixMistranslatedPhrasesText(hit.description, lang);
+                    } else {
+                        needsGoogle.push({ el, description });
+                    }
+                });
+                if (!needsGoogle.length) return;
+                translateBatchViaGoogle(needsGoogle.map(t => t.description), lang).then(translated => {
+                    if (_cardDescGen !== myGen) return;
+                    needsGoogle.forEach((t, i) => {
+                        if (t.el.isConnected && translated[i]) {
+                            t.el.textContent = fixMistranslatedPhrasesText(translated[i], lang);
+                        }
+                    });
+                });
+            });
+        }
+
         let lastAppliedMilestonesLang = null;
         let lastAppliedWeatherLang = null;
         let lastAppliedSpecLang = null;
@@ -7822,6 +7874,14 @@
                 const descDetailEl = document.getElementById('modal-description-detailed');
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && descDetailEl && window.currentActiveMissionCategory) {
                     applyMissionPurposeHtml(descDetailEl, window.currentActiveMissionDescription, window.currentActiveMissionType, window.currentActiveMissionProgramNames, window.currentActiveMissionAgencies, currentLang);
+                }
+                // Same for the upcoming-card descriptions (.mission-card-desc) already on
+                // screen - also notranslate now (see applyCardDescriptionsTranslation's own
+                // comment), so a language switch needs this explicit re-run instead of relying
+                // on Google Translate to notice on its own.
+                const missionsGridEl = document.getElementById('missions-grid');
+                if (missionsGridEl && typeof upcomingForGrid !== 'undefined') {
+                    applyCardDescriptionsTranslation(missionsGridEl, upcomingForGrid, currentLang);
                 }
                 // Same for the mission modal's LAUNCH SITE value and the hero banner's site
                 // line — both notranslate now (see localizeSiteStr above), so a language
@@ -16558,7 +16618,7 @@ setTimeout(() => {
                         <div>
                             <div class="mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
                             <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
-                            <div class="mission-card-desc text-sm text-zinc-400 mb-4 line-clamp-2">${escapeHtml(m.description)}</div>
+                            <div class="notranslate mission-card-desc text-sm text-zinc-400 mb-4 line-clamp-2" translate="no">${escapeHtml(m.description)}</div>
                         </div>
                         <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
                             <div>
@@ -16591,6 +16651,8 @@ setTimeout(() => {
                 protectRomanTelescopeName(card);
                 grid.appendChild(card);
             });
+
+            applyCardDescriptionsTranslation(grid, filteredMissions, document.documentElement.lang);
 
             // Hidden placeholder applySearchFilter() reveals when the search box matches none
             // of these cards - kept separate from the "no missions in this category" message
