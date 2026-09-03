@@ -15026,6 +15026,29 @@
         // above (growing it first with anything new - see loadPatchArchive/savePatchArchive).
         // Each tile opens the real mission detail modal (openMissionModal) for whichever
         // mission that patch came from.
+        // A page that loads this many patch images at once (the archive only ever grows -
+        // 50-100+ tiles, on top of everything else this page fetches concurrently on first
+        // load: live launch data, weather, currency rates, RSS...) can hit a transient network
+        // hiccup for a handful of them - not a genuinely broken link, just bad timing under
+        // load. Confirmed live: tiles that "disappeared" on first load reappeared on a plain
+        // page refresh, the exact same image URL succeeding the second time. Retry a couple of
+        // times (with an increasing delay, and a cache-busting query param so a retry doesn't
+        // just replay the same failed request from cache) before finally giving up and removing
+        // the tile - instead of the previous behavior, which treated the very first failure as
+        // permanent and silently shrank the strip.
+        function handlePatchTileImgError(img) {
+            const attempts = parseInt(img.dataset.retryCount || '0', 10);
+            if (attempts < 2) {
+                img.dataset.retryCount = String(attempts + 1);
+                setTimeout(() => {
+                    if (img.isConnected) img.src = img.src.split('?')[0] + '?retry=' + Date.now();
+                }, 800 * (attempts + 1));
+            } else {
+                const btn = img.closest('button');
+                if (btn) btn.remove();
+            }
+        }
+
         function renderMissionPatchesStrip() {
             const strip = document.getElementById('mission-patches-strip');
             if (!strip) return;
@@ -15118,7 +15141,7 @@
                         <img src="${escapeHtml(m.patch)}" alt="${escapeHtml(m.name)}" draggable="false"
                             class="relative w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform duration-300 group-active/patch:-translate-y-1 group-active/patch:scale-105 md:group-hover/patch:-translate-y-1 md:group-hover/patch:scale-105"
                             style="-webkit-user-drag: none;"
-                            loading="lazy" onerror="this.closest('button').remove()">
+                            loading="lazy" onerror="handlePatchTileImgError(this)">
                     </div>
                     <span class="patch-tile-name notranslate text-[11px] text-zinc-400 text-center leading-tight group-active/patch:text-white md:group-hover/patch:text-white transition-colors" translate="no" data-raw-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</span>
                 `;
