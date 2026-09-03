@@ -4415,6 +4415,24 @@
         // notranslate + JS) so Google leaves them alone entirely, and we set
         // the correct wording ourselves for every language in the translate widget's
         // includedLanguages list ('en,he,iw,es,fr,de,ru,zh-CN,it,cs,sv,nl,da,pt,pl,hi,ar,tr').
+        // Modal date lines (weekday + month names) used to always render in en-US and rely on
+        // Google's on-page widget to translate them - which meant every single modal open
+        // re-inserted fresh English text, forcing the widget to redo the translation from
+        // scratch and show a brief flash of English every time (the same category of bug the
+        // modal title had - see renderLocalizedMissionName's own comment). Dates don't need an
+        // external translation call at all though: toLocaleDateString already speaks every one
+        // of these locales natively, so generating the string in the right locale from the
+        // start is both simpler and instant, with no flicker possible.
+        const DATE_LOCALE_FOR_LANG = {
+            en: 'en-US', he: 'he-IL', iw: 'he-IL', es: 'es-ES', fr: 'fr-FR', de: 'de-DE',
+            ru: 'ru-RU', zh: 'zh-CN', it: 'it-IT', cs: 'cs-CZ', sv: 'sv-SE', nl: 'nl-NL',
+            da: 'da-DK', pt: 'pt-BR', pl: 'pl-PL', hi: 'hi-IN', ar: 'ar-SA', tr: 'tr-TR'
+        };
+        function dateLocaleForLang(langAttr) {
+            const key = (langAttr || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return DATE_LOCALE_FOR_LANG[key] || 'en-US';
+        }
+
         const LAUNCH_LABEL_I18N = {
             en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Launches This Year", launchWindow: "LAUNCH WINDOW", launchSite: "LAUNCH SITE", recoveryZone: "RECOVERY ZONE", recoveryZoneInfo: "RECOVERY ZONE INFORMATION", launchesSection: "Scheduled Launches", pastLaunchesSection: "Last Year's Launches", vehicleType: "VEHICLE TYPE", orbitDestination: "ORBIT DESTINATION", missionStatus: "MISSION STATUS", status: "STATUS", launchedAt: "Launched at:", instantLaunchWindow: "Instantaneous Window", firstStageBooster: "FIRST STAGE BOOSTER", asds: "Autonomous Spaceport Drone Ship (ASDS)", filterAll: "All", filterDragon: "Dragon/Crew", filterFavorites: "Watchlist", boosterTitle: "SpaceX's Top 10 Most-Flown Boosters", boosterSubtitle: "Falcon 9 & Super Heavy boosters, tracked from live mission data", boosterAnalyzing: "Analyzing booster flight data...", boosterNoData: "No booster flight data available yet.", flights: "Flights", boosterRank: "Rank", boosterCol: "Booster", spacexXLink: "Follow @SpaceX on X", systemsGo: "SYSTEMS GO", finalCountdown: "FINAL COUNTDOWN", watchLaunch: "Watch the Launch", openOnYoutube: "Open on YouTube", watchDetailsVideo: "Watch Launch Details and Video", viewMissionDetails: "View Mission Details →" , missionInProgress: "MISSION IN PROGRESS", holdDelayed: "HOLD / DELAYED", countdownToLaunch: "Countdown to launch", launchNow: "LIFTOFF", patchesTitle: "SpaceX Mission Patches", patchesSubtitle: "Tap a patch for mission details", patchesSearch: "Search tags...", launchesTab: 'Launch Station', moreInfoTab: 'Info Station', vehicleSpecDossier: "VEHICLE SPECIFICATION", spaceportDossier: "SPACEPORT FACILITY DOSSIER", orbitDossier: "ORBITAL MECHANICS DOSSIER", flightCrew: "Flight Crew", crewWord: "Crew", flightHistoryPartial: "Showing {shown} of {total} flights tracked by this app.", trackThisShip: "Track this ship live", recoveryFleetTitle: "Recovery Fleet", recoveryFleetSubtitle: "Live positions of SpaceX's autonomous drone ships, via public AIS data", flightNumberLabel: "Flight {n}" },
             he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורי השנה האחרונה", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", missionStatus: "סטטוס המשימה", status: "סטטוס", launchedAt: "שוגר בשעה:", instantLaunchWindow: "חלון שיגור רגעי", firstStageBooster: "בוסטר השלב הראשון", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", filterFavorites: "רשימת מעקב", boosterTitle: "10 הבוסטרים המוטסים ביותר של SpaceX", boosterSubtitle: "בוסטרים של Falcon 9 ו-Super Heavy, מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה", countdownToLaunch: "ספירה לאחור לשיגור", launchNow: "המראה", patchesTitle: "תגי המשימה של SpaceX", patchesSubtitle: "הקישו על תג לפרטי המשימה", patchesSearch: "חיפוש תגים...", launchesTab: 'תחנת שיגור', moreInfoTab: 'תחנת מידע', vehicleSpecDossier: "מפרט הרקטה", spaceportDossier: "פרטי מתקן השיגור", orbitDossier: "נתוני מסלול הטיסה", flightCrew: "צוות הטיסה", crewWord: "צוות", flightHistoryPartial: "מוצגות {shown} מתוך {total} טיסות שהאתר עוקב אחריהן.", trackThisShip: "עקוב אחרי הספינה בזמן אמת", recoveryFleetTitle: "צי ההשבה", recoveryFleetSubtitle: "מיקומן בזמן אמת של ספינות הנחיתה האוטונומיות של SpaceX, באמצעות נתוני AIS ציבוריים", flightNumberLabel: "טיסה {n}" },
@@ -7411,12 +7429,14 @@
             }
 
             const dateEl = document.getElementById('patch-mission-modal-date');
+            window.currentOpenPatchMissionDate = m.date;
             if (dateEl) {
                 let dateStr = '';
                 try {
-                    // Same fixed 'en-US' formatting convention as openMissionModal's date line -
-                    // Google Translate handles the wording, this file doesn't hand-localize dates.
-                    dateStr = new Date(m.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                    // Hand-localized now, like openMissionModal's own date line - see
+                    // dateLocaleForLang's comment for why this replaced the old fixed-'en-US'
+                    // convention that left this to Google's on-page widget.
+                    dateStr = new Date(m.date).toLocaleDateString(dateLocaleForLang(document.documentElement.lang), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
                 } catch (e) { }
                 dateEl.innerText = dateStr;
             }
@@ -7891,6 +7911,35 @@
                 const modalSiteEl = document.getElementById('modal-site');
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && modalSiteEl && window.currentActiveMissionSite) {
                     modalSiteEl.innerText = localizeSiteStr(window.currentActiveMissionSite, currentLang);
+                }
+                // Same for the mission modal's date line (weekday + month name) - also
+                // notranslate now (see dateLocaleForLang's own comment), so a language switch
+                // needs to explicitly regenerate it in the new locale.
+                const modalDateEl = document.getElementById('modal-date');
+                if (missionModalEl && !missionModalEl.classList.contains('hidden') && modalDateEl && window.currentActiveMissionDate) {
+                    try {
+                        const net = new Date(window.currentActiveMissionDate);
+                        const dateLocale = dateLocaleForLang(currentLang);
+                        if (window.currentActiveMissionIsPast) {
+                            const datePart = net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                            const timePart = net.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone, hour12: false });
+                            let tzCode = 'Local Time';
+                            try {
+                                const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(net);
+                                tzCode = parts.find(p => p.type === 'timeZoneName')?.value || 'Local Time';
+                            } catch (e) { }
+                            modalDateEl.innerText = `${datePart} • ${timePart} (${tzCode})`;
+                        } else {
+                            modalDateEl.innerText = `${net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${window.currentActiveMissionWindow || ''}`;
+                        }
+                    } catch (e) { }
+                }
+                // Same for the patch-summary card's date line, if it's open.
+                const patchDateEl = document.getElementById('patch-mission-modal-date');
+                if (patchModalEl && !patchModalEl.classList.contains('hidden') && patchDateEl && window.currentOpenPatchMissionDate) {
+                    try {
+                        patchDateEl.innerText = new Date(window.currentOpenPatchMissionDate).toLocaleDateString(dateLocaleForLang(currentLang), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                    } catch (e) { }
                 }
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
                 if (heroDetailsTextEl && window.currentActiveHeroSite) {
@@ -9516,7 +9565,7 @@
                 <div
                     class="flex flex-col items-center gap-1.5 mt-4 pt-4 border-t border-zinc-800/80 text-xs sm:text-sm text-zinc-400">
                     <div class="flex items-center gap-2"><i class="fa-solid fa-calendar-days text-emerald-400/80"></i>
-                        <span id="patch-mission-modal-date"></span>
+                        <span id="patch-mission-modal-date" class="notranslate" translate="no"></span>
                     </div>
                     <div class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-emerald-400/80"></i>
                         <span id="patch-mission-modal-site" class="notranslate" translate="no"></span>
@@ -9548,7 +9597,7 @@
                             <div id="modal-name" translate="no"
                                 class="notranslate mission-title-fit whitespace-nowrap overflow-hidden font-orbitron text-xl sm:text-2xl font-semibold text-white tracking-tight">
                             </div>
-                            <div id="modal-date" class="text-xs sm:text-sm text-emerald-400 font-medium mt-1"></div>
+                            <div id="modal-date" class="notranslate text-xs sm:text-sm text-emerald-400 font-medium mt-1" translate="no"></div>
                         </div>
                         <div id="modal-patch-wrap"
                             class="hidden relative shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center group/patch cursor-pointer"
@@ -17416,8 +17465,9 @@ setTimeout(() => {
             let dateStr = '';
             try {
                 const net = new Date(m.date);
+                const dateLocale = dateLocaleForLang(document.documentElement.lang);
                 if (isPastMission) {
-                    const datePart = net.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+                    const datePart = net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
                     const timePart = net.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: userTimezone, hour12: false });
                     let tzCode = 'Local Time';
                     try {
@@ -17426,10 +17476,17 @@ setTimeout(() => {
                     } catch (e) { }
                     dateStr = `${datePart} • ${timePart} (${tzCode})`;
                 } else {
-                    dateStr = `${net.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${m.window}`;
+                    dateStr = `${net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${m.window}`;
                 }
             } catch (e) { dateStr = m.window; }
 
+            // Raw inputs kept for the language-switch re-render below (Bulletproof Timer) -
+            // #modal-date is notranslate now (see the HTML) so a language switch while the
+            // modal is already open needs this explicit re-run instead of relying on Google
+            // Translate to notice on its own.
+            window.currentActiveMissionDate = m.date;
+            window.currentActiveMissionIsPast = isPastMission;
+            window.currentActiveMissionWindow = m.window;
             document.getElementById('modal-date').innerText = dateStr;
             window.currentActiveMissionSite = m.site;
             document.getElementById('modal-site').innerText = localizeSiteStr(m.site, document.documentElement.lang);
