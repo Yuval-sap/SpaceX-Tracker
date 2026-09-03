@@ -14551,7 +14551,17 @@
 
             return {
                 id: launch.id || id,
-                name: launch.name || "SpaceX Mission",
+                // "Block 5" stripped here, at the one source every mission name flows from -
+                // not left to the page-wide MutationObserver further down that strips it
+                // reactively (see its own comment, "Block 5" removal). That observer only
+                // matches the English phrase, so it missed it once renderLocalizedMissionName
+                // started sending this RAW name straight to the Google Translate endpoint for
+                // the modal title: the endpoint translated "Block 5" into e.g. Hebrew "בלוק 5"
+                // before the observer ever saw English text to strip, so it came back in
+                // translation ("פלקון 9 בלוק 5 | ..."). Stripping it here instead means no
+                // downstream consumer - card, hero, modal, translated or not - ever sees it in
+                // the first place, in any language.
+                name: (launch.name || "SpaceX Mission").replace(/\s*Block\s*5\b/gi, '').replace(/\s{2,}/g, ' ').trim(),
                 date: launch.net || new Date().toISOString(),
                 window: windowStr,
                 windowStart: windowStartStr,
