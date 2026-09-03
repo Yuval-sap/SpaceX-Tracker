@@ -26,7 +26,10 @@ from pathlib import Path
 
 OUTPUT_PATH = Path(__file__).parent / "mission-purpose-gemini.json"
 
-LL2_UPCOMING_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed"
+# limit=7 matches index.html's own dbMissions = dbMissions.slice(0, 7) - the site never shows
+# more than the 7 nearest upcoming launches, so translating further-out ones the UI never
+# displays was pure wasted Gemini quota.
+LL2_UPCOMING_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=7&mode=detailed"
 LL2_PREVIOUS_URL = "https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=50&mode=detailed"
 
 GENERIC_DESCRIPTION = "SpaceX operational launch deployment mission."
