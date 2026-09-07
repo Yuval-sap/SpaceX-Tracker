@@ -6759,38 +6759,52 @@
             if (hasRoman) textToSend = shieldRomanTelescopeForMt(textToSend);
             if (hasStarship) textToSend = textToSend.replace(/\bstarship\b/gi, STARSHIP_MT_PLACEHOLDER);
             const googleLang = GOOGLE_TRANSLATE_LANG_MAP[langKey] || langKey;
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
             const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=' +
                 encodeURIComponent(googleLang) + '&dt=t&q=' + encodeURIComponent(textToSend);
-            return fetch(url, { signal: controller.signal })
-                .then(res => {
-                    if (!res.ok) throw new Error('translate API error');
-                    return res.json();
-                })
-                .then(data => {
-                    clearTimeout(timeoutId);
-                    let translated = (data && data[0] || []).map(seg => seg[0]).join('');
-                    if (!translated) throw new Error('empty translation');
-                    if (hasStarship) {
-                        const starshipTerm = STARSHIP_I18N[langKey] || STARSHIP_I18N.en;
-                        translated = translated.replace(new RegExp(STARSHIP_MT_PLACEHOLDER, 'gi'), starshipTerm);
-                    }
-                    if (hasRoman) translated = restoreRomanTelescopeFromMt(translated, langKey);
-                    // Applied here, on the whole sentence, rather than only after insertion:
-                    // once this text reaches the page it gets split across several text nodes by
-                    // the Starship-term wrapping, and multi-word corrections can no longer match.
-                    // See fixMistranslatedPhrasesText's own comment.
-                    translated = fixMistranslatedPhrasesText(translated, langKey);
-                    missionDescTranslationCache.set(cacheKey, translated);
-                    return translated;
-                })
-                .catch(() => {
-                    clearTimeout(timeoutId);
-                    // Fall back to the original English text - worse than a translation, but
-                    // strictly better than a blank paragraph or (as before) scrambled output.
-                    return text;
-                });
+
+            // This unofficial endpoint throttles/times out often enough that a single failed
+            // attempt used to permanently fall back to plain English with no way to recover -
+            // for most callers (a paragraph) that degrades gracefully, but for the modal TITLE
+            // it read as "translation just stopped working", since the fallback IS the original
+            // English text (truthy, so callers checking `if (!translated)` never even notice the
+            // failure). Retry a couple of times before actually giving up, same reasoning as the
+            // patch-tile image retry above.
+            const attempt = (retriesLeft) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                return fetch(url, { signal: controller.signal })
+                    .then(res => {
+                        if (!res.ok) throw new Error('translate API error');
+                        return res.json();
+                    })
+                    .then(data => {
+                        clearTimeout(timeoutId);
+                        let translated = (data && data[0] || []).map(seg => seg[0]).join('');
+                        if (!translated) throw new Error('empty translation');
+                        if (hasStarship) {
+                            const starshipTerm = STARSHIP_I18N[langKey] || STARSHIP_I18N.en;
+                            translated = translated.replace(new RegExp(STARSHIP_MT_PLACEHOLDER, 'gi'), starshipTerm);
+                        }
+                        if (hasRoman) translated = restoreRomanTelescopeFromMt(translated, langKey);
+                        // Applied here, on the whole sentence, rather than only after insertion:
+                        // once this text reaches the page it gets split across several text nodes by
+                        // the Starship-term wrapping, and multi-word corrections can no longer match.
+                        // See fixMistranslatedPhrasesText's own comment.
+                        translated = fixMistranslatedPhrasesText(translated, langKey);
+                        missionDescTranslationCache.set(cacheKey, translated);
+                        return translated;
+                    })
+                    .catch(() => {
+                        clearTimeout(timeoutId);
+                        if (retriesLeft > 0) {
+                            return new Promise(resolve => setTimeout(resolve, 700)).then(() => attempt(retriesLeft - 1));
+                        }
+                        // Fall back to the original English text - worse than a translation, but
+                        // strictly better than a blank paragraph or (as before) scrambled output.
+                        return text;
+                    });
+            };
+            return attempt(2);
         }
 
         // Translates an array of independent strings in ONE request instead of N parallel ones,
