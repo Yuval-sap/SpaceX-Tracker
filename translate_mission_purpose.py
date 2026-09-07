@@ -122,6 +122,137 @@ programStr: {programStr}
 agenciesStr: {agenciesStr}
 """
 
+# Mission NAMES are translated separately from the description/type/program/agencies block
+# above, and kept in their own top-level "names" map (see main()) keyed by a hash of the name
+# itself, not the description - many different missions (every "Starlink Group X-Y" batch)
+# share the exact same description, so a description-keyed entry can't also hold a
+# mission-specific name without one mission's name leaking onto another's card/modal title.
+# Batched (many names in ONE call, not one call per name) for the same reason the description
+# batches above are: this is called once or twice per workflow run, not once per launch.
+NAME_PROMPT = """You translate SpaceX launch/mission names from English into several languages,
+for use as a short UI title (a card heading or modal title), not prose.
+
+Return ONLY valid JSON. Top-level keys must be exactly these language codes:
+{lang_keys}
+
+Each language value must be an object whose keys are EXACTLY the original English names given
+below (byte-for-byte, used to look the translation back up) and whose values are the translated
+name.
+
+Rules:
+- Translate ordinary descriptive words naturally (e.g. "Group", "Mission", "Dedicated",
+  "Rideshare", "Transport Layer", "Constellation", "Flight").
+- Do NOT translate, transliterate, or respell proper nouns, vehicle names, company names, or
+  alphanumeric mission/satellite designations - keep these exactly as-is in every language:
+  SpaceX, Falcon, Falcon 9, Falcon Heavy, Dragon, Crew Dragon, Cygnus, O3b, mPower, and any
+  code-like token such as USSF-153, NROL-95, SDA, GPS, CRS-2, SpX-35, NG-25.
+- zh must be Simplified Chinese.
+- For "Starship" use exactly: {starship_terms}
+- For "Starlink" use exactly: {starlink_terms}
+- Do not add labels, markdown, or commentary - the value for each name is the translated name
+  alone.
+
+Names (translate each one independently; one per line):
+{names_block}
+"""
+
+
+def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
+    """Returns {lang: {original_name: translated_name}} for whichever names/langs came back
+    usable - a name Gemini dropped or mangled is simply absent from the result, same
+    all-or-nothing-per-entry tolerance as call_gemini_batch above."""
+    starship_terms = ", ".join(f"{lang}={STARSHIP_TERM[lang]}" for lang in langs)
+    starlink_terms = ", ".join(f"{lang}={STARLINK_TERM[lang]}" for lang in langs)
+    names_block = "\n".join(names)
+    body = {
+        "contents": [{"parts": [{"text": NAME_PROMPT.format(
+            lang_keys=", ".join(langs),
+            starship_terms=starship_terms,
+            starlink_terms=starlink_terms,
+            names_block=names_block,
+        )}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "responseMimeType": "application/json",
+            "maxOutputTokens": 8192,
+        },
+    }
+    payload = json.dumps(body).encode("utf-8")
+    global _active_model
+    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    last_error = None
+    for model in models_to_try:
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    gemini_url(model),
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": api_key,
+                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                text = (
+                    data.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+                parsed = json.loads(strip_json_fences(text))
+                if not isinstance(parsed, dict):
+                    raise ValueError("Gemini did not return a JSON object")
+                out = {}
+                for lang in langs:
+                    block = parsed.get(lang)
+                    if not isinstance(block, dict):
+                        continue
+                    cleaned = {}
+                    for name in names:
+                        val = block.get(name)
+                        if isinstance(val, str) and val.strip():
+                            cleaned[name] = val.strip()
+                    if cleaned:
+                        out[lang] = cleaned
+                if not out:
+                    raise ValueError("Gemini returned no usable name translations")
+                if model != _active_model:
+                    print(f"Using Gemini model {model}")
+                    _active_model = model
+                return out
+            except urllib.error.HTTPError as e:
+                detail = ""
+                try:
+                    detail = e.read().decode("utf-8", errors="replace")[:400]
+                except Exception:
+                    detail = str(e)
+                last_error = RuntimeError(f"HTTP {e.code} {model}: {detail}")
+                if e.code in (401, 403):
+                    raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
+                if e.code in (404, 400) and attempt == 0:
+                    print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    break
+                if e.code == 429:
+                    wait = 15 * (attempt + 1)
+                    print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                if attempt < 2:
+                    wait = 8 * (attempt + 1)
+                    print(f"Warning: Gemini name-batch call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                break
+            except Exception as e:
+                last_error = e
+                wait = 8 * (attempt + 1)
+                print(f"Warning: Gemini name-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
+                time.sleep(wait)
+    raise RuntimeError(last_error)
+
 
 def fetch_launches(url: str, retries: int = 4) -> list:
     for attempt in range(retries):
@@ -137,6 +268,17 @@ def fetch_launches(url: str, retries: int = 4) -> list:
                 print(f"Retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
     return []
+
+
+# Must match mapLaunchToSchema's own "Block 5" stripping in index.html EXACTLY (same regex,
+# same whitespace collapsing) - the client hashes its own cleaned m.name to look up the "names"
+# map, so if this script hashed the raw un-stripped API name instead, every single lookup would
+# miss (different hash) and silently fall back to the live Google endpoint for every mission,
+# defeating the entire point of pre-translating names here.
+def clean_mission_name(name: str) -> str:
+    name = re.sub(r"\s*Block\s*5\b", "", name, flags=re.IGNORECASE)
+    name = re.sub(r"\s{2,}", " ", name)
+    return name.strip()
 
 
 def extract_fields(launch: dict) -> dict:
@@ -174,19 +316,29 @@ def description_hash(description: str) -> str:
     return hashlib.sha256(description.encode("utf-8")).hexdigest()
 
 
+# Same hash, different name at the call site - the "names" map is keyed by hash-of-the-name
+# itself (see call_gemini_name_batch's own comment for why it can't share entries' description
+# key), not hash-of-the-description.
+def name_hash(name: str) -> str:
+    return hashlib.sha256(name.encode("utf-8")).hexdigest()
+
+
 def load_existing() -> dict:
     if not OUTPUT_PATH.exists():
-        return {"version": 1, "generatedAt": "", "entries": {}}
+        return {"version": 1, "generatedAt": "", "entries": {}, "names": {}}
     try:
         data = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
     except Exception:
-        return {"version": 1, "generatedAt": "", "entries": {}}
+        return {"version": 1, "generatedAt": "", "entries": {}, "names": {}}
     if not isinstance(data, dict):
-        return {"version": 1, "generatedAt": "", "entries": {}}
+        return {"version": 1, "generatedAt": "", "entries": {}, "names": {}}
     data.setdefault("version", 1)
     data.setdefault("entries", {})
+    data.setdefault("names", {})
     if not isinstance(data["entries"], dict):
         data["entries"] = {}
+    if not isinstance(data["names"], dict):
+        data["names"] = {}
     return data
 
 
@@ -204,6 +356,19 @@ def langs_complete(entry, langs) -> bool:
     for lang in langs:
         block = entry.get(lang)
         if not isinstance(block, dict) or not str(block.get("description") or "").strip():
+            return False
+    return True
+
+
+# Same shape check as langs_complete above, but for the "names" map - each lang value there is
+# a plain translated string (not a {description, missionType, ...} object), since a name only
+# ever has the one field.
+def name_langs_complete(entry, langs) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    for lang in langs:
+        val = entry.get(lang)
+        if not isinstance(val, str) or not val.strip():
             return False
     return True
 
@@ -385,6 +550,82 @@ def main() -> int:
             print(f"Partial: {name}")
 
     store["entries"] = entries
+
+    # Mission NAMES - a separate pass with its own "names" map (see call_gemini_name_batch's
+    # own comment for why names can't share the description-keyed entries above). Only names
+    # that are new or still missing a language batch get sent; anything already fully
+    # translated from a previous run is skipped (name_reused), same reuse philosophy as entries.
+    names_store = store["names"]
+    name_translated = 0
+    name_reused = 0
+    name_failed = 0
+    seen_names = set()
+    names_to_translate = []
+    for launch in launches:
+        raw_name = clean_mission_name((launch.get("name") or "").strip())
+        if not raw_name or raw_name in seen_names:
+            continue
+        seen_names.add(raw_name)
+        existing_name_entry = names_store.get(name_hash(raw_name))
+        if not isinstance(existing_name_entry, dict):
+            existing_name_entry = {}
+        if name_langs_complete(existing_name_entry, list(LANG_NAMES)):
+            name_reused += 1
+            continue
+        names_to_translate.append(raw_name)
+
+    # Chunked well under Gemini's context/output budget - each response has to carry every
+    # name x every language in the chunk's batch, and a single oversized call is exactly what
+    # call_gemini_batch's own "Gemini returned no usable ... blocks" failure mode guards
+    # against for the description prompt above.
+    NAME_CHUNK_SIZE = 30
+    name_chunks = [names_to_translate[i:i + NAME_CHUNK_SIZE] for i in range(0, len(names_to_translate), NAME_CHUNK_SIZE)]
+
+    for chunk in name_chunks:
+        merged_by_name = {}
+        for n in chunk:
+            existing = names_store.get(name_hash(n))
+            merged_by_name[n] = dict(existing) if isinstance(existing, dict) else {}
+
+        for batch in LANG_BATCHES:
+            names_needing_batch = [n for n in chunk if not name_langs_complete(merged_by_name[n], batch)]
+            if not names_needing_batch:
+                continue
+            try:
+                result = call_gemini_name_batch(api_key, names_needing_batch, batch)
+                for lang, name_map in result.items():
+                    for n, translated_name in name_map.items():
+                        if n in merged_by_name:
+                            merged_by_name[n][lang] = translated_name
+                time.sleep(1.5)
+            except GeminiAuthError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                for n in chunk:
+                    if merged_by_name.get(n):
+                        names_store[name_hash(n)] = merged_by_name[n]
+                store["names"] = names_store
+                write_output(store)
+                return 1
+            except Exception as e:
+                print(f"Warning: skipped name-batch languages {','.join(batch)}: {e}", file=sys.stderr)
+                time.sleep(2)
+
+        for n in chunk:
+            if merged_by_name.get(n):
+                names_store[name_hash(n)] = merged_by_name[n]
+                if name_langs_complete(merged_by_name[n], list(LANG_NAMES)):
+                    name_translated += 1
+                else:
+                    name_failed += 1
+            else:
+                name_failed += 1
+
+    store["names"] = names_store
+    print(
+        f"Names: new={name_translated} reused={name_reused} failed={name_failed} "
+        f"total_names={len(names_store)}"
+    )
+
     if translated == 0 and failed > 0 and not any(entries.values()):
         print(
             f"Error: Gemini produced no translations (new=0 reused={reused} "

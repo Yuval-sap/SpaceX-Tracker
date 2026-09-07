@@ -6910,17 +6910,23 @@
         // away from cannot clobber whatever is showing now.
         let _missionPurposeGen = 0;
         let _geminiPurposeMap = null;
+        // Mission NAMES from the same mission-purpose-gemini.json file, under its "names" key -
+        // one fetch serves both maps, see translate_mission_purpose.py's own comment for why
+        // names are keyed separately (by hash-of-the-name) from entries (hash-of-the-description).
+        let _geminiNamesMap = null;
         let _geminiPurposeLoad = null;
         function loadGeminiPurposeMap() {
             if (_geminiPurposeLoad) return _geminiPurposeLoad;
             _geminiPurposeLoad = fetch('mission-purpose-gemini.json', { cache: 'no-cache' })
-                .then(res => (res && res.ok ? res.json() : { entries: {} }))
+                .then(res => (res && res.ok ? res.json() : { entries: {}, names: {} }))
                 .then(data => {
                     _geminiPurposeMap = (data && data.entries) || {};
+                    _geminiNamesMap = (data && data.names) || {};
                     return _geminiPurposeMap;
                 })
                 .catch(() => {
                     _geminiPurposeMap = {};
+                    _geminiNamesMap = {};
                     return _geminiPurposeMap;
                 });
             return _geminiPurposeLoad;
@@ -6938,6 +6944,18 @@
             return sha256hex(description).then(hash => {
                 const hit = map[hash] && map[hash][lang];
                 return (hit && hit.description) ? hit : null;
+            }).catch(() => null);
+        }
+        // Same lookup shape as lookupGeminiPurpose above, but each lang value here is a plain
+        // translated string (a name only ever has the one field) rather than a
+        // {description, missionType, ...} object.
+        function lookupGeminiName(map, rawName, langKey) {
+            let lang = (langKey || '').split('-')[0];
+            if (lang === 'iw') lang = 'he';
+            if (!lang || lang === 'en' || !map || !rawName) return Promise.resolve(null);
+            return sha256hex(rawName).then(hash => {
+                const hit = map[hash] && map[hash][lang];
+                return (typeof hit === 'string' && hit) ? hit : null;
             }).catch(() => null);
         }
         function applyMissionPurposeHtml(el, description, missionType, programNames, missionAgencies, currentLang) {
@@ -7032,6 +7050,56 @@
                         }
                     });
                 });
+            });
+        }
+
+        // Card titles (mission names) in both #missions-grid and #past-launches-grid - same
+        // Gemini file as descriptions, different half of it (_geminiNamesMap, populated by the
+        // same loadGeminiPurposeMap() fetch - see its own comment). Cards used to leave titles
+        // for Google's on-page widget - marked notranslate now (see the templates) so it can't
+        // race this function's own swap. Whatever misses the Gemini map falls through to
+        // renderLocalizedMissionNamesBatch - deliberately NOT a fresh translateBatchViaGoogle
+        // call here, since that function's own comment documents exactly why its " ||| "
+        // separator corrupts translation for names that themselves contain a literal "|"
+        // ("Falcon 9 | Starlink Group 10-39") - renderLocalizedMissionNamesBatch already uses a
+        // newline separator instead, proven not to collide.
+        let _cardTitleGen = 0;
+        function applyCardTitlesTranslation(grid, missions, currentLang) {
+            if (!grid || !missions || !missions.length) return;
+            let lang = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            const myGen = ++_cardTitleGen;
+
+            const targets = missions
+                .filter(m => m.name)
+                .map(m => ({ m, el: grid.querySelector(`.mission-card[data-mission-id="${m.id}"] .mission-title-fit`) }))
+                .filter(t => t.el);
+            if (!targets.length) return;
+
+            if (lang === 'en') {
+                targets.forEach(({ m, el }) => { el.textContent = localizeMissionName(m.name, lang); });
+                return;
+            }
+            const apiLang = lang === 'iw' ? 'he' : lang;
+
+            const mapPromise = _geminiNamesMap !== null ? Promise.resolve(_geminiNamesMap) : loadGeminiPurposeMap().then(() => _geminiNamesMap);
+            mapPromise.then(map => {
+                if (_cardTitleGen !== myGen) return;
+                return Promise.all(targets.map(t =>
+                    lookupGeminiName(map, t.m.name, apiLang).then(hit => ({ m: t.m, el: t.el, hit }))
+                ));
+            }).then(results => {
+                if (!results || _cardTitleGen !== myGen) return;
+                const needsGoogle = [];
+                results.forEach(({ m, el, hit }) => {
+                    if (!el.isConnected) return;
+                    if (hit) {
+                        el.textContent = localizeMissionName(fixMistranslatedPhrasesText(hit, lang), lang);
+                    } else {
+                        needsGoogle.push({ m, el });
+                    }
+                });
+                if (!needsGoogle.length) return;
+                renderLocalizedMissionNamesBatch(needsGoogle.map(t => t.el), needsGoogle.map(t => t.m.name), lang);
             });
         }
 
@@ -7533,17 +7601,36 @@
             // invalidate the one before it, so only the last tile's translation would ever land.
             const myGen = ++_patchNameGen;
             el.dataset.nameGen = String(myGen);
-            translateTextViaGoogle(rawName, lang === 'iw' ? 'he' : lang).then(translated => {
-                // Superseded by a newer render of THIS element (reopened with a different
-                // mission, or a language switch) while the request was in flight.
-                if (el.dataset.nameGen !== String(myGen)) return;
-                if (!translated) return;
-                // translateTextViaGoogle already restored "Starship"; run the result through
-                // localizeMissionName too so "Flight N" still uses our own template even when
-                // the endpoint phrased it differently, and so a failed call (which falls back to
-                // the original English) degrades to exactly the instant render above, not worse.
-                el.textContent = localizeMissionName(translated, lang);
-            });
+            const apiLang = lang === 'iw' ? 'he' : lang;
+
+            const applyGoogleFallback = () => {
+                translateTextViaGoogle(rawName, apiLang).then(translated => {
+                    // Superseded by a newer render of THIS element (reopened with a different
+                    // mission, or a language switch) while the request was in flight.
+                    if (el.dataset.nameGen !== String(myGen)) return;
+                    if (!translated) return;
+                    // translateTextViaGoogle already restored "Starship"; run the result through
+                    // localizeMissionName too so "Flight N" still uses our own template even when
+                    // the endpoint phrased it differently, and so a failed call (which falls back to
+                    // the original English) degrades to exactly the instant render above, not worse.
+                    el.textContent = localizeMissionName(translated, lang);
+                });
+            };
+
+            // Prefers mission-purpose-gemini.json's "names" map (pre-translated, no live call
+            // needed) - same reasoning as applyMissionPurposeHtml preferring it for descriptions.
+            // Falls back to the live Google endpoint only for a mission this hasn't covered yet.
+            const mapPromise = _geminiNamesMap !== null ? Promise.resolve(_geminiNamesMap) : loadGeminiPurposeMap().then(() => _geminiNamesMap);
+            mapPromise
+                .then(map => lookupGeminiName(map, rawName, apiLang))
+                .then(hit => {
+                    if (el.dataset.nameGen !== String(myGen)) return;
+                    if (hit) {
+                        el.textContent = localizeMissionName(fixMistranslatedPhrasesText(hit, lang), lang);
+                    } else {
+                        applyGoogleFallback();
+                    }
+                });
         }
 
         // Batch equivalent of renderLocalizedMissionName for the patches strip: ~90 tiles would
@@ -7916,6 +8003,13 @@
                 const missionsGridEl = document.getElementById('missions-grid');
                 if (missionsGridEl && typeof upcomingForGrid !== 'undefined') {
                     applyCardDescriptionsTranslation(missionsGridEl, upcomingForGrid, currentLang);
+                    applyCardTitlesTranslation(missionsGridEl, upcomingForGrid, currentLang);
+                }
+                // Same for card titles in the past-launches grid - it has no description on the
+                // card face, only a title, but that title is notranslate now too.
+                const pastGridEl = document.getElementById('past-launches-grid');
+                if (pastGridEl && typeof rawPastMissions !== 'undefined') {
+                    applyCardTitlesTranslation(pastGridEl, rawPastMissions, currentLang);
                 }
                 // Same for the mission modal's LAUNCH SITE value and the hero banner's site
                 // line — both notranslate now (see localizeSiteStr above), so a language
@@ -16712,7 +16806,7 @@ setTimeout(() => {
                     ${statusBadge}
                     <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pt-[182px]">
                         <div>
-                            <div class="mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
+                            <div class="notranslate mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
                             <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
                             <div class="notranslate mission-card-desc text-sm text-zinc-400 mb-4 line-clamp-2" translate="no">${escapeHtml(m.description)}</div>
                         </div>
@@ -16749,6 +16843,7 @@ setTimeout(() => {
             });
 
             applyCardDescriptionsTranslation(grid, filteredMissions, document.documentElement.lang);
+            applyCardTitlesTranslation(grid, filteredMissions, document.documentElement.lang);
 
             // Hidden placeholder applySearchFilter() reveals when the search box matches none
             // of these cards - kept separate from the "no missions in this category" message
@@ -16835,7 +16930,7 @@ setTimeout(() => {
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[311px] p-5 pt-[182px]">
                         <div>
-                            <div class="mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
+                            <div class="notranslate mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
                             <div class="text-xs text-zinc-500 mb-3"><span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
@@ -16861,6 +16956,8 @@ setTimeout(() => {
                 protectRomanTelescopeName(card);
                 pastGrid.appendChild(card);
             });
+
+            applyCardTitlesTranslation(pastGrid, filteredPast, document.documentElement.lang);
 
             const pastSearchEmptyMsg = document.createElement('div');
             pastSearchEmptyMsg.id = 'past-launches-grid-search-empty';
