@@ -30,7 +30,16 @@ OUTPUT_PATH = Path(__file__).parent / "mission-purpose-gemini.json"
 # more than the 7 nearest upcoming launches, so translating further-out ones the UI never
 # displays was pure wasted Gemini quota.
 LL2_UPCOMING_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=7&mode=detailed"
-LL2_PREVIOUS_URL = "https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&limit=50&mode=detailed"
+# Past-launches strip on the site is a rolling 12 months, not "last 50" (see
+# PAST_LAUNCH_WINDOW_MS / fetchPreviousLaunchPages in index.html) - a flat limit=50 here left
+# ~70% of the cards the site can actually show (confirmed live: 111 of 161) permanently
+# uncovered, since a mission that ages out of the 50 most recent never gets picked up by any
+# future run either. Paginated the same way the site itself does: 100/page, net__gte cutoff,
+# capped at 3 pages (300 launches - well over what a rolling year contains) as a quota guard.
+LL2_PREVIOUS_URL = "https://ll.thespacedevs.com/2.2.0/launch/previous/?lsp__id=121&mode=detailed"
+PAST_LAUNCH_WINDOW_DAYS = 365
+LL2_PREVIOUS_PAGE_LIMIT = 100
+LL2_PREVIOUS_MAX_PAGES = 3
 
 GENERIC_DESCRIPTION = "SpaceX operational launch deployment mission."
 # gemini-2.0-flash is retired for new AI Studio keys (HTTP 404). Prefer 3.8 Flash
@@ -294,6 +303,30 @@ def fetch_launches(url: str, retries: int = 4) -> list:
     return []
 
 
+# Mirrors index.html's own fetchPreviousLaunchPages: same page size, same net__gte cutoff, same
+# page cap - so this script and the site agree on exactly which past launches "count".
+def fetch_previous_launches() -> list:
+    cutoff_iso = datetime.fromtimestamp(
+        time.time() - PAST_LAUNCH_WINDOW_DAYS * 86400, tz=timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    collected = []
+    offset = 0
+    for _page in range(LL2_PREVIOUS_MAX_PAGES):
+        url = (
+            f"{LL2_PREVIOUS_URL}&limit={LL2_PREVIOUS_PAGE_LIMIT}&offset={offset}"
+            f"&net__gte={cutoff_iso}"
+        )
+        rows = fetch_launches(url)
+        if not rows:
+            break
+        collected.extend(rows)
+        if len(rows) < LL2_PREVIOUS_PAGE_LIMIT:
+            break
+        offset += LL2_PREVIOUS_PAGE_LIMIT
+        time.sleep(1)
+    return collected
+
+
 # Must match mapLaunchToSchema's own "Block 5" stripping in index.html EXACTLY (same regex,
 # same whitespace collapsing) - the client hashes its own cleaned m.name to look up the "names"
 # map, so if this script hashed the raw un-stripped API name instead, every single lookup would
@@ -512,7 +545,7 @@ def main() -> int:
 
     upcoming = fetch_launches(LL2_UPCOMING_URL)
     time.sleep(3)
-    previous = fetch_launches(LL2_PREVIOUS_URL)
+    previous = fetch_previous_launches()
     launches = upcoming + previous
     if not launches:
         print("No launches fetched - leaving existing translations unchanged.", file=sys.stderr)
