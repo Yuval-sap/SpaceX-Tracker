@@ -95,6 +95,15 @@ STARLINK_TERM = {
     "sv": "Starlink", "nl": "Starlink", "da": "Starlink", "pt": "Starlink",
     "pl": "Starlink", "hi": "स्टारलिंक", "ar": "ستارلينك", "tr": "Starlink",
 }
+# he: "פלקון כבד" per explicit user request - the literal Hebrew translation of "Heavy" (not a
+# phonetic transliteration). Without pinning this, Gemini picked its own transliteration
+# ("פלקון האווי") instead, the same inconsistency "Falcon 9" had before it was pinned.
+FALCON_HEAVY_TERM = {
+    "he": "פלקון כבד", "es": "Falcon Heavy", "fr": "Falcon Heavy", "de": "Falcon Heavy",
+    "ru": "Фалкон Хэви", "zh": "猎鹰重型", "it": "Falcon Heavy", "cs": "Falcon Heavy",
+    "sv": "Falcon Heavy", "nl": "Falcon Heavy", "da": "Falcon Heavy", "pt": "Falcon Heavy",
+    "pl": "Falcon Heavy", "hi": "फाल्कन हेवी", "ar": "فالكون هيفي", "tr": "Falcon Heavy",
+}
 
 PROMPT = """You translate SpaceX launch-library mission fields from English into several languages.
 
@@ -143,10 +152,10 @@ output - only the translated string for each position.
 Rules:
 - Translate ordinary descriptive words naturally (e.g. "Group", "Mission", "Dedicated",
   "Rideshare", "Transport Layer", "Constellation", "Flight").
-- Vehicle/spacecraft family names - Falcon, Falcon 9, Falcon Heavy, Dragon, Crew Dragon, Cygnus -
-  SHOULD be translated/transliterated naturally into each language's own conventional spelling
-  (e.g. Hebrew "פלקון 9"), the same way the rest of this site already renders them. Do NOT leave
-  them in English.
+- Vehicle/spacecraft family names - Falcon, Falcon 9, Dragon, Crew Dragon, Cygnus - SHOULD be
+  translated/transliterated naturally into each language's own conventional spelling (e.g.
+  Hebrew "פלקון 9"), the same way the rest of this site already renders them. Do NOT leave them
+  in English.
 - Do NOT translate, transliterate, or respell the brand name "SpaceX", or alphanumeric
   mission/satellite designations and product names - keep these exactly as-is in every language:
   SpaceX, O3b, mPower, and any code-like token such as USSF-153, NROL-95, SDA, GPS, CRS-2,
@@ -154,6 +163,7 @@ Rules:
 - zh must be Simplified Chinese.
 - For "Starship" use exactly: {starship_terms}
 - For "Starlink" use exactly: {starlink_terms}
+- For "Falcon Heavy" use exactly: {falcon_heavy_terms}
 - Do not add labels, markdown, or commentary.
 
 Names:
@@ -171,6 +181,7 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
     partial result."""
     starship_terms = ", ".join(f"{lang}={STARSHIP_TERM[lang]}" for lang in langs)
     starlink_terms = ", ".join(f"{lang}={STARLINK_TERM[lang]}" for lang in langs)
+    falcon_heavy_terms = ", ".join(f"{lang}={FALCON_HEAVY_TERM[lang]}" for lang in langs)
     names_block = "\n".join(f"{i + 1}. {n}" for i, n in enumerate(names))
     body = {
         "contents": [{"parts": [{"text": NAME_PROMPT.format(
@@ -178,6 +189,7 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
             count=len(names),
             starship_terms=starship_terms,
             starlink_terms=starlink_terms,
+            falcon_heavy_terms=falcon_heavy_terms,
             names_block=names_block,
         )}]}],
         "generationConfig": {
