@@ -143,10 +143,14 @@ output - only the translated string for each position.
 Rules:
 - Translate ordinary descriptive words naturally (e.g. "Group", "Mission", "Dedicated",
   "Rideshare", "Transport Layer", "Constellation", "Flight").
-- Do NOT translate, transliterate, or respell proper nouns, vehicle names, company names, or
-  alphanumeric mission/satellite designations - keep these exactly as-is in every language:
-  SpaceX, Falcon, Falcon 9, Falcon Heavy, Dragon, Crew Dragon, Cygnus, O3b, mPower, and any
-  code-like token such as USSF-153, NROL-95, SDA, GPS, CRS-2, SpX-35, NG-25.
+- Vehicle/spacecraft family names - Falcon, Falcon 9, Falcon Heavy, Dragon, Crew Dragon, Cygnus -
+  SHOULD be translated/transliterated naturally into each language's own conventional spelling
+  (e.g. Hebrew "פלקון 9"), the same way the rest of this site already renders them. Do NOT leave
+  them in English.
+- Do NOT translate, transliterate, or respell the brand name "SpaceX", or alphanumeric
+  mission/satellite designations and product names - keep these exactly as-is in every language:
+  SpaceX, O3b, mPower, and any code-like token such as USSF-153, NROL-95, SDA, GPS, CRS-2,
+  SpX-35, NG-25.
 - zh must be Simplified Chinese.
 - For "Starship" use exactly: {starship_terms}
 - For "Starlink" use exactly: {starlink_terms}
