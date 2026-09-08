@@ -533,7 +533,12 @@ def main() -> int:
         for batch in missing_batches:
             try:
                 merged.update(call_gemini_batch(api_key, fields, batch))
-                time.sleep(1.5)
+                # Paced conservatively (not just the per-call retry backoff inside
+                # call_gemini_batch) - live runs showed both 429 (our own rate limit) and 503
+                # (Google's general "high demand") on the same day, and this script now makes
+                # noticeably more calls per run than before (descriptions + names), so slowing
+                # our own request rate reduces how much we contribute to that.
+                time.sleep(4)
             except GeminiAuthError as e:
                 print(f"Error: {e}", file=sys.stderr)
                 if entries:
@@ -543,7 +548,7 @@ def main() -> int:
             except Exception as e:
                 batch_ok = False
                 print(f"Warning: skipped {name} languages {','.join(batch)}: {e}", file=sys.stderr)
-                time.sleep(2)
+                time.sleep(4)
 
         if not any(langs_complete({lang: merged.get(lang)}, [lang]) for lang in LANG_NAMES):
             failed += 1
@@ -609,7 +614,8 @@ def main() -> int:
                     for n, translated_name in name_map.items():
                         if n in merged_by_name:
                             merged_by_name[n][lang] = translated_name
-                time.sleep(1.5)
+                # Same conservative pacing as the description loop above - see its own comment.
+                time.sleep(4)
             except GeminiAuthError as e:
                 print(f"Error: {e}", file=sys.stderr)
                 for n in chunk:
@@ -620,7 +626,7 @@ def main() -> int:
                 return 1
             except Exception as e:
                 print(f"Warning: skipped name-batch languages {','.join(batch)}: {e}", file=sys.stderr)
-                time.sleep(2)
+                time.sleep(4)
 
         for n in chunk:
             if merged_by_name.get(n):
