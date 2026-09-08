@@ -7063,11 +7063,20 @@
         // separator corrupts translation for names that themselves contain a literal "|"
         // ("Falcon 9 | Starlink Group 10-39") - renderLocalizedMissionNamesBatch already uses a
         // newline separator instead, proven not to collide.
-        let _cardTitleGen = 0;
+        // Keyed by grid ELEMENT, not one shared counter - this function is called for TWO
+        // independent grids (#missions-grid and #past-launches-grid), back-to-back, from the
+        // same render pass and again from the language-switch sweep below. A single shared
+        // counter meant the past-grid call (always second) incremented it again before the
+        // upcoming-grid call's own async chain had a chance to resolve, so the upcoming grid's
+        // `gen !== myGen` check always failed and its titles never got applied - confirmed live,
+        // this is exactly why card titles stayed in English while everything else (which never
+        // shares a counter across two different containers) translated fine.
+        const _cardTitleGens = new WeakMap();
         function applyCardTitlesTranslation(grid, missions, currentLang) {
             if (!grid || !missions || !missions.length) return;
             let lang = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
-            const myGen = ++_cardTitleGen;
+            const myGen = (_cardTitleGens.get(grid) || 0) + 1;
+            _cardTitleGens.set(grid, myGen);
 
             const targets = missions
                 .filter(m => m.name)
@@ -7083,12 +7092,12 @@
 
             const mapPromise = _geminiNamesMap !== null ? Promise.resolve(_geminiNamesMap) : loadGeminiPurposeMap().then(() => _geminiNamesMap);
             mapPromise.then(map => {
-                if (_cardTitleGen !== myGen) return;
+                if (_cardTitleGens.get(grid) !== myGen) return;
                 return Promise.all(targets.map(t =>
                     lookupGeminiName(map, t.m.name, apiLang).then(hit => ({ m: t.m, el: t.el, hit }))
                 ));
             }).then(results => {
-                if (!results || _cardTitleGen !== myGen) return;
+                if (!results || _cardTitleGens.get(grid) !== myGen) return;
                 const needsGoogle = [];
                 results.forEach(({ m, el, hit }) => {
                     if (!el.isConnected) return;
