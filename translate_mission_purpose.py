@@ -135,9 +135,10 @@ for use as a short UI title (a card heading or modal title), not prose.
 Return ONLY valid JSON. Top-level keys must be exactly these language codes:
 {lang_keys}
 
-Each language value must be an object whose keys are EXACTLY the original English names given
-below (byte-for-byte, used to look the translation back up) and whose values are the translated
-name.
+Each language value must be a JSON ARRAY of exactly {count} strings - the translations, in the
+SAME ORDER as the numbered names below (item 1's translation first, item 2's second, and so on).
+Do not skip, merge, or reorder any entry, and do not repeat the original name anywhere in the
+output - only the translated string for each position.
 
 Rules:
 - Translate ordinary descriptive words naturally (e.g. "Group", "Mission", "Dedicated",
@@ -149,24 +150,28 @@ Rules:
 - zh must be Simplified Chinese.
 - For "Starship" use exactly: {starship_terms}
 - For "Starlink" use exactly: {starlink_terms}
-- Do not add labels, markdown, or commentary - the value for each name is the translated name
-  alone.
+- Do not add labels, markdown, or commentary.
 
-Names (translate each one independently; one per line):
+Names:
 {names_block}
 """
 
 
 def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
-    """Returns {lang: {original_name: translated_name}} for whichever names/langs came back
-    usable - a name Gemini dropped or mangled is simply absent from the result, same
-    all-or-nothing-per-entry tolerance as call_gemini_batch above."""
+    """Returns {lang: {original_name: translated_name}} for whichever languages came back as a
+    correctly-sized array - see NAME_PROMPT's own comment for why this is array-of-translations
+    (index-matched to the input order) rather than an object keyed by the original name: the
+    latter forces every one of the (often long) original names to be repeated as a JSON key once
+    per language, which measured live pushed real responses past maxOutputTokens and got the
+    response truncated mid-string, producing invalid JSON for the whole batch instead of a clean
+    partial result."""
     starship_terms = ", ".join(f"{lang}={STARSHIP_TERM[lang]}" for lang in langs)
     starlink_terms = ", ".join(f"{lang}={STARLINK_TERM[lang]}" for lang in langs)
-    names_block = "\n".join(names)
+    names_block = "\n".join(f"{i + 1}. {n}" for i, n in enumerate(names))
     body = {
         "contents": [{"parts": [{"text": NAME_PROMPT.format(
             lang_keys=", ".join(langs),
+            count=len(names),
             starship_terms=starship_terms,
             starlink_terms=starlink_terms,
             names_block=names_block,
@@ -207,12 +212,15 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
                     raise ValueError("Gemini did not return a JSON object")
                 out = {}
                 for lang in langs:
-                    block = parsed.get(lang)
-                    if not isinstance(block, dict):
+                    arr = parsed.get(lang)
+                    if not isinstance(arr, list) or len(arr) != len(names):
+                        # Wrong length means we can't trust the ordering - a mismatched array
+                        # would silently pair the wrong translation with the wrong name, which
+                        # is worse than just not having one. Skip this language for this batch;
+                        # it stays untranslated and gets retried the next time this script runs.
                         continue
                     cleaned = {}
-                    for name in names:
-                        val = block.get(name)
+                    for name, val in zip(names, arr):
                         if isinstance(val, str) and val.strip():
                             cleaned[name] = val.strip()
                     if cleaned:
@@ -577,8 +585,12 @@ def main() -> int:
     # Chunked well under Gemini's context/output budget - each response has to carry every
     # name x every language in the chunk's batch, and a single oversized call is exactly what
     # call_gemini_batch's own "Gemini returned no usable ... blocks" failure mode guards
-    # against for the description prompt above.
-    NAME_CHUNK_SIZE = 30
+    # against for the description prompt above. Confirmed live at 30/chunk with the old
+    # name-keyed response format: real responses got truncated mid-string past
+    # maxOutputTokens. The array-based format above is far cheaper per name, but kept smaller
+    # (15) anyway for headroom - mission names can run long ("Bandwagon 5 (Dedicated
+    # Mid-Inclination Rideshare)"), and 8 languages' worth of them still adds up.
+    NAME_CHUNK_SIZE = 15
     name_chunks = [names_to_translate[i:i + NAME_CHUNK_SIZE] for i in range(0, len(names_to_translate), NAME_CHUNK_SIZE)]
 
     for chunk in name_chunks:
