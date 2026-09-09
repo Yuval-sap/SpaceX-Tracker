@@ -57,6 +57,13 @@ for _name in _DEFAULT_MODELS:
         GEMINI_MODELS.append(_name)
 _active_model = GEMINI_MODELS[0]
 
+# The account's actual free-tier ceiling (confirmed live in AI Studio's rate-limit page) is 5
+# requests/minute PER MODEL - i.e. one request every 12s, minimum. The old 4s pacing was 3x
+# faster than that, so it was guaranteed to trip a 429 on every run regardless of how much
+# headroom the quota actually had - not an external "high demand" problem, our own request
+# rate was structurally too fast. 13s leaves a 1s margin per call.
+GEMINI_CALL_PACING_SECONDS = 13
+
 
 class GeminiAuthError(RuntimeError):
     """API key rejected — do not keep calling."""
@@ -595,12 +602,9 @@ def main() -> int:
         for batch in missing_batches:
             try:
                 merged.update(call_gemini_batch(api_key, fields, batch))
-                # Paced conservatively (not just the per-call retry backoff inside
-                # call_gemini_batch) - live runs showed both 429 (our own rate limit) and 503
-                # (Google's general "high demand") on the same day, and this script now makes
-                # noticeably more calls per run than before (descriptions + names), so slowing
-                # our own request rate reduces how much we contribute to that.
-                time.sleep(4)
+                # See GEMINI_CALL_PACING_SECONDS's own comment - this has to stay at or above
+                # the account's real per-model RPM ceiling, not just be "conservative".
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
             except GeminiAuthError as e:
                 print(f"Error: {e}", file=sys.stderr)
                 if entries:
@@ -615,7 +619,7 @@ def main() -> int:
             except Exception as e:
                 batch_ok = False
                 print(f"Warning: skipped {name} languages {','.join(batch)}: {e}", file=sys.stderr)
-                time.sleep(4)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
 
         if not any(langs_complete({lang: merged.get(lang)}, [lang]) for lang in LANG_NAMES):
             failed += 1
@@ -681,8 +685,8 @@ def main() -> int:
                     for n, translated_name in name_map.items():
                         if n in merged_by_name:
                             merged_by_name[n][lang] = translated_name
-                # Same conservative pacing as the description loop above - see its own comment.
-                time.sleep(4)
+                # Same pacing floor as the description loop above - see GEMINI_CALL_PACING_SECONDS.
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
             except GeminiAuthError as e:
                 print(f"Error: {e}", file=sys.stderr)
                 for n in chunk:
@@ -701,7 +705,7 @@ def main() -> int:
                 return 0
             except Exception as e:
                 print(f"Warning: skipped name-batch languages {','.join(batch)}: {e}", file=sys.stderr)
-                time.sleep(4)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
 
         for n in chunk:
             if merged_by_name.get(n):
