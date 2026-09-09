@@ -62,6 +62,15 @@ class GeminiAuthError(RuntimeError):
     """API key rejected — do not keep calling."""
 
 
+class GeminiQuotaExceededError(RuntimeError):
+    """Free-tier daily request quota is exhausted (HTTP 429 with "exceeded your current
+    quota", distinct from a transient rate-limit 429) - every remaining call this run would
+    fail identically, so retrying (per-attempt backoff, then the next fallback model) just
+    burns hours for nothing. Confirmed live: a run that hit this kept retrying for 5.5 hours
+    and translated almost nothing. The right response is to stop the whole run immediately
+    and let the next scheduled run (quota resets daily) pick up where this one left off."""
+
+
 def gemini_url(model: str) -> str:
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
@@ -269,6 +278,8 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
                     print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
                     break
                 if e.code == 429:
+                    if "exceeded your current quota" in detail.lower():
+                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
                     wait = 15 * (attempt + 1)
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
@@ -512,6 +523,8 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
                     print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
                     break
                 if e.code == 429:
+                    if "exceeded your current quota" in detail.lower():
+                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
                     wait = 15 * (attempt + 1)
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
@@ -594,6 +607,11 @@ def main() -> int:
                     store["entries"] = entries
                     write_output(store)
                 return 1
+            except GeminiQuotaExceededError as e:
+                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+                store["entries"] = entries
+                write_output(store)
+                return 0
             except Exception as e:
                 batch_ok = False
                 print(f"Warning: skipped {name} languages {','.join(batch)}: {e}", file=sys.stderr)
@@ -673,6 +691,14 @@ def main() -> int:
                 store["names"] = names_store
                 write_output(store)
                 return 1
+            except GeminiQuotaExceededError as e:
+                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+                for n in chunk:
+                    if merged_by_name.get(n):
+                        names_store[name_hash(n)] = merged_by_name[n]
+                store["names"] = names_store
+                write_output(store)
+                return 0
             except Exception as e:
                 print(f"Warning: skipped name-batch languages {','.join(batch)}: {e}", file=sys.stderr)
                 time.sleep(4)
