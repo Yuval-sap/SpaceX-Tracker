@@ -4645,6 +4645,15 @@
             if (starlink) add('sl-' + starlink[1] + '-' + starlink[2]);
             add(payload.toLowerCase().replace(/[^a-z0-9]/g, ''));
             add(payload.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+            // Starship's own CMS slugs are "starship-flight-N" (confirmed live for Flight 13) -
+            // the app's own name for these is "Starship | Flight N", so payload alone ("flight
+            // 14") never guesses the actual slug. Without this, a Starship mission's real
+            // timeline could only ever be found via the upcoming-tiles feed (which SpaceX
+            // doesn't populate until close to launch) and never via a direct slug guess, unlike
+            // every other vehicle.
+            if (/^starship\b/i.test(raw)) {
+                add('starship-' + payload.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+            }
             return slugs.slice(0, MAX_CMS_SLUG_GUESSES);
         }
 
@@ -5214,6 +5223,46 @@
             // uses this third wording ("start", no "s") for the exact same moment.
             '1st stage entry burn start': 'boosterEntryBurnBegins',
             '1st stage entry burn ends': 'boosterEntryBurnEnds',
+            // Recurs on almost every Starlink mission (the majority of all SpaceX launches),
+            // unlike most other one-off payload-deploy lines - worth its own explanation rather
+            // than staying title-only forever.
+            'starlink satellites deploy': 'starlinkDeploy',
+            // Globalstar 2-R's feed calls this "Stage 1 flip" - the single-core (non-Falcon-
+            // Heavy) equivalent of "Side boosters flip". Needs its own id rather than reusing
+            // sideBoostersFlip, whose explanation text explicitly says "side boosters" (plural,
+            // side-specific) and would be wrong for a single Falcon 9 core.
+            'stage 1 flip': 'stage1Flip',
+            // Starship's own feed uses an entirely different vocabulary from Falcon 9/Heavy
+            // (Super Heavy booster + Starship upper stage, confirmed live across Flights 10-13)
+            // - none of the ids above ever match these, so they get their own set instead of
+            // silently falling through to "no explanation" for every single Starship event.
+            'liftoff': 'shipLiftoff',
+            // Starship's own Max Q parenthetical says "aerodynamic", not "mechanical" like
+            // Falcon 9/Heavy's - a different exact string, so it needs its own id rather than
+            // silently missing the existing 'maxQ' key above.
+            'max q (moment of peak aerodynamic stress on the rocket)': 'shipMaxQ',
+            'super heavy meco (most engines cut off)': 'superHeavyMeco',
+            'hot-staging (starship raptor ignition and stage separation)': 'hotStaging',
+            // Reuses the existing 'boostbackBurn' id directly (see REAL_TIMELINE_EXPLAIN_I18N) -
+            // same action, single-core booster, already has a correct explanation with no new
+            // dict entry needed.
+            'super heavy boostback burn start': 'boostbackBurn',
+            'super heavy boostback burn shutdown': 'boostbackBurn',
+            'hot-stage jettison': 'hotStageJettison',
+            'super heavy landing burn start': 'superHeavyLandingBurnStart',
+            'super heavy landing burn shutdown': 'superHeavyLandingBurnShutdown',
+            'starship engine cutoff': 'shipEngineCutoff',
+            'payload deploy demo start': 'payloadDeployDemoStart',
+            'payload deploy demo complete': 'payloadDeployDemoComplete',
+            'raptor in-space relight demo': 'raptorRelightDemo',
+            'starship entry': 'shipEntry',
+            'starship is transonic': 'shipTransonic',
+            'starship is subsonic': 'shipSubsonic',
+            'landing burn start': 'shipLandingBurnStart',
+            'landing flip': 'shipLandingFlip',
+            'landing burn 3 to 2 engines': 'shipLandingBurn32',
+            'landing burn 2 to 1 engine': 'shipLandingBurn21',
+            'an exciting landing!': 'excitingLanding',
         };
         const REAL_TIMELINE_PATTERNS = [
             [/side boosters boostback burn begins/gi, 'boostbackBegins'],
@@ -5230,6 +5279,11 @@
             [/\b1st stage entry burn (?:begins|starts|start)\b/gi, 'boosterEntryBurnBegins'],
             [/\b1st stage entry burn ends?\b/gi, 'boosterEntryBurnEnds'],
             [/side boosters landing burns start/gi, 'landingBurnsStart'],
+            // NROL-95's own feed names the touchdown by its actual pad ("1st stage lands on
+            // Landing Zone 2") instead of "1st stage landing" - same moment, different wording,
+            // caught here (before the narrower 'booster landing' pattern below, which requires
+            // the literal word "landing" and would miss "lands").
+            [/\b1st stage lands?\b/gi, 'boosterLanding'],
             [/side booster engine cutoff/gi, 'beco'],
             [/side boosters separate/gi, 'sideBoostersSeparate'],
             [/side boosters flip/gi, 'sideBoostersFlip'],
@@ -5351,6 +5405,70 @@
             boosterLanding: {
                 en: "The booster lands at the recovery site", he: "הבוסטר נוחת באתר ההשבה", es: "El booster aterriza en el sitio de recuperación", fr: "Le booster atterrit sur le site de récupération", de: "Der Booster landet an der Bergungsstelle", ru: "Ускоритель совершает посадку на месте эвакуации", zh: "助推器在回收地点着陆", it: "Il booster atterra nel sito di recupero", cs: "Booster přistává na místě zotavení", sv: "Boostern landar på återhämtningsplatsen", nl: "De booster landt op de bergingslocatie", da: "Boosteren lander på bjærgningsstedet", pt: "O booster pousa no local de recuperação", pl: "Booster ląduje w miejscu odzysku", hi: "बूस्टर पुनर्प्राप्ति स्थल पर उतरता है", ar: "يهبط المعزز في موقع الاسترداد", tr: "Güçlendirici kurtarma sahasına iniyor",
             },
+            starlinkDeploy: {
+                en: "The Starlink satellites separate from the second stage and deploy into orbit", he: "לוויני הסטארלינק נפרדים מהשלב השני ונפרסים למסלול", es: "Los satélites Starlink se separan de la segunda etapa y se despliegan en órbita", fr: "Les satellites Starlink se séparent du second étage et se déploient en orbite", de: "Die Starlink-Satelliten trennen sich von der zweiten Stufe und werden in die Umlaufbahn ausgesetzt", ru: "Спутники Starlink отделяются от второй ступени и выходят на орбиту", zh: "星链卫星与二级火箭分离并部署入轨", it: "I satelliti Starlink si separano dal secondo stadio e si posizionano in orbita", cs: "Satelity Starlink se oddělují od druhého stupně a rozmisťují se na oběžnou dráhu", sv: "Starlink-satelliterna separerar från andra steget och sätts ut i omloppsbana", nl: "De Starlink-satellieten scheiden van de tweede trap en worden in een baan gebracht", da: "Starlink-satellitterne adskilles fra andet trin og udsættes i kredsløb", pt: "Os satélites Starlink se separam do segundo estágio e são implantados em órbita", pl: "Satelity Starlink oddzielają się od drugiego stopnia i zostają wypuszczone na orbitę", hi: "स्टारलिंक उपग्रह दूसरे चरण से अलग होकर कक्षा में तैनात होते हैं", ar: "تنفصل أقمار ستارلينك عن المرحلة الثانية وتُنشر في المدار", tr: "Starlink uyduları ikinci kademeden ayrılıp yörüngeye konumlanıyor",
+            },
+            stage1Flip: {
+                en: "The booster flips around to fly engines-first for the trip back", he: "הבוסטר מתהפך כדי לטוס עם המנועים קדימה לקראת החזרה", es: "El booster gira para volar con los motores por delante en el regreso", fr: "Le booster se retourne pour voler moteurs en avant pour le retour", de: "Der Booster dreht sich um, um für den Rückflug mit den Triebwerken voran zu fliegen", ru: "Ускоритель разворачивается двигателями вперёд для обратного полёта", zh: "助推器翻转，发动机朝前准备返航", it: "Il booster si capovolge per volare con i motori in avanti nel ritorno", cs: "Booster se otáčí, aby letěl motory napřed při návratu", sv: "Boostern vänder för att flyga med motorerna först på returresan", nl: "De booster draait om om met de motoren vooraan terug te vliegen", da: "Boosteren vender om for at flyve med motorerne forrest på turen tilbage", pt: "O booster vira para voar com os motores à frente no retorno", pl: "Booster obraca się, aby lecieć silnikami do przodu w drodze powrotnej", hi: "बूस्टर वापसी की यात्रा के लिए इंजन-आगे उड़ने हेतु पलटता है", ar: "يستدير المعزز للطيران بالمحركات إلى الأمام في رحلة العودة", tr: "Güçlendirici, dönüş yolculuğu için motorları öne alarak dönüyor",
+            },
+            // Starship vocabulary (Flights 10-13 all used this exact wording). superHeavyMeco
+            // and shipMaxQ deliberately have no entry here - both carry their own English
+            // parenthetical straight from SpaceX's feed (unlike everything below), so
+            // localizeRealTimelineEventLabel/splitRealTimelineEventText already produce SOME
+            // explanation for them without this dict; aliased to the existing maxQ/meco ids in
+            // REAL_TIMELINE_EXPLAIN_ALIAS below purely as a safety net if a future flight's
+            // wording ever drops that parenthetical.
+            shipLiftoff: {
+                en: "The rocket leaves the launch pad", he: "הרקטה עוזבת את משטח השיגור", es: "El cohete abandona la plataforma de lanzamiento", fr: "La fusée quitte le pas de tir", de: "Die Rakete verlässt die Startrampe", ru: "Ракета покидает стартовую площадку", zh: "火箭离开发射台", it: "Il razzo lascia la rampa di lancio", cs: "Raketa opouští startovací rampu", sv: "Raketen lämnar startplattformen", nl: "De raket verlaat het lanceerplatform", da: "Raketten forlader affyringsrampen", pt: "O foguete deixa a plataforma de lançamento", pl: "Rakieta opuszcza platformę startową", hi: "रॉकेट लॉन्च पैड से रवाना होता है", ar: "يترك الصاروخ منصة الإطلاق", tr: "Roket fırlatma rampasından ayrılıyor",
+            },
+            hotStaging: {
+                en: "Starship's engines ignite before the booster separates", he: "מנועי הסטארשיפ מוצתים לפני הפרדת הבוסטר", es: "Los motores de Starship se encienden antes de que el booster se separe", fr: "Les moteurs de Starship s'allument avant que le booster ne se sépare", de: "Die Triebwerke von Starship zünden, bevor sich der Booster trennt", ru: "Двигатели Starship запускаются до отделения ускорителя", zh: "星舰发动机在助推器分离前点火", it: "I motori di Starship si accendono prima che il booster si separi", cs: "Motory Starship se zapalují ještě před oddělením boosteru", sv: "Starships motorer tänds innan boostern separerar", nl: "De motoren van Starship ontsteken voordat de booster loskoppelt", da: "Starships motorer tændes, før boosteren separerer", pt: "Os motores da Starship se acendem antes de o booster se separar", pl: "Silniki Starship zapalają się przed odłączeniem boostera", hi: "बूस्टर अलग होने से पहले स्टारशिप के इंजन प्रज्वलित होते हैं", ar: "تُشعل محركات ستارشيب قبل انفصال المعزز", tr: "Güçlendirici ayrılmadan önce Starship'in motorları ateşleniyor",
+            },
+            hotStageJettison: {
+                en: "The ring that helped ignite Starship's engines early is jettisoned", he: "הטבעת שעזרה להצית את מנועי הסטארשיפ מוקדם מושלכת", es: "Se desprende el anillo que ayudó a encender los motores de Starship anticipadamente", fr: "L'anneau qui a permis d'allumer tôt les moteurs de Starship est largué", de: "Der Ring, der die frühzeitige Zündung der Starship-Triebwerke ermöglichte, wird abgeworfen", ru: "Отбрасывается кольцо, которое помогло заранее запустить двигатели Starship", zh: "帮助星舰发动机提前点火的分级环被抛离", it: "L'anello che ha permesso l'accensione anticipata dei motori di Starship viene sganciato", cs: "Odhazuje se kroužek, který umožnil předčasné zapálení motorů Starship", sv: "Ringen som hjälpte till att tända Starships motorer i förtid kastas av", nl: "De ring die hielp om de motoren van Starship vroeg te ontsteken wordt afgeworpen", da: "Ringen, der hjalp med at tænde Starships motorer tidligt, kastes af", pt: "O anel que ajudou a acender os motores da Starship antecipadamente é ejetado", pl: "Pierścień, który pomógł wcześniej zapalić silniki Starship, zostaje odrzucony", hi: "वह रिंग जिसने स्टारशिप के इंजन को पहले प्रज्वलित करने में मदद की, अलग हो जाती है", ar: "تنفصل الحلقة التي ساعدت في إشعال محركات ستارشيب مبكرًا", tr: "Starship'in motorlarının erken ateşlenmesine yardımcı olan halka fırlatılıyor",
+            },
+            superHeavyLandingBurnStart: {
+                en: "The booster reignites its engines for the final descent to the catch tower", he: "הבוסטר מצית מחדש את מנועיו לקראת הירידה הסופית למגדל התפיסה", es: "El booster vuelve a encender sus motores para el descenso final hacia la torre de captura", fr: "Le booster rallume ses moteurs pour la descente finale vers la tour de capture", de: "Der Booster zündet seine Triebwerke erneut für den letzten Abstieg zum Fangturm", ru: "Ускоритель снова включает двигатели для финального снижения к башне захвата", zh: "助推器再次点火，进行朝向捕获塔的最终下降", it: "Il booster riaccende i motori per la discesa finale verso la torre di cattura", cs: "Booster znovu zapaluje motory pro závěrečný sestup k záchytné věži", sv: "Boostern tänder motorerna igen för den slutliga nedstigningen mot fångtornet", nl: "De booster ontsteekt de motoren opnieuw voor de laatste afdaling naar de vangtoren", da: "Boosteren tænder motorerne igen for den sidste nedstigning mod fangetårnet", pt: "O booster acende os motores novamente para a descida final até a torre de captura", pl: "Booster ponownie zapala silniki na ostateczne zejście do wieży przechwytującej", hi: "बूस्टर कैच टावर की ओर अंतिम अवतरण के लिए फिर से इंजन प्रज्वलित करता है", ar: "يُشعل المعزز محركاته مجددًا للنزول الأخير نحو برج الإمساك", tr: "Güçlendirici, yakalama kulesine son inişi için motorlarını yeniden ateşliyor",
+            },
+            superHeavyLandingBurnShutdown: {
+                en: "The booster shuts off its engines just before being caught", he: "הבוסטר מכבה את מנועיו רגע לפני התפיסה", es: "El booster apaga sus motores justo antes de ser capturado", fr: "Le booster éteint ses moteurs juste avant d'être capturé", de: "Der Booster schaltet seine Triebwerke kurz vor dem Einfangen ab", ru: "Ускоритель выключает двигатели непосредственно перед захватом", zh: "助推器在被捕获前关闭发动机", it: "Il booster spegne i motori appena prima di essere catturato", cs: "Booster vypíná motory těsně před zachycením", sv: "Boostern stänger av motorerna precis innan den fångas", nl: "De booster schakelt de motoren uit net voordat hij wordt gevangen", da: "Boosteren slukker motorerne lige før den bliver fanget", pt: "O booster desliga os motores pouco antes de ser capturado", pl: "Booster wyłącza silniki chwilę przed przechwyceniem", hi: "पकड़े जाने से ठीक पहले बूस्टर अपने इंजन बंद कर देता है", ar: "يُطفئ المعزز محركاته قبل الإمساك به مباشرة", tr: "Güçlendirici, yakalanmadan hemen önce motorlarını kapatıyor",
+            },
+            shipEngineCutoff: {
+                en: "Starship's engines shut down after reaching their target trajectory", he: "מנועי הסטארשיפ כובים לאחר הגעה למסלול המיועד", es: "Los motores de Starship se apagan tras alcanzar la trayectoria objetivo", fr: "Les moteurs de Starship s'arrêtent après avoir atteint la trajectoire visée", de: "Die Triebwerke von Starship schalten ab, nachdem die Zielbahn erreicht ist", ru: "Двигатели Starship выключаются после достижения заданной траектории", zh: "星舰发动机在到达目标轨迹后关闭", it: "I motori di Starship si spengono dopo aver raggiunto la traiettoria prevista", cs: "Motory Starship se vypínají po dosažení cílové trajektorie", sv: "Starships motorer stängs av efter att ha nått sin målbana", nl: "De motoren van Starship schakelen uit na het bereiken van de doelbaan", da: "Starships motorer slukkes, efter at målbanen er nået", pt: "Os motores da Starship se desligam após atingir a trajetória alvo", pl: "Silniki Starship wyłączają się po osiągnięciu docelowej trajektorii", hi: "लक्षित प्रक्षेपवक्र तक पहुंचने के बाद स्टारशिप के इंजन बंद हो जाते हैं", ar: "تُطفأ محركات ستارشيب بعد الوصول إلى المسار المستهدف", tr: "Starship'in motorları hedef yörüngeye ulaştıktan sonra kapanıyor",
+            },
+            payloadDeployDemoStart: {
+                en: "Starship begins testing how it would deploy its payload", he: "הסטארשיפ מתחיל לבדוק כיצד הוא ישחרר את המטען שלו", es: "Starship comienza a probar cómo desplegaría su carga útil", fr: "Starship commence à tester comment elle déploierait sa charge utile", de: "Starship beginnt zu testen, wie die Nutzlast ausgesetzt würde", ru: "Starship начинает тестировать процесс развёртывания полезной нагрузки", zh: "星舰开始测试其载荷部署方式", it: "Starship inizia a testare come rilascerebbe il suo payload", cs: "Starship začíná testovat, jak by vypustil svůj náklad", sv: "Starship börjar testa hur den skulle sätta ut sin nyttolast", nl: "Starship begint te testen hoe het zijn lading zou uitzetten", da: "Starship begynder at teste, hvordan den ville udsætte sin nyttelast", pt: "A Starship começa a testar como implantaria sua carga útil", pl: "Starship zaczyna testować, jak wypuściłby swój ładunek", hi: "स्टारशिप अपने पेलोड को तैनात करने के तरीके का परीक्षण शुरू करता है", ar: "تبدأ ستارشيب باختبار كيفية نشر حمولتها", tr: "Starship, yükünü nasıl konumlandıracağını test etmeye başlıyor",
+            },
+            payloadDeployDemoComplete: {
+                en: "Starship finishes testing its payload deployment", he: "הסטארשיפ מסיים לבדוק את שחרור המטען שלו", es: "Starship termina de probar el despliegue de su carga útil", fr: "Starship termine le test de déploiement de sa charge utile", de: "Starship beendet den Test der Nutzlastfreisetzung", ru: "Starship завершает тестирование развёртывания полезной нагрузки", zh: "星舰完成载荷部署测试", it: "Starship termina il test di rilascio del payload", cs: "Starship dokončuje test vypuštění nákladu", sv: "Starship avslutar testet av sin nyttolastutsättning", nl: "Starship voltooit de test van het uitzetten van de lading", da: "Starship afslutter testen af sin nyttelastudsætning", pt: "A Starship conclui o teste de implantação de sua carga útil", pl: "Starship kończy testowanie wypuszczenia ładunku", hi: "स्टारशिप अपने पेलोड परिनियोजन का परीक्षण पूरा करता है", ar: "تُنهي ستارشيب اختبار نشر حمولتها", tr: "Starship, yük konumlandırma testini tamamlıyor",
+            },
+            raptorRelightDemo: {
+                en: "Starship test-fires an engine in space to prove it can restart for future missions", he: "הסטארשיפ מצית מנוע לבדיקה בחלל כדי להוכיח שהוא יכול להיצת מחדש למשימות עתידיות", es: "Starship enciende un motor de prueba en el espacio para demostrar que puede reencenderse en futuras misiones", fr: "Starship allume un moteur d'essai dans l'espace pour prouver qu'il peut redémarrer lors de futures missions", de: "Starship zündet zur Erprobung ein Triebwerk im Weltraum, um zu beweisen, dass es für künftige Missionen erneut starten kann", ru: "Starship тестово запускает двигатель в космосе, чтобы доказать возможность повторного запуска для будущих миссий", zh: "星舰在太空中试验点火一台发动机，以证明其可为未来任务再次启动", it: "Starship accende un motore di prova nello spazio per dimostrare che può riavviarsi per missioni future", cs: "Starship testovně zapaluje motor ve vesmíru, aby prokázal schopnost opětovného startu pro budoucí mise", sv: "Starship testtänder en motor i rymden för att visa att den kan startas om för framtida uppdrag", nl: "Starship test een motor in de ruimte om te bewijzen dat deze opnieuw kan starten voor toekomstige missies", da: "Starship testtænder en motor i rummet for at bevise, at den kan genstartes til fremtidige missioner", pt: "A Starship testa a ignição de um motor no espaço para provar que pode reacender em missões futuras", pl: "Starship testowo zapala silnik w kosmosie, aby dowieść, że może zostać ponownie uruchomiony w przyszłych misjach", hi: "स्टारशिप भविष्य के मिशनों के लिए इंजन को फिर से चालू करने की क्षमता साबित करने हेतु अंतरिक्ष में एक इंजन का परीक्षण प्रज्वलन करता है", ar: "تُشعل ستارشيب محركًا تجريبيًا في الفضاء لإثبات إمكانية إعادة تشغيله في مهمات مستقبلية", tr: "Starship, gelecekteki görevler için yeniden ateşlenebileceğini kanıtlamak amacıyla uzayda bir motoru test amaçlı ateşliyor",
+            },
+            shipEntry: {
+                en: "Starship begins re-entering the atmosphere", he: "הסטארשיפ מתחיל לחזור לאטמוספרה", es: "Starship comienza a reingresar en la atmósfera", fr: "Starship commence à rentrer dans l'atmosphère", de: "Starship beginnt mit dem Wiedereintritt in die Atmosphäre", ru: "Starship начинает вход в атмосферу", zh: "星舰开始再入大气层", it: "Starship inizia a rientrare nell'atmosfera", cs: "Starship začíná návrat do atmosféry", sv: "Starship börjar återinträda i atmosfären", nl: "Starship begint terug te keren in de atmosfeer", da: "Starship begynder at vende tilbage til atmosfæren", pt: "A Starship começa a reentrar na atmosfera", pl: "Starship zaczyna wchodzić ponownie w atmosferę", hi: "स्टारशिप वायुमंडल में पुनः प्रवेश करना शुरू करता है", ar: "تبدأ ستارشيب بالدخول مجددًا إلى الغلاف الجوي", tr: "Starship atmosfere yeniden girmeye başlıyor",
+            },
+            shipTransonic: {
+                en: "Starship slows down through the speed of sound", he: "הסטארשיפ מאט ועובר את מהירות הקול", es: "Starship reduce su velocidad al cruzar la velocidad del sonido", fr: "Starship ralentit en passant par la vitesse du son", de: "Starship verlangsamt sich beim Durchqueren der Schallgeschwindigkeit", ru: "Starship снижает скорость, проходя через скорость звука", zh: "星舰减速并穿越音速", it: "Starship decelera attraversando la velocità del suono", cs: "Starship zpomaluje při přechodu rychlosti zvuku", sv: "Starship saktar in genom ljudhastigheten", nl: "Starship vertraagt door de geluidssnelheid", da: "Starship sænker farten gennem lydens hastighed", pt: "A Starship desacelera ao cruzar a velocidade do som", pl: "Starship zwalnia, przekraczając prędkość dźwięku", hi: "स्टारशिप ध्वनि की गति से गुजरते हुए धीमा होता है", ar: "تتباطأ ستارشيب أثناء عبورها سرعة الصوت", tr: "Starship ses hızını geçerken yavaşlıyor",
+            },
+            shipSubsonic: {
+                en: "Starship is now flying slower than the speed of sound", he: "הסטארשיפ עכשיו טסה במהירות נמוכה ממהירות הקול", es: "Starship ahora vuela a una velocidad menor que la del sonido", fr: "Starship vole désormais à une vitesse inférieure à celle du son", de: "Starship fliegt nun langsamer als die Schallgeschwindigkeit", ru: "Starship теперь летит медленнее скорости звука", zh: "星舰目前的飞行速度已低于音速", it: "Starship ora vola a una velocità inferiore a quella del suono", cs: "Starship nyní letí pomaleji než rychlost zvuku", sv: "Starship flyger nu långsammare än ljudhastigheten", nl: "Starship vliegt nu langzamer dan de geluidssnelheid", da: "Starship flyver nu langsommere end lydens hastighed", pt: "A Starship agora voa mais lentamente que a velocidade do som", pl: "Starship leci teraz wolniej niż prędkość dźwięku", hi: "स्टारशिप अब ध्वनि की गति से धीमी गति से उड़ रहा है", ar: "تطير ستارشيب الآن بسرعة أقل من سرعة الصوت", tr: "Starship şu anda ses hızından daha yavaş uçuyor",
+            },
+            shipLandingBurnStart: {
+                en: "Starship ignites its engines for its final landing maneuver", he: "הסטארשיפ מצית את מנועיה למנוור הנחיתה הסופי", es: "Starship enciende sus motores para su maniobra de aterrizaje final", fr: "Starship allume ses moteurs pour sa manœuvre d'atterrissage finale", de: "Starship zündet seine Triebwerke für das letzte Landemanöver", ru: "Starship запускает двигатели для финального маневра посадки", zh: "星舰点火进行最终着陆机动", it: "Starship accende i motori per la manovra di atterraggio finale", cs: "Starship zapaluje motory pro závěrečný přistávací manévr", sv: "Starship tänder motorerna för sin sista landningsmanöver", nl: "Starship ontsteekt de motoren voor zijn laatste landingsmanoeuvre", da: "Starship tænder motorerne til sin sidste landingsmanøvre", pt: "A Starship acende os motores para sua manobra final de pouso", pl: "Starship zapala silniki do ostatniego manewru lądowania", hi: "स्टारशिप अपने अंतिम लैंडिंग पैंतरे के लिए इंजन प्रज्वलित करता है", ar: "تُشعل ستارشيب محركاتها لمناورة الهبوط الأخيرة", tr: "Starship son iniş manevrası için motorlarını ateşliyor",
+            },
+            shipLandingFlip: {
+                en: "Starship flips from horizontal to vertical just before landing", he: "הסטארשיפ מתהפכת ממצב אופקי לאנכי רגע לפני הנחיתה", es: "Starship gira de posición horizontal a vertical justo antes de aterrizar", fr: "Starship bascule de l'horizontale à la verticale juste avant l'atterrissage", de: "Starship kippt kurz vor der Landung von der horizontalen in die vertikale Lage", ru: "Starship переворачивается из горизонтального положения в вертикальное перед посадкой", zh: "星舰在着陆前由水平姿态翻转为垂直姿态", it: "Starship ruota dalla posizione orizzontale a quella verticale appena prima dell'atterraggio", cs: "Starship se právě před přistáním překlápí z horizontální do vertikální polohy", sv: "Starship vänder sig från horisontellt till vertikalt läge strax före landning", nl: "Starship draait van horizontaal naar verticaal net voor de landing", da: "Starship vender fra horisontal til vertikal position lige før landing", pt: "A Starship gira da posição horizontal para vertical pouco antes de aterrissar", pl: "Starship przechodzi z pozycji horyzontalnej do wertykalnej chwilę przed lądowaniem", hi: "लैंडिंग से ठीक पहले स्टारशिप क्षैतिज से लंबवत स्थिति में पलटता है", ar: "تنقلب ستارشيب من الوضع الأفقي إلى الرأسي قبل الهبوط مباشرة", tr: "Starship inişten hemen önce yatay konumdan dikey konuma dönüyor",
+            },
+            shipLandingBurn32: {
+                en: "Starship shuts down one of its three landing engines", he: "הסטארשיפ מכבה אחד משלושת מנועי הנחיתה שלה", es: "Starship apaga uno de sus tres motores de aterrizaje", fr: "Starship éteint un de ses trois moteurs d'atterrissage", de: "Starship schaltet eines seiner drei Landetriebwerke ab", ru: "Starship выключает один из трёх посадочных двигателей", zh: "星舰关闭其三台着陆发动机中的一台", it: "Starship spegne uno dei suoi tre motori di atterraggio", cs: "Starship vypíná jeden ze svých tří přistávacích motorů", sv: "Starship stänger av en av sina tre landningsmotorer", nl: "Starship schakelt een van zijn drie landingsmotoren uit", da: "Starship slukker en af sine tre landingsmotorer", pt: "A Starship desliga um de seus três motores de pouso", pl: "Starship wyłącza jeden ze swoich trzech silników lądowania", hi: "स्टारशिप अपने तीन लैंडिंग इंजनों में से एक को बंद कर देता है", ar: "تُطفئ ستارشيب أحد محركات الهبوط الثلاثة", tr: "Starship üç iniş motorundan birini kapatıyor",
+            },
+            shipLandingBurn21: {
+                en: "Starship shuts down another engine, landing on just one", he: "הסטארשיפ מכבה מנוע נוסף ונוחתת על מנוע בודד", es: "Starship apaga otro motor y aterriza usando solo uno", fr: "Starship éteint un autre moteur et atterrit avec un seul", de: "Starship schaltet ein weiteres Triebwerk ab und landet nur mit einem", ru: "Starship выключает ещё один двигатель и садится на одном", zh: "星舰再关闭一台发动机，仅用一台完成着陆", it: "Starship spegne un altro motore e atterra con un solo motore", cs: "Starship vypíná další motor a přistává jen na jednom", sv: "Starship stänger av en till motor och landar på bara en", nl: "Starship schakelt nog een motor uit en landt op slechts één", da: "Starship slukker endnu en motor og lander kun på én", pt: "A Starship desliga outro motor e pousa usando apenas um", pl: "Starship wyłącza kolejny silnik i ląduje na jednym", hi: "स्टारशिप एक और इंजन बंद कर देता है और केवल एक इंजन पर उतरता है", ar: "تُطفئ ستارشيب محركًا آخر وتهبط بمحرك واحد فقط", tr: "Starship bir motoru daha kapatıp tek motorla iniyor",
+            },
+            excitingLanding: {
+                en: "Starship completes its landing attempt", he: "הסטארשיפ מסיימת את ניסיון הנחיתה שלה", es: "Starship completa su intento de aterrizaje", fr: "Starship termine sa tentative d'atterrissage", de: "Starship schließt den Landeversuch ab", ru: "Starship завершает попытку посадки", zh: "星舰完成着陆尝试", it: "Starship completa il suo tentativo di atterraggio", cs: "Starship dokončuje svůj přistávací pokus", sv: "Starship slutför sitt landningsförsök", nl: "Starship voltooit zijn landingspoging", da: "Starship gennemfører sit landingsforsøg", pt: "A Starship conclui sua tentativa de pouso", pl: "Starship zakończa próbę lądowania", hi: "स्टारशिप अपना लैंडिंग प्रयास पूरा करता है", ar: "تُكمل ستارشيب محاولة الهبوط", tr: "Starship iniş denemesini tamamlıyor",
+            },
         };
         // ids whose own explanation is a duplicate of one already defined for the fixed
         // Starlink/ASDS timeline (MISSION_TIMELINE_EXPLAIN_I18N) - reused instead of repeating
@@ -5358,7 +5476,15 @@
         // REAL_TIMELINE_EXPLAIN_I18N (checked first, below) takes priority over this - e.g.
         // boosterLanding overrides the shared, droneship-specific wording with a location-
         // neutral one for this real-per-mission feature.
-        const REAL_TIMELINE_EXPLAIN_ALIAS = { stagesSeparate: 'stageSep' };
+        const REAL_TIMELINE_EXPLAIN_ALIAS = {
+            stagesSeparate: 'stageSep',
+            // Starship's Max Q/Super Heavy MECO already carry their own English parenthetical
+            // (see the comment above this dict) - these aliases are a fallback safety net only,
+            // reusing the fixed Starlink/ASDS timeline's already-translated (and, for maxQ,
+            // already "aerodynamic"-worded to match Starship's own text) explanations.
+            shipMaxQ: 'maxQ',
+            superHeavyMeco: 'meco',
+        };
         function fallbackRealTimelineExplain(id, langKey) {
             if (!id) return '';
             const key = timelineI18nLang(langKey);
