@@ -5210,13 +5210,25 @@
             // generic entryBurn id and showing identical text under two different events.
             '1st stage entry burn begins': 'boosterEntryBurnBegins',
             '1st stage entry burn starts': 'boosterEntryBurnBegins',
+            // SpaceX itself isn't consistent between missions - O3b mPower 11-13's own feed
+            // uses this third wording ("start", no "s") for the exact same moment.
+            '1st stage entry burn start': 'boosterEntryBurnBegins',
             '1st stage entry burn ends': 'boosterEntryBurnEnds',
         };
         const REAL_TIMELINE_PATTERNS = [
             [/side boosters boostback burn begins/gi, 'boostbackBegins'],
             [/side boosters boostback burn ends/gi, 'boostbackEnds'],
-            [/side boosters entry burn begins/gi, 'entryBurnBegins'],
-            [/side boosters entry burn ends/gi, 'entryBurnEnds'],
+            // "begins"/"starts"/"start" all seen live across different missions for the exact
+            // same moment (SpaceX's own wording isn't consistent) - matched here, ahead of the
+            // generic catch-all 'entryBurn' pattern further down, so any future wording variant
+            // still gets its own distinct begins/ends explanation instead of silently falling
+            // back to one shared line for two different moments (the exact bug a live O3b
+            // mPower 11-13 mission surfaced: "1st stage entry burn start" matched nothing above
+            // and fell through to the generic pattern before this was added).
+            [/side boosters entry burn (?:begins|starts|start)\b/gi, 'entryBurnBegins'],
+            [/side boosters entry burn ends?\b/gi, 'entryBurnEnds'],
+            [/\b1st stage entry burn (?:begins|starts|start)\b/gi, 'boosterEntryBurnBegins'],
+            [/\b1st stage entry burn ends?\b/gi, 'boosterEntryBurnEnds'],
             [/side boosters landing burns start/gi, 'landingBurnsStart'],
             [/side booster engine cutoff/gi, 'beco'],
             [/side boosters separate/gi, 'sideBoostersSeparate'],
