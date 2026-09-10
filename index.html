@@ -10692,6 +10692,80 @@
             }
         }
 
+        // Browser chrome (desktop toolbar, mobile address bar, installed-PWA title bar) is
+        // driven by <meta name="theme-color">. The browser applies that value in one frame,
+        // with no CSS transition of its own - so writing the new hex inside doApply() made the
+        // OS bar jump to the destination color the instant a mode was picked, while the page
+        // itself still crossfaded for ~450ms (see ::view-transition-old/new(root)). Walk the
+        // hex from the current value to the new one on that same duration / ease-in-out so the
+        // two stay in step. Instant path (no View Transitions, or opts.instant) still snaps,
+        // matching the page. Cold-load still sets the meta tag immediately in the early-paint
+        // script - there is no crossfade to sync with on first paint.
+        const THEME_COLOR_BY_MODE = {
+            day: '#f1f5f9',
+            mars: '#140806',
+            moon: '#080c14',
+            night: '#09090b'
+        };
+        const THEME_COLOR_FADE_MS = 450;
+        let themeColorFadeRaf = 0;
+
+        function themeColorForMode(mode) {
+            return THEME_COLOR_BY_MODE[mode] || THEME_COLOR_BY_MODE.night;
+        }
+
+        function parseThemeColorHex(hex) {
+            const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+            if (!m) return null;
+            const n = parseInt(m[1], 16);
+            return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        }
+
+        function formatThemeColorHex(r, g, b) {
+            return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+        }
+
+        function applyBrowserThemeColor(mode, animate) {
+            try {
+                const themeMeta = document.querySelector('meta[name="theme-color"]');
+                if (!themeMeta) return;
+                const target = themeColorForMode(mode);
+                if (themeColorFadeRaf) {
+                    cancelAnimationFrame(themeColorFadeRaf);
+                    themeColorFadeRaf = 0;
+                }
+                if (!animate) {
+                    themeMeta.setAttribute('content', target);
+                    return;
+                }
+                const from = parseThemeColorHex(themeMeta.getAttribute('content')) || parseThemeColorHex(THEME_COLOR_BY_MODE.night);
+                const to = parseThemeColorHex(target);
+                if (!from || !to || (from.r === to.r && from.g === to.g && from.b === to.b)) {
+                    themeMeta.setAttribute('content', target);
+                    return;
+                }
+                const start = performance.now();
+                // Same curve as animation-timing-function: ease-in-out on the view transition.
+                const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                const tick = (now) => {
+                    const t = Math.min(1, (now - start) / THEME_COLOR_FADE_MS);
+                    const e = easeInOut(t);
+                    themeMeta.setAttribute('content', formatThemeColorHex(
+                        Math.round(from.r + (to.r - from.r) * e),
+                        Math.round(from.g + (to.g - from.g) * e),
+                        Math.round(from.b + (to.b - from.b) * e)
+                    ));
+                    if (t < 1) {
+                        themeColorFadeRaf = requestAnimationFrame(tick);
+                    } else {
+                        themeMeta.setAttribute('content', target);
+                        themeColorFadeRaf = 0;
+                    }
+                };
+                themeColorFadeRaf = requestAnimationFrame(tick);
+            } catch (e) { /* cosmetic only - never block the mode switch */ }
+        }
+
         function applyVisualMode(mode, opts) {
             opts = opts || {};
             if (mode === 'heatshield' || !['day', 'night', 'mars', 'moon'].includes(mode)) mode = 'night';
@@ -10714,20 +10788,6 @@
                 }
                 // night: no extra class
                 window.currentVisualMode = mode;
-                // Repaints the installed-app title bar / mobile browser UI strip to match the
-                // mode. It's driven by the theme-color meta tag, which was a fixed near-black -
-                // so in day mode the app window kept a black bar above the page. Values match
-                // each mode's own page background.
-                try {
-                    const themeMeta = document.querySelector('meta[name="theme-color"]');
-                    if (themeMeta) {
-                        themeMeta.setAttribute('content',
-                            mode === 'day' ? '#f1f5f9'
-                            : mode === 'mars' ? '#140806'
-                            : mode === 'moon' ? '#080c14'
-                            : '#09090b');
-                    }
-                } catch (e) { /* cosmetic only - never block the mode switch */ }
                 sessionStorage.setItem('spacex-visual-mode', mode);
                 // Keep legacy keys roughly in sync for anything that still reads them
                 if (mode === 'day') sessionStorage.setItem('spacex-theme', 'light');
@@ -10788,8 +10848,17 @@
 
             if (opts.instant || !document.startViewTransition) {
                 doApply();
+                applyBrowserThemeColor(mode, false);
             } else {
-                document.startViewTransition(() => doApply());
+                const vt = document.startViewTransition(() => doApply());
+                // ready = snapshots taken, crossfade actually starting - that's the moment
+                // the page begins to change color, so that's when the browser bar should too.
+                // Rejects if the transition is skipped; snap in that case so the bar still
+                // lands on the right color.
+                vt.ready.then(
+                    () => applyBrowserThemeColor(mode, true),
+                    () => applyBrowserThemeColor(mode, false)
+                );
             }
         }
 
