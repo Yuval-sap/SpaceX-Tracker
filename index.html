@@ -13453,7 +13453,18 @@
             // right now, before that has a chance to run and mangle "Starship".
             localizeStarshipTerm(tickerTrack);
             protectRomanTelescopeName(tickerTrack);
+            // Reveal instantly rather than through the element's own transition-colors.
+            // This first reveal lands right as Google Translate is typically still mutating
+            // the DOM (translated-rtl on <html>) - confirmed live: getComputedStyle already
+            // reported the correct light-theme background at that moment, yet the bar still
+            // painted black, the signature of a color transition whose paint got interrupted
+            // mid-flight rather than a wrong computed value. Suppressing the transition for
+            // just this reveal closes that window; restored next frame so later day/night/
+            // mars/moon toggles still fade normally.
+            tickerWrap.style.transition = 'none';
             tickerWrap.classList.remove('hidden');
+            void tickerWrap.offsetHeight;
+            requestAnimationFrame(() => { tickerWrap.style.transition = ''; });
 
             // Keep scroll speed consistent (~55px/sec) no matter how much content
             // loaded — a fixed duration would race through a short feed or crawl
