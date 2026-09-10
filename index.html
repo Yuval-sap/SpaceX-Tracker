@@ -9751,7 +9751,7 @@
                             class="hidden relative shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center group/patch cursor-pointer"
                             onclick="openPatchLightbox(document.getElementById('modal-patch').src, document.getElementById('modal-patch').dataset.rawName || document.getElementById('modal-patch').alt, event)">
                             <div class="absolute inset-1 rounded-full patch-hover-glow transition-all duration-300 pointer-events-none"></div>
-                            <img id="modal-patch" src="" alt=""
+                            <img id="modal-patch" src="" alt="" decoding="sync" fetchpriority="high"
                                 class="relative w-11 h-11 sm:w-12 sm:h-12 object-contain transition-transform duration-300 group-active/patch:-translate-y-0.5 group-active/patch:scale-105 md:group-hover/patch:-translate-y-0.5 md:group-hover/patch:scale-105"
                                 onerror="this.closest('#modal-patch-wrap').classList.add('hidden')">
                         </div>
@@ -11222,6 +11222,28 @@
             if (!missionPatchCacheDirty) return;
             try { localStorage.setItem(MISSION_PATCH_CACHE_KEY, JSON.stringify(missionPatchCache)); } catch (e) { }
             missionPatchCacheDirty = false;
+        }
+
+        // The modal badge (#modal-patch) is a separate <img> from the patches strip, and the
+        // strip itself lazy-loads off-screen tiles - so opening a launch card used to start a
+        // fresh CDN fetch of that mission's patch at click time. That's the ~1s pop-in next to
+        // the title. Warm the browser cache as soon as launch data is in, so by the time a card
+        // is actually opened the badge paints from memory. Deduped: Starlink/Starship all share
+        // one generic URL, and re-renders / re-fetches of the same missions are no-ops.
+        const preloadedPatchUrls = new Set();
+        const preloadedPatchImages = [];
+        function preloadMissionPatch(url) {
+            if (!url || preloadedPatchUrls.has(url)) return;
+            preloadedPatchUrls.add(url);
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = url;
+            preloadedPatchImages.push(img);
+            if (typeof img.decode === 'function') img.decode().catch(() => { });
+        }
+        function preloadMissionPatches(missions) {
+            if (!missions || !missions.length) return;
+            missions.forEach(m => { if (m && m.patch) preloadMissionPatch(m.patch); });
         }
 
         // One-off official patches Launch Library has not published yet. Applied after the
@@ -14210,6 +14232,9 @@
 
             dbMissions = dbMissions.slice(0, 7);
 
+            preloadMissionPatches(dbMissions);
+            preloadMissionPatches(rawPastMissions);
+
             // Launches-this-year counter is independent of the (7-item-capped) upcoming list
             // above - fetch and render it separately so it always reflects the true YTD total.
             updateYearToDateLaunchCount();
@@ -16889,6 +16914,9 @@ setTimeout(() => {
                     </div>
                 `;
                 card.onclick = () => openMissionModal(m);
+                if (m.patch) {
+                    card.addEventListener('pointerenter', () => preloadMissionPatch(m.patch), { once: true });
+                }
                 // Protect "Starship" in the mission title (and anywhere else in the card,
                 // e.g. the description) before this card ever touches the live document.
                 // Google Translate's own MutationObserver watches document.body and can
@@ -17010,6 +17038,9 @@ setTimeout(() => {
                 `;
 
                 card.onclick = () => openMissionModal(m);
+                if (m.patch) {
+                    card.addEventListener('pointerenter', () => preloadMissionPatch(m.patch), { once: true });
+                }
                 // Same fix as renderMissions() above: protect "Starship" in the title
                 // before this (re-rendered, e.g. from a filter change) card is inserted
                 // into the live document, so Google Translate's mutation-watching never
@@ -17635,7 +17666,10 @@ setTimeout(() => {
             const modalPatchWrap = document.getElementById('modal-patch-wrap');
             if (modalPatchEl) {
                 if (m.patch) {
-                    modalPatchEl.src = m.patch;
+                    preloadMissionPatch(m.patch);
+                    if (modalPatchEl.getAttribute('src') !== m.patch) {
+                        modalPatchEl.src = m.patch;
+                    }
                     modalPatchEl.alt = m.name;
                     // The lightbox this badge opens reads the mission name from here, NOT from
                     // alt: Google's widget translates alt attributes too, so by the time the
