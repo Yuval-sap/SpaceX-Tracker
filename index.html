@@ -8244,6 +8244,24 @@
             }
             // night = default (no extra class)
             sessionStorage.setItem('spacex-visual-mode', mode);
+            // Installed-PWA title bar color (see applyVisualMode's own comment on this same
+            // meta tag) - the static HTML default is dark, and until now only an explicit
+            // mode-menu toggle ever repainted it. A cold load that resolves straight to 'day'
+            // (by clock, or a remembered light pick) left the native title bar stuck black on
+            // every single launch - confirmed live on an installed Chrome PWA: the actual page
+            // content (and #news-ticker-wrap specifically) was already correctly light, only
+            // this OS-level bar above it wasn't, which reads as "the top of the app is black"
+            // since the bar sits flush against the page content with no visual seam.
+            try {
+                const themeMeta = document.querySelector('meta[name="theme-color"]');
+                if (themeMeta) {
+                    themeMeta.setAttribute('content',
+                        mode === 'day' ? '#f1f5f9'
+                        : mode === 'mars' ? '#140806'
+                        : mode === 'moon' ? '#080c14'
+                        : '#09090b');
+                }
+            } catch (e) { /* cosmetic only - never block page init */ }
         })();
     </script>
     <div class="stars-container" id="stars-background"></div>
