@@ -1565,6 +1565,19 @@
             animation-duration: 0s !important;
         }
 
+        /* #news-ticker-wrap opts back OUT of the instant-snap rule above. Its background is
+           the one thing on the page NOT actually inside the browser's own root crossfade
+           (::view-transition-old/new(root) above) - confirmed live: on every mode switch the
+           bar snapped to its new color in one frame while the rest of the page smoothly
+           crossfaded over the following ~0.5-1s, the two visibly out of step. Likely because
+           this element's own always-running marquee animation (ticker-scroll-ltr/rtl) makes
+           Chrome treat it as "live" rather than capturing it into the static root snapshot.
+           Re-enabling just its own transition-colors here fades it on a comparable timescale
+           instead of jumping ahead of everything else. */
+        .theme-switching #news-ticker-wrap {
+            transition: background-color 500ms, border-color 500ms !important;
+        }
+
         /* Theme toggle button: hover recolors the icon itself (and, for the moon specifically,
            the button's own circular background too) instead of the plain hover:text-emerald-400
            every other icon-button on the page uses. Sun (shown while the site is in dark/night
