@@ -448,6 +448,40 @@ def name_langs_complete(entry, langs) -> bool:
     return True
 
 
+# Used to decide, BEFORE spending any quota, whether this run should even bother fetching/
+# translating the past-launch backlog - see main()'s own comment. Mirrors the same
+# dedup-by-hash and dedup-by-name logic the real translation loops below use, so "still needs
+# work" here means exactly what those loops would actually attempt.
+def upcoming_still_needs_entries(upcoming: list, entries: dict) -> bool:
+    seen_hashes = set()
+    for launch in upcoming:
+        fields = extract_fields(launch)
+        description = fields["description"]
+        if not description or len(description) <= 30 or description.strip() == GENERIC_DESCRIPTION:
+            continue
+        key = description_hash(description)
+        if key in seen_hashes:
+            continue
+        seen_hashes.add(key)
+        existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
+        if any(not langs_complete(existing, batch) for batch in LANG_BATCHES):
+            return True
+    return False
+
+
+def upcoming_still_needs_names(upcoming: list, names_store: dict) -> bool:
+    seen_names = set()
+    for launch in upcoming:
+        raw_name = clean_mission_name((launch.get("name") or "").strip())
+        if not raw_name or raw_name in seen_names:
+            continue
+        seen_names.add(raw_name)
+        existing = names_store.get(name_hash(raw_name))
+        if not name_langs_complete(existing, list(LANG_NAMES)):
+            return True
+    return False
+
+
 def normalize_lang_block(block) -> dict:
     if not isinstance(block, dict):
         return {}
@@ -564,15 +598,29 @@ def main() -> int:
         return 0
 
     upcoming = fetch_launches(LL2_UPCOMING_URL)
-    time.sleep(3)
-    previous = fetch_previous_launches()
+    store = load_existing()
+    entries = store["entries"]
+    names_store = store["names"]
+
+    # A brand-new upcoming mission (just entered the top-7 window, or a description LL2 only
+    # just published) must be translated before this run spends any quota on the 365-day past
+    # backlog - a fresh launch page showing a raw Google Translate fallback (see the "satellite
+    # bus" -> literal-vehicle mistranslation this was written for) is far more visible/urgent
+    # than an old past launch's card still being untranslated. Checked BEFORE even fetching the
+    # previous-launches pages, so a run with upcoming work pending skips that fetch entirely and
+    # puts every one of its (rate-limited, ~13s-per-call) requests toward upcoming missions only.
+    if upcoming_still_needs_entries(upcoming, entries) or upcoming_still_needs_names(upcoming, names_store):
+        print("Upcoming launches still need translation - skipping the past-launch backlog this run.")
+        previous = []
+    else:
+        time.sleep(3)
+        previous = fetch_previous_launches()
+
     launches = upcoming + previous
     if not launches:
         print("No launches fetched - leaving existing translations unchanged.", file=sys.stderr)
         return 0
 
-    store = load_existing()
-    entries = store["entries"]
     translated = 0
     reused = 0
     skipped = 0
@@ -639,7 +687,7 @@ def main() -> int:
     # own comment for why names can't share the description-keyed entries above). Only names
     # that are new or still missing a language batch get sent; anything already fully
     # translated from a previous run is skipped (name_reused), same reuse philosophy as entries.
-    names_store = store["names"]
+    # (names_store was already pulled from `store` above, before the upcoming-vs-past decision.)
     name_translated = 0
     name_reused = 0
     name_failed = 0
