@@ -5200,6 +5200,10 @@
             'entry burn': 'entryBurn',
             'landing burn': 'landingBurn',
             'booster landing': 'boosterLanding',
+            // Single-core (non-Falcon-Heavy) touchdown event - no "burn" suffix, so it needs its
+            // own exact entry rather than relying on the "landing burn(s)" pattern below, which
+            // is for the burn itself, not the touchdown moment.
+            '1st stage landing': 'boosterLanding',
         };
         const REAL_TIMELINE_PATTERNS = [
             [/side boosters boostback burn begins/gi, 'boostbackBegins'],
@@ -5251,6 +5255,103 @@
             return out;
         }
 
+        // Identifies WHICH known milestone a raw real-timeline event string is (same lookup
+        // localizeRealTimelineEventLabel uses for translation), purely so a one-line
+        // explanation can be attached below - see REAL_TIMELINE_EXPLAIN_I18N and
+        // fallbackRealTimelineExplain below. Returns null for anything unrecognized (a mission-
+        // specific one-off event with no canned explanation - the row just shows its title,
+        // same as today).
+        function identifyRealTimelineEventId(text) {
+            const norm = String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (!norm) return null;
+            if (REAL_TIMELINE_EXACT[norm]) return REAL_TIMELINE_EXACT[norm];
+            for (const [pattern, id] of REAL_TIMELINE_PATTERNS) {
+                pattern.lastIndex = 0; // these /gi patterns are shared with localizeRealTimelineEventLabel's .replace() calls elsewhere - reset before .test() so leftover state can't skip a match
+                if (pattern.test(norm)) return id;
+            }
+            return null;
+        }
+
+        // Fills in the description line for real per-mission events whose own SpaceX wording
+        // has no parenthetical explanation (see the site's question this answers: several
+        // events - "1st and 2nd stages separate", "Fairing separation", "1st stage landing",
+        // Falcon Heavy's side-booster events, etc. - are plain short titles in SpaceX's own
+        // feed with nothing else attached, unlike "Max Q (moment of peak mechanical stress...)"
+        // which already carries its own description). One-line explanations for those events
+        // that don't already have one elsewhere in this file.
+        const REAL_TIMELINE_EXPLAIN_I18N = {
+            sideBoostersSeparate: {
+                en: "The two side boosters detach from the center core", he: "שני הבוסטרים הצדדיים מתנתקים מהגרעין המרכזי", es: "Los dos propulsores laterales se separan del núcleo central", fr: "Les deux propulseurs latéraux se détachent du corps central", de: "Die beiden Seitenbooster trennen sich vom Zentralkern", ru: "Два боковых ускорителя отделяются от центрального блока", zh: "两个侧助推器与中心核心分离", it: "I due booster laterali si staccano dal nucleo centrale", cs: "Oba boční boostery se oddělují od centrálního jádra", sv: "De två sidoboostrarna lossnar från kärnraketen", nl: "De twee zijboosters maken zich los van de centrale kern", da: "De to sideboostere løsner sig fra den centrale kerne", pt: "Os dois boosters laterais se separam do núcleo central", pl: "Dwa boostery boczne odłączają się od centralnego rdzenia", hi: "दोनों साइड बूस्टर केंद्रीय कोर से अलग होते हैं", ar: "ينفصل المعززان الجانبيان عن النواة المركزية", tr: "İki yan güçlendirici merkezi çekirdekten ayrılıyor",
+            },
+            sideBoostersFlip: {
+                en: "Side boosters flip around to fly engines-first for the trip back", he: "הבוסטרים הצדדיים מתהפכים כדי לטוס עם המנועים קדימה לקראת החזרה", es: "Los propulsores laterales giran para volar con los motores por delante en el regreso", fr: "Les propulseurs latéraux se retournent pour voler moteurs en avant pour le retour", de: "Die Seitenbooster drehen sich um, um für den Rückflug mit den Triebwerken voran zu fliegen", ru: "Боковые ускорители разворачиваются двигателями вперёд для обратного полёта", zh: "侧助推器翻转，发动机朝前准备返航", it: "I booster laterali si capovolgono per volare con i motori in avanti nel ritorno", cs: "Boční boostery se otáčejí, aby letěly motory napřed při návratu", sv: "Sidoboostrarna vänder för att flyga med motorerna först på returresan", nl: "De zijboosters draaien om om met de motoren vooraan terug te vliegen", da: "Sideboosterne vender om for at flyve med motorerne forrest på turen tilbage", pt: "Os boosters laterais viram para voar com os motores à frente no retorno", pl: "Boostery boczne obracają się, aby lecieć silnikami do przodu w drodze powrotnej", hi: "साइड बूस्टर वापसी के लिए इंजन आगे करके पलटते हैं", ar: "تنقلب المعززات الجانبية لتطير بالمحركات إلى الأمام أثناء العودة", tr: "Yan güçlendiriciler dönüş için motorları öne alarak ters dönüyor",
+            },
+            boostbackBegins: {
+                en: "Side boosters ignite their engines to reverse course toward the landing site", he: "הבוסטרים הצדדיים מצתים את מנועיהם כדי להפוך כיוון בחזרה לאתר הנחיתה", es: "Los propulsores laterales encienden sus motores para invertir el rumbo hacia el sitio de aterrizaje", fr: "Les propulseurs latéraux allument leurs moteurs pour inverser leur trajectoire vers le site d'atterrissage", de: "Die Seitenbooster zünden ihre Triebwerke, um zurück zur Landestelle zu kehren", ru: "Боковые ускорители включают двигатели, чтобы развернуться к месту посадки", zh: "侧助推器点火，调转方向返回着陆点", it: "I booster laterali accendono i motori per invertire la rotta verso il sito di atterraggio", cs: "Boční boostery zapalují motory, aby změnily kurz zpět k místu přistání", sv: "Sidoboostrarna tänder motorerna för att vända kurs mot landningsplatsen", nl: "De zijboosters ontsteken hun motoren om koers te wijzigen naar de landingsplaats", da: "Sideboosterne tænder motorerne for at vende kurs mod landingsstedet", pt: "Os boosters laterais acendem os motores para inverter o curso rumo ao local de pouso", pl: "Boostery boczne zapalają silniki, aby zmienić kurs w stronę miejsca lądowania", hi: "साइड बूस्टर लैंडिंग स्थल की ओर दिशा बदलने के लिए इंजन प्रज्वलित करते हैं", ar: "تُشعل المعززات الجانبية محركاتها لعكس مسارها نحو موقع الهبوط", tr: "Yan güçlendiriciler iniş sahasına doğru yön değiştirmek için motorlarını ateşliyor",
+            },
+            boostbackEnds: {
+                en: "Side boosters finish the burn that sends them back toward landing", he: "הבוסטרים הצדדיים מסיימים את השריפה ששולחת אותם בחזרה לנחיתה", es: "Los propulsores laterales terminan la quema que los envía de regreso para aterrizar", fr: "Les propulseurs latéraux terminent la combustion qui les renvoie vers l'atterrissage", de: "Die Seitenbooster beenden die Zündung, die sie zurück zur Landung schickt", ru: "Боковые ускорители завершают манёвр, который направляет их обратно для посадки", zh: "侧助推器完成返场点火", it: "I booster laterali terminano la combustione che li riporta verso l'atterraggio", cs: "Boční boostery dokončují zážeh, který je vrací zpět k přistání", sv: "Sidoboostrarna avslutar bränningen som skickar dem tillbaka för landning", nl: "De zijboosters beëindigen de verbranding die hen terugstuurt om te landen", da: "Sideboosterne afslutter forbrændingen, der sender dem tilbage til landing", pt: "Os boosters laterais terminam a queima que os leva de volta para pousar", pl: "Boostery boczne kończą zapłon, który kieruje je z powrotem do lądowania", hi: "साइड बूस्टर वह दहन पूरा करते हैं जो उन्हें वापस लैंडिंग की ओर भेजता है", ar: "تُنهي المعززات الجانبية المناورة التي تعيدها نحو الهبوط", tr: "Yan güçlendiriciler onları inişe geri gönderen yanmayı tamamlıyor",
+            },
+            entryBurnBegins: {
+                en: "Side boosters ignite their engines again to slow down for re-entry", he: "הבוסטרים הצדדיים מצתים שוב את מנועיהם כדי להאט לקראת הכניסה לאטמוספרה", es: "Los propulsores laterales vuelven a encender sus motores para frenar antes de la reentrada", fr: "Les propulseurs latéraux rallument leurs moteurs pour ralentir avant la rentrée", de: "Die Seitenbooster zünden erneut, um vor dem Wiedereintritt abzubremsen", ru: "Боковые ускорители снова включают двигатели, чтобы затормозить перед входом в атмосферу", zh: "侧助推器再次点火，为再入大气层减速", it: "I booster laterali riaccendono i motori per rallentare prima del rientro", cs: "Boční boostery znovu zapalují motory, aby zpomalily před vstupem do atmosféry", sv: "Sidoboostrarna tänder motorerna igen för att sakta ner inför återinträdet", nl: "De zijboosters ontsteken opnieuw om af te remmen voor de terugkeer", da: "Sideboosterne tænder motorerne igen for at bremse op før genindtrædning", pt: "Os boosters laterais acendem os motores novamente para desacelerar antes da reentrada", pl: "Boostery boczne ponownie zapalają silniki, aby zwolnić przed wejściem w atmosferę", hi: "साइड बूस्टर पुनः प्रवेश से पहले धीमा होने के लिए फिर से इंजन प्रज्वलित करते हैं", ar: "تُشعل المعززات الجانبية محركاتها مجددًا لتبطئ قبل الدخول إلى الغلاف الجوي", tr: "Yan güçlendiriciler atmosfere yeniden girmeden önce yavaşlamak için motorlarını tekrar ateşliyor",
+            },
+            entryBurnEnds: {
+                en: "Side boosters finish slowing down for atmospheric re-entry", he: "הבוסטרים הצדדיים מסיימים להאט לקראת הכניסה לאטמוספרה", es: "Los propulsores laterales terminan de frenar para la reentrada atmosférica", fr: "Les propulseurs latéraux finissent de ralentir pour la rentrée atmosphérique", de: "Die Seitenbooster beenden das Abbremsen für den Wiedereintritt", ru: "Боковые ускорители заканчивают торможение перед входом в атмосферу", zh: "侧助推器完成再入减速", it: "I booster laterali finiscono di rallentare per il rientro atmosferico", cs: "Boční boostery dokončují zpomalování před vstupem do atmosféry", sv: "Sidoboostrarna slutar sakta ner inför återinträdet i atmosfären", nl: "De zijboosters stoppen met afremmen voor de terugkeer in de atmosfeer", da: "Sideboosterne er færdige med at bremse op før genindtrædning i atmosfæren", pt: "Os boosters laterais terminam de desacelerar para a reentrada atmosférica", pl: "Boostery boczne kończą hamowanie przed wejściem w atmosferę", hi: "साइड बूस्टर वायुमंडल में पुनः प्रवेश के लिए धीमा होना पूरा करते हैं", ar: "تنتهي المعززات الجانبية من التباطؤ استعدادًا للدخول إلى الغلاف الجوي", tr: "Yan güçlendiriciler atmosfere yeniden giriş için yavaşlamayı tamamlıyor",
+            },
+            landingBurnsStart: {
+                en: "Side boosters ignite their engines a final time to land", he: "הבוסטרים הצדדיים מצתים את מנועיהם בפעם האחרונה כדי לנחות", es: "Los propulsores laterales encienden sus motores una última vez para aterrizar", fr: "Les propulseurs latéraux allument leurs moteurs une dernière fois pour atterrir", de: "Die Seitenbooster zünden ein letztes Mal, um zu landen", ru: "Боковые ускорители включают двигатели в последний раз для посадки", zh: "侧助推器最后一次点火准备着陆", it: "I booster laterali accendono i motori un'ultima volta per atterrare", cs: "Boční boostery zapalují motory naposledy, aby přistály", sv: "Sidoboostrarna tänder motorerna en sista gång för att landa", nl: "De zijboosters ontsteken een laatste keer om te landen", da: "Sideboosterne tænder motorerne en sidste gang for at lande", pt: "Os boosters laterais acendem os motores uma última vez para pousar", pl: "Boostery boczne zapalają silniki po raz ostatni, aby wylądować", hi: "साइड बूस्टर उतरने के लिए आखिरी बार इंजन प्रज्वलित करते हैं", ar: "تُشعل المعززات الجانبية محركاتها للمرة الأخيرة للهبوط", tr: "Yan güçlendiriciler inmek için motorlarını son kez ateşliyor",
+            },
+            sideBoostersLanding: {
+                en: "Side boosters touch down at the landing site", he: "הבוסטרים הצדדיים נוגעים בקרקע באתר הנחיתה", es: "Los propulsores laterales tocan tierra en el sitio de aterrizaje", fr: "Les propulseurs latéraux se posent sur le site d'atterrissage", de: "Die Seitenbooster setzen an der Landestelle auf", ru: "Боковые ускорители совершают посадку на площадке", zh: "侧助推器在着陆点着陆", it: "I booster laterali toccano terra nel sito di atterraggio", cs: "Boční boostery přistávají na místě přistání", sv: "Sidoboostrarna landar på landningsplatsen", nl: "De zijboosters landen op de landingsplaats", da: "Sideboosterne lander på landingsstedet", pt: "Os boosters laterais tocam o solo no local de pouso", pl: "Boostery boczne lądują w miejscu lądowania", hi: "साइड बूस्टर लैंडिंग स्थल पर उतरते हैं", ar: "تهبط المعززات الجانبية في موقع الهبوط", tr: "Yan güçlendiriciler iniş sahasına iniyor",
+            },
+            romanDeploys: {
+                en: "The payload separates from the second stage", he: "המטען נפרד מהשלב השני", es: "La carga útil se separa de la segunda etapa", fr: "La charge utile se sépare du second étage", de: "Die Nutzlast trennt sich von der zweiten Stufe", ru: "Полезная нагрузка отделяется от второй ступени", zh: "有效载荷与二级分离", it: "Il payload si separa dal secondo stadio", cs: "Náklad se odděluje od druhého stupně", sv: "Nyttolasten separerar från andra steget", nl: "De lading scheidt zich van de tweede trap", da: "Nyttelasten adskilles fra andet trin", pt: "A carga útil se separa do segundo estágio", pl: "Ładunek oddziela się od drugiego stopnia", hi: "पेलोड दूसरे चरण से अलग होता है", ar: "تنفصل الحمولة عن المرحلة الثانية", tr: "Yük ikinci kademeden ayrılıyor",
+            },
+            // Single-core (RTLS) boostback burn - Falcon Heavy's side-booster version already has
+            // its own begins/ends pair above; a single center core's own boostback only ever
+            // shows up in the feed as generic "Boostback Burn Starts"/"Ends", both matching the
+            // same 'boostbackBurn' id via REAL_TIMELINE_PATTERNS, so one shared explanation
+            // covers both (same approach already used for entryBurn/landingBurn below).
+            boostbackBurn: {
+                en: "The booster fires its engines to head back toward the landing site", he: "הבוסטר מצית את מנועיו כדי לחזור לכיוון אתר הנחיתה", es: "El booster enciende sus motores para regresar hacia el sitio de aterrizaje", fr: "Le booster allume ses moteurs pour repartir vers le site d'atterrissage", de: "Der Booster zündet seine Triebwerke, um zur Landestelle zurückzukehren", ru: "Ускоритель включает двигатели, чтобы направиться обратно к месту посадки", zh: "助推器点火返回着陆点", it: "Il booster accende i motori per tornare verso il sito di atterraggio", cs: "Booster zapaluje motory, aby se vrátil k místu přistání", sv: "Boostern tänder motorerna för att vända tillbaka mot landningsplatsen", nl: "De booster ontsteekt zijn motoren om terug te keren naar de landingsplaats", da: "Boosteren tænder motorerne for at vende tilbage mod landingsstedet", pt: "O booster acende os motores para retornar ao local de pouso", pl: "Booster zapala silniki, aby wrócić w stronę miejsca lądowania", hi: "बूस्टर लैंडिंग स्थल की ओर वापस जाने के लिए इंजन प्रज्वलित करता है", ar: "يُشعل المعزز محركاته للعودة نحو موقع الهبوط", tr: "Güçlendirici iniş sahasına geri dönmek için motorlarını ateşliyor",
+            },
+            // Overrides MISSION_TIMELINE_EXPLAIN_I18N's own boosterLanding text below, which
+            // names the droneship specifically - accurate for STARLINK_ASDS_TIMELINE (always an
+            // ASDS/droneship profile) but wrong here, since a real per-mission touchdown event
+            // can just as easily be an RTLS pad landing (Crew-11, most Falcon Heavy side
+            // boosters, etc.) as a droneship one. Kept location-neutral instead.
+            boosterLanding: {
+                en: "The booster lands at the recovery site", he: "הבוסטר נוחת באתר ההשבה", es: "El booster aterriza en el sitio de recuperación", fr: "Le booster atterrit sur le site de récupération", de: "Der Booster landet an der Bergungsstelle", ru: "Ускоритель совершает посадку на месте эвакуации", zh: "助推器在回收地点着陆", it: "Il booster atterra nel sito di recupero", cs: "Booster přistává na místě zotavení", sv: "Boostern landar på återhämtningsplatsen", nl: "De booster landt op de bergingslocatie", da: "Boosteren lander på bjærgningsstedet", pt: "O booster pousa no local de recuperação", pl: "Booster ląduje w miejscu odzysku", hi: "बूस्टर पुनर्प्राप्ति स्थल पर उतरता है", ar: "يهبط المعزز في موقع الاسترداد", tr: "Güçlendirici kurtarma sahasına iniyor",
+            },
+        };
+        // ids whose own explanation is a duplicate of one already defined for the fixed
+        // Starlink/ASDS timeline (MISSION_TIMELINE_EXPLAIN_I18N) - reused instead of repeating
+        // the same text in a second dict. Anything with its OWN entry in
+        // REAL_TIMELINE_EXPLAIN_I18N (checked first, below) takes priority over this - e.g.
+        // boosterLanding overrides the shared, droneship-specific wording with a location-
+        // neutral one for this real-per-mission feature.
+        const REAL_TIMELINE_EXPLAIN_ALIAS = { stagesSeparate: 'stageSep' };
+        function fallbackRealTimelineExplain(id, langKey) {
+            if (!id) return '';
+            const key = timelineI18nLang(langKey);
+            const ownDict = REAL_TIMELINE_EXPLAIN_I18N[id];
+            if (ownDict) return ownDict[key] || ownDict.en;
+            const sharedKey = REAL_TIMELINE_EXPLAIN_ALIAS[id] || id;
+            const sharedDict = MISSION_TIMELINE_EXPLAIN_I18N[key] || MISSION_TIMELINE_EXPLAIN_I18N.en;
+            if (sharedDict[sharedKey]) return sharedDict[sharedKey];
+            if (MISSION_TIMELINE_EXPLAIN_I18N.en[sharedKey]) return MISSION_TIMELINE_EXPLAIN_I18N.en[sharedKey];
+            // maxQ/beco/meco/ses1/ses2/seco1/seco2 already carry their own explanation baked
+            // into REAL_TIMELINE_I18N's canned phrase, e.g. "Max Q (moment of peak mechanical
+            // stress on the rocket)" - split it the same way a real per-launch entry would be,
+            // so a launch whose own feed omits the parenthetical still gets one.
+            const phrase = realTimelinePhrase(id, key);
+            if (phrase) {
+                const split = splitRealTimelineEventText(phrase);
+                if (split.explain) return split.explain;
+            }
+            return '';
+        }
+
         // Site-owned translations only - never Google. The rendered list is also marked
         // notranslate so the on-page widget cannot rewrite a phrase we already localized
         // (or leave an unknown leftover in English, which is better than a mistranslation).
@@ -5264,10 +5365,15 @@
             realMissionTimelineTranslated.entries = entries.map(e => {
                 const english = splitRealTimelineEventText(e.event);
                 const localized = splitRealTimelineEventText(localizeRealTimelineEventLabel(e.event, key));
+                // SpaceX's own text for this specific event had no parenthetical to split into
+                // an explanation ("1st and 2nd stages separate", "Fairing separation", etc. are
+                // often plain one-liners) - fill in our own canned one-line description for any
+                // event we recognize, instead of leaving that row with a title and nothing else.
+                const explain = localized.explain || fallbackRealTimelineExplain(identifyRealTimelineEventId(e.event), key);
                 return {
                     tSeconds: e.seconds,
                     label: english.title,
-                    explain: localized.explain || ''
+                    explain: explain || ''
                 };
             });
         }
