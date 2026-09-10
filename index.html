@@ -14247,7 +14247,17 @@
         }
         function apiStatusMeansActuallyFlying(statusLower) {
             const s = String(statusLower || '').toLowerCase();
-            return s.includes('in flight') || s.includes('liftoff') || s.includes('success') || s.includes('fail');
+            // "in progress"/"completed" are this app's OWN relabeling of a raw API status
+            // (see processLaunchData, which only sets them once it already determined the
+            // rocket is flying or the window has closed) - checked here too because
+            // updateHeroCountdown calls this again on m.status AFTER that relabeling has
+            // already replaced the original "in flight"/"success" wording. Without this,
+            // USSF-153's real "Launch in Flight" status - already turned into "In Progress"
+            // by the time it reaches here - matched none of the checks below, so the
+            // countdown treated an in-flight rocket as if the window were still merely open
+            // and froze at 00:00:00 instead of showing "MISSION IN PROGRESS".
+            return s.includes('in flight') || s.includes('liftoff') || s.includes('success') || s.includes('fail') ||
+                s.includes('in progress') || s.includes('completed');
         }
 
         function processLaunchData(combinedRawData) {
@@ -19964,8 +19974,15 @@ setTimeout(() => {
                         });
                         return;
                     }
-                    if (!windowStillOpen) {
-                        if (diff > -3 * 60 * 1000 &&
+                    if (windowStillOpen) {
+                        // NET is usually the window OPEN, not T-0, and the rocket has not
+                        // actually flown yet (apiStatusMeansActuallyFlying said no) - keep
+                        // showing the plain countdown (clamped to 00:00:00 below) instead of
+                        // LIFTOFF/MISSION IN PROGRESS until the API confirms flight or the
+                        // window itself closes.
+                        return;
+                    }
+                    if (diff > -3 * 60 * 1000 &&
                         !(hasAsdsProfile && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang)) &&
                         !getCurrentRealMissionMilestone(-diff / 1000, document.documentElement.lang, window.currentActiveHeroMissionName)) {
                         // First 3 minutes after T-0: "LIFTOFF" - after that, "MISSION IN PROGRESS"
@@ -20016,8 +20033,7 @@ setTimeout(() => {
                             stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
                         });
                     }
-                        return;
-                    }
+                    return;
                 }
 
                 // Still counting down to a future liftoff - label above stays "Countdown to
