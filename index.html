@@ -19967,6 +19967,42 @@ setTimeout(() => {
             return entry[getAstronautGender(name)];
         }
 
+        // Hand-translated Hebrew bios for the current (small, slow-changing) crew roster - the
+        // live Google MT call for this field is unreliable (unofficial endpoint, no retry-proof
+        // cache, see translateModalDescriptions), and there are only ever a handful of active
+        // crew members at once, so a real, permanent translation beats depending on that call
+        // succeeding every time. Keyed by the API's exact `astronaut.name` string. Anyone not
+        // listed here just falls through to the existing Google-translate path, unchanged.
+        const ASTRONAUT_BIO_HE = {
+            "Jessica Watkins": "ג'סיקה אנדראה ווטקינס היא גיאולוגית אמריקאית, לשעבר שחקנית רוגבי בין-לאומית, ואסטרונאוטית של נאס\"א ממחזור 2017.",
+            "Joshua Kutryk": "ג'ושוע קוטריק, סגן-אלוף בחיל האוויר המלכותי הקנדי, נולד בבואוולון שבאלברטה. הוא בעל תואר ראשון בהנדסת מכונות, ותארים שני בלימודי חלל, הנדסת ניסויי טיסה ולימודי ביטחון. לפני הצטרפותו לסוכנות החלל הקנדית, עבד קוטריק כטייס ניסוי וטייס קרב בבסיס קולד לייק שבאלברטה, שם עמד בראש היחידה האחראית על ניסויי הטיסה התפעוליים של מטוסי קרב בקנדה.",
+            "Luke Delaney": "לוק דילייני הוא סרן בגמלאות בחיל הנחתים של ארצות הברית, שגדל בדיברי שבפלורידה. הוא בעל תואר בהנדסת מכונות מאוניברסיטת צפון פלורידה, ותואר שני בהנדסת אווירונאוטיקה מבית הספר לתארים מתקדמים של הצי. הוא טייס חיל ים מצטיין שהשתתף בתרגילים באזור אסיה-פסיפיק וביצע משימות קרב במסגרת מבצע 'חירות מתמשכת'. כטייס ניסוי ביצע טיסות רבות להערכת שילוב מערכות נשק, ושימש כמדריך לטייסי ניסוי. לאחרונה עבד דילייני כטייס מחקר במרכז המחקר לנגלי של נאס\"א שבהמפטון, וירג'יניה, שם תמך במשימות מדע אוויריות. לרבות תקופתו בנאס\"א, צבר דילייני יותר מ-3,700 שעות טיסה על פני 48 דגמי מטוסי סילון, מדחף ומסוקים.\n\nתאריך לידה מדויק אינו ידוע.",
+            "Sergey Teteryatnikov": "סרגיי טטריאטניקוב סיים את לימודיו באקדמיה הימית בסנקט פטרבורג שברוסיה, ב-2011, כמהנדס המתמחה בהפעלת מערכות הנעה של כלי שיט. לפני שנבחר לתפקיד קוסמונאוט ניסוי, שירת טטריאטניקוב בתפקידי הנדסה ימית שונים, לרבות בכלי שיט תת-מימיים ובהפעלת חדרי מכונות מיוחדים. הוא נבחר לחיל הקוסמונאוטים של מרכז המחקר והניסוי לקוסמונאוטים על שם גגארין ב-2021, ומשמש כקוסמונאוט ניסוי מאז 2023.",
+            "Jessica Meir": "ג'סיקה אולריקה מאיר היא פרופסור חבר לאנסתזיולוגיה בבית הספר לרפואה של הרווארד, בבית החולים הכללי של מסצ'וסטס בבוסטון, לאחר מחקר בתר-דוקטורט בפיזיולוגיה השוואתית באוניברסיטת קולומביה הבריטית. היא חקרה את הפיזיולוגיה וההתנהגות של פינגווינים קיסריים בצלילה באנטארקטיקה, וכן את הפיזיולוגיה של אווזי הראש הפסים המסוגלים לנדוד מעל רכס ההימלאיה. בשנת 2000 השלימה מאיר תואר שני בלימודי חלל באוניברסיטת החלל הבין-לאומית בשטרסבורג, צרפת. בספטמבר 2002 שימשה מאיר כאקוונאוטית בצוות משימת NEEMO 4 של נאס\"א לחקר סביבות קיצוניות. ביוני 2013 נבחרה כמועמדת לאסטרונאוטית על ידי נאס\"א, והפכה לאחת משמונה חברי קבוצת האסטרונאוטים ה-21 של נאס\"א. היא מגיעה מקריבו שבמיין.",
+            "Jack Hathaway": "ג'ק האת'ווי הוא מפקד בחיל הים האמריקאי מקונטיקט. הוא בעל תארים ראשונים בפיזיקה ובהיסטוריה מהאקדמיה הימית של ארצות הברית, והשלים לימודי תואר שני באוניברסיטת קרנפילד באנגליה ובמכללת המלחמה הימית האמריקאית. כטייס חיל ים מצטיין, האת'ווי טס והוצב עם טייסת הקרב-תקיפה 14 על סיפון ה-USS Nimitz וטייסת הקרב-תקיפה 136 על סיפון ה-USS Truman. הוא סיים את בית הספר לטייסי ניסוי 'אמפייר', סייע למטה המשולב של ראשי המטות הכלליים בפנטגון, ותפקידו האחרון היה קצין ביצוע מיועד לטייסת הקרב-תקיפה 81. יש לו יותר מ-2,500 שעות טיסה על פני 30 דגמי מטוסים, יותר מ-500 נחיתות עגינה על נושאת מטוסים, ו-39 משימות קרב.\n\nתאריך לידה מדויק אינו ידוע.",
+            "Sophie Adenot": "בין השנים 2001 ל-2003 למדה סופי הנדסה וסיימה את לימודיה במכון ISAE-SUPAERO בטולוז שבצרפת, שם התמחתה בדינמיקת טיסה של כלי חלל ומטוסים. לאחר מכן השלימה תואר שני בהנדסת גורם אנושי במכון הטכנולוגי של מסצ'וסטס (MIT) בבוסטון, ארה\"ב, בשנת 2004.\nב-2005 הצטרפה סופי לחיל האוויר הצרפתי לאימוני היסוד הצבאיים ולהכשרת הטיסה הראשונית שלה כטייסת מסוקים.\n\nב-2018 סיימה בהצטיינות את הכשרתה כטייסת ניסוי למסוקים בבית הספר לטייסי ניסוי 'אמפייר' בבוסקומב דאון, בריטניה. היא זכתה בגביע מק קנה ובמגן פאטוקסנט.\nבין השנים 2019 ל-2022 עבדה סופי כטייסת ניסוי למסוקים במרכז הניסויים בקאזו עם ה-DGA (המנהל הכללי לחימוש - סוכנות הרכש הביטחוני הצרפתית). היא צברה 3,000 שעות טיסה על פני 22 דגמי מסוקים שונים. היא מחזיקה גם ברישיון צניחה צבאית, רישיון טיסה למטוס קל ורישיון להטסת דאון.",
+            "Andrei Fedyaev": "אנדריי ולרייביץ' פדיייב הוא קוסמונאוט רוסי. הוא היה טייס צבאי לפני שפרש מחיל האוויר בשנת 2013, ונבחר לתפקיד קוסמונאוט בשנת 2012.\n\nמשלחת ISS-69 תהיה טיסת החלל הראשונה של פדיייב."
+        };
+        function getLocalizedAstronautBio(name, lang) {
+            if (lang !== 'he' && lang !== 'iw') return null;
+            return ASTRONAUT_BIO_HE[(name || '').trim()] || null;
+        }
+
+        // Same idea as ASTRONAUT_BIO_HE, but keyed by AGENCY name instead of by person - there
+        // are only a handful of space agencies that ever fly crew, so this one small dictionary
+        // covers every past AND future astronaut from these agencies, not just today's roster.
+        const ASTRONAUT_AGENCY_HE = {
+            "national aeronautics and space administration": "נאס\"א (NASA)",
+            "canadian space agency": "סוכנות החלל הקנדית (CSA)",
+            "european space agency": "סוכנות החלל האירופית (ESA)",
+            "russian federal space agency (roscosmos)": "הסוכנות הפדרלית הרוסית לחלל (רוסקוסמוס)",
+            "japan aerospace exploration agency": "סוכנות החלל היפנית (JAXA)"
+        };
+        function getLocalizedAstronautAgency(agency, lang) {
+            if (lang !== 'he' && lang !== 'iw') return null;
+            return ASTRONAUT_AGENCY_HE[(agency || '').trim().toLowerCase()] || null;
+        }
+
         function openAstronautModal(index) {
             if (!window.currentMissionCrew || !window.currentMissionCrew[index]) return;
 
@@ -19992,14 +20028,22 @@ setTimeout(() => {
             // הפעלת ההצמדה החכמה לראש
             alignAstronautHeadToTop(imgEl, 6);
 
-            document.getElementById('astro-modal-agency').innerText = c.agency || "ASTRONAUT DOSSIER";
-            document.getElementById('astro-modal-bio').innerText = c.bio || "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.";
-            // כשיש תרגום מגדרי מדויק לתפקיד (getLocalizedAstronautRole למעלה) הוא כבר הוצג - לא
-            // מעבירים את roleEl לתרגום הגנרי של גוגל, אחרת הוא היה נדרס בגרסה הגנרית/זכרית.
+            const bioRaw = c.bio || "Active flight crew member operating SpaceX Dragon spacecraft on orbital logistics and research missions.";
+            const localizedBio = getLocalizedAstronautBio(c.name, currentLang);
+            const bioEl = document.getElementById('astro-modal-bio');
+            const agencyRaw = c.agency || "ASTRONAUT DOSSIER";
+            const localizedAgency = getLocalizedAstronautAgency(agencyRaw, currentLang);
+            const agencyEl = document.getElementById('astro-modal-agency');
+
+            agencyEl.innerText = localizedAgency || agencyRaw;
+            bioEl.innerText = localizedBio || bioRaw;
+            // כשיש תרגום מדויק שכבר הוצג בעצמנו (תפקיד/סוכנות/תקציר, שלושת ה-getLocalizedAstronaut*
+            // למעלה) - לא מעבירים אותו לתרגום הגנרי של גוגל, אחרת הוא היה נדרס בגרסה הגנרית/לא-מדויקת
+            // (או חוזר לאנגלית אם הקריאה לגוגל נכשלת/מוגבלת, שזה בדיוק המצב שהתיקון הזה נועד למנוע).
             translateModalDescriptions('astronaut', [
                 ...(localizedRole ? [] : [roleEl]),
-                document.getElementById('astro-modal-agency'),
-                document.getElementById('astro-modal-bio')
+                ...(localizedAgency ? [] : [agencyEl]),
+                ...(localizedBio ? [] : [bioEl])
             ], document.documentElement.lang);
 
             const modalEl = document.getElementById('astronaut-modal');
