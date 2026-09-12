@@ -6363,6 +6363,12 @@
             [/טלסקופ\s+החלל\s+הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'טלסקופ החלל ננסי גרייס רומן'],
             [/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן'],
             [/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן'],
+            // "Mission Objectives and Payload Information" (the mission modal's own heading,
+            // #modal-objectives-title-text) - Google drops the definite article before "מטען"
+            // ("ומידע על מטען" instead of "ומידע על המטען"), which reads as grammatically
+            // incomplete in Hebrew since this is the specific payload of THIS mission, not a
+            // payload in general.
+            [/ומידע\s*על\s*מטען(?!\s*ה)/g, 'ומידע על המטען'],
         ];
         // String-level form of the DOM pass below. Needed because by the time the text is in the
         // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
@@ -15872,6 +15878,12 @@
         };
 
         let lastAppliedAIComputeLang = null;
+        // Kept in sync with the sorted (highest-spender-first) order the donut/legend actually
+        // render in - see renderAIComputeSection. updateAIComputeHud's `idx` comes from a mesh's
+        // userData.index, which is a position in THAT sorted array, not in AI_COMPUTE_DEALS'
+        // own declaration order - indexing into AI_COMPUTE_DEALS directly there would silently
+        // show the wrong customer's amount once sorting made the two orders diverge.
+        let sortedAIComputeDeals = AI_COMPUTE_DEALS;
 
         function applyAIComputeTranslations(currentLang) {
             let key = currentLang.split('-')[0];
@@ -16419,9 +16431,9 @@
 
             if (hud) hud.classList.add('ai3d-switching');
             setTimeout(() => {
-                const monthlyUsd = (idx === -1 || idx === undefined || !AI_COMPUTE_DEALS[idx])
+                const monthlyUsd = (idx === -1 || idx === undefined || !sortedAIComputeDeals[idx])
                     ? AI_COMPUTE_DEALS.reduce((sum, d) => sum + d.monthlyUsd, 0)
-                    : AI_COMPUTE_DEALS[idx].monthlyUsd;
+                    : sortedAIComputeDeals[idx].monthlyUsd;
                 hudValue.textContent = monthlyUsd >= 1000 ? (monthlyUsd / 1000).toFixed(2) + 'B$' : monthlyUsd + 'M$';
                 hudUnit.textContent = dict.monthly;
                 if (hud) hud.classList.remove('ai3d-switching');
@@ -16481,10 +16493,18 @@
                 footnote.innerHTML = `SpaceX · ${dict.otherCustomers}: <span class="notranslate" translate="no" dir="ltr">${numberGroup}</span>`;
             }
 
-            const dealsWithHex = AI_COMPUTE_DEALS.map(d => {
-                const m = d.color.match(/#([0-9a-fA-F]{6})/);
-                return { ...d, colorHex: m ? parseInt(m[1], 16) : 0x71717a };
-            });
+            // Sorted highest-spending customer first, always - both the donut slices and the
+            // legend rows below are built from this same sorted array (by shared index `i`), so
+            // they can never drift out of sync with each other, and the order stays correct
+            // automatically whenever a deal's amount changes or a new one is added, with no
+            // manual reordering of AI_COMPUTE_DEALS itself needed.
+            const dealsWithHex = AI_COMPUTE_DEALS
+                .map(d => {
+                    const m = d.color.match(/#([0-9a-fA-F]{6})/);
+                    return { ...d, colorHex: m ? parseInt(m[1], 16) : 0x71717a };
+                })
+                .sort((a, b) => b.monthlyUsd - a.monthlyUsd);
+            sortedAIComputeDeals = dealsWithHex;
             buildAIComputeDonut(dealsWithHex);
 
             // d.name/d.extra below go through escapeHtml() even though AI_COMPUTE_DEALS is
