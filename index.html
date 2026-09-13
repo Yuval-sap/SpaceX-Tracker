@@ -633,42 +633,47 @@
             border-right-color: rgba(255, 255, 255, 0.96);
         }
 
-        /* Live launch-site weather widget (site-weather-card, renderSiteWeather) - a small
-           animated icon "scene" whose look changes per WMO weather code bucket
-           (weatherIconSceneClassFor), plus 3 decorative particles reused as either falling
-           raindrops or snowflakes depending on the active scene class (opacity 0 / no animation
-           for every other condition, so they're inert dead weight the rest of the time). */
+        /* Live launch-site weather widget (site-weather-card, renderSiteWeather).
+           Motion is transform/opacity only (GPU compositor) - the old sun "pulse"
+           animated scale + drop-shadow together, which is what made it look laggy.
+           Clear = slow spin, clouds = horizontal drift, rain/snow = falling particles. */
         .weather-icon-scene {
+            overflow: hidden;
             filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
         }
         .weather-icon-main {
+            display: block;
+            line-height: 1;
+            transform-origin: 50% 50%;
+            backface-visibility: hidden;
+            will-change: transform;
             transition: color 0.4s ease;
         }
         .weather-scene-clear .weather-icon-main {
             color: #fbbf24;
-            animation: weatherPulseGlow 3s ease-in-out infinite;
+            animation: weatherSunSpin 18s linear infinite;
         }
         .weather-scene-partlyCloudy .weather-icon-main {
             color: #d4d4d8;
-            animation: weatherFloat 4s ease-in-out infinite;
+            animation: weatherCloudDrift 8s ease-in-out infinite;
         }
         .weather-scene-cloudy .weather-icon-main {
             color: #a1a1aa;
-            animation: weatherFloat 4.5s ease-in-out infinite;
+            animation: weatherCloudDrift 9s ease-in-out infinite;
         }
         .weather-scene-fog .weather-icon-main {
             color: #a1a1aa;
             opacity: 0.85;
-            animation: weatherFloat 5.5s ease-in-out infinite;
+            animation: weatherCloudDrift 11s ease-in-out infinite;
         }
         .weather-scene-drizzle .weather-icon-main,
         .weather-scene-rain .weather-icon-main {
             color: #60a5fa;
-            animation: weatherFloat 3.2s ease-in-out infinite;
+            animation: weatherCloudDrift 10s ease-in-out infinite;
         }
         .weather-scene-snow .weather-icon-main {
             color: #e4e4e7;
-            animation: weatherRotateSlow 9s linear infinite;
+            animation: weatherSunSpin 14s linear infinite;
         }
         .weather-scene-thunderstorm .weather-icon-main {
             color: #c4b5fd;
@@ -676,20 +681,33 @@
         }
         .weather-drop {
             position: absolute;
-            top: -4px;
+            top: -8px;
             width: 2px;
-            height: 10px;
+            height: 11px;
             border-radius: 1px;
             background: #60a5fa;
             opacity: 0;
+            pointer-events: none;
+            will-change: transform, opacity;
         }
-        .weather-drop-1 { left: 28%; }
-        .weather-drop-2 { left: 50%; margin-left: -1px; }
-        .weather-drop-3 { left: 70%; }
+        .weather-drop-1 { left: 18%; }
+        .weather-drop-2 { left: 34%; }
+        .weather-drop-3 { left: 50%; }
+        .weather-drop-4 { left: 64%; }
+        .weather-drop-5 { left: 78%; }
+        .weather-drop-6 { left: 42%; }
         .weather-scene-drizzle .weather-drop,
         .weather-scene-rain .weather-drop {
             background: #60a5fa;
-            animation: weatherRainFall 0.9s linear infinite;
+            animation: weatherRainFall 0.95s linear infinite;
+        }
+        .weather-scene-drizzle .weather-drop {
+            animation-duration: 1.35s;
+            opacity: 0;
+        }
+        .weather-scene-drizzle .weather-drop-5,
+        .weather-scene-drizzle .weather-drop-6 {
+            display: none;
         }
         .weather-scene-snow .weather-drop {
             width: 4px;
@@ -699,45 +717,42 @@
             animation: weatherSnowFall 2.4s linear infinite;
         }
         .weather-drop-1 { animation-delay: 0s; }
-        .weather-drop-2 { animation-delay: 0.3s; }
-        .weather-drop-3 { animation-delay: 0.6s; }
-        @keyframes weatherPulseGlow {
-            0%, 100% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.45)); transform: scale(1); }
-            50% { filter: drop-shadow(0 0 13px rgba(251, 191, 36, 0.85)); transform: scale(1.08); }
-        }
-        @keyframes weatherFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        @keyframes weatherRotateSlow {
+        .weather-drop-2 { animation-delay: 0.18s; }
+        .weather-drop-3 { animation-delay: 0.4s; }
+        .weather-drop-4 { animation-delay: 0.62s; }
+        .weather-drop-5 { animation-delay: 0.28s; }
+        .weather-drop-6 { animation-delay: 0.78s; }
+        @keyframes weatherSunSpin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        @keyframes weatherCloudDrift {
+            0%, 100% { transform: translate3d(-7px, 0, 0); }
+            50% { transform: translate3d(7px, 0, 0); }
+        }
         @keyframes weatherFlicker {
-            0%, 88%, 100% { opacity: 1; filter: drop-shadow(0 0 3px rgba(196, 181, 253, 0.4)); }
-            90% { opacity: 0.35; filter: drop-shadow(0 0 16px rgba(196, 181, 253, 1)); }
-            92% { opacity: 1; filter: drop-shadow(0 0 3px rgba(196, 181, 253, 0.4)); }
+            0%, 88%, 100% { opacity: 1; }
+            90% { opacity: 0.35; }
+            92% { opacity: 1; }
         }
         @keyframes weatherRainFall {
-            0% { transform: translateY(-4px); opacity: 0; }
-            25% { opacity: 0.9; }
-            100% { transform: translateY(38px); opacity: 0; }
+            0% { transform: translate3d(0, -6px, 0); opacity: 0; }
+            12% { opacity: 0.95; }
+            100% { transform: translate3d(0, 52px, 0); opacity: 0; }
         }
         @keyframes weatherSnowFall {
-            0% { transform: translateY(-4px) translateX(0); opacity: 0; }
-            25% { opacity: 0.9; }
-            100% { transform: translateY(40px) translateX(4px); opacity: 0; }
+            0% { transform: translate3d(0, -6px, 0); opacity: 0; }
+            15% { opacity: 0.9; }
+            100% { transform: translate3d(5px, 52px, 0); opacity: 0; }
         }
 
         /* Light theme: the night-tuned icon colors (#d4d4d8 / #e4e4e7) wash out on the
-           remapped light card; own darker colors + a lighter glow instead of the dark
-           drop-shadow the night scene uses. */
+           remapped light card. Same motion as night - only the colors change. */
         body.light-theme .weather-icon-scene {
             filter: none;
         }
         body.light-theme .weather-scene-clear .weather-icon-main {
             color: #d97706 !important;
-            animation: weatherPulseGlowLight 3s ease-in-out infinite;
         }
         body.light-theme .weather-scene-partlyCloudy .weather-icon-main {
             color: #475569 !important;
@@ -759,16 +774,6 @@
         }
         body.light-theme .weather-scene-thunderstorm .weather-icon-main {
             color: #7c3aed !important;
-            animation: weatherFlickerLight 2.4s ease-in-out infinite;
-        }
-        @keyframes weatherPulseGlowLight {
-            0%, 100% { filter: drop-shadow(0 0 3px rgba(217, 119, 6, 0.35)); transform: scale(1); }
-            50% { filter: drop-shadow(0 0 8px rgba(217, 119, 6, 0.55)); transform: scale(1.06); }
-        }
-        @keyframes weatherFlickerLight {
-            0%, 88%, 100% { opacity: 1; filter: drop-shadow(0 0 2px rgba(124, 58, 237, 0.35)); }
-            90% { opacity: 0.55; filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.7)); }
-            92% { opacity: 1; filter: drop-shadow(0 0 2px rgba(124, 58, 237, 0.35)); }
         }
 
         /* Section headings (Scheduled Launches, Milestones, etc.) sit in a flex row with their
@@ -10678,6 +10683,9 @@
                                 <span class="weather-drop weather-drop-1"></span>
                                 <span class="weather-drop weather-drop-2"></span>
                                 <span class="weather-drop weather-drop-3"></span>
+                                <span class="weather-drop weather-drop-4"></span>
+                                <span class="weather-drop weather-drop-5"></span>
+                                <span class="weather-drop weather-drop-6"></span>
                                 <i class="fa-solid fa-cloud weather-icon-main text-5xl" id="site-weather-icon-fa"></i>
                             </div>
                             <div class="flex-1 min-w-0">
