@@ -3907,16 +3907,26 @@
            LTR → Mission Status left, clock right. RTL → Mission Status right, clock left. */
         #countdown-box.mission-status-mode {
             padding-top: 0.85rem !important;
+            padding-inline: 1.5rem !important;
+        }
+        @media (min-width: 640px) {
+            #countdown-box.mission-status-mode {
+                padding-inline: 2.15rem !important;
+            }
         }
         #countdown-box.mission-status-mode #mission-status-hover-wrap {
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
             align-items: center !important;
-            width: 100% !important;
+            align-self: stretch;
+            width: auto !important;
+            min-width: max-content;
             gap: 2.25rem !important;
             margin-top: -0.15rem !important;
             margin-bottom: 0.15rem !important;
+            padding-inline: 0.2rem !important;
+            box-sizing: border-box;
         }
         #countdown-box.mission-status-mode #i18n-countdown-to-launch,
         #countdown-box.mission-status-mode #hero-tplus {
@@ -3929,8 +3939,33 @@
         html[dir="rtl"] #countdown-box.mission-status-mode #hero-tplus {
             font-size: 16px !important;
         }
+        #countdown-box.mission-status-mode #i18n-countdown-to-launch {
+            white-space: nowrap;
+        }
+        /* Orbitron/Zen Dots/Audiowide are not tabular. An invisible T+88:88:88
+           sizer holds the slot at the widest string; the live value is painted
+           on top so ticking digits never resize the row or the card. */
         #countdown-box.mission-status-mode #hero-tplus {
-            flex-shrink: 0;
+            position: relative;
+            flex: 0 0 auto;
+            display: block;
+        }
+        #hero-tplus .hero-tplus-sizer {
+            visibility: hidden;
+            display: block;
+            white-space: nowrap;
+        }
+        #hero-tplus-value {
+            position: absolute;
+            inset: 0;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        html[dir="ltr"] #hero-tplus-value {
+            text-align: end;
+        }
+        html[dir="rtl"] #hero-tplus-value {
+            text-align: start;
         }
         #countdown-box.mission-status-mode #hero-status-explain {
             font-size: 13px !important;
@@ -9510,8 +9545,8 @@
                         </div>
                         </div>
                         <div id="hero-tplus" dir="ltr" translate="no"
-                            class="hidden notranslate font-bold tabular-nums tracking-[2px] text-zinc-400 whitespace-nowrap"
-                            aria-hidden="true">T+00:00:00</div>
+                            class="hidden notranslate font-bold tracking-[2px] text-zinc-400 whitespace-nowrap"
+                            aria-hidden="true"><span class="hero-tplus-sizer" aria-hidden="true">T+88:88:88</span><span id="hero-tplus-value">T+00:00:00</span></div>
                     </div>
                     <div id="hero-countdown" dir="ltr"
                         class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center w-full"
@@ -21608,7 +21643,9 @@ setTimeout(() => {
                     tplusEl.setAttribute('aria-hidden', 'true');
                     return;
                 }
-                tplusEl.textContent = formatTPlusClock(elapsedSec);
+                const valueEl = document.getElementById('hero-tplus-value');
+                if (valueEl) valueEl.textContent = formatTPlusClock(elapsedSec);
+                else tplusEl.textContent = formatTPlusClock(elapsedSec);
                 tplusEl.classList.remove('hidden');
                 tplusEl.setAttribute('aria-hidden', 'false');
             }
