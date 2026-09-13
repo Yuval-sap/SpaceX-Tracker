@@ -4783,6 +4783,30 @@
             tr: { windLabel: "Rüzgar:", humidityLabel: "Nem:", clear: "Açık Hava", partlyCloudy: "Parçalı Bulutlu", cloudy: "Bulutlu", fog: "Sisli", drizzle: "Çisenti", rain: "Yağmur", snow: "Kar", thunderstorm: "Fırtına" },
         };
 
+        // Info Station "SpaceX Launch Sites" heading — fixed copy, blocked from Google
+        // Translate (same reason as booster/patches titles). Card names use
+        // getLocalizedLaunchSiteLabel() so they stay in lockstep with the map pins.
+        const LAUNCH_SITES_SECTION_I18N = {
+            en: { title: "SpaceX Launch Sites", subtitle: "Tap a site for the facility dossier" },
+            he: { title: "אתרי השיגור של ספייסאקס", subtitle: "הקישו על אתר לפרטי המתקן" },
+            iw: { title: "אתרי השיגור של ספייסאקס", subtitle: "הקישו על אתר לפרטי המתקן" },
+            es: { title: "Sitios de lanzamiento de SpaceX", subtitle: "Toca un sitio para ver el expediente" },
+            fr: { title: "Sites de lancement de SpaceX", subtitle: "Touchez un site pour ouvrir le dossier" },
+            de: { title: "SpaceX-Startplätze", subtitle: "Tippen Sie auf einen Platz für das Dossier" },
+            ru: { title: "Стартовые площадки SpaceX", subtitle: "Нажмите на площадку, чтобы открыть досье" },
+            zh: { title: "SpaceX 发射场", subtitle: "点按发射场查看档案" },
+            it: { title: "Siti di lancio di SpaceX", subtitle: "Tocca un sito per aprire il dossier" },
+            cs: { title: "Startovací místa SpaceX", subtitle: "Klepnutím na místo otevřete profil" },
+            sv: { title: "SpaceX uppskjutningsplatser", subtitle: "Tryck på en plats för dossiern" },
+            nl: { title: "SpaceX-lanceerplaatsen", subtitle: "Tik op een locatie voor het dossier" },
+            da: { title: "SpaceX-opsendelsessteder", subtitle: "Tryk på et sted for at åbne dossieret" },
+            pt: { title: "Locais de lançamento da SpaceX", subtitle: "Toque num local para abrir o dossiê" },
+            pl: { title: "Miejsca startu SpaceX", subtitle: "Dotknij miejsca, aby otworzyć dossier" },
+            hi: { title: "SpaceX के प्रक्षेपण स्थल", subtitle: "विवरण के लिए किसी स्थल पर टैप करें" },
+            ar: { title: "مواقع إطلاق سبيس إكس", subtitle: "انقر على موقع لفتح الملف" },
+            tr: { title: "SpaceX Fırlatma Sahaları", subtitle: "Dosya için bir sahaya dokunun" },
+        };
+
         // Labels for the post-liftoff mission-milestone timeline shown in the hero countdown
         // area (see STARLINK_ASDS_TIMELINE / getCurrentMissionMilestone / updateHeroCountdown).
         // Only the plain-English phrases are translated - MAX Q, MECO, SES-1, SECO-1 stay as-is
@@ -6554,6 +6578,13 @@
                 if (typeof renderBoosterLeaderboard === 'function') {
                     renderBoosterLeaderboard();
                 }
+
+                const sitesSection = LAUNCH_SITES_SECTION_I18N[key] || LAUNCH_SITES_SECTION_I18N.en;
+                const sitesTitleEl = document.getElementById('i18n-launch-sites-title');
+                const sitesSubtitleEl = document.getElementById('i18n-launch-sites-subtitle');
+                if (sitesTitleEl) sitesTitleEl.innerText = sitesSection.title;
+                if (sitesSubtitleEl) sitesSubtitleEl.innerText = sitesSection.subtitle;
+                if (typeof applyLaunchSiteCards === 'function') applyLaunchSiteCards();
             }
 
             // Runs every tick regardless of the language-change guard above — new elements
@@ -10141,6 +10172,64 @@
                     <div class="skel w-[4.5rem] sm:w-24 h-5 rounded shrink-0"></div>
                     <div class="skel flex-1 h-7 sm:h-8 rounded-full"></div>
                     <div class="skel w-12 sm:w-14 h-5 rounded shrink-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="mb-6 notranslate" translate="no" lang="en">
+                <h3
+                    class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    <i class="fa-solid fa-map-location-dot text-emerald-400 shrink-0"></i>
+                    <span id="i18n-launch-sites-title" class="notranslate section-title-fit" translate="no" lang="en">SpaceX Launch Sites</span>
+                </h3>
+                <p id="i18n-launch-sites-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate"
+                    translate="no" lang="en">Tap a site for the facility dossier</p>
+            </div>
+            <div id="launch-sites-grid" class="flex overflow-x-auto gap-4 -mx-4 px-4 pb-4 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-2 xl:grid-cols-4 md:gap-5 md:overflow-visible md:mx-0 md:px-0 md:snap-none">
+                <div role="button" tabindex="0" data-site-key="starbase"
+                    onclick="openLaunchSiteSpecs('starbase')" onkeydown="activateOnEnterOrSpace(event)"
+                    class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
+                    style="animation-delay: 0ms;">
+                    <img src="https://pbs.twimg.com/media/Gy51cDhWgAAPPRK.jpg" alt="Starbase, Texas"
+                        class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
+                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
+                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="starbase">Starbase, Texas</div>
+                    </div>
+                </div>
+                <div role="button" tabindex="0" data-site-key="cape"
+                    onclick="openLaunchSiteSpecs('cape')" onkeydown="activateOnEnterOrSpace(event)"
+                    class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
+                    style="animation-delay: 100ms;">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQiKxN-KSxMy7LomCirahA1DSgv2f6_bH7Oa24-pnRQw&amp;s=10" alt="Cape Canaveral, Florida"
+                        class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
+                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
+                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="cape">Cape Canaveral, Florida</div>
+                    </div>
+                </div>
+                <div role="button" tabindex="0" data-site-key="vandenberg"
+                    onclick="openLaunchSiteSpecs('vandenberg')" onkeydown="activateOnEnterOrSpace(event)"
+                    class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
+                    style="animation-delay: 200ms;">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiaqeG_lyxoLQjmQKwPVJyerJwpKr-Ngj-5Di6yihsBR45pKUcJwkpqvaG&amp;s=10" alt="Vandenberg, California"
+                        class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
+                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
+                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="vandenberg">Vandenberg, California</div>
+                    </div>
+                </div>
+                <div role="button" tabindex="0" data-site-key="starbaseLa"
+                    onclick="openLaunchSiteSpecs('starbaseLa')" onkeydown="activateOnEnterOrSpace(event)"
+                    class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
+                    style="animation-delay: 300ms;">
+                    <img src="starbase-louisiana.webp" alt="Starbase, Louisiana"
+                        class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
+                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
+                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="starbaseLa">Starbase, Louisiana</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -18943,6 +19032,19 @@ setTimeout(() => {
             return siteName + ', ' + stateName;
         }
 
+        function applyLaunchSiteCards() {
+            document.querySelectorAll('.launch-site-card[data-site-key]').forEach(card => {
+                const siteKey = card.getAttribute('data-site-key');
+                if (!siteKey) return;
+                const label = getLocalizedLaunchSiteLabel(siteKey);
+                card.setAttribute('aria-label', label);
+                const nameEl = card.querySelector('.launch-site-card-name');
+                if (nameEl) nameEl.innerText = label;
+                const imgEl = card.querySelector('img');
+                if (imgEl) imgEl.alt = label;
+            });
+        }
+
         // Builds the hover-tooltip's HTML fresh in whatever language is active right now -
         // called from a Leaflet bindTooltip content FUNCTION (see bindRadarPinTooltip), which
         // Leaflet re-invokes on every single hover, so this doesn't need its own listener for
@@ -20540,7 +20642,7 @@ setTimeout(() => {
                 coords: "29.647° N, 92.453° W",
                 lat: 29.6467, lng: -92.4531,
                 fleet: "Starship — under construction",
-                desc: "Starbase Louisiana is SpaceX's planned fourth — and largest — Starship launch and manufacturing site. It was announced on 25 August 2026 with Louisiana governor Jeff Landry as a commitment of up to $100 billion, described by the state as the largest single capital investment in Louisiana history. The pin marks Pecan Island in Vermilion Parish on the Gulf Coast (about 29.647° N, 92.453° W), on a former Exxon tract of roughly 125,000 acres (about 510 km²). Only a coastal strip is meant to hold the pads; SpaceX says the rest of the wetland and wildlife habitat is to be left undeveloped.\n\nStatus: not operational. Construction is expected to begin in 2027. The first Starship launch from Louisiana is targeted for 2029. Until then this is a permitted / pre-construction site, not an active SpaceX pad.\n\nWhat is supposed to be built: five launch complexes, each with two pads and a propellant farm — ten pads in the first published plan. Elon Musk has said the site could eventually grow past a dozen launch towers and support on the order of 30 Starship flights a day. The campus is also planned to include on-site methane and oxygen production, power generation, vehicle-processing buildings, deep-water shipping, an airport, and housing for employees and families, with more than 3,000 direct jobs (about 8,100 more indirectly) and hiring aimed at nearby Louisiana communities.\n\nThe vehicle is Starship Version 3 and later. Planned traffic includes Starlink, lunar and Mars missions, and SpaceX's proposed orbital data-center constellation. Launches would fly south over the Gulf of Mexico. Federal and state reviews (FAA launch license, wetlands, wildlife) are still ahead of first flight."
+                desc: "Status: not operational. Construction is expected to begin in 2027. The first Starship launch from Louisiana is targeted for 2029. Until then this is a permitted / pre-construction site, not an active SpaceX pad.\n\nStarbase Louisiana is SpaceX's planned fourth — and largest — Starship launch and manufacturing site. It was announced on 25 August 2026 with Louisiana governor Jeff Landry as a commitment of up to $100 billion, described by the state as the largest single capital investment in Louisiana history. The pin marks Pecan Island in Vermilion Parish on the Gulf Coast (about 29.647° N, 92.453° W), on a former Exxon tract of roughly 125,000 acres (about 510 km²). Only a coastal strip is meant to hold the pads; SpaceX says the rest of the wetland and wildlife habitat is to be left undeveloped.\n\nWhat is supposed to be built: five launch complexes, each with two pads and a propellant farm — ten pads in the first published plan. Elon Musk has said the site could eventually grow past a dozen launch towers and support on the order of 30 Starship flights a day. The campus is also planned to include on-site methane and oxygen production, power generation, vehicle-processing buildings, deep-water shipping, an airport, and housing for employees and families, with more than 3,000 direct jobs (about 8,100 more indirectly) and hiring aimed at nearby Louisiana communities.\n\nThe vehicle is Starship Version 3 and later. Planned traffic includes Starlink, lunar and Mars missions, and SpaceX's proposed orbital data-center constellation. Launches would fly south over the Gulf of Mexico. Federal and state reviews (FAA launch license, wetlands, wildlife) are still ahead of first flight."
             }
         };
 
@@ -20556,7 +20658,7 @@ setTimeout(() => {
             he: {
                 name: "סטארבייס של SpaceX • פקאן איילנד, לואיזיאנה",
                 fleet: "סטארשיפ — בבנייה",
-                desc: "סטארבייס לואיזיאנה הוא אתר השיגור והייצור הרביעי — והגדול ביותר — שספייסאקס מתכננת לסטארשיפ. הוא הוכרז ב־25 באוגוסט 2026 יחד עם מושל לואיזיאנה, ג׳ף לנדרי, כהתחייבות בהיקף של עד 100 מיליארד דולר, ותואר במדינה כהשקעה ההונית הבודדת הגדולה ביותר בתולדות לואיזיאנה. הסיכה על המפה מסמנת את פקאן איילנד במחוז ורמיליון, על חוף המפרץ (כ־29.647° צפון, 92.453° מערב), בשטח שהיה שייך לאקסון ומשתרע על כ־125,000 אקר (כ־510 קמ״ר). רק רצועת חוף מיועדת למשטחי השיגור; ספייסאקס אומרת ששאר הביצות ובתי הגידול לחיות הבר יישארו ללא פיתוח.\n\nסטטוס: אינו פעיל. הבנייה צפויה להתחיל ב־2027. שיגור הסטארשיפ הראשון מלואיזיאנה מתוכנן ל־2029. עד אז זה אתר בהיתרים ובשלב שלפני הבנייה — לא כן שיגור פעיל של ספייסאקס.\n\nמה אמור להיבנות: חמישה מתחמי שיגור, בכל אחד שני משטחים וחוות דלק — עשרה משטחים בתוכנית הראשונה שפורסמה. אילון מאסק אמר שהאתר יוכל בסופו של דבר לגדול מעבר לתריסר מגדלי שיגור ולתמוך בסדר גודל של 30 טיסות סטארשיפ ביום. הקמפוס מתוכנן לכלול גם ייצור מתאן וחמצן במקום, ייצור חשמל, מבני עיבוד רכב, נמל מים עמוקים, שדה תעופה ודיור לעובדים ולמשפחותיהם, עם יותר מ־3,000 משרות ישירות (וכ־8,100 נוספות בעקיפין) וגיוס שמכוון לקהילות הסמוכות בלואיזיאנה.\n\nהרכב הוא סטארשיפ גרסה 3 ואילך. התנועה המתוכננת כוללת סטארלינק, משימות לירח ולמאדים, ואת מערך מרכזי הנתונים המסלולי שספייסאקס מציעה. השיגורים יטוסו דרומה מעל מפרץ מקסיקו. סקירות פדרליות ומדינתיות (רישיון שיגור של ה־FAA, ביצות, חיות בר) עדיין לפני הטיסה הראשונה."
+                desc: "סטטוס: אינו פעיל. הבנייה צפויה להתחיל ב־2027. שיגור הסטארשיפ הראשון מלואיזיאנה מתוכנן ל־2029. עד אז זה אתר בהיתרים ובשלב שלפני הבנייה — לא כן שיגור פעיל של ספייסאקס.\n\nסטארבייס לואיזיאנה הוא אתר השיגור והייצור הרביעי — והגדול ביותר — שספייסאקס מתכננת לסטארשיפ. הוא הוכרז ב־25 באוגוסט 2026 יחד עם מושל לואיזיאנה, ג׳ף לנדרי, כהתחייבות בהיקף של עד 100 מיליארד דולר, ותואר במדינה כהשקעה ההונית הבודדת הגדולה ביותר בתולדות לואיזיאנה. הסיכה על המפה מסמנת את פקאן איילנד במחוז ורמיליון, על חוף המפרץ (כ־29.647° צפון, 92.453° מערב), בשטח שהיה שייך לאקסון ומשתרע על כ־125,000 אקר (כ־510 קמ״ר). רק רצועת חוף מיועדת למשטחי השיגור; ספייסאקס אומרת ששאר הביצות ובתי הגידול לחיות הבר יישארו ללא פיתוח.\n\nמה אמור להיבנות: חמישה מתחמי שיגור, בכל אחד שני משטחים וחוות דלק — עשרה משטחים בתוכנית הראשונה שפורסמה. אילון מאסק אמר שהאתר יוכל בסופו של דבר לגדול מעבר לתריסר מגדלי שיגור ולתמוך בסדר גודל של 30 טיסות סטארשיפ ביום. הקמפוס מתוכנן לכלול גם ייצור מתאן וחמצן במקום, ייצור חשמל, מבני עיבוד רכב, נמל מים עמוקים, שדה תעופה ודיור לעובדים ולמשפחותיהם, עם יותר מ־3,000 משרות ישירות (וכ־8,100 נוספות בעקיפין) וגיוס שמכוון לקהילות הסמוכות בלואיזיאנה.\n\nהרכב הוא סטארשיפ גרסה 3 ואילך. התנועה המתוכננת כוללת סטארלינק, משימות לירח ולמאדים, ואת מערך מרכזי הנתונים המסלולי שספייסאקס מציעה. השיגורים יטוסו דרומה מעל מפרץ מקסיקו. סקירות פדרליות ומדינתיות (רישיון שיגור של ה־FAA, ביצות, חיות בר) עדיין לפני הטיסה הראשונה."
             },
             es: {
                 name: "Starbase de SpaceX • Pecan Island, Luisiana",
@@ -20631,10 +20733,18 @@ setTimeout(() => {
             tr: {
                 name: "SpaceX Starbase • Pecan Island, Louisiana",
                 fleet: "Starship — inşa halinde",
-                desc: "Starbase Louisiana, SpaceX’in Starship için planladığı dördüncü — ve en büyük — fırlatma ve üretim sahasıdır. 25 Ağustos 2026’da Louisiana valisi Jeff Landry ile birlikte 100 milyar dolara kadar bir taahhüt olarak duyuruldu; eyalet bunu Louisiana tarihindeki en büyük tek sermaye yatırımı olarak niteledi. İğne, Körfez kıyısındaki Vermilion Parish’te Pecan Island’ı işaretler (yaklaşık 29,647° K, 92,453° B), eski bir Exxon arazisinde kabaca 125.000 dönüm (yaklaşık 510 km²). Yalnızca bir kıyı şeridi rampalar için ayrılmıştır; SpaceX, kalan sulak alanların ve yaban hayatı habitatının gelişmeden kalacağını söyler.\n\nDurum: işletmede değil. İnşaatın 2027’de başlaması bekleniyor. Louisiana’dan ilk Starship fırlatması 2029’u hedefliyor. O zamana kadar bu, inşa öncesi izinli bir sahadır — aktif bir SpaceX rampası değil.\n\nİnşa edilecekler: her biri iki rampa ve bir yakıt çiftliği olan beş fırlatma kompleksi — ilk yayımlanan planda on rampa. Elon Musk, sahanın zamanla bir düzineden fazla fırlatma kulesine büyüyebileceğini ve günde 30 Starship uçuşu mertebesini destekleyebileceğini söyledi. Kampüste yerinde metan ve oksijen üretimi, elektrik üretimi, araç hazırlama binaları, derin su denizciliği, havaalanı ve çalışanlar ile aileleri için konut da planlanıyor; 3.000’den fazla doğrudan iş (ve yaklaşık 8.100 ek dolaylı) ve yakın Louisiana topluluklarına yönelik işe alım.\n\nAraç Starship Sürüm 3 ve sonrası. Planlanan trafik Starlink, Ay ve Mars görevleri ile SpaceX’in önerdiği yörüngesel veri merkezi takımyıldızını kapsar. Fırlatmalar Meksika Körfezi üzerinde güneye uçacaktır. Federal ve eyalet incelemeleri (FAA fırlatma lisansı, sulak alanlar, yaban hayatı) ilk uçuştan önce hâlâ bekliyor."
+                desc: "Durum: işletmede değil. İnşaatın 2027’de başlaması bekleniyor. Louisiana’dan ilk Starship fırlatması 2029’u hedefliyor. O zamana kadar bu, inşa öncesi izinli bir sahadır — aktif bir SpaceX rampası değil.\n\nStarbase Louisiana, SpaceX’in Starship için planladığı dördüncü — ve en büyük — fırlatma ve üretim sahasıdır. 25 Ağustos 2026’da Louisiana valisi Jeff Landry ile birlikte 100 milyar dolara kadar bir taahhüt olarak duyuruldu; eyalet bunu Louisiana tarihindeki en büyük tek sermaye yatırımı olarak niteledi. İğne, Körfez kıyısındaki Vermilion Parish’te Pecan Island’ı işaretler (yaklaşık 29,647° K, 92,453° B), eski bir Exxon arazisinde kabaca 125.000 dönüm (yaklaşık 510 km²). Yalnızca bir kıyı şeridi rampalar için ayrılmıştır; SpaceX, kalan sulak alanların ve yaban hayatı habitatının gelişmeden kalacağını söyler.\n\nİnşa edilecekler: her biri iki rampa ve bir yakıt çiftliği olan beş fırlatma kompleksi — ilk yayımlanan planda on rampa. Elon Musk, sahanın zamanla bir düzineden fazla fırlatma kulesine büyüyebileceğini ve günde 30 Starship uçuşu mertebesini destekleyebileceğini söyledi. Kampüste yerinde metan ve oksijen üretimi, elektrik üretimi, araç hazırlama binaları, derin su denizciliği, havaalanı ve çalışanlar ile aileleri için konut da planlanıyor; 3.000’den fazla doğrudan iş (ve yaklaşık 8.100 ek dolaylı) ve yakın Louisiana topluluklarına yönelik işe alım.\n\nAraç Starship Sürüm 3 ve sonrası. Planlanan trafik Starlink, Ay ve Mars görevleri ile SpaceX’in önerdiği yörüngesel veri merkezi takımyıldızını kapsar. Fırlatmalar Meksika Körfezi üzerinde güneye uçacaktır. Federal ve eyalet incelemeleri (FAA fırlatma lisansı, sulak alanlar, yaban hayatı) ilk uçuştan önce hâlâ bekliyor."
             }
         };
         STARBASE_LA_I18N.iw = STARBASE_LA_I18N.he;
+
+        function leadWithStarbaseLaStatus(desc) {
+            const paras = String(desc || '').split('\n\n');
+            const statusIdx = paras.findIndex(p => /^(Status:|סטטוס:|Estado:|Statut :|Статус:|状态：|Stato:|Stav:|स्थिति:|الحالة:|Durum:)/.test(p.trim()));
+            if (statusIdx <= 0) return desc;
+            const status = paras.splice(statusIdx, 1)[0];
+            return [status, ...paras].join('\n\n');
+        }
 
         function applyStarbaseLaDossier(currentLang) {
             const key = String(currentLang || document.documentElement.lang || 'en').split('-')[0];
@@ -20645,7 +20755,7 @@ setTimeout(() => {
             const imgEl = document.getElementById('site-modal-img');
             if (nameEl) nameEl.innerText = dict.name;
             if (fleetEl) fleetEl.innerText = dict.fleet;
-            if (descEl) descEl.innerText = dict.desc;
+            if (descEl) descEl.innerText = leadWithStarbaseLaStatus(dict.desc);
             if (imgEl) imgEl.alt = dict.name;
         }
 
@@ -21685,6 +21795,12 @@ setTimeout(() => {
             initVisualMode();
             generateProceduralStars();
             initDidYouKnow();
+            if (typeof applyLaunchSiteCards === 'function') applyLaunchSiteCards();
+            const launchSitesGrid = document.getElementById('launch-sites-grid');
+            if (launchSitesGrid && typeof enableDragScroll === 'function' && !launchSitesGrid.dataset.dragEnabled) {
+                enableDragScroll(launchSitesGrid);
+                launchSitesGrid.dataset.dragEnabled = 'true';
+            }
             initStickyCountdown();
             initStickyStatusBreakdown();
             initHeroStatusBreakdown();
