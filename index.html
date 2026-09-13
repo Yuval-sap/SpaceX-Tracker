@@ -917,6 +917,18 @@
         #past-launches-grid .mission-card:active {
             box-shadow: 0 8px 16px -8px rgba(16, 185, 129, 0.3), 0 0 8px 1px rgba(16, 185, 129, 0.2);
         }
+        /* Mobile: the 1px card border + rounded clip can leave a hairline of the photo
+           under the fade at the bottom. The scrim is already -inset-px in the markup;
+           keep the carousel from painting a styled scrollbar against that same edge. */
+        @media (max-width: 767px) {
+            #past-launches-grid {
+                scrollbar-width: none;
+            }
+            #past-launches-grid::-webkit-scrollbar {
+                display: none;
+                height: 0;
+            }
+        }
         /* Desktop: the page column is padded (max-w-screen-2xl + px-8), which used to clip this
            row at the gutter instead of the window. Pull the strip into those side margins with
            negative margin (not 100vw — that overshoots by the scrollbar and misaligns the first
@@ -17986,7 +17998,7 @@ setTimeout(() => {
                     : (pastCardDict.viewMissionDetails || LAUNCH_LABEL_I18N.en.viewMissionDetails);
                 card.innerHTML = `
                     <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_21%] scale-[1.06] origin-bottom" alt="${escapeHtml(m.name)}" draggable="false" style="-webkit-user-drag: none;">
-                    <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
+                    <div class="absolute -inset-px z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[311px] p-5 pt-[182px]">
                         <div>
                             <div class="notranslate mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
