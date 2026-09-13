@@ -526,6 +526,7 @@
         }
         body.light-theme #radar-leaflet-map .maplibregl-canvas {
             filter: invert(1) hue-rotate(180deg) contrast(1.2) saturate(0.85);
+            transform: translateZ(0);
         }
         body.light-theme #radar-leaflet-map .leaflet-control-zoom a {
             background: rgba(255, 255, 255, 0.88);
@@ -10697,7 +10698,7 @@
                                     <span class="flex items-center gap-2">
                                         <i class="fa-solid fa-wind text-emerald-400/70 w-3.5 text-center"></i>
                                         <span id="site-weather-wind-label" class="notranslate" translate="no"></span>
-                                        <span id="site-weather-wind" class="notranslate" dir="ltr" translate="no">--</span>
+                                        <span id="site-weather-wind" class="notranslate inline-block whitespace-nowrap" translate="no">--</span>
                                     </span>
                                     <span class="flex items-center gap-2">
                                         <i class="fa-solid fa-droplet text-emerald-400/70 w-3.5 text-center"></i>
@@ -18977,7 +18978,11 @@ setTimeout(() => {
         // the pre-rendered buffer and expose the container's own plain background at the edges
         // ("שוליים לבנים" a real user saw doing exactly that). Bumped well past default so the
         // buffer comfortably outlasts normal drag/zoom gestures on this tiny, bounded map.
-        const RADAR_MAP_TILE_PADDING = 1;
+        // 0.45 = 1.9x buffer (default is 0.1 / 1.2x). 1.0 was a 3x canvas and made
+        // every drag frame composite a huge WebGL surface - the map felt laggy,
+        // especially under the day-mode invert filter. 0.45 still covers a hard
+        // pan into maxBounds without flashing the container background.
+        const RADAR_MAP_TILE_PADDING = 0.45;
 
         // Always the dark OpenFreeMap style. Day mode is the same map, just inverted to
         // white via CSS (see body.light-theme #radar-leaflet-map .maplibregl-canvas) -
@@ -19143,7 +19148,7 @@ setTimeout(() => {
             if (radarLeafletTileLayer && radarLeafletTileLayer._radarStyleUrl === desiredUrl) return;
             try {
                 if (radarLeafletTileLayer) radarLeafletMap.removeLayer(radarLeafletTileLayer);
-                radarLeafletTileLayer = L.maplibreGL({ style: desiredUrl, interactive: false, padding: RADAR_MAP_TILE_PADDING }).addTo(radarLeafletMap);
+                radarLeafletTileLayer = L.maplibreGL({ style: desiredUrl, interactive: false, padding: RADAR_MAP_TILE_PADDING, fadeDuration: 0 }).addTo(radarLeafletMap);
                 radarLeafletTileLayer._radarStyleUrl = desiredUrl;
                 const layerForFilter = radarLeafletTileLayer;
                 restrictRadarMapToUS(() => layerForFilter.getMaplibreMap());
@@ -19163,11 +19168,15 @@ setTimeout(() => {
                 // flagging it since it's now silently missing rather than a deliberate legal call.
                 attributionControl: false,
                 dragging: true,
+                inertia: true,
                 touchZoom: true,
                 doubleClickZoom: true,
-                scrollWheelZoom: true,
+                // Wheel zoom is gated (see syncRadarMapWheelZoom) so scrolling the mission
+                // modal isn't stolen the moment the cursor crosses a half-visible map.
+                scrollWheelZoom: false,
                 boxZoom: false,
                 keyboard: true,
+                fadeAnimation: false,
                 maxBounds: RADAR_MAP_US_BOUNDS || undefined,
                 maxBoundsViscosity: 1.0
             });
@@ -19178,7 +19187,8 @@ setTimeout(() => {
                     radarLeafletTileLayer = L.maplibreGL({
                         style: styleUrl,
                         interactive: false,
-                        padding: RADAR_MAP_TILE_PADDING
+                        padding: RADAR_MAP_TILE_PADDING,
+                        fadeDuration: 0
                     }).addTo(radarLeafletMap);
                     radarLeafletTileLayer._radarStyleUrl = styleUrl;
                     const layerForFilter = radarLeafletTileLayer;
@@ -19221,21 +19231,59 @@ setTimeout(() => {
             // Safety net for a real maplibre-gl-leaflet limitation: it renders its tile canvas
             // oversized by a padding buffer around the visible viewport (see
             // RADAR_MAP_TILE_PADDING above) so normal panning/zooming never outruns it, but
-            // fast/hard dragging right against maxBounds's hard edge (maxBoundsViscosity below
-            // makes that edge solid, not springy) can still outrun that buffer and leave blank
-            // gaps where the container's own plain background shows through instead of tiles -
-            // exactly what a real user hit ("שוליים לבנים"/white margins on drag/zoom-out).
-            // invalidateSize() forces the plugin's own official resize path (repositions its
-            // container AND re-jumps the underlying maplibre map to the current center/zoom),
-            // which reliably cleans this up - just needs to run again shortly after each
-            // gesture actually settles, not mid-gesture.
+            // a hard zoom against maxBounds can still outrun that buffer. invalidateSize()
+            // after zoom settles rebuilds the canvas. Not hooked to dragend - that resync
+            // mid/after every pan was hitching the drag itself.
             let radarMapResyncTimer = null;
-            radarLeafletMap.on('dragend zoomend', () => {
+            radarLeafletMap.on('zoomend', () => {
                 clearTimeout(radarMapResyncTimer);
                 radarMapResyncTimer = setTimeout(() => {
                     if (radarLeafletMap) radarLeafletMap.invalidateSize();
-                }, 80);
+                }, 120);
             });
+            bindRadarMapWheelZoomGate();
+        }
+
+        // Wheel-zoom the map only once the whole map box is inside the mission modal's
+        // visible scrollport. Until then the wheel must keep scrolling the modal - otherwise
+        // a half-visible map (the usual case while scrolling down to it) steals the gesture
+        // and zooms instead of moving the page.
+        let radarMapWheelGateBound = false;
+        function isRadarMapFullyInModalView() {
+            const mapEl = document.getElementById('radar-leaflet-map');
+            const scroller = document.getElementById('mission-modal-content');
+            if (!mapEl || !scroller) return false;
+            const map = mapEl.getBoundingClientRect();
+            const view = scroller.getBoundingClientRect();
+            if (map.height < 8 || view.height < 8) return false;
+            const slack = 6;
+            return map.top >= view.top - slack && map.bottom <= view.bottom + slack;
+        }
+        function syncRadarMapWheelZoom() {
+            if (!radarLeafletMap || !radarLeafletMap.scrollWheelZoom) return;
+            if (isRadarMapFullyInModalView()) radarLeafletMap.scrollWheelZoom.enable();
+            else radarLeafletMap.scrollWheelZoom.disable();
+        }
+        function bindRadarMapWheelZoomGate() {
+            if (radarMapWheelGateBound) {
+                syncRadarMapWheelZoom();
+                return;
+            }
+            const scroller = document.getElementById('mission-modal-content');
+            if (!scroller) return;
+            radarMapWheelGateBound = true;
+            let ticking = false;
+            const onScrollOrResize = () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                    ticking = false;
+                    syncRadarMapWheelZoom();
+                });
+            };
+            scroller.addEventListener('scroll', onScrollOrResize, { passive: true });
+            window.addEventListener('resize', onScrollOrResize, { passive: true });
+            syncRadarMapWheelZoom();
         }
 
         // Every launch site marker is always rendered (per explicit user request - not just the
@@ -19318,7 +19366,18 @@ setTimeout(() => {
             const windLabelEl = document.getElementById('site-weather-wind-label');
             if (windLabelEl) windLabelEl.innerText = dict.windLabel;
             const windEl = document.getElementById('site-weather-wind');
-            if (windEl) windEl.innerText = `${windVal} ${windUnit}`;
+            if (windEl) {
+                // Same number-then-unit isolate the hero weather already uses. A single
+                // dir=ltr string ("3 קמ״ש") inside an RTL row is entered from the right,
+                // so Hebrew readers saw the unit first. dir=rtl + isolated number keeps
+                // "3" then "קמ״ש" in reading order (and LTR langs stay number then mph).
+                const isRtl = ['he', 'iw', 'ar'].includes(langKey)
+                    || document.documentElement.getAttribute('dir') === 'rtl';
+                const windDir = isRtl ? 'rtl' : 'ltr';
+                windEl.dir = windDir;
+                windEl.style.unicodeBidi = 'isolate';
+                windEl.innerHTML = `<span dir="ltr" translate="no">${windVal}</span>&nbsp;<span translate="no">${windUnit}</span>`;
+            }
             const humLabelEl = document.getElementById('site-weather-humidity-label');
             if (humLabelEl) humLabelEl.innerText = dict.humidityLabel;
             const humEl = document.getElementById('site-weather-humidity');
@@ -19470,6 +19529,7 @@ setTimeout(() => {
                     if (bounds.length) radarLeafletMap.fitBounds(bounds, { padding: [24, 24] });
                 }
                 updateRadarPins(siteKey);
+                bindRadarMapWheelZoomGate();
             }, 50);
 
             if (siteKey === 'starbase') {
