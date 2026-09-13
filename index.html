@@ -3850,7 +3850,7 @@
            over the card before launch popped open an empty panel. setCountdownLabel puts
            .mission-status-mode on the card exactly when the label flips to "Mission Status", so
            gating on it keeps the two in step automatically. */
-        #countdown-box:not(.mission-status-mode):not(.has-mission-timeline) #mission-status-breakdown,
+        #countdown-box:not(.mission-status-mode) #mission-status-breakdown,
         #countdown-box:not(.mission-status-mode) #hero-status-explain,
         #countdown-box:not(.mission-status-mode) #hero-next-stage,
         #countdown-box:not(.mission-status-mode) #hero-tplus {
@@ -6147,7 +6147,8 @@
             if (box) box.classList.toggle('has-mission-timeline', hasRows);
             const icon = document.getElementById('mission-status-info-icon');
             if (icon) {
-                icon.classList.toggle('hidden', !hasRows);
+                const show = !!(hasRows && box && box.classList.contains('mission-status-mode'));
+                icon.classList.toggle('hidden', !show);
             }
             if (!hasRows) {
                 const popup = document.getElementById('mission-status-breakdown');
@@ -6423,7 +6424,7 @@
         document.addEventListener('mouseover', function (e) {
             if (!e.target || !e.target.closest) return;
             const box = e.target.closest('#countdown-box');
-            if (!box || !box.classList.contains('has-mission-timeline')) return;
+            if (!box || !box.classList.contains('mission-status-mode')) return;
             clampMissionBreakdownHeight();
             setTimeout(clampMissionBreakdownHeight, 0);
             setTimeout(clampMissionBreakdownHeight, 120);
@@ -6478,7 +6479,7 @@
             if (!box || box.dataset.statusHoverBound) return;
             box.dataset.statusHoverBound = '1';
             box.addEventListener('click', function (event) {
-                if (!box.classList.contains('has-mission-timeline')) return;
+                if (!box.classList.contains('mission-status-mode')) return;
                 if (typeof isStickyStatusTapMode === 'function' && !isStickyStatusTapMode()) return;
                 if (event.target.closest && event.target.closest('#mission-status-breakdown')) return;
                 toggleMissionStatusBreakdown(event);
