@@ -570,7 +570,7 @@
             margin: 5px !important;
         }
 
-        /* Hover tooltip on each of the 3 launch-site pins (see getRadarPinTooltipHtml /
+        /* Hover tooltip on each launch-site pin (see getRadarPinTooltipHtml /
            bindRadarPinTooltip) - a small floating card with the site photo ON TOP of the
            site + state line (e.g. "Starbase, Texas"). The photo's width follows that
            nowrap label; height is 16:9 so the crop looks like a real photo, not a square
@@ -7315,9 +7315,9 @@
         // as in English (that's genuinely how French/German/Spanish news write them), so only
         // the non-Latin-script entries actually change anything for those three.
         const SITE_NAME_I18N = {
-            en: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbital Launch Pad" },
-            he: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי", starbase: "סטארבייס", orbitalLaunchPad: "משטח שיגור מסלולי" },
-            iw: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי", starbase: "סטארבייס", orbitalLaunchPad: "משטח שיגור מסלולי" },
+            en: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", pecanIsland: "Pecan Island", orbitalLaunchPad: "Orbital Launch Pad" },
+            he: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי", starbase: "סטארבייס", pecanIsland: "פקאן איילנד", orbitalLaunchPad: "משטח שיגור מסלולי" },
+            iw: { vandenberg: "ואנדנברג", capeCanaveral: "קייפ קנוורל", kennedySpaceCenter: "מרכז החלל קנדי", starbase: "סטארבייס", pecanIsland: "פקאן איילנד", orbitalLaunchPad: "משטח שיגור מסלולי" },
             es: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Cañaveral", kennedySpaceCenter: "Centro Espacial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Plataforma de Lanzamiento Orbital" },
             fr: { vandenberg: "Vandenberg", capeCanaveral: "Cap Canaveral", kennedySpaceCenter: "Centre Spatial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Pas de Tir Orbital" },
             de: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbitale Startrampe" },
@@ -7346,6 +7346,12 @@
             out = out.replace(/Cape Canaveral/g, d.capeCanaveral);
             out = out.replace(/Vandenberg/g, d.vandenberg);
             out = out.replace(/Starbase/g, d.starbase);
+            out = out.replace(/Pecan Island/g, d.pecanIsland || (SITE_NAME_I18N.en && SITE_NAME_I18N.en.pecanIsland) || 'Pecan Island');
+            const louisianaName = (key === 'he' || key === 'iw') ? 'לואיזיאנה'
+                : key === 'es' ? 'Luisiana' : key === 'fr' ? 'Louisiane' : key === 'ru' ? 'Луизиана'
+                : key === 'zh' ? '路易斯安那州' : key === 'pt' ? 'Luisiana' : key === 'pl' ? 'Luizjana'
+                : key === 'hi' ? 'लुइज़ियाना' : key === 'ar' ? 'لويزيانا' : 'Louisiana';
+            out = out.replace(/Louisiana/g, louisianaName);
             return out;
         }
 
@@ -8738,6 +8744,14 @@
                 const modalSiteEl = document.getElementById('modal-site');
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && modalSiteEl && window.currentActiveMissionSite) {
                     modalSiteEl.innerText = localizeSiteStr(window.currentActiveMissionSite, currentLang);
+                }
+                // Starbase Louisiana dossier is hand-translated (STARBASE_LA_I18N) and blocked
+                // from Google Translate — re-apply when the language changes while it is open.
+                const siteModalEl = document.getElementById('site-modal');
+                if (siteModalEl && !siteModalEl.classList.contains('hidden')
+                    && window.currentOpenSiteType === 'starbaseLa'
+                    && typeof applyStarbaseLaDossier === 'function') {
+                    applyStarbaseLaDossier(currentLang);
                 }
                 // Same for the mission modal's date line (weekday + month name) - also
                 // notranslate now (see dateLocaleForLang's own comment), so a language switch
@@ -18874,9 +18888,9 @@ setTimeout(() => {
         let radarLeafletMarkers = {};
         let radarLeafletTileLayer = null;
 
-        // Continental US only (all 3 known SITE_DATABASE entries sit well inside this) - used
+        // Continental US only (every SITE_DATABASE pin sits well inside this) - used
         // both to cap how far the map can be panned/zoomed out (maxBounds below) and as the
-        // default framing on open, instead of fitBounds-ing tightly to the 3 markers themselves
+        // default framing on open, instead of fitBounds-ing tightly to the markers themselves
         // (which pulled Mexico/Cuba into view since Starbase sits right on that border).
         const RADAR_MAP_US_BOUNDS = (typeof L !== 'undefined' && L.latLngBounds)
             ? L.latLngBounds([24.4, -125.5], [49.5, -66.5])
@@ -18887,31 +18901,31 @@ setTimeout(() => {
         // SITE_NAME_I18N/SITE_STATE_I18N (below) rather than SITE_DATABASE's own `name`/`coords`
         // fields, since those are long, English-only display strings built for the site modal,
         // not a short per-language label for a tiny map tooltip.
-        const RADAR_SITE_STATE_KEY = { starbase: 'texas', cape: 'florida', vandenberg: 'california' };
-        const RADAR_SITE_NAME_KEY = { starbase: 'starbase', cape: 'capeCanaveral', vandenberg: 'vandenberg' };
+        const RADAR_SITE_STATE_KEY = { starbase: 'texas', starbaseLa: 'louisiana', cape: 'florida', vandenberg: 'california' };
+        const RADAR_SITE_NAME_KEY = { starbase: 'starbase', starbaseLa: 'starbase', cape: 'capeCanaveral', vandenberg: 'vandenberg' };
 
-        // US state names for the 3 launch-site states, in every language SITE_NAME_I18N already
+        // US state names for the launch-site states, in every language SITE_NAME_I18N already
         // covers - same manual-translation approach already used there (no existing dictionary
         // anywhere in this file already had state names to reuse).
         const SITE_STATE_I18N = {
-            en: { texas: "Texas", florida: "Florida", california: "California" },
-            he: { texas: "טקסס", florida: "פלורידה", california: "קליפורניה" },
-            iw: { texas: "טקסס", florida: "פלורידה", california: "קליפורניה" },
-            es: { texas: "Texas", florida: "Florida", california: "California" },
-            fr: { texas: "Texas", florida: "Floride", california: "Californie" },
-            de: { texas: "Texas", florida: "Florida", california: "Kalifornien" },
-            ru: { texas: "Техас", florida: "Флорида", california: "Калифорния" },
-            zh: { texas: "得克萨斯州", florida: "佛罗里达州", california: "加利福尼亚州" },
-            it: { texas: "Texas", florida: "Florida", california: "California" },
-            cs: { texas: "Texas", florida: "Florida", california: "Kalifornie" },
-            sv: { texas: "Texas", florida: "Florida", california: "Kalifornien" },
-            nl: { texas: "Texas", florida: "Florida", california: "Californië" },
-            da: { texas: "Texas", florida: "Florida", california: "Californien" },
-            pt: { texas: "Texas", florida: "Flórida", california: "Califórnia" },
-            pl: { texas: "Teksas", florida: "Floryda", california: "Kalifornia" },
-            hi: { texas: "टेक्सास", florida: "फ़्लोरिडा", california: "कैलिफ़ोर्निया" },
-            ar: { texas: "تكساس", florida: "فلوريدا", california: "كاليفورنيا" },
-            tr: { texas: "Teksas", florida: "Florida", california: "Kaliforniya" },
+            en: { texas: "Texas", florida: "Florida", california: "California", louisiana: "Louisiana" },
+            he: { texas: "טקסס", florida: "פלורידה", california: "קליפורניה", louisiana: "לואיזיאנה" },
+            iw: { texas: "טקסס", florida: "פלורידה", california: "קליפורניה", louisiana: "לואיזיאנה" },
+            es: { texas: "Texas", florida: "Florida", california: "California", louisiana: "Luisiana" },
+            fr: { texas: "Texas", florida: "Floride", california: "Californie", louisiana: "Louisiane" },
+            de: { texas: "Texas", florida: "Florida", california: "Kalifornien", louisiana: "Louisiana" },
+            ru: { texas: "Техас", florida: "Флорида", california: "Калифорния", louisiana: "Луизиана" },
+            zh: { texas: "得克萨斯州", florida: "佛罗里达州", california: "加利福尼亚州", louisiana: "路易斯安那州" },
+            it: { texas: "Texas", florida: "Florida", california: "California", louisiana: "Louisiana" },
+            cs: { texas: "Texas", florida: "Florida", california: "Kalifornie", louisiana: "Louisiana" },
+            sv: { texas: "Texas", florida: "Florida", california: "Kalifornien", louisiana: "Louisiana" },
+            nl: { texas: "Texas", florida: "Florida", california: "Californië", louisiana: "Louisiana" },
+            da: { texas: "Texas", florida: "Florida", california: "Californien", louisiana: "Louisiana" },
+            pt: { texas: "Texas", florida: "Flórida", california: "Califórnia", louisiana: "Luisiana" },
+            pl: { texas: "Teksas", florida: "Floryda", california: "Kalifornia", louisiana: "Luizjana" },
+            hi: { texas: "टेक्सास", florida: "फ़्लोरिडा", california: "कैलिफ़ोर्निया", louisiana: "लुइज़ियाना" },
+            ar: { texas: "تكساس", florida: "فلوريدا", california: "كاليفورنيا", louisiana: "لويزيانا" },
+            tr: { texas: "Teksas", florida: "Florida", california: "Kaliforniya", louisiana: "Louisiana" },
         };
 
         // Shared "Cape Canaveral, Florida" / "סטארבייס, טקסס" label used by both the map
@@ -20516,8 +20530,124 @@ setTimeout(() => {
                 lat: 34.632, lng: -120.610,
                 fleet: "Falcon 9 Profile (Polar/Retrograde Orbits)",
                 desc: "Vandenberg Space Force Base (specifically Space Launch Complex 4 East - SLC-4E) handles SpaceX's high-inclination trajectories, sending payloads into polar and Sun-synchronous orbits.\n\nPositioned strategically on the California coastline, this military facility allows rockets to fly south directly over the Pacific Ocean safely without crossing populated areas. It serves as a fundamental cornerstone for deploying specific architectural nodes of the Starlink constellation, imaging assets, and defense telemetry satellites."
+            },
+            // Starbase Louisiana — announced 25 Aug 2026, not flying yet. Pin sits on
+            // Pecan Island, Vermilion Parish (Wikipedia / LED coordinates). Tooltip
+            // label is "Starbase, Louisiana" via RADAR_SITE_NAME_KEY + SITE_STATE_I18N.
+            starbaseLa: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                image: "starbase-louisiana.webp",
+                coords: "29.647° N, 92.453° W",
+                lat: 29.6467, lng: -92.4531,
+                fleet: "Starship — under construction",
+                desc: "Starbase Louisiana is SpaceX's planned fourth — and largest — Starship launch and manufacturing site. It was announced on 25 August 2026 with Louisiana governor Jeff Landry as a commitment of up to $100 billion, described by the state as the largest single capital investment in Louisiana history. The pin marks Pecan Island in Vermilion Parish on the Gulf Coast (about 29.647° N, 92.453° W), on a former Exxon tract of roughly 125,000 acres (about 510 km²). Only a coastal strip is meant to hold the pads; SpaceX says the rest of the wetland and wildlife habitat is to be left undeveloped.\n\nStatus: not operational. Construction is expected to begin in 2027. The first Starship launch from Louisiana is targeted for 2029. Until then this is a permitted / pre-construction site, not an active SpaceX pad.\n\nWhat is supposed to be built: five launch complexes, each with two pads and a propellant farm — ten pads in the first published plan. Elon Musk has said the site could eventually grow past a dozen launch towers and support on the order of 30 Starship flights a day. The campus is also planned to include on-site methane and oxygen production, power generation, vehicle-processing buildings, deep-water shipping, an airport, and housing for employees and families, with more than 3,000 direct jobs (about 8,100 more indirectly) and hiring aimed at nearby Louisiana communities.\n\nThe vehicle is Starship Version 3 and later. Planned traffic includes Starlink, lunar and Mars missions, and SpaceX's proposed orbital data-center constellation. Launches would fly south over the Gulf of Mexico. Federal and state reviews (FAA launch license, wetlands, wildlife) are still ahead of first flight."
             }
         };
+
+        // Fixed Starbase Louisiana dossier — never sent to Google Translate.
+        // Name / fleet / desc are already translate="no" on the site modal; this
+        // dictionary is the only source when currentOpenSiteType === 'starbaseLa'.
+        const STARBASE_LA_I18N = {
+            en: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — under construction",
+                desc: SITE_DATABASE.starbaseLa.desc
+            },
+            he: {
+                name: "סטארבייס של SpaceX • פקאן איילנד, לואיזיאנה",
+                fleet: "סטארשיפ — בבנייה",
+                desc: "סטארבייס לואיזיאנה הוא אתר השיגור והייצור הרביעי — והגדול ביותר — שספייסאקס מתכננת לסטארשיפ. הוא הוכרז ב־25 באוגוסט 2026 יחד עם מושל לואיזיאנה, ג׳ף לנדרי, כהתחייבות בהיקף של עד 100 מיליארד דולר, ותואר במדינה כהשקעה ההונית הבודדת הגדולה ביותר בתולדות לואיזיאנה. הסיכה על המפה מסמנת את פקאן איילנד במחוז ורמיליון, על חוף המפרץ (כ־29.647° צפון, 92.453° מערב), בשטח שהיה שייך לאקסון ומשתרע על כ־125,000 אקר (כ־510 קמ״ר). רק רצועת חוף מיועדת למשטחי השיגור; ספייסאקס אומרת ששאר הביצות ובתי הגידול לחיות הבר יישארו ללא פיתוח.\n\nסטטוס: אינו פעיל. הבנייה צפויה להתחיל ב־2027. שיגור הסטארשיפ הראשון מלואיזיאנה מתוכנן ל־2029. עד אז זה אתר בהיתרים ובשלב שלפני הבנייה — לא כן שיגור פעיל של ספייסאקס.\n\nמה אמור להיבנות: חמישה מתחמי שיגור, בכל אחד שני משטחים וחוות דלק — עשרה משטחים בתוכנית הראשונה שפורסמה. אילון מאסק אמר שהאתר יוכל בסופו של דבר לגדול מעבר לתריסר מגדלי שיגור ולתמוך בסדר גודל של 30 טיסות סטארשיפ ביום. הקמפוס מתוכנן לכלול גם ייצור מתאן וחמצן במקום, ייצור חשמל, מבני עיבוד רכב, נמל מים עמוקים, שדה תעופה ודיור לעובדים ולמשפחותיהם, עם יותר מ־3,000 משרות ישירות (וכ־8,100 נוספות בעקיפין) וגיוס שמכוון לקהילות הסמוכות בלואיזיאנה.\n\nהרכב הוא סטארשיפ גרסה 3 ואילך. התנועה המתוכננת כוללת סטארלינק, משימות לירח ולמאדים, ואת מערך מרכזי הנתונים המסלולי שספייסאקס מציעה. השיגורים יטוסו דרומה מעל מפרץ מקסיקו. סקירות פדרליות ומדינתיות (רישיון שיגור של ה־FAA, ביצות, חיות בר) עדיין לפני הטיסה הראשונה."
+            },
+            es: {
+                name: "Starbase de SpaceX • Pecan Island, Luisiana",
+                fleet: "Starship — en construcción",
+                desc: "Starbase Luisiana es el cuarto — y el más grande — emplazamiento de lanzamiento y fabricación de Starship que planea SpaceX. Se anunció el 25 de agosto de 2026 junto al gobernador de Luisiana, Jeff Landry, como un compromiso de hasta 100.000 millones de dólares; el estado lo describió como la mayor inversión de capital individual en la historia de Luisiana. El pin marca Pecan Island, en la parroquia de Vermilion, en la costa del Golfo (unos 29,647° N, 92,453° O), en un antiguo predio de Exxon de unos 125.000 acres (unos 510 km²). Solo una franja costera está pensada para las plataformas; SpaceX dice que el resto del humedal y el hábitat de fauna se dejará sin urbanizar.\n\nEstado: no operativo. Se espera que la construcción empiece en 2027. El primer lanzamiento de Starship desde Luisiana está previsto para 2029. Hasta entonces es un emplazamiento autorizado, previo a la obra — no una rampa activa de SpaceX.\n\nQué se supone que se construirá: cinco complejos de lanzamiento, cada uno con dos plataformas y una granja de propergol — diez plataformas en el primer plan publicado. Elon Musk ha dicho que el sitio podría crecer más allá de una docena de torres de lanzamiento y apoyar del orden de 30 vuelos de Starship al día. El campus también prevé producción in situ de metano y oxígeno, generación eléctrica, edificios de procesado del vehículo, tráfico marítimo de aguas profundas, un aeropuerto y viviendas para empleados y familias, con más de 3.000 empleos directos (unos 8.100 más indirectos) y contratación orientada a las comunidades cercanas de Luisiana.\n\nEl vehículo es Starship Versión 3 y posteriores. El tráfico previsto incluye Starlink, misiones lunares y a Marte, y la constelación de centros de datos orbitales que propone SpaceX. Los lanzamientos volarían hacia el sur sobre el Golfo de México. Las revisiones federales y estatales (licencia de lanzamiento de la FAA, humedales, fauna) siguen pendientes antes del primer vuelo."
+            },
+            fr: {
+                name: "Starbase SpaceX • Pecan Island, Louisiane",
+                fleet: "Starship — en construction",
+                desc: "Starbase Louisiane est le quatrième — et le plus grand — site de lancement et de fabrication Starship prévu par SpaceX. Il a été annoncé le 25 août 2026 avec le gouverneur de Louisiane Jeff Landry, pour un engagement allant jusqu’à 100 milliards de dollars ; l’État l’a décrit comme le plus grand investissement en capital unique de l’histoire de la Louisiane. L’épingle marque Pecan Island, paroisse de Vermilion, sur la côte du golfe (environ 29,647° N, 92,453° O), sur un ancien terrain d’Exxon d’environ 125 000 acres (environ 510 km²). Seule une bande côtière est prévue pour les pas de tir ; SpaceX indique que le reste des zones humides et de l’habitat faunique restera non aménagé.\n\nStatut : non opérationnel. Les travaux devraient commencer en 2027. Le premier lancement Starship depuis la Louisiane est visé pour 2029. D’ici là, c’est un site autorisé, avant construction — pas un pas de tir SpaceX actif.\n\nCe qui doit être construit : cinq complexes de lancement, chacun avec deux pas de tir et une ferme de propergol — dix pas de tir dans le premier plan publié. Elon Musk a dit que le site pourrait à terme dépasser une douzaine de tours de lancement et soutenir de l’ordre de 30 vols Starship par jour. Le campus doit aussi inclure une production sur place de méthane et d’oxygène, de la production d’électricité, des bâtiments de préparation des véhicules, un trafic maritime en eau profonde, un aéroport et des logements pour les employés et leurs familles, avec plus de 3 000 emplois directs (environ 8 100 de plus en indirect) et un recrutement tourné vers les communautés louisianaises voisines.\n\nLe véhicule est Starship Version 3 et suivantes. Le trafic prévu comprend Starlink, des missions lunaires et vers Mars, et la constellation de centres de données orbitaux proposée par SpaceX. Les lancements partiraient vers le sud au-dessus du golfe du Mexique. Les examens fédéraux et étatiques (licence de lancement FAA, zones humides, faune) restent à venir avant le premier vol."
+            },
+            de: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — im Bau",
+                desc: "Starbase Louisiana ist der geplante vierte — und größte — Start- und Fertigungsstandort von SpaceX für Starship. Er wurde am 25. August 2026 zusammen mit Gouverneur Jeff Landry als Verpflichtung von bis zu 100 Milliarden Dollar angekündigt; der Bundesstaat nannte ihn die größte einzelne Kapitalinvestition in der Geschichte Louisianas. Die Stecknadel markiert Pecan Island im Parish Vermilion an der Golfküste (etwa 29,647° N, 92,453° W) auf einem früheren Exxon-Gelände von rund 125.000 Acres (etwa 510 km²). Nur ein Küstenstreifen soll die Rampen tragen; SpaceX sagt, der Rest der Feuchtgebiete und des Wildlebensraums bleibe unbebaut.\n\nStatus: nicht in Betrieb. Baubeginn wird für 2027 erwartet. Der erste Starship-Start aus Louisiana ist für 2029 geplant. Bis dahin ist dies ein genehmigter Standort vor Baubeginn — keine aktive SpaceX-Rampe.\n\nWas gebaut werden soll: fünf Startkomplexe, jeweils mit zwei Rampen und einer Treibstofffarm — zehn Rampen im ersten veröffentlichten Plan. Elon Musk hat gesagt, der Standort könne später mehr als ein Dutzend Starttürme umfassen und in der Größenordnung von 30 Starship-Flügen pro Tag tragen. Zum Campus sollen auch Methan- und Sauerstoffproduktion vor Ort, Stromerzeugung, Aufbereitungshallen, Tiefwasser-Schifffahrt, ein Flugplatz und Wohnungen für Beschäftigte und Familien gehören, mit mehr als 3.000 direkten Stellen (etwa 8.100 weiteren indirekten) und Einstellungen mit Blick auf benachbarte Gemeinden in Louisiana.\n\nDas Fahrzeug ist Starship Version 3 und später. Geplanter Verkehr umfasst Starlink, Mond- und Marsmissionen sowie die von SpaceX vorgeschlagene Konstellation orbitaler Rechenzentren. Starts würden nach Süden über den Golf von Mexiko fliegen. Bundes- und Landesprüfungen (FAA-Startlizenz, Feuchtgebiete, Wildtiere) stehen vor dem Erstflug noch aus."
+            },
+            ru: {
+                name: "Старбейз SpaceX • Пекан-Айленд, Луизиана",
+                fleet: "Старшип — строится",
+                desc: "Старбейз Луизиана — четвёртая и самая крупная площадка запуска и производства Старшип, которую планирует SpaceX. Её объявили 25 августа 2026 года вместе с губернатором Луизианы Джеффом Лэндри как обязательство до 100 млрд долларов; штат назвал это крупнейшей единичной капитальной инвестицией в истории Луизианы. Метка на карте — Пекан-Айленд в приходе Вермилион на побережье Мексиканского залива (около 29,647° с. ш., 92,453° з. д.), на бывшем участке Exxon площадью примерно 125 000 акров (около 510 км²). Под стартовые площадки отведена только прибрежная полоса; SpaceX заявляет, что остальные водно-болотные угодья и среда обитания диких животных останутся без застройки.\n\nСтатус: не работает. Строительство ожидается с 2027 года. Первый запуск Старшип из Луизианы намечен на 2029 год. До тех пор это разрешённая площадка до начала стройки — не действующий стартовый комплекс SpaceX.\n\nЧто должно быть построено: пять стартовых комплексов, в каждом по две площадки и ферма топлива — десять площадок в первом опубликованном плане. Илон Маск говорил, что площадка со временем может вырасти больше дюжины стартовых башен и поддерживать порядка 30 полётов Старшип в сутки. Кампус также планируют с производством метана и кислорода на месте, генерацией энергии, зданиями подготовки ракет, глубоководным судоходством, аэропортом и жильём для сотрудников и семей — более 3000 прямых рабочих мест (ещё около 8100 косвенных), с наймом в соседних общинах Луизианы.\n\nНоситель — Старшип версии 3 и новее. Планируемый трафик включает Старлинк, лунные и марсианские миссии и предложенную SpaceX орбитальную группировку центров обработки данных. Пуски пойдут на юг над Мексиканским заливом. Федеральные и штатные согласования (лицензия FAA, водно-болотные угодья, фауна) ещё впереди до первого полёта."
+            },
+            zh: {
+                name: "SpaceX 星际基地 • 佩坎岛，路易斯安那州",
+                fleet: "星舰 — 建设中",
+                desc: "路易斯安那星际基地是 SpaceX 规划的第四座——也是最大的——星舰发射与制造场。2026 年 8 月 25 日与路易斯安那州州长杰夫·兰德里一同宣布，承诺投资最高可达 1000 亿美元；该州称之为路易斯安那历史上最大的单笔资本投资。地图图钉标在墨西哥湾沿岸弗米利恩堂区的佩坎岛（约北纬 29.647°、西经 92.453°），原属埃克森的地块约 125,000 英亩（约 510 平方公里）。仅沿海一带计划建发射台；SpaceX 表示其余湿地与野生动物栖息地将保持未开发。\n\n状态：未投入使用。预计 2027 年开工。路易斯安那首次星舰发射目标为 2029 年。在此之前这是已获许可、尚未动工的场地——不是现役 SpaceX 发射台。\n\n规划建设：五个发射综合体，各含两座发射台和一座推进剂贮罐区——首份公开方案共十座发射台。埃隆·马斯克曾表示该场最终可能超过十余座发射塔，并支撑每天约 30 次星舰飞行。园区还计划现场生产甲烷与液氧、发电、运载器处理厂房、深水航运、机场，以及员工与家属住房，直接就业超过 3,000 个（间接再约 8,100 个），招聘面向附近路易斯安那社区。\n\n运载器为星舰第 3 版及以后。计划任务包括星链、月球与火星任务，以及 SpaceX 提出的轨道数据中心星座。发射将向南飞越墨西哥湾。联邦与州级审查（FAA 发射许可、湿地、野生动物）仍须在首飞前完成。"
+            },
+            it: {
+                name: "Starbase SpaceX • Pecan Island, Louisiana",
+                fleet: "Starship — in costruzione",
+                desc: "Starbase Louisiana è il quarto — e il più grande — sito di lancio e produzione Starship pianificato da SpaceX. È stato annunciato il 25 agosto 2026 con il governatore della Louisiana Jeff Landry come un impegno fino a 100 miliardi di dollari; lo Stato lo ha descritto come il più grande investimento di capitale singolo nella storia della Louisiana. Il pin segna Pecan Island, parrocchia di Vermilion, sulla costa del Golfo (circa 29,647° N, 92,453° O), su un ex lotto Exxon di circa 125.000 acri (circa 510 km²). Solo una fascia costiera è destinata alle rampe; SpaceX afferma che il resto delle zone umide e dell’habitat faunistico resterà inedificato.\n\nStato: non operativo. I lavori dovrebbero iniziare nel 2027. Il primo lancio Starship dalla Louisiana è previsto per il 2029. Fino ad allora è un sito autorizzato, pre-cantiere — non una rampa SpaceX attiva.\n\nCosa dovrebbe essere costruito: cinque complessi di lancio, ciascuno con due rampe e una fattoria di propellente — dieci rampe nel primo piano pubblicato. Elon Musk ha detto che il sito potrebbe crescere oltre una dozzina di torri di lancio e sostenere nell’ordine di 30 voli Starship al giorno. Il campus dovrebbe includere anche produzione in loco di metano e ossigeno, generazione elettrica, edifici di preparazione del veicolo, navigazione in acque profonde, un aeroporto e alloggi per i dipendenti e le famiglie, con oltre 3.000 posti diretti (circa 8.100 in più indiretti) e assunzioni rivolte alle comunità vicine della Louisiana.\n\nIl veicolo è Starship Versione 3 e successive. Il traffico previsto include Starlink, missioni lunari e verso Marte e la costellazione di data center orbitali proposta da SpaceX. I lanci volerebbero a sud sul Golfo del Messico. Le revisioni federali e statali (licenza di lancio FAA, zone umide, fauna) restano da completare prima del primo volo."
+            },
+            cs: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — ve výstavbě",
+                desc: "Starbase Louisiana je čtvrté — a největší — plánované startovací a výrobní místo SpaceX pro Starship. Bylo oznámeno 25. srpna 2026 s guvernérem Louisiany Jeffem Landrym jako závazek až 100 miliard dolarů; stát to nazval největší jednotlivou kapitálovou investicí v historii Louisiany. Špendlík označuje Pecan Island v okrese Vermilion na pobřeží Mexického zálivu (asi 29,647° s. š., 92,453° z. d.) na bývalém pozemku Exxonu o rozloze zhruba 125 000 akrů (asi 510 km²). Pro rampy je určen jen pobřežní pás; SpaceX uvádí, že zbývající mokřady a biotop zvěře zůstanou nezastavěné.\n\nStav: neprovozní. Stavba má začít v roce 2027. První start Starship z Louisiany je cílem na rok 2029. Do té doby jde o povolené místo před výstavbou — ne o aktivní rampu SpaceX.\n\nCo se má postavit: pět startovacích komplexů, každý se dvěma rampami a farmou pohonných hmot — deset ramp v prvním zveřejněném plánu. Elon Musk řekl, že místo může časem přesáhnout tucet startovacích věží a unést řádově 30 letů Starship denně. Kampus má zahrnovat i místní výrobu metanu a kyslíku, výrobu elektřiny, haly na přípravu raket, hlubokovodní dopravu, letiště a bydlení pro zaměstnance a rodiny, s více než 3 000 přímými místy (asi 8 100 dalšími nepřímými) a náborem zaměřeným na okolní komunity v Louisianě.\n\nNosné těleso je Starship verze 3 a novější. Plánovaný provoz zahrnuje Starlink, mise na Měsíc a Mars a navrhovanou konstelaci orbitálních datových center SpaceX. Starty by letěly na jih nad Mexickým zálivem. Federální a státní přezkumy (licence FAA, mokřady, zvěř) ještě před prvním letem zbývají."
+            },
+            sv: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — under uppbyggnad",
+                desc: "Starbase Louisiana är SpaceX planerade fjärde — och största — start- och tillverkningsplats för Starship. Den tillkännagavs den 25 augusti 2026 tillsammans med Louisianas guvernör Jeff Landry som ett åtagande på upp till 100 miljarder dollar; delstaten beskrev den som den största enskilda kapitalinvesteringen i Louisianas historia. Nålen markerar Pecan Island i Vermilion Parish vid gulfkusten (cirka 29,647° N, 92,453° V) på ett tidigare Exxon-område på ungefär 125 000 tunnland (cirka 510 km²). Endast en kustremsa är avsedd för startramperna; SpaceX säger att resten av våtmarkerna och viltlivsmiljön lämnas obebyggd.\n\nStatus: inte i drift. Bygget väntas starta 2027. Första Starship-uppskjutningen från Louisiana siktar på 2029. Fram till dess är detta en tillståndsgiven plats före byggstart — inte en aktiv SpaceX-ramp.\n\nVad som ska byggas: fem startkomplex, vart och ett med två ramper och en drivmedelsfarm — tio ramper i den första publicerade planen. Elon Musk har sagt att platsen så småningom kan växa förbi ett dussin starttorn och stödja i storleksordningen 30 Starship-flygningar per dag. Campus ska också omfatta metan- och syreproduktion på plats, elproduktion, beredningshallar, djuphavssjöfart, en flygplats och bostäder för anställda och familjer, med mer än 3 000 direkta jobb (cirka 8 100 till indirekta) och rekrytering riktad mot närliggande samhällen i Louisiana.\n\nFarkosten är Starship version 3 och senare. Planerad trafik omfattar Starlink, mån- och Mars-uppdrag samt SpaceX föreslagna konstellation av orbitala datacenter. Uppskjutningar skulle flyga söderut över Mexikanska golfen. Federala och delstatliga prövningar (FAA-startlicens, våtmarker, vilt) återstår före första flygningen."
+            },
+            nl: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — in aanbouw",
+                desc: "Starbase Louisiana is de geplande vierde — en grootste — lanceer- en productielocatie van SpaceX voor Starship. Hij werd op 25 augustus 2026 aangekondigd samen met gouverneur Jeff Landry van Louisiana als een toezegging tot 100 miljard dollar; de staat noemde het de grootste enkele kapitaalinvestering in de geschiedenis van Louisiana. De pin markeert Pecan Island in Vermilion Parish aan de Golfkust (ongeveer 29,647° N, 92,453° W) op een voormalig Exxon-perceel van ruwweg 125.000 acres (ongeveer 510 km²). Alleen een kuststrook is bedoeld voor de platforms; SpaceX zegt dat de rest van de wetlands en het leefgebied van wilde dieren onbebouwd blijft.\n\nStatus: niet operationeel. De bouw zou in 2027 moeten beginnen. De eerste Starship-lancering vanuit Louisiana is gericht op 2029. Tot die tijd is dit een vergunde locatie vóór de bouw — geen actief SpaceX-platform.\n\nWat er gebouwd moet worden: vijf lanceercomplexen, elk met twee platforms en een brandstoffarm — tien platforms in het eerste gepubliceerde plan. Elon Musk heeft gezegd dat de locatie uiteindelijk meer dan een dozijn lanceertorens kan omvatten en in de orde van 30 Starship-vluchten per dag kan ondersteunen. De campus moet ook ter plaatse methaan- en zuurstofproductie, elektriciteitsopwekking, voorbereidingshallen, diepzeevaart, een vliegveld en huisvesting voor werknemers en gezinnen omvatten, met meer dan 3.000 directe banen (ongeveer 8.100 extra indirect) en werving gericht op naburige gemeenschappen in Louisiana.\n\nHet voertuig is Starship Versie 3 en later. Gepland verkeer omvat Starlink, maan- en Marsmissies, en de door SpaceX voorgestelde constellatie van orbitale datacenters. Lanceringen zouden zuidwaarts over de Golf van Mexico vliegen. Federale en staatsbeoordelingen (FAA-lanceervergunning, wetlands, wildlife) staan nog open vóór de eerste vlucht."
+            },
+            da: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — under opførelse",
+                desc: "Starbase Louisiana er SpaceX’ planlagte fjerde — og største — opsendelses- og produktionssted til Starship. Det blev annonceret den 25. august 2026 sammen med Louisianas guvernør Jeff Landry som en forpligtelse på op til 100 milliarder dollar; delstaten beskrev det som den største enkelte kapitalinvestering i Louisianas historie. Nålen markerer Pecan Island i Vermilion Parish ved Golfkysten (ca. 29,647° N, 92,453° V) på et tidligere Exxon-areal på omkring 125.000 acres (ca. 510 km²). Kun en kyststribe er beregnet til ramperne; SpaceX siger, at resten af vådområderne og vildtlevestederne forbliver ubebyggede.\n\nStatus: ikke i drift. Byggeriet forventes at starte i 2027. Den første Starship-opsendelse fra Louisiana sigter mod 2029. Indtil da er dette et tilladt sted før byggeri — ikke en aktiv SpaceX-rampe.\n\nHvad der skal bygges: fem opsendelseskomplekser, hvert med to ramper og en drivmiddelfarm — ti ramper i den første offentliggjorte plan. Elon Musk har sagt, at stedet med tiden kan vokse forbi et dusin starttårne og understøtte i størrelsesordenen 30 Starship-flyvninger om dagen. Campus skal også rumme metan- og iltproduktion på stedet, elproduktion, klargøringshaller, dybvandssejlads, en lufthavn og boliger til medarbejdere og familier, med mere end 3.000 direkte job (ca. 8.100 flere indirekte) og ansættelse rettet mod nærliggende samfund i Louisiana.\n\nFartøjet er Starship Version 3 og senere. Planlagt trafik omfatter Starlink, Måne- og Mars-missioner samt SpaceX’ foreslåede konstellation af orbitale datacentre. Opsendelser ville flyve sydpå over den Mexicanske Golf. Føderale og delstatslige gennemgange (FAA-opsendelseslicens, vådområder, vildt) ligger stadig foran den første flyvning."
+            },
+            pt: {
+                name: "Starbase da SpaceX • Pecan Island, Luisiana",
+                fleet: "Starship — em construção",
+                desc: "Starbase Luisiana é o quarto — e o maior — sítio de lançamento e fabrico de Starship planeado pela SpaceX. Foi anunciado a 25 de agosto de 2026 com o governador da Luisiana Jeff Landry como um compromisso de até 100 mil milhões de dólares; o estado descreveu-o como o maior investimento de capital individual da história da Luisiana. O pin marca Pecan Island, na paróquia de Vermilion, na costa do Golfo (cerca de 29,647° N, 92,453° O), num antigo lote da Exxon de cerca de 125.000 acres (cerca de 510 km²). Só uma faixa costeira está prevista para as rampas; a SpaceX diz que o resto das zonas húmidas e do habitat selvagem fica por urbanizar.\n\nEstado: não operacional. Espera-se que a construção comece em 2027. O primeiro lançamento de Starship a partir da Luisiana está apontado para 2029. Até lá é um sítio autorizado, antes da obra — não uma rampa ativa da SpaceX.\n\nO que se prevê construir: cinco complexos de lançamento, cada um com duas rampas e uma quinta de propelente — dez rampas no primeiro plano publicado. Elon Musk disse que o sítio pode acabar por crescer para além de uma dúzia de torres de lançamento e suportar da ordem de 30 voos Starship por dia. O campus também deve incluir produção local de metano e oxigénio, geração de energia, edifícios de preparação do veículo, navegação de águas profundas, um aeroporto e habitação para trabalhadores e famílias, com mais de 3.000 empregos diretos (cerca de 8.100 mais indiretos) e contratação virada para as comunidades próximas da Luisiana.\n\nO veículo é Starship Versão 3 e posteriores. O tráfego previsto inclui Starlink, missões lunares e a Marte, e a constelação de centros de dados orbitais proposta pela SpaceX. Os lançamentos voariam para sul sobre o Golfo do México. As revisões federais e estaduais (licença de lançamento da FAA, zonas húmidas, fauna) ainda estão pendentes antes do primeiro voo."
+            },
+            pl: {
+                name: "Starbase SpaceX • Pecan Island, Luizjana",
+                fleet: "Starship — w budowie",
+                desc: "Starbase Luizjana to czwarty — i największy — planowany ośrodek startów i produkcji Starship SpaceX. Ogłoszono go 25 sierpnia 2026 r. wraz z gubernatorem Luizjany Jeffem Landrym jako zobowiązanie do 100 miliardów dolarów; stan nazwał to największą pojedynczą inwestycją kapitałową w historii Luizjany. Pinezka oznacza Pecan Island w parafii Vermilion na wybrzeżu Zatoki (ok. 29,647° N, 92,453° W) na dawnym terenie Exxonu o powierzchni około 125 000 akrów (ok. 510 km²). Tylko pas wybrzeża jest przeznaczony pod platformy; SpaceX twierdzi, że pozostałe tereny podmokłe i siedliska fauny pozostaną niezabudowane.\n\nStatus: nieczynny. Budowa ma ruszyć w 2027 r. Pierwszy start Starship z Luizjany jest planowany na 2029 r. Do tego czasu to teren z pozwoleniami, przed budową — nie aktywna rampa SpaceX.\n\nCo ma powstać: pięć kompleksów startowych, każdy z dwiema platformami i farmą paliwową — dziesięć platform w pierwszym opublikowanym planie. Elon Musk mówił, że teren może ostatecznie przekroczyć tuzin wież startowych i obsłużyć rzędu 30 lotów Starship dziennie. Kampus ma też objąć produkcję metanu i tlenu na miejscu, wytwarzanie energii, hale przygotowania rakiet, żeglugę głębokowodną, lotnisko i mieszkania dla pracowników i rodzin, z ponad 3000 miejscami bezpośrednimi (ok. 8100 dodatkowymi pośrednimi) oraz rekrutacją skierowaną do pobliskich społeczności Luizjany.\n\nPojazd to Starship wersja 3 i nowsze. Planowany ruch obejmuje Starlink, misje księżycowe i na Marsa oraz proponowaną przez SpaceX konstelację orbitalnych centrów danych. Starty poleciałyby na południe nad Zatokę Meksykańską. Przeglądy federalne i stanowe (licencja startowa FAA, tereny podmokłe, fauna) wciąż czekają przed pierwszym lotem."
+            },
+            hi: {
+                name: "SpaceX स्टारबेस • पेकन आइलैंड, लुइज़ियाना",
+                fleet: "स्टारशिप — निर्माणाधीन",
+                desc: "स्टारबेस लुइज़ियाना स्पेसएक्स की चौथी — और सबसे बड़ी — नियोजित स्टारशिप लॉन्च व निर्माण साइट है। इसकी घोषणा 25 अगस्त 2026 को लुइज़ियाना के गवर्नर जेफ लैंड्री के साथ हुई, लगभग 100 अरब डॉलर तक की प्रतिबद्धता के रूप में; राज्य ने इसे लुइज़ियाना इतिहास की सबसे बड़ी एकल पूँजी निवेश कहा। पिन गल्फ कोस्ट पर वर्मीलियन पैरिश के पेकन आइलैंड को चिह्नित करता है (लगभग 29.647° उत्तर, 92.453° पश्चिम), पूर्व एक्सॉन भूमि पर लगभग 125,000 एकड़ (लगभग 510 वर्ग किमी)। केवल तटीय पट्टी पैड के लिए है; स्पेसएक्स कहता है शेष आर्द्रभूमि और वन्यजीव आवास अविकसित रहेंगे।\n\nस्थिति: चालू नहीं। निर्माण 2027 में शुरू होने की उम्मीद है। लुइज़ियाना से पहली स्टारशिप उड़ान 2029 के लिए लक्षित है। तब तक यह अनुमति-प्राप्त, निर्माण-पूर्व साइट है — सक्रिय स्पेसएक्स पैड नहीं।\n\nक्या बनना है: पाँच लॉन्च कॉम्प्लेक्स, प्रत्येक में दो पैड और प्रणोदक फार्म — पहली प्रकाशित योजना में दस पैड। एलन मस्क ने कहा है कि साइट अंततः एक दर्जन से अधिक लॉन्च टावर तक बढ़ सकती है और प्रति दिन लगभग 30 स्टारशिप उड़ानों को सहारा दे सकती है। कैंपस में मौके पर मीथेन व ऑक्सीजन उत्पादन, बिजली उत्पादन, वाहन प्रोसेसिंग भवन, गहरे पानी की शिपिंग, हवाई अड्डा और कर्मचारियों व परिवारों के लिए आवास भी शामिल हैं — 3,000 से अधिक प्रत्यक्ष नौकरियाँ (और लगभग 8,100 और अप्रत्यक्ष) तथा आस-पास के लुइज़ियाना समुदायों पर केंद्रित भर्ती।\n\nयान स्टारशिप संस्करण 3 और उसके बाद का है। नियोजित यातायात में स्टारलिंक, चंद्र व मंगल मिशन, और स्पेसएक्स का प्रस्तावित कक्षीय डेटा-केंद्र तारामंडल शामिल हैं। प्रक्षेपण मेक्सिको की खाड़ी के ऊपर दक्षिण की ओर उड़ेंगे। संघीय व राज्य समीक्षाएँ (FAA लॉन्च लाइसेंस, आर्द्रभूमि, वन्यजीव) पहली उड़ान से पहले अभी बाकी हैं।"
+            },
+            ar: {
+                name: "ستاربيس SpaceX • جزيرة بيكان، لويزيانا",
+                fleet: "ستارشيب — قيد الإنشاء",
+                desc: "ستاربيس لويزيانا هو الموقع الرابع — والأكبر — الذي تخطط له سبيس إكس لإطلاق وتصنيع ستارشيب. أُعلن في 25 أغسطس 2026 مع حاكم لويزيانا جيف لاندري كالتزام يصل إلى 100 مليار دولار؛ ووصفته الولاية بأنه أكبر استثمار رأسمالي منفرد في تاريخ لويزيانا. الدبوس يحدد جزيرة بيكان في أبرشية فيرمليون على ساحل الخليج (حوالي 29.647° شمالاً، 92.453° غرباً) على قطعة أرض كانت تابعة لإكسون وتغطي نحو 125 ألف فدان (حوالي 510 كم²). شريط ساحلي فقط مخصص للمنصات؛ وتقول سبيس إكس إن بقية الأراضي الرطبة وموائل الحياة البرية ستبقى دون تطوير.\n\nالحالة: غير تشغيلي. يُتوقع بدء البناء في 2027. أول إطلاق لستارشيب من لويزيانا مستهدف لعام 2029. حتى ذلك الحين هذا موقع مرخّص قبل البناء — وليس منصة سبيس إكس نشطة.\n\nما يُفترض بناؤه: خمسة مجمعات إطلاق، في كل منها منصتان ومزرعة وقود — عشر منصات في أول خطة منشورة. قال إيلون ماسك إن الموقع قد يتجاوز في النهاية دستة أبراج إطلاق ويدعم نحو 30 رحلة ستارشيب في اليوم. يُخطط للحرم أيضاً لإنتاج الميثان والأكسجين في الموقع، وتوليد الكهرباء، ومبانٍ لتجهيز المركبة، وملاحة مياه عميقة، ومطار، وسكن للعاملين وعائلاتهم، مع أكثر من 3000 وظيفة مباشرة (ونحو 8100 إضافية غير مباشرة) وتوظيف موجّه للمجتمعات المجاورة في لويزيانا.\n\nالمركبة ستارشيب الإصدار 3 وما بعده. الحركة المخططة تشمل ستارلينك ومهمات قمرية ومريخية وكوكبة مراكز البيانات المدارية التي تقترحها سبيس إكس. الإطلاقات ستطير جنوباً فوق خليج المكسيك. المراجعات الاتحادية والولائية (رخصة إطلاق إدارة الطيران الفيدرالية، الأراضي الرطبة، الحياة البرية) لا تزال أمام الرحلة الأولى."
+            },
+            tr: {
+                name: "SpaceX Starbase • Pecan Island, Louisiana",
+                fleet: "Starship — inşa halinde",
+                desc: "Starbase Louisiana, SpaceX’in Starship için planladığı dördüncü — ve en büyük — fırlatma ve üretim sahasıdır. 25 Ağustos 2026’da Louisiana valisi Jeff Landry ile birlikte 100 milyar dolara kadar bir taahhüt olarak duyuruldu; eyalet bunu Louisiana tarihindeki en büyük tek sermaye yatırımı olarak niteledi. İğne, Körfez kıyısındaki Vermilion Parish’te Pecan Island’ı işaretler (yaklaşık 29,647° K, 92,453° B), eski bir Exxon arazisinde kabaca 125.000 dönüm (yaklaşık 510 km²). Yalnızca bir kıyı şeridi rampalar için ayrılmıştır; SpaceX, kalan sulak alanların ve yaban hayatı habitatının gelişmeden kalacağını söyler.\n\nDurum: işletmede değil. İnşaatın 2027’de başlaması bekleniyor. Louisiana’dan ilk Starship fırlatması 2029’u hedefliyor. O zamana kadar bu, inşa öncesi izinli bir sahadır — aktif bir SpaceX rampası değil.\n\nİnşa edilecekler: her biri iki rampa ve bir yakıt çiftliği olan beş fırlatma kompleksi — ilk yayımlanan planda on rampa. Elon Musk, sahanın zamanla bir düzineden fazla fırlatma kulesine büyüyebileceğini ve günde 30 Starship uçuşu mertebesini destekleyebileceğini söyledi. Kampüste yerinde metan ve oksijen üretimi, elektrik üretimi, araç hazırlama binaları, derin su denizciliği, havaalanı ve çalışanlar ile aileleri için konut da planlanıyor; 3.000’den fazla doğrudan iş (ve yaklaşık 8.100 ek dolaylı) ve yakın Louisiana topluluklarına yönelik işe alım.\n\nAraç Starship Sürüm 3 ve sonrası. Planlanan trafik Starlink, Ay ve Mars görevleri ile SpaceX’in önerdiği yörüngesel veri merkezi takımyıldızını kapsar. Fırlatmalar Meksika Körfezi üzerinde güneye uçacaktır. Federal ve eyalet incelemeleri (FAA fırlatma lisansı, sulak alanlar, yaban hayatı) ilk uçuştan önce hâlâ bekliyor."
+            }
+        };
+        STARBASE_LA_I18N.iw = STARBASE_LA_I18N.he;
+
+        function applyStarbaseLaDossier(currentLang) {
+            const key = String(currentLang || document.documentElement.lang || 'en').split('-')[0];
+            const dict = STARBASE_LA_I18N[key] || STARBASE_LA_I18N.en;
+            const nameEl = document.getElementById('site-modal-name');
+            const fleetEl = document.getElementById('site-modal-fleet');
+            const descEl = document.getElementById('site-modal-desc');
+            const imgEl = document.getElementById('site-modal-img');
+            if (nameEl) nameEl.innerText = dict.name;
+            if (fleetEl) fleetEl.innerText = dict.fleet;
+            if (descEl) descEl.innerText = dict.desc;
+            if (imgEl) imgEl.alt = dict.name;
+        }
 
         function openRocketSpecs(type) {
             const data = ROCKET_DATABASE[type];
@@ -20587,14 +20717,24 @@ setTimeout(() => {
             const siteModalContentEl = document.getElementById('site-modal-content');
             if (siteModalContentEl) siteModalContentEl.scrollTop = 0;
 
-            document.getElementById('site-modal-name').innerText = data.name;
+            window.currentOpenSiteType = type;
             const siteImgEl = document.getElementById('site-modal-img');
             siteImgEl.src = data.image;
             siteImgEl.alt = data.name;
             document.getElementById('site-modal-coords').innerText = data.coords;
-            document.getElementById('site-modal-fleet').innerText = data.fleet;
-            document.getElementById('site-modal-desc').innerText = data.desc;
-            translateModalDescriptions('site', [document.getElementById('site-modal-desc')], document.documentElement.lang);
+
+            if (type === 'starbaseLa') {
+                applyStarbaseLaDossier(document.documentElement.lang);
+            } else {
+                const siteNameEl = document.getElementById('site-modal-name');
+                siteNameEl.innerText = localizeSiteStr(data.name, document.documentElement.lang);
+                localizeStarshipTerm(siteNameEl);
+                const siteFleetEl = document.getElementById('site-modal-fleet');
+                siteFleetEl.innerText = data.fleet;
+                localizeStarshipTerm(siteFleetEl);
+                document.getElementById('site-modal-desc').innerText = data.desc;
+                translateModalDescriptions('site', [document.getElementById('site-modal-desc')], document.documentElement.lang);
+            }
 
             const modalEl = document.getElementById('site-modal');
             modalEl.classList.remove('hidden');
@@ -20608,6 +20748,7 @@ setTimeout(() => {
             modal.style.display = 'none';
             modal.classList.add('hidden');
             unlockBodyScroll();
+            window.currentOpenSiteType = null;
         }
 
         // נתוני התצוגה של כל מסלול (סטטיסטיקות + טקסטים) — ה-key חייב להתאים לקוד שמחזיר
