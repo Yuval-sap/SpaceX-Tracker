@@ -10852,7 +10852,7 @@
                                         <span id="site-weather-humidity-label" class="notranslate" translate="no"></span>
                                         <span id="site-weather-humidity" class="notranslate" dir="ltr" translate="no">--</span>
                                     </span>
-                                    <span class="flex items-center gap-2">
+                                    <span id="site-weather-prob-row" class="flex items-center gap-2">
                                         <i class="fa-solid fa-gauge-high text-emerald-400/70 w-3.5 text-center"></i>
                                         <span id="site-weather-prob" class="font-bold notranslate" translate="no">--</span>
                                     </span>
@@ -19560,8 +19560,11 @@ setTimeout(() => {
                 const apiProb = rawProb === '' || rawProb == null ? null : Number(rawProb);
                 call = computeLaunchWeatherCall(data.code, data.wind, Number.isFinite(apiProb) ? apiProb : null);
             }
+            const probRow = document.getElementById('site-weather-prob-row');
+            const isPastMission = !!window.currentActiveMissionIsPast;
+            if (probRow) probRow.classList.toggle('hidden', isPastMission);
             const probEl = document.getElementById('site-weather-prob');
-            if (probEl) {
+            if (probEl && !isPastMission) {
                 const label = call.probKey === 'tbd'
                     ? (wDict.tbd || WEATHER_I18N.en.tbd)
                     : `${call.probNumeric}% ${wDict[call.probKey] || WEATHER_I18N.en[call.probKey]}`;
@@ -19635,6 +19638,8 @@ setTimeout(() => {
 
             const weatherCard = document.getElementById('site-weather-card');
             if (weatherCard) {
+                const probRow = document.getElementById('site-weather-prob-row');
+                if (probRow) probRow.classList.toggle('hidden', !!window.currentActiveMissionIsPast);
                 const weatherLocationEl = document.getElementById('site-weather-location');
                 if (weatherLocationEl) weatherLocationEl.innerText = getLocalizedLaunchSiteLabel(siteKey);
                 // Per-mission official LL2 probability (same field the hero badge uses).
