@@ -3847,7 +3847,7 @@
            over the card before launch popped open an empty panel. setCountdownLabel puts
            .mission-status-mode on the card exactly when the label flips to "Mission Status", so
            gating on it keeps the two in step automatically. */
-        #countdown-box:not(.mission-status-mode) #mission-status-breakdown,
+        #countdown-box:not(.mission-status-mode):not(.has-mission-timeline) #mission-status-breakdown,
         #countdown-box:not(.mission-status-mode) #hero-status-explain {
             display: none !important;
         }
@@ -5016,6 +5016,11 @@
             const payload = raw.includes('|') ? raw.split('|').pop().trim() : raw.trim();
             const starlink = /starlink(?:\s+group)?\s+(\d+)\s*[-–]\s*(\d+)/i.exec(raw);
             if (starlink) add('sl-' + starlink[1] + '-' + starlink[2]);
+            // SES O3b mPOWER flights use opaque CMS slugs (mpower-f, not o3b-mpower-11-13).
+            if (/o3b|m\s*power/i.test(raw)) {
+                add('mpower-f');
+                add('mpower');
+            }
             add(payload.toLowerCase().replace(/[^a-z0-9]/g, ''));
             add(payload.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
             // Starship's own CMS slugs are "starship-flight-N" (confirmed live for Flight 13) -
@@ -5046,9 +5051,7 @@
             realMissionTimelineTranslated.lang = null;
             realMissionTimelineTranslated.entries = null;
             realMissionTimelineTranslated.forData = null;
-            const box = document.getElementById('countdown-box');
-            if (box && box.classList.contains('mission-status-mode') &&
-                typeof renderMissionStatusBreakdown === 'function' &&
+            if (typeof renderMissionStatusBreakdown === 'function' &&
                 realTimelineMatchesMission(window.currentActiveHeroMissionName)) {
                 renderMissionStatusBreakdown(document.documentElement.lang);
                 if (typeof syncMissionStatusBreakdownChrome === 'function') {
@@ -5143,6 +5146,9 @@
             const titleCore = a.replace(/ mission$/, '').trim();
             if (titleCore.length >= 4 && !GENERIC_CMS_TITLE_CORES.test(titleCore) &&
                 (b.includes(titleCore) || titleCore.includes(b))) return true;
+            // Opaque family slugs ("mpower-f") share no substring with "O3b mPOWER 11-13".
+            if (/\bmpower\b/.test(slugN) && /\bmpower\b/.test(b)) return true;
+            if (/\bo3b\b/.test(a) && /\bo3b\b/.test(b)) return true;
             // SpaceX's own CMS title for a recurring mission family is often fully generic
             // ("Starlink Mission" for every single Starlink launch, no flight number at all) -
             // confirmed live, this genuinely fails to match this app's own more specific mission
@@ -5992,8 +5998,7 @@
             if (box) box.classList.toggle('has-mission-timeline', hasRows);
             const icon = document.getElementById('mission-status-info-icon');
             if (icon) {
-                const show = !!(box && box.classList.contains('mission-status-mode') && hasRows);
-                icon.classList.toggle('hidden', !show);
+                icon.classList.toggle('hidden', !hasRows);
             }
             if (!hasRows) {
                 const popup = document.getElementById('mission-status-breakdown');
@@ -6269,7 +6274,7 @@
         document.addEventListener('mouseover', function (e) {
             if (!e.target || !e.target.closest) return;
             const box = e.target.closest('#countdown-box');
-            if (!box || !box.classList.contains('mission-status-mode')) return;
+            if (!box || !box.classList.contains('has-mission-timeline')) return;
             clampMissionBreakdownHeight();
             setTimeout(clampMissionBreakdownHeight, 0);
             setTimeout(clampMissionBreakdownHeight, 120);
@@ -6324,7 +6329,7 @@
             if (!box || box.dataset.statusHoverBound) return;
             box.dataset.statusHoverBound = '1';
             box.addEventListener('click', function (event) {
-                if (!box.classList.contains('mission-status-mode')) return;
+                if (!box.classList.contains('has-mission-timeline')) return;
                 if (typeof isStickyStatusTapMode === 'function' && !isStickyStatusTapMode()) return;
                 if (event.target.closest && event.target.closest('#mission-status-breakdown')) return;
                 toggleMissionStatusBreakdown(event);
@@ -15029,6 +15034,11 @@
             if (Number.isFinite(start) && (end - start) < 2 * 60 * 1000) return false;
             return (nowMs || Date.now()) < end;
         }
+        function apiStatusMeansHoldOrScrub(statusLower) {
+            const s = String(statusLower || '').toLowerCase();
+            return s.includes('hold') || s.includes('review') || s.includes('delay') ||
+                s.includes('scrub') || s.includes('cancel') || s.includes('abort');
+        }
         function apiStatusMeansActuallyFlying(statusLower) {
             const s = String(statusLower || '').toLowerCase();
             // "in progress"/"completed" are this app's OWN relabeling of a raw API status
@@ -15139,7 +15149,7 @@
                 }
 
                 if (isPast) {
-                    if (statusLower.includes("hold") || statusLower.includes("review") || statusLower.includes("delay")) {
+                    if (apiStatusMeansHoldOrScrub(statusLower)) {
                         m.status = "Delayed / Under Review";
                     } else {
                         m.status = "Completed";
@@ -15148,9 +15158,9 @@
                         rawPastMissions.push(m);
                     }
                 } else {
-                    if (diff >= 0 && diff <= flightWindowMs && !statusLower.includes("hold") && !statusLower.includes("review") && !statusLower.includes("delay") && (flyingNow || !windowStillOpen)) {
+                    if (diff >= 0 && diff <= flightWindowMs && !apiStatusMeansHoldOrScrub(statusLower) && (flyingNow || !windowStillOpen)) {
                         m.status = "In Progress";
-                    } else if (statusLower.includes("hold") || statusLower.includes("review") || statusLower.includes("delay") || statusLower.includes("tbd") || statusLower.includes("tbc")) {
+                    } else if (apiStatusMeansHoldOrScrub(statusLower) || statusLower.includes("tbd") || statusLower.includes("tbc")) {
                         m.status = "Delayed / Under Review";
                     }
                     dbMissions.push(m);
@@ -21544,9 +21554,11 @@ setTimeout(() => {
                 // Leaving mission-status mode: drop the shrink-to-fit size fitMissionStatusText
                 // may have written, so the countdown digits go back to their own CSS size.
                 if (!showMissionStatus && el) el.style.removeProperty('font-size');
-                if (showMissionStatus) {
-                    renderMissionStatusBreakdown(document.documentElement.lang, hasAsdsProfile);
-                    if (typeof elapsedSec === 'number') updateMissionStatusBreakdownProgress(elapsedSec);
+                renderMissionStatusBreakdown(document.documentElement.lang, hasAsdsProfile);
+                if (showMissionStatus && typeof elapsedSec === 'number') {
+                    updateMissionStatusBreakdownProgress(elapsedSec);
+                } else if (typeof updateMissionStatusBreakdownProgress === 'function') {
+                    updateMissionStatusBreakdownProgress(-1);
                 }
                 syncMissionStatusBreakdownChrome();
             }
@@ -21577,17 +21589,13 @@ setTimeout(() => {
                 const diff = target - now;
                 const sLower = currentStatus.toLowerCase();
                 const flyingNow = apiStatusMeansActuallyFlying(sLower);
-                const windowStillOpen = isLaunchWindowStillOpen(windowStartAt, windowEndAt, now.getTime()) && !flyingNow;
+                const isHoldLike = apiStatusMeansHoldOrScrub(sLower);
 
                 // T-5 alert mode: on from 5 minutes before the target time through 1 minute
                 // after it, so it covers the final approach and the moment of liftoff itself.
-                // Skipped during a hold/delay/scrub, since "FINAL COUNTDOWN" would be
-                // misleading if the launch isn't actually imminent.
-                // Also skipped while a multi-hour window is merely OPEN (net is usually the
-                // window start, not T-0) — "FINAL COUNTDOWN" / "LIFTOFF" would fire at the
-                // opening bell while the rocket is still on the pad.
-                const isHoldLike = sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay") || sLower.includes("scrub");
-                const inT5Alert = !isHoldLike && !windowStillOpen && diff <= 5 * 60 * 1000 && diff >= -60 * 1000;
+                // Skipped during a hold/delay/scrub — API refresh is what flips the hero to
+                // HOLD / DELAYED if the launch is called off at the last second.
+                const inT5Alert = !isHoldLike && !flyingNow && diff <= 5 * 60 * 1000 && diff >= -60 * 1000;
 
                 if (inT5Alert) {
                     if (heroBanner) heroBanner.classList.add('t5-alert');
@@ -21657,35 +21665,26 @@ setTimeout(() => {
                     tlProgress.style.boxShadow = `0 0 6px rgba(${r}, ${g}, ${b}, 0.6)`;
                 }
 
+                if (isHoldLike && diff <= 5 * 60 * 1000) {
+                    // Hold/delay/scrub from the API always wins over the clock, including a
+                    // last-second cancel in the final 5 minutes. The next refresh cycle is what
+                    // feeds this status in — until then the previous tick keeps the countdown.
+                    setCountdownLabel(false);
+                    setHeroStatusExplain('');
+                    el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
+                    el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                    stickyEls.forEach(stEl => {
+                        stEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
+                        stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
+                    });
+                    return;
+                }
+
                 if (diff <= 0) {
                     // Past-launches refresh is no longer triggered from here - see the
                     // eviction-based trigger in setupHeroBanner(), which fires precisely when
                     // this mission actually leaves the hero (per its 60/90-min grace period)
                     // rather than an approximate fixed delay after T-0.
-                    if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
-                        // A hold/delay/scrub reported by the data source always wins over the
-                        // timing-based states below, regardless of how much time has passed
-                        // since the old target - the source's own updated status is the truth.
-                        // Still pre-launch (the mission hasn't actually flown), so the label
-                        // above stays "Countdown to Launch", not "Mission Status".
-                        setCountdownLabel(false);
-                        setHeroStatusExplain('');
-                        el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
-                        el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
-                        stickyEls.forEach(stEl => {
-                            stEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
-                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
-                        });
-                        return;
-                    }
-                    if (windowStillOpen) {
-                        // NET is usually the window OPEN, not T-0, and the rocket has not
-                        // actually flown yet (apiStatusMeansActuallyFlying said no) - keep
-                        // showing the plain countdown (clamped to 00:00:00 below) instead of
-                        // LIFTOFF/MISSION IN PROGRESS until the API confirms flight or the
-                        // window itself closes.
-                        return;
-                    }
                     if (diff > -3 * 60 * 1000 &&
                         !(hasAsdsProfile && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang)) &&
                         !getCurrentRealMissionMilestone(-diff / 1000, document.documentElement.lang, window.currentActiveHeroMissionName)) {
@@ -21743,8 +21742,6 @@ setTimeout(() => {
                 // Still counting down to a future liftoff - label above stays "Countdown to
                 // Launch" (also covers the case of a mission switch: a fresh, not-yet-launched
                 // mission taking over the hero resets the label back here automatically).
-                // A multi-hour window whose NET has passed (windowStillOpen) is still pre-launch:
-                // keep this same clock at 00:00:00 instead of inventing a new status string.
                 setCountdownLabel(false);
 
                 const remaining = Math.max(0, diff);
@@ -21755,7 +21752,7 @@ setTimeout(() => {
 
                 let timeColor = "text-emerald-400";
                 let pulseOuter = false;
-                if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
+                if (isHoldLike) {
                     timeColor = "text-amber-500";
                 } else if (d === 0 && h >= 1) {
                     timeColor = "text-amber-500";
