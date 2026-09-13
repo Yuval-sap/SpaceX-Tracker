@@ -10186,7 +10186,7 @@
                 <p id="i18n-launch-sites-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate"
                     translate="no" lang="en">Tap a site for the facility dossier</p>
             </div>
-            <div id="launch-sites-grid" class="flex overflow-x-auto gap-4 -mx-4 px-4 pb-4 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-2 xl:grid-cols-4 md:gap-5 md:overflow-visible md:mx-0 md:px-0 md:snap-none">
+            <div id="launch-sites-grid" class="flex overflow-x-auto gap-4 -mx-4 px-4 pt-2 pb-8 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-2 xl:grid-cols-4 md:gap-5 md:overflow-visible md:mx-0 md:px-0 md:pt-0 md:pb-0 md:snap-none">
                 <div role="button" tabindex="0" data-site-key="starbase"
                     onclick="openLaunchSiteSpecs('starbase')" onkeydown="activateOnEnterOrSpace(event)"
                     class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
@@ -10195,7 +10195,7 @@
                         class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
-                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="starbase">Starbase, Texas</div>
+                        <div class="launch-site-card-name notranslate mission-title-fit font-semibold text-base md:text-xl text-white whitespace-nowrap overflow-hidden" translate="no" data-site-key="starbase">Starbase, Texas</div>
                     </div>
                 </div>
                 <div role="button" tabindex="0" data-site-key="cape"
@@ -10206,7 +10206,7 @@
                         class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
-                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="cape">Cape Canaveral, Florida</div>
+                        <div class="launch-site-card-name notranslate mission-title-fit font-semibold text-base md:text-xl text-white whitespace-nowrap overflow-hidden" translate="no" data-site-key="cape">Cape Canaveral, Florida</div>
                     </div>
                 </div>
                 <div role="button" tabindex="0" data-site-key="vandenberg"
@@ -10217,7 +10217,7 @@
                         class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
-                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="vandenberg">Vandenberg, California</div>
+                        <div class="launch-site-card-name notranslate mission-title-fit font-semibold text-base md:text-xl text-white whitespace-nowrap overflow-hidden" translate="no" data-site-key="vandenberg">Vandenberg, California</div>
                     </div>
                 </div>
                 <div role="button" tabindex="0" data-site-key="starbaseLa"
@@ -10225,10 +10225,10 @@
                     class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
                     style="animation-delay: 300ms;">
                     <img src="starbase-louisiana.webp" alt="Starbase, Louisiana"
-                        class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
+                        class="absolute inset-0 w-full h-full object-cover object-[center_top] scale-[1.05] origin-top">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
-                        <div class="launch-site-card-name notranslate font-semibold text-base md:text-xl text-white" translate="no" data-site-key="starbaseLa">Starbase, Louisiana</div>
+                        <div class="launch-site-card-name notranslate mission-title-fit font-semibold text-base md:text-xl text-white whitespace-nowrap overflow-hidden" translate="no" data-site-key="starbaseLa">Starbase, Louisiana*</div>
                     </div>
                 </div>
             </div>
@@ -19029,7 +19029,8 @@ setTimeout(() => {
             const stateKey = RADAR_SITE_STATE_KEY[siteKey];
             const siteName = (nameDict && nameDict[nameKey]) || SITE_NAME_I18N.en[nameKey];
             const stateName = (stateDict && stateDict[stateKey]) || SITE_STATE_I18N.en[stateKey];
-            return siteName + ', ' + stateName;
+            const label = siteName + ', ' + stateName;
+            return siteKey === 'starbaseLa' ? label + '*' : label;
         }
 
         function applyLaunchSiteCards() {
@@ -19039,7 +19040,10 @@ setTimeout(() => {
                 const label = getLocalizedLaunchSiteLabel(siteKey);
                 card.setAttribute('aria-label', label);
                 const nameEl = card.querySelector('.launch-site-card-name');
-                if (nameEl) nameEl.innerText = label;
+                if (nameEl) {
+                    nameEl.innerText = label;
+                    if (typeof fitTitleOneLine === 'function') fitTitleOneLine(nameEl);
+                }
                 const imgEl = card.querySelector('img');
                 if (imgEl) imgEl.alt = label;
             });
