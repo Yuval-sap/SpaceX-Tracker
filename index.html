@@ -661,9 +661,17 @@
             color: #fbbf24;
             animation: weatherSunSpin 18s linear infinite;
         }
+        .weather-scene-clear.weather-scene-night .weather-icon-main {
+            color: #e2e8f0;
+            animation: weatherMoonGlow 6s ease-in-out infinite;
+        }
         .weather-scene-partlyCloudy .weather-icon-main {
             color: #d4d4d8;
             animation: weatherCloudDrift 8s ease-in-out infinite;
+        }
+        .weather-scene-partlyCloudy.weather-scene-night .weather-icon-main,
+        .weather-scene-cloudy.weather-scene-night .weather-icon-main {
+            color: #cbd5e1;
         }
         .weather-scene-cloudy .weather-icon-main {
             color: #a1a1aa;
@@ -734,6 +742,10 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        @keyframes weatherMoonGlow {
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -3px, 0); }
+        }
         @keyframes weatherCloudDrift {
             0%, 100% { transform: translate3d(-7px, 0, 0); }
             50% { transform: translate3d(7px, 0, 0); }
@@ -761,6 +773,13 @@
         }
         body.light-theme .weather-scene-clear .weather-icon-main {
             color: #d97706 !important;
+        }
+        body.light-theme .weather-scene-clear.weather-scene-night .weather-icon-main {
+            color: #475569 !important;
+        }
+        body.light-theme .weather-scene-partlyCloudy.weather-scene-night .weather-icon-main,
+        body.light-theme .weather-scene-cloudy.weather-scene-night .weather-icon-main {
+            color: #334155 !important;
         }
         body.light-theme .weather-scene-partlyCloudy .weather-icon-main {
             color: #475569 !important;
@@ -20176,10 +20195,47 @@ setTimeout(() => {
         // often enough to stay meaningfully "live" for a launch-day check.
         const SITE_WEATHER_CACHE_MS = 15 * 60 * 1000;
         const siteWeatherCache = {};
-        const WEATHER_ICON_BY_CONDITION = {
+        const WEATHER_ICON_BY_CONDITION_DAY = {
             clear: 'fa-sun', partlyCloudy: 'fa-cloud-sun', cloudy: 'fa-cloud', fog: 'fa-smog',
-            drizzle: 'fa-cloud-rain', rain: 'fa-cloud-rain', snow: 'fa-snowflake', thunderstorm: 'fa-cloud-bolt'
+            drizzle: 'fa-cloud-sun-rain', rain: 'fa-cloud-sun-rain', snow: 'fa-snowflake', thunderstorm: 'fa-cloud-bolt'
         };
+        const WEATHER_ICON_BY_CONDITION_NIGHT = {
+            clear: 'fa-moon', partlyCloudy: 'fa-cloud-moon', cloudy: 'fa-cloud-moon', fog: 'fa-smog',
+            drizzle: 'fa-cloud-moon-rain', rain: 'fa-cloud-moon-rain', snow: 'fa-snowflake', thunderstorm: 'fa-cloud-bolt'
+        };
+
+        function siteLocalDateTimeStamp(timeZone) {
+            if (!timeZone) return '';
+            try {
+                const parts = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: timeZone,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', hour12: false
+                }).formatToParts(new Date());
+                const get = (type) => {
+                    const v = (parts.find(p => p.type === type) || {}).value || '00';
+                    return type === 'hour' && v === '24' ? '00' : v;
+                };
+                return get('year') + '-' + get('month') + '-' + get('day') + 'T' + get('hour') + ':' + get('minute');
+            } catch (e) { return ''; }
+        }
+
+        // Sunrise/sunset at the pad (from Open-Meteo, same timezone as current.time).
+        // Falls back to evening/morning hours in the site's IANA zone if those times
+        // are missing (stale cache from before this field existed).
+        function isNightAtLaunchSite(siteKey, weatherData) {
+            const site = SITE_DATABASE[siteKey];
+            const tz = (weatherData && weatherData.timezone) || (site && site.timezone) || '';
+            const rise = weatherData && weatherData.sunrise ? String(weatherData.sunrise).slice(0, 16) : '';
+            const set = weatherData && weatherData.sunset ? String(weatherData.sunset).slice(0, 16) : '';
+            const nowStamp = siteLocalDateTimeStamp(tz);
+            if (nowStamp && rise && set) return nowStamp < rise || nowStamp >= set;
+            if (nowStamp) {
+                const hour = Number(nowStamp.slice(11, 13));
+                return hour < 6 || hour >= 19;
+            }
+            return false;
+        }
         // Standard WMO weather_code table (used by Open-Meteo's `current.weather_code`),
         // bucketed down into the 8 condition names this widget actually has icons/i18n for.
         function wmoCodeToConditionBucket(code) {
@@ -20264,10 +20320,14 @@ setTimeout(() => {
                 probEl.className = `font-bold notranslate ${call.probColor}`;
             }
 
+            const isNight = isNightAtLaunchSite(siteKey, data);
+            const icons = isNight ? WEATHER_ICON_BY_CONDITION_NIGHT : WEATHER_ICON_BY_CONDITION_DAY;
             const scene = document.getElementById('site-weather-icon');
-            if (scene) scene.className = 'weather-icon-scene shrink-0 w-20 h-20 relative flex items-center justify-center weather-scene-' + condition;
+            if (scene) {
+                scene.className = 'weather-icon-scene shrink-0 w-20 h-20 relative flex items-center justify-center weather-scene-' + condition + (isNight ? ' weather-scene-night' : '');
+            }
             const iconEl = document.getElementById('site-weather-icon-fa');
-            if (iconEl) iconEl.className = 'fa-solid weather-icon-main text-5xl ' + (WEATHER_ICON_BY_CONDITION[condition] || 'fa-cloud');
+            if (iconEl) iconEl.className = 'fa-solid weather-icon-main text-5xl ' + (icons[condition] || 'fa-cloud');
         }
         // Re-applies whichever weather data is already cached/showing under the newly-active
         // language's own labels, without re-fetching - called from applyLaunchLabelTranslations
@@ -20290,12 +20350,13 @@ setTimeout(() => {
             }
             const storageKey = `spacex_site_weather_${siteKey}`;
             try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${site.lat}&longitude=${site.lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m&wind_speed_unit=kmh&temperature_unit=celsius&timezone=auto`;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${site.lat}&longitude=${site.lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m&daily=sunrise,sunset&wind_speed_unit=kmh&temperature_unit=celsius&timezone=auto`;
                 const res = await fetchWithTimeout(url, { timeout: 6000 });
                 if (!res.ok) throw new Error('weather fetch failed: ' + res.status);
                 const json = await res.json();
                 const cur = json && json.current;
                 if (!cur) throw new Error('no current weather data');
+                const daily = json.daily || {};
                 const data = {
                     temp: Math.round(cur.temperature_2m),
                     feelsLike: Math.round(cur.apparent_temperature),
@@ -20303,6 +20364,9 @@ setTimeout(() => {
                     wind: Math.round(cur.wind_speed_10m),
                     gusts: Math.round(cur.wind_gusts_10m),
                     code: cur.weather_code,
+                    sunrise: Array.isArray(daily.sunrise) ? daily.sunrise[0] : '',
+                    sunset: Array.isArray(daily.sunset) ? daily.sunset[0] : '',
+                    timezone: json.timezone || site.timezone || '',
                 };
                 siteWeatherCache[siteKey] = { data, fetchedAt: Date.now() };
                 try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch (e) { }
@@ -20321,6 +20385,18 @@ setTimeout(() => {
                     }
                 } catch (e2) { }
             }
+        }
+
+        if (!window._siteWeatherDayNightArmed) {
+            window._siteWeatherDayNightArmed = true;
+            setInterval(() => {
+                const modal = document.getElementById('mission-modal');
+                const card = document.getElementById('site-weather-card');
+                if (!modal || modal.classList.contains('hidden') || !card) return;
+                const siteKey = card.dataset.siteKey;
+                const cached = siteKey && siteWeatherCache[siteKey];
+                if (cached) renderSiteWeather(siteKey, cached.data);
+            }, 60 * 1000);
         }
 
         function handleModalFeatures(m) {
@@ -21352,7 +21428,7 @@ setTimeout(() => {
                 name: "SpaceX Starbase • Boca Chica, TX",
                 image: "https://pbs.twimg.com/media/Gy51cDhWgAAPPRK.jpg",
                 coords: "25.997° N, 97.155° W",
-                lat: 25.997, lng: -97.155,
+                lat: 25.997, lng: -97.155, timezone: 'America/Chicago',
                 fleet: "Starship System Profile Only",
                 desc: "Starbase is SpaceX's private spaceport, production facility, and launch site located in Chica, Texas. Established as a dedicated development hub for the Starship program, it features advanced manufacturing tents, vertical assembly buildings (VAB), and the massive Orbital Launch Mount.\n\nKnown colloquially as the 'Gateway to Mars', Starbase is where full-scale structural testing, Raptor engine installations, and suborbital/orbital test flights occur. It serves as a continuous production ecosystem designed for rapid prototyping."
             },
@@ -21360,7 +21436,7 @@ setTimeout(() => {
                 name: "Cape Canaveral Space Force Station • FL",
                 image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQiKxN-KSxMy7LomCirahA1DSgv2f6_bH7Oa24-pnRQw&s=10",
                 coords: "28.562° N, 80.577° W",
-                lat: 28.562, lng: -80.577,
+                lat: 28.562, lng: -80.577, timezone: 'America/New_York',
                 fleet: "Falcon 9, Falcon Heavy, Dragon",
                 desc: "Cape Canaveral (specifically SLC-40 and LC-39A) is the legendary heartbeat of American space exploration. SpaceX leases these historic pads to operate its high-cadence commercial, institutional, and crewed missions.\n\nWhile SLC-40 handles heavy communications satellite payloads and Starlink deployments, Pad 39A (the historical Apollo and Space Shuttle complex) is utilized for Falcon Heavy launches and crewed missions to the ISS. It represents the pinnacle of operational safety and commercial launch frequency."
             },
@@ -21368,7 +21444,7 @@ setTimeout(() => {
                 name: "Vandenberg Space Force Base • CA",
                 image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiaqeG_lyxoLQjmQKwPVJyerJwpKr-Ngj-5Di6yihsBR45pKUcJwkpqvaG&s=10",
                 coords: "34.632° N, 120.610° W",
-                lat: 34.632, lng: -120.610,
+                lat: 34.632, lng: -120.610, timezone: 'America/Los_Angeles',
                 fleet: "Falcon 9 Profile (Polar/Retrograde Orbits)",
                 desc: "Vandenberg Space Force Base (specifically Space Launch Complex 4 East - SLC-4E) handles SpaceX's high-inclination trajectories, sending payloads into polar and Sun-synchronous orbits.\n\nPositioned strategically on the California coastline, this military facility allows rockets to fly south directly over the Pacific Ocean safely without crossing populated areas. It serves as a fundamental cornerstone for deploying specific architectural nodes of the Starlink constellation, imaging assets, and defense telemetry satellites."
             },
@@ -21379,7 +21455,7 @@ setTimeout(() => {
                 name: "SpaceX Starbase • Pecan Island, Louisiana",
                 image: "starbase-louisiana.webp",
                 coords: "29.647° N, 92.453° W",
-                lat: 29.6467, lng: -92.4531,
+                lat: 29.6467, lng: -92.4531, timezone: 'America/Chicago',
                 fleet: "Starship — under construction",
                 desc: "Status: not operational. Construction is expected to begin in 2027. The first Starship launch from Louisiana is targeted for 2029. Until then this is a permitted / pre-construction site, not an active SpaceX pad.\n\nStarbase Louisiana is SpaceX's planned fourth — and largest — Starship launch and manufacturing site. It was announced on 25 August 2026 with Louisiana governor Jeff Landry as a commitment of up to $100 billion, described by the state as the largest single capital investment in Louisiana history. The pin marks Pecan Island in Vermilion Parish on the Gulf Coast (about 29.647° N, 92.453° W), on a former Exxon tract of roughly 125,000 acres (about 510 km²). Only a coastal strip is meant to hold the pads; SpaceX says the rest of the wetland and wildlife habitat is to be left undeveloped.\n\nWhat is supposed to be built: five launch complexes, each with two pads and a propellant farm — ten pads in the first published plan. Elon Musk has said the site could eventually grow past a dozen launch towers and support on the order of 30 Starship flights a day. The campus is also planned to include on-site methane and oxygen production, power generation, vehicle-processing buildings, deep-water shipping, an airport, and housing for employees and families, with more than 3,000 direct jobs (about 8,100 more indirectly) and hiring aimed at nearby Louisiana communities.\n\nThe vehicle is Starship Version 3 and later. Planned traffic includes Starlink, lunar and Mars missions, and SpaceX's proposed orbital data-center constellation. Launches would fly south over the Gulf of Mexico. Federal and state reviews (FAA launch license, wetlands, wildlife) are still ahead of first flight."
             }
