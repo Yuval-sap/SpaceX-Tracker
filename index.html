@@ -571,18 +571,19 @@
         }
 
         /* Hover tooltip on each of the 3 launch-site pins (see getRadarPinTooltipHtml /
-           bindRadarPinTooltip) - a small floating card naming the site + its US state (e.g.
-           "Starbase, Texas") plus a tiny thumbnail of that site's own card photo. Leaflet's
-           default tooltip margins push the card several pixels away from the pin; zeroed
-           here so it sits almost against the dot. Direction is chosen per-site (see
-           radarPinTooltipDirection) so a wide label never hangs off the map's left/right
-           edge and gets clipped by #radar-map-box's overflow:hidden. */
+           bindRadarPinTooltip) - a small floating card with the site photo ON TOP of the
+           site + state line (e.g. "Starbase, Texas"). The photo's width follows that
+           nowrap label; height is 16:9 so the crop looks like a real photo, not a square
+           thumb. Leaflet's default tooltip margins push the card several pixels away from
+           the pin; zeroed here so it sits almost against the dot. Direction is chosen
+           per-site (see radarPinTooltipDirection) so a wide label never hangs off the
+           map's left/right edge and gets clipped by #radar-map-box's overflow:hidden. */
         #radar-leaflet-map .leaflet-tooltip.radar-pin-tooltip {
             background: rgba(9, 9, 11, 0.92);
             color: #f4f4f5;
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 8px;
-            padding: 3px 6px;
+            padding: 4px 6px 5px;
             font-size: 11px;
             font-weight: 600;
             white-space: nowrap;
@@ -592,16 +593,21 @@
         }
         #radar-leaflet-map .radar-pin-tip {
             display: flex;
-            align-items: center;
-            gap: 6px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 5px;
         }
         #radar-leaflet-map .radar-pin-tip-img {
-            width: 26px;
-            height: 26px;
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16 / 9;
             border-radius: 5px;
             object-fit: cover;
-            flex-shrink: 0;
             background: #27272a;
+        }
+        #radar-leaflet-map .radar-pin-tip-text {
+            text-align: center;
         }
         #radar-leaflet-map .radar-pin-tooltip.leaflet-tooltip-top::before {
             border-top-color: rgba(9, 9, 11, 0.92);
@@ -18927,12 +18933,12 @@ setTimeout(() => {
         // called from a Leaflet bindTooltip content FUNCTION (see bindRadarPinTooltip), which
         // Leaflet re-invokes on every single hover, so this doesn't need its own listener for
         // language switches - it just naturally picks up document.documentElement.lang each time.
-        // Tiny thumbnail is the same SITE_DATABASE.image the site-dossier card already uses.
+        // Photo sits above the label (same SITE_DATABASE.image the site-dossier card uses).
         function getRadarPinTooltipHtml(siteKey) {
             const label = getLocalizedLaunchSiteLabel(siteKey);
             const img = SITE_DATABASE[siteKey] && SITE_DATABASE[siteKey].image;
             const imgTag = img
-                ? `<img class="radar-pin-tip-img" src="${escapeHtml(img)}" alt="" width="26" height="26">`
+                ? `<img class="radar-pin-tip-img" src="${escapeHtml(img)}" alt="">`
                 : '';
             return `<span class="radar-pin-tip notranslate" translate="no">${imgTag}<span class="radar-pin-tip-text" dir="auto" translate="no">${escapeHtml(label)}</span></span>`;
         }
