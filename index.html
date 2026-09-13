@@ -6672,6 +6672,10 @@
             // incomplete in Hebrew since this is the specific payload of THIS mission, not a
             // payload in general.
             [/ומידע\s*על\s*מטען(?!\s*ה)/g, 'ומידע על המטען'],
+            // Weather condition "Cloudy" / our own already-correct "מעונן" - Google Translate
+            // collapses it to the standalone word "מעון" (hostel/dwelling). Anchored to a
+            // whole token so longer words like "מעונות" are left alone.
+            [/(^|[^\u0590-\u05FF])מעון(?=[^\u0590-\u05FF]|$)/g, '$1מעונן'],
         ];
         // String-level form of the DOM pass below. Needed because by the time the text is in the
         // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
@@ -10679,17 +10683,17 @@
                             <div class="flex-1 min-w-0">
                                 <div>
                                     <span id="site-weather-temp" class="text-4xl font-bold text-zinc-200 notranslate" dir="ltr" translate="no">--°</span>
-                                    <div id="site-weather-condition" class="text-sm text-zinc-400 mt-0.5 leading-snug"></div>
+                                    <div id="site-weather-condition" class="text-sm text-zinc-400 mt-0.5 leading-snug notranslate" dir="auto" translate="no"></div>
                                 </div>
                                 <div class="mt-2.5 flex flex-col gap-1.5 text-xs sm:text-sm text-zinc-500">
                                     <span class="flex items-center gap-2">
                                         <i class="fa-solid fa-wind text-emerald-400/70 w-3.5 text-center"></i>
-                                        <span id="site-weather-wind-label"></span>
+                                        <span id="site-weather-wind-label" class="notranslate" translate="no"></span>
                                         <span id="site-weather-wind" class="notranslate" dir="ltr" translate="no">--</span>
                                     </span>
                                     <span class="flex items-center gap-2">
                                         <i class="fa-solid fa-droplet text-emerald-400/70 w-3.5 text-center"></i>
-                                        <span id="site-weather-humidity-label"></span>
+                                        <span id="site-weather-humidity-label" class="notranslate" translate="no"></span>
                                         <span id="site-weather-humidity" class="notranslate" dir="ltr" translate="no">--</span>
                                     </span>
                                     <span class="flex items-center gap-2">
@@ -19297,7 +19301,12 @@ setTimeout(() => {
             const tempEl = document.getElementById('site-weather-temp');
             if (tempEl) tempEl.innerText = `${tempVal}${tempUnit}`;
             const condEl = document.getElementById('site-weather-condition');
-            if (condEl) condEl.innerText = dict[condition] || SITE_WEATHER_I18N.en[condition];
+            if (condEl) {
+                // notranslate is also on the element in HTML - Google Translate was taking
+                // our manual "מעונן" and rewriting it as "מעון" (hostel). Write the dictionary
+                // string ourselves and keep GT off this node.
+                condEl.innerText = dict[condition] || SITE_WEATHER_I18N.en[condition];
+            }
             const windLabelEl = document.getElementById('site-weather-wind-label');
             if (windLabelEl) windLabelEl.innerText = dict.windLabel;
             const windEl = document.getElementById('site-weather-wind');
