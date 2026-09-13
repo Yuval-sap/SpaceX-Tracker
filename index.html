@@ -386,6 +386,7 @@
         #landing-modal-name,
         #astro-modal-name,
         #i18n-countdown-to-launch,
+        #hero-tplus,
         #i18n-launch-window,
         .milestones-title,
         #doc-ep1-title,
@@ -2792,6 +2793,7 @@
         body.mars-theme #landing-modal-name,
         body.mars-theme #astro-modal-name,
         body.mars-theme #i18n-countdown-to-launch,
+        body.mars-theme #hero-tplus,
         body.mars-theme #i18n-launch-window,
         body.mars-theme .milestones-title,
         body.mars-theme #doc-ep1-title,
@@ -3220,6 +3222,7 @@
         body.moon-theme #landing-modal-name,
         body.moon-theme #astro-modal-name,
         body.moon-theme #i18n-countdown-to-launch,
+        body.moon-theme #hero-tplus,
         body.moon-theme #i18n-launch-window,
         body.moon-theme .milestones-title,
         body.moon-theme #doc-ep1-title,
@@ -3848,7 +3851,9 @@
            .mission-status-mode on the card exactly when the label flips to "Mission Status", so
            gating on it keeps the two in step automatically. */
         #countdown-box:not(.mission-status-mode):not(.has-mission-timeline) #mission-status-breakdown,
-        #countdown-box:not(.mission-status-mode) #hero-status-explain {
+        #countdown-box:not(.mission-status-mode) #hero-status-explain,
+        #countdown-box:not(.mission-status-mode) #hero-next-stage,
+        #countdown-box:not(.mission-status-mode) #hero-tplus {
             display: none !important;
         }
         /* Same empty-panel problem after liftoff when this flight has no milestone list
@@ -3883,7 +3888,7 @@
         #countdown-box.mission-status-mode #hero-countdown {
             font-size: clamp(1.75rem, 4.2vw, 3.25rem) !important;
             line-height: 1.1 !important;
-            padding-top: 0.35rem !important;
+            padding-top: 1.15rem !important;
             padding-bottom: 0.35rem !important;
         }
         /* The card is sized by its content, so a long headline made the whole box grow - English
@@ -3898,18 +3903,75 @@
                 max-width: 26rem !important;
             }
         }
-        #i18n-countdown-to-launch.mission-status-mode {
+        /* After T-0 the header is a split row: title at inline-start, T+ at inline-end.
+           LTR → Mission Status left, clock right. RTL → Mission Status right, clock left. */
+        #countdown-box.mission-status-mode {
+            padding-top: 0.85rem !important;
+        }
+        #countdown-box.mission-status-mode #mission-status-hover-wrap {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            gap: 2.25rem !important;
+            margin-top: -0.15rem !important;
+            margin-bottom: 0.15rem !important;
+        }
+        #countdown-box.mission-status-mode #i18n-countdown-to-launch,
+        #countdown-box.mission-status-mode #hero-tplus {
             font-size: 15px !important;
             letter-spacing: 2px !important;
+            line-height: 1;
+            font-weight: 700;
         }
-        html[dir="rtl"] #i18n-countdown-to-launch.mission-status-mode {
+        html[dir="rtl"] #countdown-box.mission-status-mode #i18n-countdown-to-launch,
+        html[dir="rtl"] #countdown-box.mission-status-mode #hero-tplus {
             font-size: 16px !important;
+        }
+        #countdown-box.mission-status-mode #hero-tplus {
+            flex-shrink: 0;
+        }
+        #countdown-box.mission-status-mode #hero-status-explain {
+            font-size: 13px !important;
+            margin-top: 0.5rem !important;
+        }
+        #countdown-box.mission-status-mode #hero-next-stage {
+            font-size: 13px !important;
+            color: #d4d4d8 !important;
+            margin-top: 1.15rem !important;
+        }
+        #countdown-box.mission-status-mode #hero-launched-at {
+            font-size: 12px !important;
+            color: #d4d4d8 !important;
+            margin-top: 0.65rem !important;
+        }
+        body.light-theme #countdown-box.mission-status-mode #hero-next-stage,
+        body.light-theme #countdown-box.mission-status-mode #hero-launched-at {
+            color: #3f3f46 !important;
+        }
+        body.mars-theme #countdown-box.mission-status-mode #hero-next-stage,
+        body.mars-theme #countdown-box.mission-status-mode #hero-launched-at {
+            color: #e8d5c4 !important;
+        }
+        body.moon-theme #countdown-box.mission-status-mode #hero-next-stage,
+        body.moon-theme #countdown-box.mission-status-mode #hero-launched-at {
+            color: #c5d4e8 !important;
+        }
+        @media (min-width: 640px) {
+            #countdown-box.mission-status-mode #hero-status-explain {
+                font-size: 15px !important;
+            }
+            #countdown-box.mission-status-mode #hero-next-stage {
+                font-size: 14px !important;
+            }
         }
         @media (max-width: 640px) {
             #countdown-box.mission-status-mode #hero-countdown {
                 font-size: clamp(1.35rem, 7vw, 2.1rem) !important;
             }
-            #i18n-countdown-to-launch.mission-status-mode { font-size: 13px !important; }
+            #countdown-box.mission-status-mode #i18n-countdown-to-launch,
+            #countdown-box.mission-status-mode #hero-tplus { font-size: 13px !important; }
         }
 
         /* Light mode only: the "Go for Launch" pill's green came out muted against the bright
@@ -4790,6 +4852,17 @@
             hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "इस वर्ष के प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल", recoveryZone: "पुनर्प्राप्ति क्षेत्र", recoveryZoneInfo: "पुनर्प्राप्ति क्षेत्र की जानकारी", launchesSection: "नियोजित प्रक्षेपण", pastLaunchesSection: "पिछले वर्ष के प्रक्षेपण", vehicleType: "रॉकेट प्रकार", orbitDestination: "कक्षा गंतव्य", missionStatus: "मिशन स्थिति", status: "स्थिति", launchedAt: "प्रक्षेपण समय:", instantLaunchWindow: "तात्कालिक प्रक्षेपण विंडो", firstStageBooster: "पहले चरण का बूस्टर", asds: "स्वायत्त ड्रोन जहाज (ASDS)", filterAll: "सभी", filterDragon: "ड्रैगन/क्रू", filterFavorites: "वॉचलिस्ट", boosterTitle: "SpaceX के 10 सबसे अधिक उड़े बूस्टर", boosterSubtitle: "लाइव मिशन डेटा से फाल्कन 9 और सुपर हेवी बूस्टर", boosterAnalyzing: "बूस्टर उड़ान डेटा का विश्लेषण...", boosterNoData: "अभी तक कोई बूस्टर उड़ान डेटा उपलब्ध नहीं।", flights: "उड़ानें", boosterRank: "रैंक", boosterCol: "बूस्टर", spacexXLink: "X पर @SpaceX को फॉलो करें", systemsGo: "सिस्टम तैयार", finalCountdown: "अंतिम उलटी गिनती", watchLaunch: "प्रक्षेपण देखें", openOnYoutube: "YouTube पर खोलें", watchDetailsVideo: "प्रक्षेपण विवरण और वीडियो देखें", viewMissionDetails: "मिशन विवरण देखें →" , missionInProgress: "मिशन जारी है", holdDelayed: "होल्ड / देरी", countdownToLaunch: "प्रक्षेपण तक उलटी गिनती", launchNow: "उड़ान", patchesTitle: "स्पेसएक्स मिशन पैच", patchesSubtitle: "मिशन विवरण के लिए पैच पर टैप करें", patchesSearch: "टैग खोजें...", launchesTab: 'लॉन्च स्टेशन', moreInfoTab: 'सूचना केंद्र', vehicleSpecDossier: "रॉकेट विशिष्टता", spaceportDossier: "स्पेसपोर्ट सुविधा विवरण", orbitDossier: "कक्षीय यांत्रिकी विवरण", flightCrew: "उड़ान चालक दल", crewWord: "क्रू", flightHistoryPartial: "इस ऐप द्वारा ट्रैक की गई {total} में से {shown} उड़ानें दिखाई जा रही हैं।", trackThisShip: "इस जहाज़ को लाइव ट्रैक करें", recoveryFleetTitle: "SpaceX का पुनर्प्राप्ति बेड़ा", recoveryFleetSubtitle: "सार्वजनिक AIS डेटा के माध्यम से SpaceX के स्वायत्त ड्रोन जहाजों की लाइव स्थिति", flightNumberLabel: "उड़ान {n}", weatherAtSite: "प्रक्षेपण स्थल पर मौसम" },
             ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق هذا العام", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق", recoveryZone: "منطقة الاسترداد", recoveryZoneInfo: "معلومات منطقة الاسترداد", launchesSection: "عمليات الإطلاق المجدولة", pastLaunchesSection: "عمليات الإطلاق خلال السنة الماضية", vehicleType: "نوع الصاروخ", orbitDestination: "الوجهة المدارية", missionStatus: "حالة المهمة", status: "الحالة", launchedAt: "أُطلق في:", instantLaunchWindow: "نافذة إطلاق فورية", firstStageBooster: "معزز المرحلة الأولى", asds: "سفينة الإنزال الذاتية (ASDS)", filterAll: "الكل", filterDragon: "دراغون/طاقم", filterFavorites: "قائمة المتابعة", boosterTitle: "أفضل 10 معززات SpaceX الأكثر تحليقًا", boosterSubtitle: "معززات فالكون 9 وسوبر هيفي، وفق بيانات المهام الحية", boosterAnalyzing: "جاري تحليل بيانات رحلات المعززات...", boosterNoData: "لا تتوفر بيانات رحلات المعززات بعد.", flights: "رحلات", boosterRank: "الترتيب", boosterCol: "المعزز", spacexXLink: "تابع @SpaceX على X", systemsGo: "الأنظمة جاهزة", finalCountdown: "العد التنازلي الأخير", watchLaunch: "شاهد الإطلاق", openOnYoutube: "افتح على YouTube", watchDetailsVideo: "شاهد تفاصيل الإطلاق والفيديو", viewMissionDetails: "عرض تفاصيل المهمة ←" , missionInProgress: "المهمة قيد التنفيذ", holdDelayed: "تعليق / تأخير", countdownToLaunch: "العد التنازلي للإطلاق", launchNow: "الإقلاع", patchesTitle: "شارات مهام سبيس إكس", patchesSubtitle: "انقر على شارة لعرض تفاصيل المهمة", patchesSearch: "بحث الشارات...", launchesTab: 'محطة إطلاق', moreInfoTab: 'محطة معلومات', vehicleSpecDossier: "مواصفات الصاروخ", spaceportDossier: "ملف منشأة الإطلاق", orbitDossier: "ميكانيكا المدار", flightCrew: "طاقم الرحلة", crewWord: "طاقم", flightHistoryPartial: "يعرض {shown} من أصل {total} رحلة يتتبعها هذا التطبيق.", trackThisShip: "تتبع هذه السفينة مباشرة", recoveryFleetTitle: "أسطول الاسترداد من SpaceX", recoveryFleetSubtitle: "المواقع الحية لسفن الإنزال الذاتية التابعة لـSpaceX، عبر بيانات AIS العامة", flightNumberLabel: "الرحلة {n}", weatherAtSite: "الطقس في موقع الإطلاق" },
             tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son bir yılın fırlatmaları", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", missionStatus: "GÖREV DURUMU", status: "DURUM", launchedAt: "Fırlatma saati:", instantLaunchWindow: "Anlık Fırlatma Penceresi", firstStageBooster: "BİRİNCİ AŞAMA BOOSTER'I", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", filterFavorites: "İzleme Listesi", boosterTitle: "SpaceX'in En Çok Uçan İlk 10 Boosterı", boosterSubtitle: "Canlı görev verilerinden Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" , missionInProgress: "GÖREV DEVAM EDİYOR", holdDelayed: "BEKLEME / GECİKME", countdownToLaunch: "Fırlatmaya geri sayım", launchNow: "KALKIŞ", patchesTitle: "SpaceX Görev Rozetleri", patchesSubtitle: "Görev detayları için bir rozete dokunun", patchesSearch: "Rozet ara...", launchesTab: 'Fırlatma Üssü', moreInfoTab: 'Bilgi İstasyonu', vehicleSpecDossier: "ROKET ÖZELLİKLERİ", spaceportDossier: "UZAY ÜSSÜ DOSYASI", orbitDossier: "YÖRÜNGE MEKANİĞİ", flightCrew: "Uçuş Ekibi", crewWord: "Ekip", flightHistoryPartial: "Bu uygulamanın izlediği {total} uçuştan {shown} tanesi gösteriliyor.", trackThisShip: "Bu gemiyi canlı takip et", recoveryFleetTitle: "SpaceX Kurtarma Filosu", recoveryFleetSubtitle: "SpaceX'in otonom iniş gemilerinin canlı konumları, herkese açık AIS verileriyle", flightNumberLabel: "{n}. Uçuş", weatherAtSite: "FIRLATMA SAHASINDA HAVA DURUMU" },
+        };
+
+        // Short "Next" prefix for the hero's upcoming-milestone line (T+ clock row).
+        // Kept beside LAUNCH_LABEL_I18N rather than stuffed into those one-line dicts.
+        const NEXT_STAGE_I18N = {
+            en: "Next stage at", he: "השלב הבא ב", iw: "השלב הבא ב",
+            es: "Siguiente etapa en", fr: "Prochaine étape à", de: "Nächste Stufe um",
+            ru: "Следующий этап в", zh: "下一阶段于", it: "Prossima fase alle",
+            cs: "Další fáze v", sv: "Nästa steg vid", nl: "Volgende fase om",
+            da: "Næste trin kl.", pt: "Próxima etapa em", pl: "Następny etap o",
+            hi: "अगला चरण", ar: "المرحلة التالية في", tr: "Sonraki aşama"
         };
 
         // Live launch-site weather widget (site-weather-card / fetchSiteWeather /
@@ -5930,6 +6003,47 @@
                 return null;
             }
             return { label: current.label, explain: current.explain || '', tSeconds: current.tSeconds };
+        }
+
+        function getNextRealMissionMilestone(elapsedSec, currentLang, missionName) {
+            if (!realTimelineMatchesMission(missionName)) return null;
+            ensureRealMissionTimelineTranslated(currentLang);
+            const list = realMissionTimelineTranslated.entries;
+            if (!list || list.length === 0) return null;
+            for (const entry of list) {
+                if (entry.tSeconds > elapsedSec) {
+                    return { label: entry.label, tSeconds: entry.tSeconds };
+                }
+            }
+            return null;
+        }
+
+        function getNextMissionMilestone(elapsedSec, currentLang) {
+            for (const entry of STARLINK_ASDS_TIMELINE) {
+                if (entry.t > elapsedSec) {
+                    const label = entry.fixedLabel || (MISSION_TIMELINE_I18N.en && MISSION_TIMELINE_I18N.en[entry.labelKey]) || entry.labelKey;
+                    return { label, tSeconds: entry.t };
+                }
+            }
+            return null;
+        }
+
+        function formatTPlusClock(elapsedSec) {
+            const t = Math.max(0, Math.floor(Number(elapsedSec) || 0));
+            const h = Math.floor(t / 3600);
+            const m = Math.floor((t % 3600) / 60);
+            const s = t % 60;
+            const pad = n => String(n).padStart(2, '0');
+            return 'T+' + pad(h) + ':' + pad(m) + ':' + pad(s);
+        }
+
+        function formatTPlusEvent(tSeconds) {
+            const t = Math.max(0, Math.floor(Number(tSeconds) || 0));
+            const h = Math.floor(t / 3600);
+            const m = Math.floor((t % 3600) / 60);
+            const s = t % 60;
+            const pad = n => String(n).padStart(2, '0');
+            return h > 0 ? ('T+' + pad(h) + ':' + pad(m) + ':' + pad(s)) : ('T+' + pad(m) + ':' + pad(s));
         }
 
         // Best-effort split of a single freeform event string (all the real-timeline feed
@@ -9377,8 +9491,9 @@
                          deliberately has none), matching year-count-breakdown's end-full+me-2
                          side-opening pattern (auto-flips RTL/LTR) - see that div's own comment. -->
                     <div id="mission-status-hover-wrap" class="inline-flex items-center gap-1.5 mb-2">
+                        <div id="mission-status-label-cluster" class="inline-flex items-center gap-1.5">
                         <div id="i18n-countdown-to-launch"
-                            class="text-[12px] uppercase tracking-[3px] text-zinc-500 font-bold text-center notranslate"
+                            class="text-[12px] uppercase tracking-[3px] text-zinc-400 font-bold text-center notranslate"
                             translate="no" lang="en">Countdown to launch</div>
                         <i id="mission-status-info-icon"
                             class="hidden fa-solid fa-circle-info text-emerald-400/70 text-[10px]"
@@ -9393,6 +9508,10 @@
                             class="notranslate hidden md:group-hover:flex flex-col gap-2.5 py-3.5 px-4 rounded-2xl border border-zinc-800/80 bg-zinc-950 backdrop-blur-lg shadow-xl text-start">
                             <div id="mission-status-breakdown-list" class="flex flex-col gap-2.5"></div>
                         </div>
+                        </div>
+                        <div id="hero-tplus" dir="ltr" translate="no"
+                            class="hidden notranslate font-bold tabular-nums tracking-[2px] text-zinc-400 whitespace-nowrap"
+                            aria-hidden="true">T+00:00:00</div>
                     </div>
                     <div id="hero-countdown" dir="ltr"
                         class="font-space text-3xl sm:text-4xl lg:text-5xl font-bold tabular-nums tracking-tighter transition-colors duration-1000 whitespace-nowrap text-center notranslate flex items-baseline justify-center w-full"
@@ -9401,6 +9520,8 @@
                     </div>
                     <div id="hero-status-explain" translate="no"
                         class="hidden notranslate text-[11px] sm:text-xs text-zinc-400 leading-snug mt-1.5 px-1 text-center max-w-full"></div>
+                    <div id="hero-next-stage" translate="no"
+                        class="hidden notranslate text-xs sm:text-sm text-zinc-300 leading-snug mt-1.5 px-1 text-center max-w-full"></div>
 
                     <!-- Hero only - deliberately NOT mirrored in the sticky-nav mini countdown
                          (#sticky-countdown-wrap/-mobile), which stays digits-only. Shown only
@@ -9413,7 +9534,7 @@
                          every other label in this box (LAUNCH_LABEL_I18N), not Google Translate -
                          the time value itself is locale-formatted separately and is never
                          translatable text to begin with. -->
-                    <div id="hero-launched-at" class="hidden text-[10px] text-zinc-500 tracking-wide mt-1.5 notranslate" translate="no">
+                    <div id="hero-launched-at" class="hidden text-xs text-zinc-300 tracking-wide mt-1.5 notranslate" translate="no">
                         <span id="i18n-launched-at" lang="en">Launched at:</span> <span id="hero-launched-at-time" dir="ltr"></span>
                     </div>
 
@@ -21479,6 +21600,48 @@ setTimeout(() => {
                 explainEl.textContent = trimmed;
                 explainEl.classList.toggle('hidden', !trimmed);
             }
+            function setHeroTPlus(show, elapsedSec) {
+                const tplusEl = document.getElementById('hero-tplus');
+                if (!tplusEl) return;
+                if (!show) {
+                    tplusEl.classList.add('hidden');
+                    tplusEl.setAttribute('aria-hidden', 'true');
+                    return;
+                }
+                tplusEl.textContent = formatTPlusClock(elapsedSec);
+                tplusEl.classList.remove('hidden');
+                tplusEl.setAttribute('aria-hidden', 'false');
+            }
+            function setHeroNextStage(show, elapsedSec) {
+                const nextEl = document.getElementById('hero-next-stage');
+                if (!nextEl) return;
+                const hide = () => {
+                    nextEl.textContent = '';
+                    nextEl.classList.add('hidden');
+                };
+                if (!show) {
+                    hide();
+                    return;
+                }
+                const lang = document.documentElement.lang;
+                const name = window.currentActiveHeroMissionName;
+                // Only while a named list item is current AND another item is still ahead.
+                // Last event in the list, LIFTOFF, and the generic "MISSION IN PROGRESS"
+                // fallback all have no next stage to announce.
+                const current = getCurrentRealMissionMilestone(elapsedSec, lang, name) ||
+                    (hasAsdsProfile ? getCurrentMissionMilestone(elapsedSec, lang) : null);
+                const next = getNextRealMissionMilestone(elapsedSec, lang, name) ||
+                    (hasAsdsProfile ? getNextMissionMilestone(elapsedSec, lang) : null);
+                if (!current || !next || !next.label) {
+                    hide();
+                    return;
+                }
+                const key = (lang || 'en').split('-')[0];
+                const prefix = NEXT_STAGE_I18N[key] || NEXT_STAGE_I18N.en;
+                nextEl.innerHTML = prefix + ' <span dir="ltr" class="tabular-nums whitespace-nowrap">' +
+                    formatTPlusEvent(next.tSeconds) + '</span> - ' + next.label;
+                nextEl.classList.remove('hidden');
+            }
             // elapsedSec (seconds since liftoff) is passed in rather than read from the tick's
             // own `diff`, which is declared inside the nested tick function below and is not in
             // scope here.
@@ -21557,8 +21720,15 @@ setTimeout(() => {
                 renderMissionStatusBreakdown(document.documentElement.lang, hasAsdsProfile);
                 if (showMissionStatus && typeof elapsedSec === 'number') {
                     updateMissionStatusBreakdownProgress(elapsedSec);
+                    setHeroTPlus(true, elapsedSec);
+                    setHeroNextStage(true, elapsedSec);
                 } else if (typeof updateMissionStatusBreakdownProgress === 'function') {
                     updateMissionStatusBreakdownProgress(-1);
+                    setHeroTPlus(false);
+                    setHeroNextStage(false);
+                } else {
+                    setHeroTPlus(false);
+                    setHeroNextStage(false);
                 }
                 syncMissionStatusBreakdownChrome();
             }
