@@ -58,7 +58,7 @@ FALLBACK_IMAGES = {
     "starlink": "https://everydayastronaut.com/wp-content/uploads/2019/11/starlink2.jpg",
     "falcon": "https://wp.technologyreview.com/wp-content/uploads/2024/07/AP24191572534430.jpg?w=3000",
     "falcon_heavy": "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg",
-    "dragon": "https://s.w-x.co/nasas-spacex-crew-12-rocket_0.webp?format=auto&optimize=medium&width=1600&quality=60",
+    "dragon": "https://i.insider.com/5c5b60d6342cca14f92e9a14?width=2000&format=jpeg&auto=webp",
 }
 
 LL2_UPCOMING_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed"
