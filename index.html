@@ -3571,6 +3571,14 @@
             box-shadow: 0 20px 50px rgba(4, 120, 87, 0.15);
         }
 
+        /* Falcon 9 dossier gets a fifth career-successes cell; Heavy/Starship stay at four.
+           Tailwind's sm:grid-cols-5 is toggled from JS and may not exist in the CDN scan. */
+        @media (min-width: 640px) {
+            #rocket-modal-stats-grid.is-falcon-five {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+        }
+
         /* ==================================================
            HERO NEXT LAUNCH - HUD BRACKET TAG (static, no motion)
            ================================================== */
@@ -7345,24 +7353,24 @@
         // page's language. km/h vs mph reuses WEATHER_I18N's kmh/mph entries so the two stay
         // consistent (see getSpecDict below).
         const SPEC_I18N = {
-            en: { mins: "Mins", hrs: "Hrs", seaLevel: "Sea Level", totalSystem: "Total System", reusable: "Reusable", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Target", costToOrbit: "Cost to Orbit" },
-            he: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול" },
-            iw: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול" },
-            es: { mins: "Min", hrs: "Hrs", seaLevel: "Nivel del Mar", totalSystem: "Sistema Total", reusable: "Reutilizable", km: "km", mi: "mi", m: "m", ft: "pies", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objetivo", costToOrbit: "Costo a Órbita" },
-            fr: { mins: "Min", hrs: "H", seaLevel: "Niveau de la Mer", totalSystem: "Système Total", reusable: "Réutilisable", km: "km", mi: "mi", m: "m", ft: "pieds", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objectif", costToOrbit: "Coût vers l'Orbite" },
-            de: { mins: "Min", hrs: "Std", seaLevel: "Meereshöhe", totalSystem: "Gesamtsystem", reusable: "Wiederverwendbar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Zielwert", costToOrbit: "Kosten zur Umlaufbahn" },
-            ru: { mins: "Мин", hrs: "Ч", seaLevel: "Уровень Моря", totalSystem: "Вся Система", reusable: "Многоразовый", km: "км", mi: "миль", m: "м", ft: "фут", kg: "кг", lbs: "фунт", kN: "кН", lbf: "lbf", perKg: "/ кг", perLb: "/ фунт", target: "Целевой", costToOrbit: "Стоимость на Орбиту" },
-            zh: { mins: "分钟", hrs: "小时", seaLevel: "海平面", totalSystem: "全系统", reusable: "可重复使用", km: "公里", mi: "英里", m: "米", ft: "英尺", kg: "千克", lbs: "磅", kN: "千牛", lbf: "lbf", perKg: "/ 千克", perLb: "/ 磅", target: "目标", costToOrbit: "入轨成本" },
-            it: { mins: "Min", hrs: "Ore", seaLevel: "Livello del Mare", totalSystem: "Sistema Totale", reusable: "Riutilizzabile", km: "km", mi: "mi", m: "m", ft: "piedi", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Obiettivo", costToOrbit: "Costo in Orbita" },
-            cs: { mins: "Min", hrs: "Hod", seaLevel: "Hladina Moře", totalSystem: "Celý Systém", reusable: "Opakovaně Použitelný", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cíl", costToOrbit: "Náklady na Orbitu" },
-            sv: { mins: "Min", hrs: "Tim", seaLevel: "Havsnivå", totalSystem: "Hela Systemet", reusable: "Återanvändbar", km: "km", mi: "mi", m: "m", ft: "fot", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Kostnad till Omloppsbana" },
-            nl: { mins: "Min", hrs: "Uur", seaLevel: "Zeeniveau", totalSystem: "Volledig Systeem", reusable: "Herbruikbaar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Doel", costToOrbit: "Kosten naar Omloopbaan" },
-            da: { mins: "Min", hrs: "Tim", seaLevel: "Havoverflade", totalSystem: "Samlet System", reusable: "Genanvendelig", km: "km", mi: "mi", m: "m", ft: "fod", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Omkostning til Kredsløb" },
-            pt: { mins: "Min", hrs: "H", seaLevel: "Nível do Mar", totalSystem: "Sistema Total", reusable: "Reutilizável", km: "km", mi: "mi", m: "m", ft: "pés", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Meta", costToOrbit: "Custo até a Órbita" },
-            pl: { mins: "Min", hrs: "Godz", seaLevel: "Poziom Morza", totalSystem: "Cały System", reusable: "Wielokrotnego Użytku", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cel", costToOrbit: "Koszt na Orbitę" },
-            hi: { mins: "मिनट", hrs: "घंटे", seaLevel: "समुद्र तल पर", totalSystem: "पूर्ण प्रणाली", reusable: "पुन: प्रयोज्य", km: "किमी", mi: "मील", m: "मी", ft: "फीट", kg: "किग्रा", lbs: "पाउंड", kN: "केएन", lbf: "lbf", perKg: "/ किग्रा", perLb: "/ पाउंड", target: "लक्ष्य", costToOrbit: "कक्षा तक लागत" },
-            ar: { mins: "دقيقة", hrs: "ساعة", seaLevel: "مستوى سطح البحر", totalSystem: "النظام الكامل", reusable: "قابل لإعادة الاستخدام", km: "كم", mi: "ميل", m: "م", ft: "قدم", kg: "كغ", lbs: "رطل", kN: "كيلونيوتن", lbf: "lbf", perKg: "/ كغ", perLb: "/ رطل", target: "هدف", costToOrbit: "التكلفة إلى المدار" },
-            tr: { mins: "Dk", hrs: "Sa", seaLevel: "Deniz Seviyesi", totalSystem: "Toplam Sistem", reusable: "Yeniden Kullanılabilir", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Hedef", costToOrbit: "Yörüngeye Maliyet" },
+            en: { mins: "Mins", hrs: "Hrs", seaLevel: "Sea Level", totalSystem: "Total System", reusable: "Reusable", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Target", costToOrbit: "Cost to Orbit", successfulLaunches: "Successful Launches" },
+            he: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול", successfulLaunches: "שיגורים מוצלחים" },
+            iw: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול", successfulLaunches: "שיגורים מוצלחים" },
+            es: { mins: "Min", hrs: "Hrs", seaLevel: "Nivel del Mar", totalSystem: "Sistema Total", reusable: "Reutilizable", km: "km", mi: "mi", m: "m", ft: "pies", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objetivo", costToOrbit: "Costo a Órbita", successfulLaunches: "Lanzamientos Exitosos" },
+            fr: { mins: "Min", hrs: "H", seaLevel: "Niveau de la Mer", totalSystem: "Système Total", reusable: "Réutilisable", km: "km", mi: "mi", m: "m", ft: "pieds", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objectif", costToOrbit: "Coût vers l'Orbite", successfulLaunches: "Lancements Réussis" },
+            de: { mins: "Min", hrs: "Std", seaLevel: "Meereshöhe", totalSystem: "Gesamtsystem", reusable: "Wiederverwendbar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Zielwert", costToOrbit: "Kosten zur Umlaufbahn", successfulLaunches: "Erfolgreiche Starts" },
+            ru: { mins: "Мин", hrs: "Ч", seaLevel: "Уровень Моря", totalSystem: "Вся Система", reusable: "Многоразовый", km: "км", mi: "миль", m: "м", ft: "фут", kg: "кг", lbs: "фунт", kN: "кН", lbf: "lbf", perKg: "/ кг", perLb: "/ фунт", target: "Целевой", costToOrbit: "Стоимость на Орбиту", successfulLaunches: "Успешные запуски" },
+            zh: { mins: "分钟", hrs: "小时", seaLevel: "海平面", totalSystem: "全系统", reusable: "可重复使用", km: "公里", mi: "英里", m: "米", ft: "英尺", kg: "千克", lbs: "磅", kN: "千牛", lbf: "lbf", perKg: "/ 千克", perLb: "/ 磅", target: "目标", costToOrbit: "入轨成本", successfulLaunches: "成功发射" },
+            it: { mins: "Min", hrs: "Ore", seaLevel: "Livello del Mare", totalSystem: "Sistema Totale", reusable: "Riutilizzabile", km: "km", mi: "mi", m: "m", ft: "piedi", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Obiettivo", costToOrbit: "Costo in Orbita", successfulLaunches: "Lanci Riusciti" },
+            cs: { mins: "Min", hrs: "Hod", seaLevel: "Hladina Moře", totalSystem: "Celý Systém", reusable: "Opakovaně Použitelný", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cíl", costToOrbit: "Náklady na Orbitu", successfulLaunches: "Úspěšné starty" },
+            sv: { mins: "Min", hrs: "Tim", seaLevel: "Havsnivå", totalSystem: "Hela Systemet", reusable: "Återanvändbar", km: "km", mi: "mi", m: "m", ft: "fot", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Kostnad till Omloppsbana", successfulLaunches: "Lyckade uppskjutningar" },
+            nl: { mins: "Min", hrs: "Uur", seaLevel: "Zeeniveau", totalSystem: "Volledig Systeem", reusable: "Herbruikbaar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Doel", costToOrbit: "Kosten naar Omloopbaan", successfulLaunches: "Geslaagde lanceringen" },
+            da: { mins: "Min", hrs: "Tim", seaLevel: "Havoverflade", totalSystem: "Samlet System", reusable: "Genanvendelig", km: "km", mi: "mi", m: "m", ft: "fod", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Omkostning til Kredsløb", successfulLaunches: "Vellykkede opsendelser" },
+            pt: { mins: "Min", hrs: "H", seaLevel: "Nível do Mar", totalSystem: "Sistema Total", reusable: "Reutilizável", km: "km", mi: "mi", m: "m", ft: "pés", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Meta", costToOrbit: "Custo até a Órbita", successfulLaunches: "Lançamentos Bem-sucedidos" },
+            pl: { mins: "Min", hrs: "Godz", seaLevel: "Poziom Morza", totalSystem: "Cały System", reusable: "Wielokrotnego Użytku", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cel", costToOrbit: "Koszt na Orbitę", successfulLaunches: "Udane starty" },
+            hi: { mins: "मिनट", hrs: "घंटे", seaLevel: "समुद्र तल पर", totalSystem: "पूर्ण प्रणाली", reusable: "पुन: प्रयोज्य", km: "किमी", mi: "मील", m: "मी", ft: "फीट", kg: "किग्रा", lbs: "पाउंड", kN: "केएन", lbf: "lbf", perKg: "/ किग्रा", perLb: "/ पाउंड", target: "लक्ष्य", costToOrbit: "कक्षा तक लागत", successfulLaunches: "सफल प्रक्षेपण" },
+            ar: { mins: "دقيقة", hrs: "ساعة", seaLevel: "مستوى سطح البحر", totalSystem: "النظام الكامل", reusable: "قابل لإعادة الاستخدام", km: "كم", mi: "ميل", m: "م", ft: "قدم", kg: "كغ", lbs: "رطل", kN: "كيلونيوتن", lbf: "lbf", perKg: "/ كغ", perLb: "/ رطل", target: "هدف", costToOrbit: "التكلفة إلى المدار", successfulLaunches: "إطلاقات ناجحة" },
+            tr: { mins: "Dk", hrs: "Sa", seaLevel: "Deniz Seviyesi", totalSystem: "Toplam Sistem", reusable: "Yeniden Kullanılabilir", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Hedef", costToOrbit: "Yörüngeye Maliyet", successfulLaunches: "Başarılı Fırlatmalar" },
         };
 
         function getSpecDict(currentLang) {
@@ -11297,7 +11305,7 @@
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
 
-                <div
+                <div id="rocket-modal-stats-grid"
                     class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                     <div>
                         <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">Height
@@ -11325,6 +11333,14 @@
                             class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold notranslate"
                             translate="no">Cost to Orbit</div>
                         <div id="rocket-modal-cost"
+                            class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="auto"
+                            translate="no"></div>
+                    </div>
+                    <div id="rocket-modal-success-cell" class="hidden">
+                        <div id="rocket-modal-success-label"
+                            class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold notranslate"
+                            translate="no">Successful Launches</div>
+                        <div id="rocket-modal-successes"
                             class="text-xs sm:text-base font-semibold text-zinc-200 mt-0.5 notranslate" dir="auto"
                             translate="no"></div>
                     </div>
@@ -15191,9 +15207,9 @@
 
         function updateYearToDateLaunchCount() {
             const el = document.getElementById('upcoming-count');
-            if (!el) return;
-            el.innerText = computeYearToDateLaunchCount();
+            if (el) el.innerText = computeYearToDateLaunchCount();
             updateYearToDateLaunchCountByVehicle();
+            persistFalcon9CareerSuccessCount();
         }
 
         // Own anchor (user-confirmed: 100 Falcon 9 + 2 Starship, out of 102 total, as of Aug 23
@@ -15244,6 +15260,67 @@
             const ssEl = document.getElementById('year-count-starship');
             if (f9El) f9El.innerText = falcon9;
             if (ssEl) ssEl.innerText = starship;
+        }
+
+        // Falcon 9 career successes on the vehicle dossier. 700 is the user-confirmed all-time
+        // total as of 14 Sep 2026; every later successful Falcon 9 (not Heavy, not Starship)
+        // adds 1. Past-launch cards only keep 12 months, so counted mission ids are persisted
+        // and the displayed number never drops when an older flight ages off that list.
+        const FALCON9_CAREER_SUCCESS_BASE = 700;
+        const FALCON9_CAREER_SUCCESS_BASE_DATE = '2026-09-14T00:00:00Z';
+        const FALCON9_CAREER_SUCCESS_IDS_KEY = 'spacex_falcon9_career_success_ids';
+        const FALCON9_CAREER_SUCCESS_FLOOR_KEY = 'spacex_falcon9_career_success_floor';
+
+        function isFalcon9VehicleMission(m) {
+            if (!m) return false;
+            const v = (m.vehicle || '').toLowerCase();
+            const n = (m.name || '').toLowerCase();
+            if (v.includes('starship') || n.includes('starship') || m.category === 'starship') return false;
+            if (v.includes('heavy') || n.includes('falcon heavy') || m.category === 'falcon_heavy') return false;
+            if (v.includes('falcon') || m.category === 'falcon' || m.category === 'dragon' || m.category === 'starlink') return true;
+            return false;
+        }
+
+        function isSuccessfulFalcon9Launch(m) {
+            if (!isFalcon9VehicleMission(m)) return false;
+            if (m.launchSuccess === false) return false;
+            return m.launchSuccess === true || m.status === 'Completed';
+        }
+
+        function computeFalcon9CareerSuccessCount() {
+            const baseMs = new Date(FALCON9_CAREER_SUCCESS_BASE_DATE).getTime();
+            let ids = [];
+            try { ids = JSON.parse(localStorage.getItem(FALCON9_CAREER_SUCCESS_IDS_KEY) || '[]'); } catch (e) { ids = []; }
+            if (!Array.isArray(ids)) ids = [];
+            const idSet = new Set(ids.filter(Boolean).map(String));
+
+            (rawPastMissions || []).forEach(m => {
+                if (!isSuccessfulFalcon9Launch(m)) return;
+                const t = new Date(m.date).getTime();
+                if (!Number.isFinite(t) || t < baseMs) return;
+                if (m.id) idSet.add(String(m.id));
+            });
+
+            try { localStorage.setItem(FALCON9_CAREER_SUCCESS_IDS_KEY, JSON.stringify(Array.from(idSet))); } catch (e) { }
+
+            const computed = FALCON9_CAREER_SUCCESS_BASE + idSet.size;
+            let floor = 0;
+            try { floor = parseInt(localStorage.getItem(FALCON9_CAREER_SUCCESS_FLOOR_KEY) || '0', 10) || 0; } catch (e) { }
+            const final = Math.max(computed, floor, FALCON9_CAREER_SUCCESS_BASE);
+            if (final > floor) {
+                try { localStorage.setItem(FALCON9_CAREER_SUCCESS_FLOOR_KEY, String(final)); } catch (e) { }
+            }
+            return final;
+        }
+
+        function persistFalcon9CareerSuccessCount() {
+            const count = computeFalcon9CareerSuccessCount();
+            const el = document.getElementById('rocket-modal-successes');
+            const modal = document.getElementById('rocket-modal');
+            if (el && modal && !modal.classList.contains('hidden') && window.currentOpenRocketType === 'falcon') {
+                el.innerText = count.toLocaleString();
+            }
+            return count;
         }
 
         // Past-launches strip is a rolling 12 months from today, not calendar YTD and not a
@@ -21621,6 +21698,20 @@ setTimeout(() => {
                 } else {
                     costEl.innerText = '--';
                 }
+            }
+
+            const statsGrid = document.getElementById('rocket-modal-stats-grid');
+            const successCell = document.getElementById('rocket-modal-success-cell');
+            const successLabel = document.getElementById('rocket-modal-success-label');
+            const successEl = document.getElementById('rocket-modal-successes');
+            if (type === 'falcon' && successCell && successEl) {
+                successCell.classList.remove('hidden');
+                if (statsGrid) statsGrid.classList.add('is-falcon-five');
+                if (successLabel) successLabel.innerText = specDict.successfulLaunches || 'Successful Launches';
+                successEl.innerText = computeFalcon9CareerSuccessCount().toLocaleString();
+            } else {
+                if (successCell) successCell.classList.add('hidden');
+                if (statsGrid) statsGrid.classList.remove('is-falcon-five');
             }
             document.getElementById('rocket-modal-desc').innerText = data.desc;
             translateModalDescriptions('rocket', [document.getElementById('rocket-modal-desc')], document.documentElement.lang);
