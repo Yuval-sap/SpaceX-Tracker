@@ -425,6 +425,10 @@
             font-size: 0.7rem !important;
             letter-spacing: 0 !important;
         }
+        #i18n-spacex-rockets-title {
+            font-size: 0.8rem !important;
+            letter-spacing: 0.08em !important;
+        }
         #modal-vehicle-info-grid,
         #modal-booster-info-grid {
             gap: 1rem !important;
@@ -436,6 +440,9 @@
             #i18n-mission-status,
             #i18n-first-stage-booster,
             #i18n-recovery-zone {
+                font-size: 0.8rem !important;
+            }
+            #i18n-spacex-rockets-title {
                 font-size: 0.8rem !important;
             }
             #modal-vehicle-info-grid,
@@ -461,6 +468,10 @@
         html[dir="rtl"] #i18n-recovery-zone {
             font-size: 0.85rem !important;
         }
+        html[dir="rtl"] #i18n-spacex-rockets-title {
+            font-size: 0.85rem !important;
+            letter-spacing: 0 !important;
+        }
         @media (min-width: 640px) {
             html[dir="rtl"] #i18n-vehicle-type,
             html[dir="rtl"] #i18n-launch-site,
@@ -468,6 +479,9 @@
             html[dir="rtl"] #i18n-mission-status,
             html[dir="rtl"] #i18n-first-stage-booster,
             html[dir="rtl"] #i18n-recovery-zone {
+                font-size: 0.95rem !important;
+            }
+            html[dir="rtl"] #i18n-spacex-rockets-title {
                 font-size: 0.95rem !important;
             }
         }
@@ -6913,6 +6927,33 @@
         // DOM by renderMissions() (on search, filter, and data refresh), so it can't
         // rely on a value baked in at render time — it needs to be re-applied on every
         // tick, same as the other manually-translated labels here.
+        const SPACEX_ROCKETS_TITLE_I18N = {
+            en: 'SpaceX ROCKETS',
+            he: 'הרקטות של SpaceX',
+            iw: 'הרקטות של SpaceX',
+            es: 'Los COHETES de SpaceX',
+            fr: 'Les FUSÉES de SpaceX',
+            de: 'Die RAKETEN von SpaceX',
+            ru: 'РАКЕТЫ SpaceX',
+            zh: 'SpaceX 的火箭',
+            it: 'I RAZZI di SpaceX',
+            cs: 'RAKETY SpaceX',
+            sv: 'SpaceX-RAKETER',
+            nl: 'De RAKETTEN van SpaceX',
+            da: 'SpaceX-RAKETTER',
+            pt: 'Os FOGUETES da SpaceX',
+            pl: 'RAKIETY SpaceX',
+            hi: 'SpaceX के रॉकेट',
+            ar: 'صواريخ SpaceX',
+            tr: 'SpaceX ROKETLERİ'
+        };
+        function applySpacexRocketsTitleTranslation(currentLang) {
+            let key = (currentLang || 'en').toLowerCase().split('-')[0];
+            const text = SPACEX_ROCKETS_TITLE_I18N[key] || SPACEX_ROCKETS_TITLE_I18N.en;
+            const el = document.getElementById('i18n-spacex-rockets-title');
+            if (el && el.textContent !== text) el.textContent = text;
+        }
+
         function applyCountdownToLaunchLabels(currentLang) {
             let key = currentLang.split('-')[0];
             if (key === 'zh') key = 'zh';
@@ -9001,6 +9042,7 @@
             applyCommunitySupportTranslations(currentLang);
             applyStarshipDocSubtitleTranslation(currentLang);
             applyStarlinkSectionTitleTranslation(currentLang);
+            applySpacexRocketsTitleTranslation(currentLang);
             if (typeof applyStarlinkBizLabels === 'function') applyStarlinkBizLabels(currentLang);
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             // Catches up the CRT-cutout hole (see updateAIComputeCrtHole) after any layout shift
@@ -11165,8 +11207,9 @@
                     </div>
 
                     <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
-                        <h5 class="modal-subhead modal-mini-heading text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-3">
-                            <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
+                        <h5 class="modal-subhead modal-mini-heading text-sm sm:text-base font-semibold font-space tracking-wider text-emerald-400 normal-case mb-3">
+                            <i class="fa-solid fa-arrows-up-down"></i>
+                            <span id="i18n-spacex-rockets-title" class="notranslate normal-case" translate="no">SpaceX ROCKETS</span>
                         </h5>
                         <div class="flex items-end justify-around h-48 font-mono text-xs">
                             <div class="flex flex-col items-center transition-transform duration-300 cursor-pointer hover:scale-110 active:scale-95"
