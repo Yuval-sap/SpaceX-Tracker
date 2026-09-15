@@ -4898,6 +4898,9 @@
             const sf = document.getElementById('scale-text-falcon');
             if (sf) sf.innerText = window.currentUnitSystem === 'metric' ? `70 ${scaleUnitDict.m}` : `229 ${scaleUnitDict.ft}`;
 
+            const sh = document.getElementById('scale-text-heavy');
+            if (sh) sh.innerText = window.currentUnitSystem === 'metric' ? `70 ${scaleUnitDict.m}` : `230 ${scaleUnitDict.ft}`;
+
             const ss = document.getElementById('scale-text-starship');
             if (ss) ss.innerText = window.currentUnitSystem === 'metric' ? `124 ${scaleUnitDict.m}` : `407 ${scaleUnitDict.ft}`;
 
@@ -11166,44 +11169,26 @@
                             <i class="fa-solid fa-arrows-up-down"></i> Rocket Scale Comparator
                         </h5>
                         <div class="flex items-end justify-around h-48 font-mono text-xs">
-                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95"
+                            <div class="flex flex-col items-center transition-transform duration-300 cursor-pointer hover:scale-110 active:scale-95"
                                 id="scale-box-falcon" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('falcon')">
-                                <svg viewBox="0 0 20 100" class="w-7 h-[95px] transition-all" id="scale-bar-falcon">
-                                    <rect x="7" y="15" width="6" height="75" rx="1" fill="#e4e4e7" stroke="#71717a"
-                                        stroke-width="0.5" />
-                                    <path d="M 7 15 C 7 5, 13 5, 13 15 Z" fill="#ffffff" stroke="#71717a"
-                                        stroke-width="0.5" />
-                                    <rect x="7" y="25" width="6" height="5" fill="#18181b" />
-                                    <line x1="5" y1="28" x2="15" y2="28" stroke="#3f3f46" stroke-width="1" />
-                                    <rect x="9.5" y="45" width="1" height="15" fill="#18181b" opacity="0.4" />
-                                    <path d="M 7 88 L 4 95 M 13 88 L 16 95" stroke="#27272a" stroke-width="1.5"
-                                        stroke-linecap="round" />
-                                    <rect x="8" y="90" width="4" height="3" fill="#3f3f46" />
-                                </svg>
-                                <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">
+                                <img src="falcon9.png" alt="Falcon 9" class="h-[86px] w-auto object-contain object-bottom transition-all" id="scale-bar-falcon">
+                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">
                                     Falcon 9</div>
                                 <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-falcon" dir="auto"
                                     translate="no"></div>
                             </div>
-                            <div class="flex flex-col items-center transition-all duration-350 cursor-pointer md:hover:scale-110 active:scale-95"
+                            <div class="flex flex-col items-center transition-transform duration-300 cursor-pointer hover:scale-110 active:scale-95"
+                                id="scale-box-heavy" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('falcon_heavy')">
+                                <img src="falcon-heavy.png" alt="Falcon Heavy" class="h-[86px] w-auto object-contain object-bottom transition-all" id="scale-bar-heavy">
+                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">
+                                    Falcon Heavy</div>
+                                <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-heavy" dir="auto"
+                                    translate="no"></div>
+                            </div>
+                            <div class="flex flex-col items-center transition-transform duration-300 cursor-pointer hover:scale-110 active:scale-95"
                                 id="scale-box-starship" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('starship')">
-                                <svg viewBox="0 0 30 130" class="w-11 h-[160px] transition-all" id="scale-bar-starship">
-                                    <rect x="9" y="65" width="12" height="55" fill="#a1a1aa" stroke="#52525b"
-                                        stroke-width="0.5" />
-                                    <rect x="9" y="60" width="12" height="5" fill="#27272a" />
-                                    <rect x="9" y="25" width="12" height="35" fill="#d4d4d8" stroke="#71717a"
-                                        stroke-width="0.5" />
-                                    <path d="M 9 25 C 9 10, 21 10, 21 25 Z" fill="#d4d4d8" stroke="#71717a"
-                                        stroke-width="0.5" />
-                                    <path d="M 15 13 C 18 13, 21 20, 21 25 L 21 60 L 15 60 Z" fill="#18181b"
-                                        opacity="0.8" />
-                                    <path d="M 9 25 L 5 28 L 9 32 Z" fill="#27272a" />
-                                    <path d="M 21 25 L 25 28 L 21 32 Z" fill="#27272a" />
-                                    <path d="M 9 52 L 4 58 L 9 60 Z" fill="#27272a" />
-                                    <path d="M 21 52 L 26 58 L 21 60 Z" fill="#27272a" />
-                                    <rect x="11" y="120" width="8" height="4" fill="#3f3f46" />
-                                </svg>
-                                <div class="text-zinc-400 font-bold mt-2 md:hover:text-emerald-400 transition-colors">
+                                <img src="starship v3.png" alt="Starship" class="h-[152px] w-auto object-contain object-bottom transition-all" id="scale-bar-starship">
+                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">
                                     <span class="starship-term notranslate" translate="no">Starship</span></div>
                                 <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-starship" dir="auto"
                                     translate="no"></div>
@@ -20578,22 +20563,26 @@ setTimeout(() => {
             }
 
             const bFalcon = document.getElementById('scale-bar-falcon');
+            const bHeavy = document.getElementById('scale-bar-heavy');
             const bStarship = document.getElementById('scale-bar-starship');
             const boxFalcon = document.getElementById('scale-box-falcon');
+            const boxHeavy = document.getElementById('scale-box-heavy');
             const boxStarship = document.getElementById('scale-box-starship');
+            const glow = "drop-shadow(0 0 5px rgba(16,185,129,0.45))";
+            const dim = "grayscale(100%) opacity(55%)";
 
-            bFalcon.style.filter = "grayscale(100%) opacity(55%)";
-            bStarship.style.filter = "grayscale(100%) opacity(55%)";
-            boxFalcon.style.opacity = "0.7";
-            boxStarship.style.opacity = "0.7";
+            [bFalcon, bHeavy, bStarship].forEach(el => { if (el) el.style.filter = dim; });
+            [boxFalcon, boxHeavy, boxStarship].forEach(el => { if (el) el.style.opacity = "0.7"; });
 
-            if (m.category === 'starship' || siteKey === 'starbase') {
-                bStarship.style.filter = "drop-shadow(0 0 8px rgba(16,185,129,0.5))";
-                boxStarship.style.opacity = "1";
-            } else {
-                bFalcon.style.filter = "drop-shadow(0 0 8px rgba(16,185,129,0.5))";
-                boxFalcon.style.opacity = "1";
+            let activeBar = bFalcon, activeBox = boxFalcon;
+            const vehicle = (window.currentActiveVehicleStr || '').toLowerCase();
+            if (m.category === 'starship' || siteKey === 'starbase' || vehicle.includes('starship')) {
+                activeBar = bStarship; activeBox = boxStarship;
+            } else if (m.category === 'falcon_heavy' || vehicle.includes('heavy')) {
+                activeBar = bHeavy; activeBox = boxHeavy;
             }
+            if (activeBar) activeBar.style.filter = glow;
+            if (activeBox) activeBox.style.opacity = "1";
         }
 
 // Used to also reveal/re-hide a mobile tap-overlay sitting above the video iframe
