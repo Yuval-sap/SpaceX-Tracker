@@ -20568,21 +20568,29 @@ setTimeout(() => {
             const boxFalcon = document.getElementById('scale-box-falcon');
             const boxHeavy = document.getElementById('scale-box-heavy');
             const boxStarship = document.getElementById('scale-box-starship');
-            const glow = "drop-shadow(0 0 5px rgba(16,185,129,0.45))";
-            const dim = "grayscale(100%) opacity(55%)";
+            const theme = (typeof getPosterTheme === 'function')
+                ? getPosterTheme()
+                : { accent: '#10b981' };
+            const n = parseInt(String(theme.accent).replace('#', ''), 16);
+            const rgb = `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+            const isDay = document.body.classList.contains('light-theme');
+            // Same recipe for every vehicle. Extra mid/wide layers so thin white
+            // Falcons read as strongly as the darker, larger Starship silhouette.
+            const glow = isDay
+                ? `drop-shadow(0 0 2px rgba(${rgb},1)) drop-shadow(0 0 7px rgba(${rgb},0.9)) drop-shadow(0 0 14px rgba(${rgb},0.55))`
+                : `drop-shadow(0 0 3px rgba(${rgb},0.95)) drop-shadow(0 0 8px rgba(${rgb},0.8)) drop-shadow(0 0 16px rgba(${rgb},0.45))`;
 
-            [bFalcon, bHeavy, bStarship].forEach(el => { if (el) el.style.filter = dim; });
-            [boxFalcon, boxHeavy, boxStarship].forEach(el => { if (el) el.style.opacity = "0.7"; });
+            [bFalcon, bHeavy, bStarship].forEach(el => { if (el) el.style.filter = ''; });
+            [boxFalcon, boxHeavy, boxStarship].forEach(el => { if (el) el.style.opacity = '1'; });
 
-            let activeBar = bFalcon, activeBox = boxFalcon;
+            let activeBar = bFalcon;
             const vehicle = (window.currentActiveVehicleStr || '').toLowerCase();
             if (m.category === 'starship' || siteKey === 'starbase' || vehicle.includes('starship')) {
-                activeBar = bStarship; activeBox = boxStarship;
+                activeBar = bStarship;
             } else if (m.category === 'falcon_heavy' || vehicle.includes('heavy')) {
-                activeBar = bHeavy; activeBox = boxHeavy;
+                activeBar = bHeavy;
             }
             if (activeBar) activeBar.style.filter = glow;
-            if (activeBox) activeBox.style.opacity = "1";
         }
 
 // Used to also reveal/re-hide a mobile tap-overlay sitting above the video iframe
