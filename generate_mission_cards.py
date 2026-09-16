@@ -54,7 +54,7 @@ OUTPUT_DIR = Path(__file__).parent / "m"
 # once you're inside the app - see index.html's own FALLBACK_IMAGES for the source of truth
 # if these ever drift apart.
 FALLBACK_IMAGES = {
-    "starship": "https://pbs.twimg.com/media/HOGCJc7WoAAMPvM?format=jpg&name=4096x4096",
+    "starship": "https://spacexfantracker.com/starship-share.jpg",
     "starlink": "https://everydayastronaut.com/wp-content/uploads/2019/11/starlink2.jpg",
     "falcon": "https://wp.technologyreview.com/wp-content/uploads/2024/07/AP24191572534430.jpg?w=3000",
     "falcon_heavy": "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg",
