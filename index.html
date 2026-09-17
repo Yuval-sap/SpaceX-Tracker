@@ -5037,7 +5037,7 @@
         #launch-cadence-modal svg.lc-chart { display: block; width: 100%; height: auto; position: relative; }
         #launch-cadence-modal .lc-gridline { stroke: var(--lc-border); stroke-width: 1; shape-rendering: crispEdges; }
         #launch-cadence-modal .lc-axis-line { stroke: var(--lc-border-strong); stroke-width: 1; shape-rendering: crispEdges; }
-        #launch-cadence-modal .lc-axis-label { fill: var(--lc-text-muted); font-size: 10.5px; font-family: 'Space Grotesk', sans-serif; }
+        #launch-cadence-modal .lc-axis-label { fill: var(--lc-text-secondary); font-size: 13px; font-family: 'Space Grotesk', sans-serif; }
         #launch-cadence-modal .lc-series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
         #launch-cadence-modal .lc-series-area { opacity: 0.10; }
         #launch-cadence-modal .lc-series-line.is-hero { stroke-width: 2.75; }
@@ -12174,8 +12174,14 @@
          4. CHART GEOMETRY + RENDER
          ============================================================ */
       var svg, VB_W = 1000, VB_H = 460;
-      var PAD = { top: 18, right: 26, bottom: 34, left: 46 };
-      var plotW = VB_W - PAD.left - PAD.right;
+      // AXIS_PAD is the wide margin that fits the y-axis value labels; EDGE_PAD is the
+      // narrow margin on the side that doesn't need them. Which physical side (left/right)
+      // gets which is decided per render by isRTL below - in RTL the y-axis moves to the
+      // right, matching where "today" (the reading-start side) now sits after the x-flip,
+      // instead of staying pinned to the left and crowding today's end-dot.
+      var AXIS_PAD = 46, EDGE_PAD = 26;
+      var PAD = { top: 18, bottom: 34 };
+      var plotW = VB_W - AXIS_PAD - EDGE_PAD;
       var plotH = VB_H - PAD.top - PAD.bottom;
 
       function resolveColor(cssVar) {
@@ -12243,23 +12249,37 @@
         // the x fraction mirrors the whole plot (line, dots, x-axis ticks, hover mapping
         // below) so "today" lands on the reading-start side, matching the rest of the modal.
         var isRTL = (document.documentElement.getAttribute('dir') || getComputedStyle(document.documentElement).direction) === 'rtl';
+        // The y-axis (and its value labels) moves to the right under RTL, same idea as the
+        // x-flip below - "today" ends up on the reading-start side, and the axis that
+        // anchors it should sit on that same side instead of staying fixed on the left.
+        var padLeft = isRTL ? EDGE_PAD : AXIS_PAD;
         function xPos(i) {
           var frac = i / Math.max(1, n - 1);
           if (isRTL) frac = 1 - frac;
-          return PAD.left + frac * plotW;
+          return padLeft + frac * plotW;
         }
         function yPos(v) { return PAD.top + plotH - (v / axisMax) * plotH; }
 
         var svgParts = [];
+        // Axis number/month labels are collected separately and appended AFTER the series
+        // below, so they always paint on top of a line or end-dot that happens to land right
+        // on a gridline (e.g. a data point whose value is very close to a tick value) instead
+        // of being covered by it.
+        var labelParts = [];
 
+        var yLabelX = isRTL ? (padLeft + plotW + 15) : (padLeft - 15);
+        var yLabelAnchor = isRTL ? 'start' : 'end';
         var ticks = 4;
         for (var t = 0; t <= ticks; t++) {
           var v = (axisMax / ticks) * t;
           var y = yPos(v);
-          svgParts.push('<line class="lc-gridline" x1="' + PAD.left + '" x2="' + (PAD.left + plotW) + '" y1="' + y + '" y2="' + y + '"/>');
-          svgParts.push('<text class="lc-axis-label" x="' + (PAD.left - 10) + '" y="' + (y + 3) + '" text-anchor="end">' + Math.round(v).toLocaleString() + '</text>');
+          svgParts.push('<line class="lc-gridline" x1="' + padLeft + '" x2="' + (padLeft + plotW) + '" y1="' + y + '" y2="' + y + '"/>');
+          // A few extra px beyond the plot's own edge - the end-dot for whichever side of
+          // the line lands there (today's) can otherwise sit almost flush against this
+          // label when its value is close to a gridline's.
+          labelParts.push('<text class="lc-axis-label" x="' + yLabelX + '" y="' + (y + 3) + '" text-anchor="' + yLabelAnchor + '">' + Math.round(v).toLocaleString() + '</text>');
         }
-        svgParts.push('<line class="lc-axis-line" x1="' + PAD.left + '" x2="' + (PAD.left + plotW) + '" y1="' + (PAD.top + plotH) + '" y2="' + (PAD.top + plotH) + '"/>');
+        svgParts.push('<line class="lc-axis-line" x1="' + padLeft + '" x2="' + (padLeft + plotW) + '" y1="' + (PAD.top + plotH) + '" y2="' + (PAD.top + plotH) + '"/>');
 
         if (seriesData.length && n > 1) {
           var tickCount = Math.min(6, n);
@@ -12269,7 +12289,7 @@
             if (seen[idx]) continue;
             seen[idx] = true;
             var lab = tickLabel(seriesData[0].data.points[idx].date, multiYear);
-            svgParts.push('<text class="lc-axis-label" x="' + xPos(idx) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + lab + '</text>');
+            labelParts.push('<text class="lc-axis-label" x="' + xPos(idx) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + lab + '</text>');
           }
         }
 
@@ -12290,12 +12310,13 @@
           svgParts.push('<circle cx="' + lastX + '" cy="' + lastY + '" r="4" fill="' + color + '"/>');
         });
 
-        svgParts.push('<rect class="lc-hit-layer" x="' + PAD.left + '" y="' + PAD.top + '" width="' + plotW + '" height="' + plotH + '"/>');
+        svgParts.push.apply(svgParts, labelParts);
+        svgParts.push('<rect class="lc-hit-layer" x="' + padLeft + '" y="' + PAD.top + '" width="' + plotW + '" height="' + plotH + '"/>');
         svgParts.push('<line class="lc-crosshair" id="lc-crosshair" x1="0" x2="0" y1="' + PAD.top + '" y2="' + (PAD.top + plotH) + '" style="opacity:0"/>');
 
         svg.innerHTML = svgParts.join('');
 
-        attachHover(seriesData, xPos, yPos, n, multiYear, isRTL);
+        attachHover(seriesData, xPos, yPos, n, multiYear, isRTL, padLeft);
         renderLegend(seriesData);
         updateHeadline();
       }
@@ -12303,7 +12324,7 @@
       /* ============================================================
          5. HOVER / TOOLTIP
          ============================================================ */
-      function attachHover(seriesData, xPos, yPos, n, multiYear, isRTL) {
+      function attachHover(seriesData, xPos, yPos, n, multiYear, isRTL, padLeft) {
         var hit = svg.querySelector('.lc-hit-layer');
         var crosshair = svg.querySelector('#lc-crosshair');
         var tooltip = document.getElementById('lc-tooltip');
@@ -12316,7 +12337,7 @@
           var rect = svg.getBoundingClientRect();
           var scaleX = VB_W / rect.width;
           var px = (evt.clientX - rect.left) * scaleX;
-          var frac = (px - PAD.left) / plotW;
+          var frac = (px - padLeft) / plotW;
           if (isRTL) frac = 1 - frac;
           var idx = Math.round(frac * (n - 1));
           idx = Math.max(0, Math.min(n - 1, idx));
