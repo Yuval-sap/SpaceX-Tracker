@@ -4871,6 +4871,205 @@
             }
         }
 
+        /* ============================================================
+           Launch Cadence chart modal — scoped design tokens.
+           Ported from the standalone launch-cadence-chart.html draft, now
+           re-themed: instead of one fixed dark palette, --lc-* custom
+           properties are redefined per site theme (below), and the hero
+           SpaceX series color always tracks --lc-accent so it re-skins with
+           the site's own brand-accent swap (green/orange/blue) automatically.
+           Headings use the site's own .font-orbitron class instead of a
+           hardcoded font-family so Mars/Moon's Zen Dots/Audiowide swap
+           (see body.mars-theme .font-orbitron etc. above) applies for free.
+           ============================================================ */
+        #launch-cadence-modal {
+            --lc-surface-page: #09090b;
+            --lc-surface-1:    #18181b;
+            --lc-surface-2:    #27272a;
+            --lc-border:       rgba(255,255,255,0.08);
+            --lc-border-strong:rgba(255,255,255,0.14);
+            --lc-text-primary: #f4f4f5;
+            --lc-text-secondary: #a1a1aa;
+            --lc-text-muted:   #71717a;
+            --lc-accent:       #34d399;
+            --lc-accent-strong:#059669;
+            --lc-accent-wash:  rgba(52,211,153,0.12);
+            --lc-series-ula:   #0284c7;
+            --lc-series-blue:  #d97706;
+            --lc-series-china: #e11d48;
+            --lc-series-rlab:  #eab308;
+            --lc-series-europe:#7c3aed;
+            --lc-series-russia:#0d9488;
+        }
+        body.light-theme #launch-cadence-modal {
+            --lc-surface-page: #f8fafc;
+            --lc-surface-1:    #ffffff;
+            --lc-surface-2:    #f1f5f9;
+            --lc-border:       #e2e8f0;
+            --lc-border-strong:#cbd5e1;
+            --lc-text-primary: #0f172a;
+            --lc-text-secondary: #475569;
+            --lc-text-muted:   #475569;
+            --lc-accent:       #059669;
+            --lc-accent-strong:#047857;
+            --lc-accent-wash:  rgba(5,150,105,0.10);
+            /* Rocket Lab's dark-mode gold (#eab308) drops under 2:1 contrast on a
+               white card - re-validated (validate_palette.js) at #854d0e for the
+               light surface specifically, same hue family, darker step. */
+            --lc-series-rlab:  #854d0e;
+        }
+        body.mars-theme #launch-cadence-modal {
+            --lc-surface-page: #140806;
+            --lc-surface-1:    #271510;
+            --lc-surface-2:    #321c15;
+            --lc-border:       rgba(140,65,35,0.45);
+            --lc-border-strong:rgba(160,75,40,0.6);
+            --lc-text-primary: #f8efe6;
+            --lc-text-secondary: #c4a080;
+            --lc-text-muted:   #a87858;
+            --lc-accent:       var(--mars-accent);
+            --lc-accent-strong:var(--mars-accent-deep);
+            --lc-accent-wash:  rgba(255,107,53,0.14);
+        }
+        body.moon-theme #launch-cadence-modal {
+            --lc-surface-page: #07090e;
+            --lc-surface-1:    #121826;
+            --lc-surface-2:    #1a2336;
+            --lc-border:       rgba(80,100,140,0.4);
+            --lc-border-strong:rgba(100,120,160,0.5);
+            --lc-text-primary: #eef3fa;
+            --lc-text-secondary: #8fa3bc;
+            --lc-text-muted:   #6b809c;
+            --lc-accent:       #3fa9f5;
+            --lc-accent-strong:#1183d4;
+            --lc-accent-wash:  rgba(63,169,245,0.14);
+        }
+        #launch-cadence-modal .lc-wrap {
+            font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+            color: var(--lc-text-primary);
+        }
+        /* Force the scroll container's own box to ltr so its native scrollbar renders on the
+           visual right even in Hebrew/Arabic (a direction:rtl box puts the scrollbar on the
+           left) - then re-assert rtl on every direct child so the actual content still reads
+           right-to-left. Scoped to [dir="rtl"] only; LTR languages are untouched. */
+        html[dir="rtl"] #launch-cadence-modal .lc-wrap {
+            direction: ltr;
+        }
+        html[dir="rtl"] #launch-cadence-modal .lc-wrap > * {
+            direction: rtl;
+        }
+        #launch-cadence-modal h1 {
+            font-size: clamp(20px, 4vw, 28px); font-weight: 700; letter-spacing: -0.01em;
+            margin: 0; color: var(--lc-text-primary);
+        }
+        #launch-cadence-modal .lc-controls {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+            margin: 18px 0 14px; padding: 12px 14px;
+            background: var(--lc-surface-2); border: 1px solid var(--lc-border); border-radius: 16px;
+        }
+        #launch-cadence-modal .lc-seg {
+            display: inline-flex; background: rgba(127,127,127,0.08);
+            border: 1px solid var(--lc-border); border-radius: 10px; padding: 3px; gap: 2px;
+        }
+        #launch-cadence-modal .lc-seg button {
+            appearance: none; border: none; background: transparent; color: var(--lc-text-secondary);
+            font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border-radius: 8px;
+            cursor: pointer; transition: background .15s, color .15s;
+        }
+        #launch-cadence-modal .lc-seg button:hover { color: var(--lc-text-primary); }
+        #launch-cadence-modal .lc-seg button.is-active { background: var(--lc-accent); color: #04140f; }
+        #launch-cadence-modal .lc-pillrow { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+        #launch-cadence-modal .lc-pill {
+            appearance: none; border: 1px solid var(--lc-border-strong); background: rgba(127,127,127,0.06);
+            color: var(--lc-text-secondary); font: inherit; font-size: 12.5px; font-weight: 600;
+            padding: 7px 12px; border-radius: 999px; cursor: pointer; display: inline-flex;
+            align-items: center; gap: 6px; transition: border-color .15s, color .15s, background .15s;
+        }
+        #launch-cadence-modal .lc-pill .lc-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
+        #launch-cadence-modal .lc-pill:hover { border-color: var(--lc-border-strong); color: var(--lc-text-primary); }
+        #launch-cadence-modal .lc-pill.is-active { color: var(--lc-accent); border-color: var(--lc-accent); background: var(--lc-accent-wash); }
+        #launch-cadence-modal .lc-pill.is-active .lc-dot { opacity: 1; }
+        #launch-cadence-modal .lc-divider { width: 1px; height: 26px; background: var(--lc-border-strong); margin: 0 4px; }
+        #launch-cadence-modal .lc-toggle-link {
+            margin-inline-start: auto; background: transparent; border: 1px dashed var(--lc-border-strong);
+            color: var(--lc-text-secondary); font: inherit; font-size: 12.5px; font-weight: 600;
+            padding: 7px 12px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+        }
+        #launch-cadence-modal .lc-toggle-link:hover { color: var(--lc-text-primary); border-color: var(--lc-accent); }
+        #launch-cadence-modal .lc-toggle-link.is-active { color: #04140f; background: var(--lc-accent); border-color: var(--lc-accent); }
+        #launch-cadence-modal .lc-competitor-panel {
+            display: none; margin: 0 0 16px; padding: 14px 16px;
+            background: var(--lc-surface-2); border: 1px solid var(--lc-border); border-radius: 16px;
+            gap: 14px; flex-wrap: wrap; justify-content: space-between;
+        }
+        #launch-cadence-modal .lc-competitor-panel.is-open { display: flex; }
+        #launch-cadence-modal .lc-competitor-group { display: flex; flex-direction: column; gap: 8px; min-width: 130px; }
+        #launch-cadence-modal .lc-competitor-group h3 {
+            /* Orbitron has no Hebrew glyphs, so Hebrew falls back to Rubik - visually smaller
+               at the same pixel size than Orbitron's own cap-height, hence the larger-than-
+               English-alone value here so both still read as comfortably sized. */
+            font-size: 15px; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--lc-text-secondary); margin: 0 0 2px;
+        }
+        #launch-cadence-modal .lc-chk-row { display: flex; align-items: center; gap: 8px; }
+        #launch-cadence-modal .lc-chk-row input[type="checkbox"] {
+            appearance: none; width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--lc-border-strong);
+            background: rgba(127,127,127,0.06); cursor: pointer; position: relative; flex-shrink: 0;
+        }
+        #launch-cadence-modal .lc-chk-row input[type="checkbox"]:checked { border-color: var(--lc-chk-color, var(--lc-accent)); background: var(--lc-chk-color, var(--lc-accent)); }
+        #launch-cadence-modal .lc-chk-row input[type="checkbox"]:checked::after {
+            content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+            border: solid #04140f; border-width: 0 2px 2px 0; transform: rotate(45deg);
+        }
+        #launch-cadence-modal .lc-chk-row label { font-size: 13px; color: var(--lc-text-secondary); cursor: pointer; user-select: none; }
+        #launch-cadence-modal .lc-chk-row input:checked + label { color: var(--lc-text-primary); }
+        #launch-cadence-modal .lc-card {
+            background: var(--lc-surface-1); border: 1px solid var(--lc-border); border-radius: 20px;
+            padding: 20px 8px 8px; position: relative; overflow: hidden;
+        }
+        #launch-cadence-modal .lc-card::before {
+            content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+            background: radial-gradient(120% 60% at 15% 0%, var(--lc-accent-wash), transparent 60%);
+        }
+        #launch-cadence-modal .lc-card-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 18px 14px; gap: 12px; flex-wrap: wrap; position: relative; }
+        #launch-cadence-modal .lc-card-title { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--lc-text-primary); margin: 0; }
+        #launch-cadence-modal .lc-card-note { font-size: 12px; color: var(--lc-text-muted); margin: 0; }
+        #launch-cadence-modal svg.lc-chart { display: block; width: 100%; height: auto; position: relative; }
+        #launch-cadence-modal .lc-gridline { stroke: var(--lc-border); stroke-width: 1; shape-rendering: crispEdges; }
+        #launch-cadence-modal .lc-axis-line { stroke: var(--lc-border-strong); stroke-width: 1; shape-rendering: crispEdges; }
+        #launch-cadence-modal .lc-axis-label { fill: var(--lc-text-muted); font-size: 10.5px; font-family: 'Space Grotesk', sans-serif; }
+        #launch-cadence-modal .lc-series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+        #launch-cadence-modal .lc-series-area { opacity: 0.10; }
+        #launch-cadence-modal .lc-series-line.is-hero { stroke-width: 2.75; }
+        #launch-cadence-modal .lc-end-dot-ring { fill: var(--lc-surface-1); }
+        #launch-cadence-modal .lc-crosshair { stroke: var(--lc-border-strong); stroke-width: 1; pointer-events: none; }
+        #launch-cadence-modal .lc-hit-layer { fill: transparent; cursor: crosshair; }
+        #launch-cadence-modal .lc-legend { display: flex; flex-wrap: wrap; gap: 14px 18px; padding: 14px 18px 6px; position: relative; }
+        #launch-cadence-modal .lc-legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--lc-text-secondary); }
+        #launch-cadence-modal .lc-legend-item .lc-key { width: 14px; height: 2.75px; border-radius: 2px; background: currentColor; }
+        #launch-cadence-modal .lc-legend-item strong { color: var(--lc-text-primary); font-weight: 600; }
+        #launch-cadence-modal .lc-tooltip {
+            position: absolute; top: 0; left: 0; z-index: 20; pointer-events: none;
+            background: var(--lc-surface-2); border: 1px solid var(--lc-border-strong); border-radius: 12px;
+            padding: 10px 12px; min-width: 148px; box-shadow: 0 12px 28px rgba(0,0,0,.35);
+            opacity: 0; transform: translate(-50%, calc(-100% - 14px)); transition: opacity .1s;
+        }
+        #launch-cadence-modal .lc-tooltip.is-visible { opacity: 1; }
+        #launch-cadence-modal .lc-tooltip .lc-t-date {
+            font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+            color: var(--lc-text-secondary); margin: 0 0 6px; text-transform: uppercase;
+        }
+        #launch-cadence-modal .lc-tooltip .lc-t-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 2px 0; }
+        #launch-cadence-modal .lc-tooltip .lc-t-row .lc-key { width: 11px; height: 2.5px; border-radius: 2px; flex-shrink: 0; background: currentColor; }
+        #launch-cadence-modal .lc-tooltip .lc-t-row .lc-name { color: var(--lc-text-secondary); flex: 1; }
+        #launch-cadence-modal .lc-tooltip .lc-t-row .lc-val { color: var(--lc-text-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+        @media (max-width: 640px) {
+            #launch-cadence-modal .lc-controls { padding: 10px; }
+            #launch-cadence-modal .lc-divider { display: none; }
+            #launch-cadence-modal .lc-toggle-link { margin-inline-start: 0; width: 100%; justify-content: center; }
+            #launch-cadence-modal .lc-legend { gap: 10px 14px; }
+        }
+
     </style>
 
     <script>
@@ -4997,6 +5196,34 @@
             hi: { nextLaunch: "अगला प्रक्षेपण", upcomingLaunches: "इस वर्ष के प्रक्षेपण", launchWindow: "प्रक्षेपण विंडो", launchSite: "प्रक्षेपण स्थल", recoveryZone: "पुनर्प्राप्ति क्षेत्र", recoveryZoneInfo: "पुनर्प्राप्ति क्षेत्र की जानकारी", launchesSection: "नियोजित प्रक्षेपण", pastLaunchesSection: "पिछले वर्ष के प्रक्षेपण", vehicleType: "रॉकेट प्रकार", orbitDestination: "कक्षा गंतव्य", missionStatus: "मिशन स्थिति", status: "स्थिति", launchedAt: "प्रक्षेपण समय:", instantLaunchWindow: "तात्कालिक प्रक्षेपण विंडो", firstStageBooster: "पहले चरण का बूस्टर", asds: "स्वायत्त ड्रोन जहाज (ASDS)", filterAll: "सभी", filterDragon: "ड्रैगन/क्रू", filterFavorites: "वॉचलिस्ट", boosterTitle: "SpaceX के 10 सबसे अधिक उड़े बूस्टर", boosterSubtitle: "लाइव मिशन डेटा से फाल्कन 9 और सुपर हेवी बूस्टर", boosterAnalyzing: "बूस्टर उड़ान डेटा का विश्लेषण...", boosterNoData: "अभी तक कोई बूस्टर उड़ान डेटा उपलब्ध नहीं।", flights: "उड़ानें", boosterRank: "रैंक", boosterCol: "बूस्टर", spacexXLink: "X पर @SpaceX को फॉलो करें", systemsGo: "सिस्टम तैयार", finalCountdown: "अंतिम उलटी गिनती", watchLaunch: "प्रक्षेपण देखें", openOnYoutube: "YouTube पर खोलें", watchDetailsVideo: "प्रक्षेपण विवरण और वीडियो देखें", viewMissionDetails: "मिशन विवरण देखें →" , missionInProgress: "मिशन जारी है", holdDelayed: "होल्ड / देरी", countdownToLaunch: "प्रक्षेपण तक उलटी गिनती", launchNow: "उड़ान", patchesTitle: "स्पेसएक्स मिशन पैच", patchesSubtitle: "मिशन विवरण के लिए पैच पर टैप करें", patchesSearch: "टैग खोजें...", launchesTab: 'लॉन्च स्टेशन', moreInfoTab: 'सूचना केंद्र', vehicleSpecDossier: "रॉकेट विशिष्टता", spaceportDossier: "स्पेसपोर्ट सुविधा विवरण", orbitDossier: "कक्षीय यांत्रिकी विवरण", flightCrew: "उड़ान चालक दल", crewWord: "क्रू", flightHistoryPartial: "इस ऐप द्वारा ट्रैक की गई {total} में से {shown} उड़ानें दिखाई जा रही हैं।", trackThisShip: "इस जहाज़ को लाइव ट्रैक करें", recoveryFleetTitle: "SpaceX का पुनर्प्राप्ति बेड़ा", recoveryFleetSubtitle: "सार्वजनिक AIS डेटा के माध्यम से SpaceX के स्वायत्त ड्रोन जहाजों की लाइव स्थिति", flightNumberLabel: "उड़ान {n}", weatherAtSite: "प्रक्षेपण स्थल पर मौसम", fullLaunchDetails: "पूर्ण प्रक्षेपण विवरण" },
             ar: { nextLaunch: "الإطلاق القادم", upcomingLaunches: "عمليات الإطلاق هذا العام", launchWindow: "نافذة الإطلاق", launchSite: "موقع الإطلاق", recoveryZone: "منطقة الاسترداد", recoveryZoneInfo: "معلومات منطقة الاسترداد", launchesSection: "عمليات الإطلاق المجدولة", pastLaunchesSection: "عمليات الإطلاق خلال السنة الماضية", vehicleType: "نوع الصاروخ", orbitDestination: "الوجهة المدارية", missionStatus: "حالة المهمة", status: "الحالة", launchedAt: "أُطلق في:", instantLaunchWindow: "نافذة إطلاق فورية", firstStageBooster: "معزز المرحلة الأولى", asds: "سفينة الإنزال الذاتية (ASDS)", filterAll: "الكل", filterDragon: "دراغون/طاقم", filterFavorites: "قائمة المتابعة", boosterTitle: "أفضل 10 معززات SpaceX الأكثر تحليقًا", boosterSubtitle: "معززات فالكون 9 وسوبر هيفي، وفق بيانات المهام الحية", boosterAnalyzing: "جاري تحليل بيانات رحلات المعززات...", boosterNoData: "لا تتوفر بيانات رحلات المعززات بعد.", flights: "رحلات", boosterRank: "الترتيب", boosterCol: "المعزز", spacexXLink: "تابع @SpaceX على X", systemsGo: "الأنظمة جاهزة", finalCountdown: "العد التنازلي الأخير", watchLaunch: "شاهد الإطلاق", openOnYoutube: "افتح على YouTube", watchDetailsVideo: "شاهد تفاصيل الإطلاق والفيديو", viewMissionDetails: "عرض تفاصيل المهمة ←" , missionInProgress: "المهمة قيد التنفيذ", holdDelayed: "تعليق / تأخير", countdownToLaunch: "العد التنازلي للإطلاق", launchNow: "الإقلاع", patchesTitle: "شارات مهام سبيس إكس", patchesSubtitle: "انقر على شارة لعرض تفاصيل المهمة", patchesSearch: "بحث الشارات...", launchesTab: 'محطة إطلاق', moreInfoTab: 'محطة معلومات', vehicleSpecDossier: "مواصفات الصاروخ", spaceportDossier: "ملف منشأة الإطلاق", orbitDossier: "ميكانيكا المدار", flightCrew: "طاقم الرحلة", crewWord: "طاقم", flightHistoryPartial: "يعرض {shown} من أصل {total} رحلة يتتبعها هذا التطبيق.", trackThisShip: "تتبع هذه السفينة مباشرة", recoveryFleetTitle: "أسطول الاسترداد من SpaceX", recoveryFleetSubtitle: "المواقع الحية لسفن الإنزال الذاتية التابعة لـSpaceX، عبر بيانات AIS العامة", flightNumberLabel: "الرحلة {n}", weatherAtSite: "الطقس في موقع الإطلاق", fullLaunchDetails: "تفاصيل الإطلاق الكاملة" },
             tr: { nextLaunch: "SONRAKİ FIRLATMA", upcomingLaunches: "Bu Yılki Fırlatmalar", launchWindow: "FIRLATMA PENCERESİ", launchSite: "FIRLATMA SAHASI", recoveryZone: "KURTARMA BÖLGESİ", recoveryZoneInfo: "KURTARMA BÖLGESİ BİLGİLERİ", launchesSection: "Planlanan Fırlatmalar", pastLaunchesSection: "Son bir yılın fırlatmaları", vehicleType: "ROKET TİPİ", orbitDestination: "YÖRÜNGE HEDEFİ", missionStatus: "GÖREV DURUMU", status: "DURUM", launchedAt: "Fırlatma saati:", instantLaunchWindow: "Anlık Fırlatma Penceresi", firstStageBooster: "BİRİNCİ AŞAMA BOOSTER'I", asds: "Otonom İniş Gemisi (ASDS)", filterAll: "Tümü", filterDragon: "Dragon/Crew", filterFavorites: "İzleme Listesi", boosterTitle: "SpaceX'in En Çok Uçan İlk 10 Boosterı", boosterSubtitle: "Canlı görev verilerinden Falcon 9 ve Super Heavy boosterları", boosterAnalyzing: "Booster uçuş verileri analiz ediliyor...", boosterNoData: "Henüz booster uçuş verisi yok.", flights: "Uçuş", boosterRank: "Sıra", boosterCol: "Booster", spacexXLink: "X'te @SpaceX'i takip et", systemsGo: "SİSTEMLER HAZIR", finalCountdown: "SON GERİ SAYIM", watchLaunch: "Fırlatmayı izle", openOnYoutube: "YouTube'da aç", watchDetailsVideo: "Fırlatma Detaylarını ve Videosunu İzle", viewMissionDetails: "Görev Detaylarını Görüntüle →" , missionInProgress: "GÖREV DEVAM EDİYOR", holdDelayed: "BEKLEME / GECİKME", countdownToLaunch: "Fırlatmaya geri sayım", launchNow: "KALKIŞ", patchesTitle: "SpaceX Görev Rozetleri", patchesSubtitle: "Görev detayları için bir rozete dokunun", patchesSearch: "Rozet ara...", launchesTab: 'Fırlatma Üssü', moreInfoTab: 'Bilgi İstasyonu', vehicleSpecDossier: "ROKET ÖZELLİKLERİ", spaceportDossier: "UZAY ÜSSÜ DOSYASI", orbitDossier: "YÖRÜNGE MEKANİĞİ", flightCrew: "Uçuş Ekibi", crewWord: "Ekip", flightHistoryPartial: "Bu uygulamanın izlediği {total} uçuştan {shown} tanesi gösteriliyor.", trackThisShip: "Bu gemiyi canlı takip et", recoveryFleetTitle: "SpaceX Kurtarma Filosu", recoveryFleetSubtitle: "SpaceX'in otonom iniş gemilerinin canlı konumları, herkese açık AIS verileriyle", flightNumberLabel: "{n}. Uçuş", weatherAtSite: "FIRLATMA SAHASINDA HAVA DURUMU", fullLaunchDetails: "Tam fırlatma ayrıntıları" },
+        };
+
+        // Launch Cadence chart modal — company/provider NAMES (SpaceX, ULA, Blue Origin,
+        // Rocket Lab) are deliberately NOT in here and stay in English everywhere: they're
+        // brand names, same convention as spacexXLink etc. above. "China" is a country, not
+        // a company, so it IS translated. YTD/1Y/3Y/5Y are kept identical in every language on
+        // purpose (matches Google/Yahoo Finance-style chart range pills in every locale, and a
+        // translated form would usually be longer and break the pill layout) - flag this to the
+        // user if that reads wrong for a given language.
+        const LAUNCH_CADENCE_I18N = {
+            en: { btn: "Launch Cadence", weekly: "Weekly", monthly: "Monthly", cumulative: "Cumulative", compareToggle: "Compare vs. competitors", unitedStates: "United States", china: "China", europe: "Europe", russia: "Russia", compareAgainst: "Compare against", weeklyLaunches: "weekly launches", monthlyLaunches: "monthly launches", cumulativeLaunches: "cumulative launches", theField: "the field", ytdNote: "year to date", y1Note: "past year", y3Note: "past 3 years", y5Note: "past 5 years", live: "live", wk: "wk", cumulativeSuffix: "cumulative" },
+            he: { btn: "קצב השיגורים", weekly: "שבועי", monthly: "חודשי", cumulative: "מצטבר", compareToggle: "השוואה מול מתחרים", unitedStates: "ארצות הברית", china: "סין", europe: "אירופה", russia: "רוסיה", compareAgainst: "השוואה כנגד", weeklyLaunches: "שיגורים שבועיים", monthlyLaunches: "שיגורים חודשיים", cumulativeLaunches: "שיגורים מצטברים", theField: "כל המתחרים", ytdNote: "מתחילת השנה", y1Note: "השנה האחרונה", y3Note: "3 השנים האחרונות", y5Note: "5 השנים האחרונות", live: "בזמן אמת", wk: "שבוע", cumulativeSuffix: "מצטבר" },
+            iw: { btn: "קצב השיגורים", weekly: "שבועי", monthly: "חודשי", cumulative: "מצטבר", compareToggle: "השוואה מול מתחרים", unitedStates: "ארצות הברית", china: "סין", europe: "אירופה", russia: "רוסיה", compareAgainst: "השוואה כנגד", weeklyLaunches: "שיגורים שבועיים", monthlyLaunches: "שיגורים חודשיים", cumulativeLaunches: "שיגורים מצטברים", theField: "כל המתחרים", ytdNote: "מתחילת השנה", y1Note: "השנה האחרונה", y3Note: "3 השנים האחרונות", y5Note: "5 השנים האחרונות", live: "בזמן אמת", wk: "שבוע", cumulativeSuffix: "מצטבר" },
+            es: { btn: "Ritmo de Lanzamientos", weekly: "Semanal", monthly: "Mensual", cumulative: "Acumulado", compareToggle: "Comparar con competidores", unitedStates: "Estados Unidos", china: "China", europe: "Europa", russia: "Rusia", compareAgainst: "Comparar con", weeklyLaunches: "lanzamientos semanales", monthlyLaunches: "lanzamientos mensuales", cumulativeLaunches: "lanzamientos acumulados", theField: "el resto", ytdNote: "año hasta la fecha", y1Note: "el último año", y3Note: "los últimos 3 años", y5Note: "los últimos 5 años", live: "en vivo", wk: "sem.", cumulativeSuffix: "acumulado" },
+            fr: { btn: "Cadence de Lancement", weekly: "Hebdomadaire", monthly: "Mensuel", cumulative: "Cumulé", compareToggle: "Comparer aux concurrents", unitedStates: "États-Unis", china: "Chine", europe: "Europe", russia: "Russie", compareAgainst: "Comparer à", weeklyLaunches: "lancements hebdomadaires", monthlyLaunches: "lancements mensuels", cumulativeLaunches: "lancements cumulés", theField: "le reste", ytdNote: "depuis le 1er janvier", y1Note: "l'année écoulée", y3Note: "les 3 dernières années", y5Note: "les 5 dernières années", live: "en direct", wk: "sem.", cumulativeSuffix: "cumulé" },
+            de: { btn: "Startfrequenz", weekly: "Wöchentlich", monthly: "Monatlich", cumulative: "Kumuliert", compareToggle: "Mit Mitbewerbern vergleichen", unitedStates: "Vereinigte Staaten", china: "China", europe: "Europa", russia: "Russland", compareAgainst: "Vergleichen mit", weeklyLaunches: "wöchentliche Starts", monthlyLaunches: "monatliche Starts", cumulativeLaunches: "kumulierte Starts", theField: "dem Feld", ytdNote: "seit Jahresbeginn", y1Note: "letztes Jahr", y3Note: "letzte 3 Jahre", y5Note: "letzte 5 Jahre", live: "live", wk: "Wo.", cumulativeSuffix: "kumuliert" },
+            ru: { btn: "Темп запусков", weekly: "Еженедельно", monthly: "Ежемесячно", cumulative: "Накопительно", compareToggle: "Сравнить с конкурентами", unitedStates: "США", china: "Китай", europe: "Европа", russia: "Россия", compareAgainst: "Сравнить с", weeklyLaunches: "запусков в неделю", monthlyLaunches: "запусков в месяц", cumulativeLaunches: "запусков накопительно", theField: "всеми остальными", ytdNote: "с начала года", y1Note: "последний год", y3Note: "последние 3 года", y5Note: "последние 5 лет", live: "в реальном времени", wk: "нед.", cumulativeSuffix: "накопительно" },
+            zh: { btn: "发射节奏", weekly: "每周", monthly: "每月", cumulative: "累计", compareToggle: "与竞争对手比较", unitedStates: "美国", china: "中国", europe: "欧洲", russia: "俄罗斯", compareAgainst: "对比", weeklyLaunches: "每周发射次数", monthlyLaunches: "每月发射次数", cumulativeLaunches: "累计发射次数", theField: "所有竞争对手", ytdNote: "年初至今", y1Note: "过去一年", y3Note: "过去3年", y5Note: "过去5年", live: "实时", wk: "周", cumulativeSuffix: "累计" },
+            it: { btn: "Cadenza di Lancio", weekly: "Settimanale", monthly: "Mensile", cumulative: "Cumulativo", compareToggle: "Confronta con i concorrenti", unitedStates: "Stati Uniti", china: "Cina", europe: "Europa", russia: "Russia", compareAgainst: "Confronta con", weeklyLaunches: "lanci settimanali", monthlyLaunches: "lanci mensili", cumulativeLaunches: "lanci cumulativi", theField: "il resto del settore", ytdNote: "da inizio anno", y1Note: "l'ultimo anno", y3Note: "gli ultimi 3 anni", y5Note: "gli ultimi 5 anni", live: "in diretta", wk: "sett.", cumulativeSuffix: "cumulativo" },
+            cs: { btn: "Tempo startů", weekly: "Týdně", monthly: "Měsíčně", cumulative: "Kumulativně", compareToggle: "Porovnat s konkurencí", unitedStates: "Spojené státy", china: "Čína", europe: "Evropa", russia: "Rusko", compareAgainst: "Porovnat s", weeklyLaunches: "startů týdně", monthlyLaunches: "startů měsíčně", cumulativeLaunches: "startů kumulativně", theField: "ostatními", ytdNote: "od začátku roku", y1Note: "poslední rok", y3Note: "poslední 3 roky", y5Note: "posledních 5 let", live: "živě", wk: "týd.", cumulativeSuffix: "kumulativně" },
+            sv: { btn: "Uppskjutningstakt", weekly: "Veckovis", monthly: "Månadsvis", cumulative: "Kumulativt", compareToggle: "Jämför med konkurrenter", unitedStates: "USA", china: "Kina", europe: "Europa", russia: "Ryssland", compareAgainst: "Jämför med", weeklyLaunches: "uppskjutningar per vecka", monthlyLaunches: "uppskjutningar per månad", cumulativeLaunches: "kumulativa uppskjutningar", theField: "övriga fältet", ytdNote: "sedan årets början", y1Note: "det senaste året", y3Note: "de senaste 3 åren", y5Note: "de senaste 5 åren", live: "live", wk: "v.", cumulativeSuffix: "kumulativt" },
+            nl: { btn: "Lanceertempo", weekly: "Wekelijks", monthly: "Maandelijks", cumulative: "Cumulatief", compareToggle: "Vergelijk met concurrenten", unitedStates: "Verenigde Staten", china: "China", europe: "Europa", russia: "Rusland", compareAgainst: "Vergelijk met", weeklyLaunches: "lanceringen per week", monthlyLaunches: "lanceringen per maand", cumulativeLaunches: "cumulatieve lanceringen", theField: "de rest van het veld", ytdNote: "sinds begin van het jaar", y1Note: "het afgelopen jaar", y3Note: "de afgelopen 3 jaar", y5Note: "de afgelopen 5 jaar", live: "live", wk: "wk", cumulativeSuffix: "cumulatief" },
+            da: { btn: "Opsendelsestempo", weekly: "Ugentligt", monthly: "Månedligt", cumulative: "Kumulativt", compareToggle: "Sammenlign med konkurrenter", unitedStates: "USA", china: "Kina", europe: "Europa", russia: "Rusland", compareAgainst: "Sammenlign med", weeklyLaunches: "opsendelser om ugen", monthlyLaunches: "opsendelser om måneden", cumulativeLaunches: "kumulative opsendelser", theField: "resten af feltet", ytdNote: "siden årets start", y1Note: "det seneste år", y3Note: "de seneste 3 år", y5Note: "de seneste 5 år", live: "live", wk: "uge", cumulativeSuffix: "kumulativt" },
+            pt: { btn: "Ritmo de Lançamentos", weekly: "Semanal", monthly: "Mensal", cumulative: "Cumulativo", compareToggle: "Comparar com concorrentes", unitedStates: "Estados Unidos", china: "China", europe: "Europa", russia: "Rússia", compareAgainst: "Comparar com", weeklyLaunches: "lançamentos semanais", monthlyLaunches: "lançamentos mensais", cumulativeLaunches: "lançamentos cumulativos", theField: "o restante do setor", ytdNote: "desde o início do ano", y1Note: "o último ano", y3Note: "os últimos 3 anos", y5Note: "os últimos 5 anos", live: "em tempo real", wk: "sem.", cumulativeSuffix: "cumulativo" },
+            pl: { btn: "Tempo startów", weekly: "Tygodniowo", monthly: "Miesięcznie", cumulative: "Kumulatywnie", compareToggle: "Porównaj z konkurencją", unitedStates: "Stany Zjednoczone", china: "Chiny", europe: "Europa", russia: "Rosja", compareAgainst: "Porównaj z", weeklyLaunches: "startów tygodniowo", monthlyLaunches: "startów miesięcznie", cumulativeLaunches: "startów kumulatywnie", theField: "resztą konkurencji", ytdNote: "od początku roku", y1Note: "ostatni rok", y3Note: "ostatnie 3 lata", y5Note: "ostatnie 5 lat", live: "na żywo", wk: "tydz.", cumulativeSuffix: "kumulatywnie" },
+            hi: { btn: "प्रक्षेपण गति", weekly: "साप्ताहिक", monthly: "मासिक", cumulative: "संचयी", compareToggle: "प्रतिस्पर्धियों से तुलना करें", unitedStates: "संयुक्त राज्य अमेरिका", china: "चीन", europe: "यूरोप", russia: "रूस", compareAgainst: "तुलना करें", weeklyLaunches: "साप्ताहिक प्रक्षेपण", monthlyLaunches: "मासिक प्रक्षेपण", cumulativeLaunches: "संचयी प्रक्षेपण", theField: "बाकी सभी", ytdNote: "वर्ष की शुरुआत से", y1Note: "पिछला वर्ष", y3Note: "पिछले 3 वर्ष", y5Note: "पिछले 5 वर्ष", live: "लाइव", wk: "सप्ताह", cumulativeSuffix: "संचयी" },
+            ar: { btn: "معدل الإطلاقات", weekly: "أسبوعي", monthly: "شهري", cumulative: "تراكمي", compareToggle: "مقارنة بالمنافسين", unitedStates: "الولايات المتحدة", china: "الصين", europe: "أوروبا", russia: "روسيا", compareAgainst: "مقارنة مع", weeklyLaunches: "إطلاقات أسبوعية", monthlyLaunches: "إطلاقات شهرية", cumulativeLaunches: "إطلاقات تراكمية", theField: "باقي المنافسين", ytdNote: "منذ بداية العام", y1Note: "العام الأخير", y3Note: "آخر 3 سنوات", y5Note: "آخر 5 سنوات", live: "مباشر", wk: "أسبوع", cumulativeSuffix: "تراكمي" },
+            tr: { btn: "Fırlatma Temposu", weekly: "Haftalık", monthly: "Aylık", cumulative: "Kümülatif", compareToggle: "Rakiplerle karşılaştır", unitedStates: "Amerika Birleşik Devletleri", china: "Çin", europe: "Avrupa", russia: "Rusya", compareAgainst: "Karşılaştır", weeklyLaunches: "haftalık fırlatma", monthlyLaunches: "aylık fırlatma", cumulativeLaunches: "kümülatif fırlatma", theField: "diğer tümü", ytdNote: "yıl başından itibaren", y1Note: "son bir yıl", y3Note: "son 3 yıl", y5Note: "son 5 yıl", live: "canlı", wk: "hf.", cumulativeSuffix: "kümülatif" }
         };
 
         // Short "Next" prefix for the hero's upcoming-milestone line (T+ clock row).
@@ -8569,7 +8796,7 @@
         // t = modal title, s = the 5 section titles in order, r = all 34 rows flattened in
         // order as [label, v1.5, v2mini, v3]. "iw" duplicates "he" (legacy Hebrew code Google
         // Translate's own widget also uses - see includedLanguages above).
-        const STARLINK_SPECS_I18N = {"en":{"t":"Starlink Generations Compared","s":["General","Dimensions &amp; mass","Capacity","Propulsion &amp; power","Orbit"],"r":[["Status","Discontinued","In service","In production"],["Maiden flight","January 24, 2021","February 27, 2023","September 22, 2026"],["Launch vehicle","Falcon 9","Falcon 9","Starship"],["Satellites per launch","52","28","60"],["Launch mass","306 kg","800 kg","2,000 kg"],["Satellite bus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solar arrays","1","2","2"],["Solar array size","8.1 × 2.8 m","12.8 × 4.1 m per wing","4 segments of 19 m per array"],["Solar area","23 m²","105 m²","210 m²"],["Wingspan","11 m","30 m","55 m"],["Total area","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink beams","16","192","2,048"],["Uplink beams","8","144","2,048"],["User antennas","4 Ku arrays","5 Ku arrays","Wide Ku/Ka arrays"],["Backhaul antennas","Ka","Ka, E","Ka, E, V, W"],["RF backhaul capacity","20 Gbps","150 Gbps","1,200 Gbps"],["Laser terminals","3","3","6"],["Capacity per laser terminal","100 Gbps","200 Gbps","400 Gbps"],["Total laser capacity","300 Gbps","600 Gbps","2,400 Gbps"],["Propulsion fuel","Krypton","Argon","Argon"],["Thruster type","Hall-effect","Hall-effect","Hall-effect"],["Thrust","70 mN","170 mN","400 mN"],["Specific impulse","1,670 s","2,500 s","2,500 s"],["Thruster power","1.8 kW","4.2 kW","10 kW"],["Solar power","3 kW","14 kW","28 kW"],["Reaction wheels","4","4","4"],["Operational altitude","550 km","480 km","350 km"],["Orbital period","95 min","94 min","92 min"],["Design life","5 years","5 years","5 years"],["End of life","Atmospheric burn-up","Atmospheric burn-up","Atmospheric burn-up"],["Direct to Cell","No","DTC variant only","Enables Mobile Gen 2"],["Factory","Redmond, WA","Redmond, WA","Redmond, WA"]]},"he":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בייצור"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","22 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"iw":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בייצור"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","22 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"es":{"t":"Comparativa de generaciones de Starlink","s":["General","Dimensiones y masa","Capacidad","Propulsión y energía","Órbita"],"r":[["Estado","Retirado","En servicio","En producción"],["Vuelo inaugural","24 de enero de 2021","27 de febrero de 2023","22 de septiembre de 2026"],["Vehículo de lanzamiento","Falcon 9","Falcon 9","Starship"],["Satélites por lanzamiento","52","28","60"],["Masa de lanzamiento","306 kg","800 kg","2,000 kg"],["Plataforma del satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Paneles solares","1","2","2"],["Tamaño del panel solar","8.1 × 2.8 m","12.8 × 4.1 m por ala","4 segmentos de 19 m por panel"],["Superficie solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Superficie total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Haces de downlink","16","192","2,048"],["Haces de uplink","8","144","2,048"],["Antenas de usuario","4 paneles Ku","5 paneles Ku","Paneles Ku/Ka amplios"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidad de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminales láser","3","3","6"],["Capacidad por terminal láser","100 Gbps","200 Gbps","400 Gbps"],["Capacidad láser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustible de propulsión","Kriptón","Argón","Argón"],["Tipo de propulsor","Efecto Hall","Efecto Hall","Efecto Hall"],["Empuje","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potencia del propulsor","1.8 kW","4.2 kW","10 kW"],["Potencia solar","3 kW","14 kW","28 kW"],["Ruedas de reacción","4","4","4"],["Altitud operativa","550 km","480 km","350 km"],["Periodo orbital","95 min","94 min","92 min"],["Vida útil","5 años","5 años","5 años"],["Fin de vida","Combustión en la atmósfera","Combustión en la atmósfera","Combustión en la atmósfera"],["Direct to Cell","No","Solo variante DTC","Habilita Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"fr":{"t":"Comparaison des générations Starlink","s":["Général","Dimensions et masse","Capacité","Propulsion et énergie","Orbite"],"r":[["État","Abandonné","En service","En production"],["Vol inaugural","24 janvier 2021","27 février 2023","22 septembre 2026"],["Lanceur","Falcon 9","Falcon 9","Starship"],["Satellites par lancement","52","28","60"],["Masse au lancement","306 kg","800 kg","2,000 kg"],["Plateforme du satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panneaux solaires","1","2","2"],["Taille des panneaux solaires","8.1 × 2.8 m","12.8 × 4.1 m par aile","4 segments de 19 m par panneau"],["Surface solaire","23 m²","105 m²","210 m²"],["Envergure","11 m","30 m","55 m"],["Surface totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Faisceaux downlink","16","192","2,048"],["Faisceaux uplink","8","144","2,048"],["Antennes utilisateur","4 panneaux Ku","5 panneaux Ku","Larges panneaux Ku/Ka"],["Antennes backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacité backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminaux laser","3","3","6"],["Capacité par terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacité laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Ergol de propulsion","Krypton","Argon","Argon"],["Type de propulseur","Effet Hall","Effet Hall","Effet Hall"],["Poussée","70 mN","170 mN","400 mN"],["Impulsion spécifique","1,670 s","2,500 s","2,500 s"],["Puissance du propulseur","1.8 kW","4.2 kW","10 kW"],["Puissance solaire","3 kW","14 kW","28 kW"],["Roues de réaction","4","4","4"],["Altitude opérationnelle","550 km","480 km","350 km"],["Période orbitale","95 min","94 min","92 min"],["Durée de vie","5 ans","5 ans","5 ans"],["Fin de vie","Combustion dans l'atmosphère","Combustion dans l'atmosphère","Combustion dans l'atmosphère"],["Direct to Cell","Non","Variante DTC uniquement","Permet Mobile Gen 2"],["Usine","Redmond, WA","Redmond, WA","Redmond, WA"]]},"de":{"t":"Starlink-Generationen im Vergleich","s":["Allgemein","Abmessungen &amp; Masse","Kapazität","Antrieb &amp; Energie","Umlaufbahn"],"r":[["Status","Eingestellt","Im Einsatz","In Produktion"],["Erstflug","24. Januar 2021","27. Februar 2023","22. September 2026"],["Trägerrakete","Falcon 9","Falcon 9","Starship"],["Satelliten pro Start","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitenbus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solarpaneele","1","2","2"],["Größe der Solarpaneele","8.1 × 2.8 m","12.8 × 4.1 m pro Flügel","4 Segmente à 19 m pro Panel"],["Solarfläche","23 m²","105 m²","210 m²"],["Spannweite","11 m","30 m","55 m"],["Gesamtfläche","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-Strahlen","16","192","2,048"],["Uplink-Strahlen","8","144","2,048"],["Nutzerantennen","4 Ku-Arrays","5 Ku-Arrays","Breite Ku/Ka-Arrays"],["Backhaul-Antennen","Ka","Ka, E","Ka, E, V, W"],["RF-Backhaul-Kapazität","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Kapazität pro Laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Gesamte Laserkapazität","300 Gbps","600 Gbps","2,400 Gbps"],["Antriebstreibstoff","Krypton","Argon","Argon"],["Triebwerkstyp","Hall-Effekt","Hall-Effekt","Hall-Effekt"],["Schub","70 mN","170 mN","400 mN"],["Spezifischer Impuls","1,670 s","2,500 s","2,500 s"],["Triebwerksleistung","1.8 kW","4.2 kW","10 kW"],["Solarleistung","3 kW","14 kW","28 kW"],["Reaktionsräder","4","4","4"],["Betriebshöhe","550 km","480 km","350 km"],["Umlaufzeit","95 min","94 min","92 min"],["Lebensdauer","5 Jahre","5 Jahre","5 Jahre"],["Lebensende","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre"],["Direct to Cell","Nein","Nur DTC-Variante","Ermöglicht Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ru":{"t":"Сравнение поколений спутников Starlink","s":["Общее","Размеры и масса","Пропускная способность","Двигатели и питание","Орбита"],"r":[["Статус","Снят с производства","В эксплуатации","В производстве"],["Первый полёт","24 января 2021 г.","27 февраля 2023 г.","22 сентября 2026 г."],["Ракета-носитель","Falcon 9","Falcon 9","Starship"],["Спутников за запуск","52","28","60"],["Масса при запуске","306 кг","800 кг","2,000 кг"],["Платформа спутника","2.8 × 1.3 м","4.1 × 2.7 м","6.5 × 3.5 м"],["Солнечные батареи","1","2","2"],["Размер солнечной батареи","8.1 × 2.8 м","12.8 × 4.1 м на крыло","4 сегмента по 19 м на панель"],["Площадь солнечных батарей","23 м²","105 м²","210 м²"],["Размах","11 м","30 м","55 м"],["Общая площадь","26 м²","116 м²","240 м²"],["Downlink","24 Гбит/с","96 Гбит/с","1,024 Гбит/с"],["Uplink","4 Гбит/с","8 Гбит/с","160 Гбит/с"],["Лучи Downlink","16","192","2,048"],["Лучи Uplink","8","144","2,048"],["Пользовательские антенны","4 антенны Ku","5 антенн Ku","Широкие антенны Ku/Ka"],["Антенны backhaul","Ka","Ka, E","Ka, E, V, W"],["Пропускная способность RF backhaul","20 Гбит/с","150 Гбит/с","1,200 Гбит/с"],["Лазерные терминалы","3","3","6"],["Пропускная способность на терминал","100 Гбит/с","200 Гбит/с","400 Гбит/с"],["Суммарная лазерная пропускная способность","300 Гбит/с","600 Гбит/с","2,400 Гбит/с"],["Топливо двигателей","Криптон","Аргон","Аргон"],["Тип двигателя","Эффект Холла","Эффект Холла","Эффект Холла"],["Тяга","70 мН","170 мН","400 мН"],["Удельный импульс","1,670 с","2,500 с","2,500 с"],["Мощность двигателя","1.8 кВт","4.2 кВт","10 кВт"],["Солнечная мощность","3 кВт","14 кВт","28 кВт"],["Маховики","4","4","4"],["Рабочая высота","550 км","480 км","350 км"],["Период обращения","95 мин","94 мин","92 мин"],["Срок службы","5 лет","5 лет","5 лет"],["Окончание срока службы","Сгорание в атмосфере","Сгорание в атмосфере","Сгорание в атмосфере"],["Direct to Cell","Нет","Только вариант DTC","Обеспечивает Mobile Gen 2"],["Завод","Redmond, WA","Redmond, WA","Redmond, WA"]]},"zh":{"t":"Starlink 各代卫星对比","s":["概览","尺寸与质量","通信容量","推进与电力","轨道"],"r":[["状态","已停产","服役中","生产中"],["首飞","2021年1月24日","2023年2月27日","2026年9月22日"],["运载火箭","Falcon 9","Falcon 9","Starship"],["单次发射卫星数","52","28","60"],["发射质量","306 千克","800 千克","2,000 千克"],["卫星平台","2.8 × 1.3 米","4.1 × 2.7 米","6.5 × 3.5 米"],["太阳能帆板","1","2","2"],["太阳能帆板尺寸","8.1 × 2.8 米","12.8 × 4.1 米 每侧","每个阵列 4 段，每段 19 米"],["太阳能面积","23 平方米","105 平方米","210 平方米"],["翼展","11 米","30 米","55 米"],["总面积","26 平方米","116 平方米","240 平方米"],["Downlink","24 吉比特/秒","96 吉比特/秒","1,024 吉比特/秒"],["Uplink","4 吉比特/秒","8 吉比特/秒","160 吉比特/秒"],["下行波束数","16","192","2,048"],["上行波束数","8","144","2,048"],["用户天线","4 个 Ku 阵列","5 个 Ku 阵列","宽幅 Ku/Ka 阵列"],["回传天线","Ka","Ka, E","Ka, E, V, W"],["射频回传容量","20 吉比特/秒","150 吉比特/秒","1,200 吉比特/秒"],["激光终端数","3","3","6"],["单终端激光容量","100 吉比特/秒","200 吉比特/秒","400 吉比特/秒"],["总激光容量","300 吉比特/秒","600 吉比特/秒","2,400 吉比特/秒"],["推进剂","氪","氩","氩"],["推进器类型","霍尔效应","霍尔效应","霍尔效应"],["推力","70 毫牛","170 毫牛","400 毫牛"],["比冲","1,670 秒","2,500 秒","2,500 秒"],["推进器功率","1.8 千瓦","4.2 千瓦","10 千瓦"],["太阳能功率","3 千瓦","14 千瓦","28 千瓦"],["反作用轮","4","4","4"],["运行高度","550 千米","480 千米","350 千米"],["轨道周期","95 分钟","94 分钟","92 分钟"],["设计寿命","5 年","5 年","5 年"],["寿命终止方式","大气层烧毁","大气层烧毁","大气层烧毁"],["Direct to Cell","否","仅 DTC 版本","支持 Mobile Gen 2"],["工厂","Redmond, WA","Redmond, WA","Redmond, WA"]]},"it":{"t":"Confronto tra le generazioni Starlink","s":["Generale","Dimensioni e massa","Capacità","Propulsione ed energia","Orbita"],"r":[["Stato","Fuori produzione","In servizio","In produzione"],["Primo volo","24 gennaio 2021","27 febbraio 2023","22 settembre 2026"],["Vettore di lancio","Falcon 9","Falcon 9","Starship"],["Satelliti per lancio","52","28","60"],["Massa al lancio","306 kg","800 kg","2,000 kg"],["Piattaforma del satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Pannelli solari","1","2","2"],["Dimensione del pannello solare","8.1 × 2.8 m","12.8 × 4.1 m per ala","4 segmenti da 19 m per pannello"],["Superficie solare","23 m²","105 m²","210 m²"],["Apertura alare","11 m","30 m","55 m"],["Superficie totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Fasci downlink","16","192","2,048"],["Fasci uplink","8","144","2,048"],["Antenne utente","4 array Ku","5 array Ku","Ampi array Ku/Ka"],["Antenne di backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacità backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminali laser","3","3","6"],["Capacità per terminale laser","100 Gbps","200 Gbps","400 Gbps"],["Capacità laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Propellente","Cripto","Argon","Argon"],["Tipo di propulsore","Effetto Hall","Effetto Hall","Effetto Hall"],["Spinta","70 mN","170 mN","400 mN"],["Impulso specifico","1,670 s","2,500 s","2,500 s"],["Potenza del propulsore","1.8 kW","4.2 kW","10 kW"],["Potenza solare","3 kW","14 kW","28 kW"],["Ruote di reazione","4","4","4"],["Altitudine operativa","550 km","480 km","350 km"],["Periodo orbitale","95 min","94 min","92 min"],["Vita utile","5 anni","5 anni","5 anni"],["Fine vita","Combustione in atmosfera","Combustione in atmosfera","Combustione in atmosfera"],["Direct to Cell","No","Solo variante DTC","Abilita Mobile Gen 2"],["Fabbrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"cs":{"t":"Porovnání generací Starlink","s":["Obecné","Rozměry a hmotnost","Kapacita","Pohon a energie","Oběžná dráha"],"r":[["Stav","Vyřazeno","V provozu","Ve výrobě"],["První let","24. ledna 2021","27. února 2023","22. září 2026"],["Nosná raketa","Falcon 9","Falcon 9","Starship"],["Satelitů na start","52","28","60"],["Startovní hmotnost","306 kg","800 kg","2,000 kg"],["Platforma satelitu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solární panely","1","2","2"],["Velikost solárního panelu","8.1 × 2.8 m","12.8 × 4.1 m na křídlo","4 segmenty po 19 m na panel"],["Plocha solárních panelů","23 m²","105 m²","210 m²"],["Rozpětí","11 m","30 m","55 m"],["Celková plocha","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Paprsky downlink","16","192","2,048"],["Paprsky uplink","8","144","2,048"],["Uživatelské antény","4 anténní pole Ku","5 anténních polí Ku","Široké anténní pole Ku/Ka"],["Antény backhaul","Ka","Ka, E","Ka, E, V, W"],["Kapacita RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Laserové terminály","3","3","6"],["Kapacita na laserový terminál","100 Gbps","200 Gbps","400 Gbps"],["Celková laserová kapacita","300 Gbps","600 Gbps","2,400 Gbps"],["Palivo pohonu","Krypton","Argon","Argon"],["Typ motoru","Hallův jev","Hallův jev","Hallův jev"],["Tah","70 mN","170 mN","400 mN"],["Specifický impuls","1,670 s","2,500 s","2,500 s"],["Výkon motoru","1.8 kW","4.2 kW","10 kW"],["Solární výkon","3 kW","14 kW","28 kW"],["Reakční kola","4","4","4"],["Provozní výška","550 km","480 km","350 km"],["Oběžná doba","95 min","94 min","92 min"],["Životnost","5 let","5 let","5 let"],["Konec životnosti","Shoření v atmosféře","Shoření v atmosféře","Shoření v atmosféře"],["Direct to Cell","Ne","Pouze varianta DTC","Umožňuje Mobile Gen 2"],["Továrna","Redmond, WA","Redmond, WA","Redmond, WA"]]},"sv":{"t":"Jämförelse av Starlink-generationer","s":["Allmänt","Mått och massa","Kapacitet","Framdrivning och kraft","Bana"],"r":[["Status","Utgången","I drift","I produktion"],["Jungfrutur","24 januari 2021","27 februari 2023","22 september 2026"],["Bärraket","Falcon 9","Falcon 9","Starship"],["Satelliter per uppskjutning","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellitplattform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelens storlek","8.1 × 2.8 m","12.8 × 4.1 m per vinge","4 segment på 19 m per panel"],["Solpanelsyta","23 m²","105 m²","210 m²"],["Vingspann","11 m","30 m","55 m"],["Total yta","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-strålar","16","192","2,048"],["Uplink-strålar","8","144","2,048"],["Användarantenner","4 Ku-antenner","5 Ku-antenner","Breda Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Total laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Framdrivningsbränsle","Krypton","Argon","Argon"],["Motortyp","Halleffekt","Halleffekt","Halleffekt"],["Dragkraft","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Operativ höjd","550 km","480 km","350 km"],["Omloppstid","95 min","94 min","92 min"],["Livslängd","5 år","5 år","5 år"],["Livets slut","Förbränning i atmosfären","Förbränning i atmosfären","Förbränning i atmosfären"],["Direct to Cell","Nej","Endast DTC-variant","Möjliggör Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"nl":{"t":"Starlink-generaties vergeleken","s":["Algemeen","Afmetingen en massa","Capaciteit","Voortstuwing en energie","Baan"],"r":[["Status","Uit productie","In dienst","In productie"],["Eerste vlucht","24 januari 2021","27 februari 2023","22 september 2026"],["Draagraket","Falcon 9","Falcon 9","Starship"],["Satellieten per lancering","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellietplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Zonnepanelen","1","2","2"],["Grootte zonnepaneel","8.1 × 2.8 m","12.8 × 4.1 m per vleugel","4 segmenten van 19 m per paneel"],["Zonnepaneeloppervlak","23 m²","105 m²","210 m²"],["Spanwijdte","11 m","30 m","55 m"],["Totale oppervlakte","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-bundels","16","192","2,048"],["Uplink-bundels","8","144","2,048"],["Gebruikersantennes","4 Ku-arrays","5 Ku-arrays","Brede Ku/Ka-arrays"],["Backhaul-antennes","Ka","Ka, E","Ka, E, V, W"],["RF-backhaulcapaciteit","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Capaciteit per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Totale lasercapaciteit","300 Gbps","600 Gbps","2,400 Gbps"],["Stuwstof","Krypton","Argon","Argon"],["Type stuwraket","Halleffect","Halleffect","Halleffect"],["Stuwkracht","70 mN","170 mN","400 mN"],["Specifieke impuls","1,670 s","2,500 s","2,500 s"],["Stuwraketvermogen","1.8 kW","4.2 kW","10 kW"],["Zonnevermogen","3 kW","14 kW","28 kW"],["Reactiewielen","4","4","4"],["Operationele hoogte","550 km","480 km","350 km"],["Omlooptijd","95 min","94 min","92 min"],["Levensduur","5 jaar","5 jaar","5 jaar"],["Einde levensduur","Verbranding in de atmosfeer","Verbranding in de atmosfeer","Verbranding in de atmosfeer"],["Direct to Cell","Nee","Alleen DTC-variant","Maakt Mobile Gen 2 mogelijk"],["Fabriek","Redmond, WA","Redmond, WA","Redmond, WA"]]},"da":{"t":"Sammenligning af Starlink-generationer","s":["Generelt","Mål og masse","Kapacitet","Fremdrift og strøm","Bane"],"r":[["Status","Udgået","I drift","I produktion"],["Jomfruflyvning","24. januar 2021","27. februar 2023","22. september 2026"],["Bærerraket","Falcon 9","Falcon 9","Starship"],["Satellitter pr. opsendelse","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelstørrelse","8.1 × 2.8 m","12.8 × 4.1 m pr. vinge","4 segmenter på 19 m pr. panel"],["Solpanelareal","23 m²","105 m²","210 m²"],["Vingefang","11 m","30 m","55 m"],["Samlet areal","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-stråler","16","192","2,048"],["Uplink-stråler","8","144","2,048"],["Brugerantenner","4 Ku-antenner","5 Ku-antenner","Brede Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet pr. laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Samlet laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Fremdriftsbrændstof","Krypton","Argon","Argon"],["Motortype","Halleffekt","Halleffekt","Halleffekt"],["Skub","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Driftshøjde","550 km","480 km","350 km"],["Omløbstid","95 min","94 min","92 min"],["Levetid","5 år","5 år","5 år"],["Levetidens afslutning","Forbrænding i atmosfæren","Forbrænding i atmosfæren","Forbrænding i atmosfæren"],["Direct to Cell","Nej","Kun DTC-variant","Muliggør Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pt":{"t":"Comparação das gerações Starlink","s":["Geral","Dimensões e massa","Capacidade","Propulsão e energia","Órbita"],"r":[["Estado","Descontinuado","Em serviço","Em produção"],["Voo inaugural","24 de janeiro de 2021","27 de fevereiro de 2023","22 de setembro de 2026"],["Veículo de lançamento","Falcon 9","Falcon 9","Starship"],["Satélites por lançamento","52","28","60"],["Massa de lançamento","306 kg","800 kg","2,000 kg"],["Plataforma do satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Painéis solares","1","2","2"],["Tamanho do painel solar","8.1 × 2.8 m","12.8 × 4.1 m por asa","4 segmentos de 19 m por painel"],["Área solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Área total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Feixes de downlink","16","192","2,048"],["Feixes de uplink","8","144","2,048"],["Antenas de utilizador","4 painéis Ku","5 painéis Ku","Painéis Ku/Ka amplos"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidade de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminais laser","3","3","6"],["Capacidade por terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacidade laser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustível de propulsão","Crípton","Árgon","Árgon"],["Tipo de propulsor","Efeito Hall","Efeito Hall","Efeito Hall"],["Empuxo","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potência do propulsor","1.8 kW","4.2 kW","10 kW"],["Potência solar","3 kW","14 kW","28 kW"],["Rodas de reação","4","4","4"],["Altitude operacional","550 km","480 km","350 km"],["Período orbital","95 min","94 min","92 min"],["Vida útil","5 anos","5 anos","5 anos"],["Fim de vida","Combustão na atmosfera","Combustão na atmosfera","Combustão na atmosfera"],["Direct to Cell","Não","Apenas variante DTC","Habilita o Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pl":{"t":"Porównanie generacji Starlink","s":["Ogólne","Wymiary i masa","Przepustowość","Napęd i zasilanie","Orbita"],"r":[["Status","Wycofany","W eksploatacji","W produkcji"],["Pierwszy lot","24 stycznia 2021","27 lutego 2023","22 września 2026"],["Rakieta nośna","Falcon 9","Falcon 9","Starship"],["Satelitów na start","52","28","60"],["Masa startowa","306 kg","800 kg","2,000 kg"],["Platforma satelity","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panele słoneczne","1","2","2"],["Rozmiar panelu słonecznego","8.1 × 2.8 m","12.8 × 4.1 m na skrzydło","4 segmenty po 19 m na panel"],["Powierzchnia paneli słonecznych","23 m²","105 m²","210 m²"],["Rozpiętość","11 m","30 m","55 m"],["Powierzchnia całkowita","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Wiązki downlink","16","192","2,048"],["Wiązki uplink","8","144","2,048"],["Anteny użytkownika","4 anteny Ku","5 anten Ku","Szerokie anteny Ku/Ka"],["Anteny backhaul","Ka","Ka, E","Ka, E, V, W"],["Przepustowość RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Terminale laserowe","3","3","6"],["Przepustowość na terminal laserowy","100 Gbps","200 Gbps","400 Gbps"],["Łączna przepustowość laserowa","300 Gbps","600 Gbps","2,400 Gbps"],["Paliwo napędowe","Krypton","Argon","Argon"],["Typ silnika","Efekt Halla","Efekt Halla","Efekt Halla"],["Ciąg","70 mN","170 mN","400 mN"],["Impuls właściwy","1,670 s","2,500 s","2,500 s"],["Moc silnika","1.8 kW","4.2 kW","10 kW"],["Moc paneli słonecznych","3 kW","14 kW","28 kW"],["Koła reakcyjne","4","4","4"],["Wysokość operacyjna","550 km","480 km","350 km"],["Okres orbitalny","95 min","94 min","92 min"],["Żywotność","5 lat","5 lat","5 lat"],["Koniec eksploatacji","Spłonięcie w atmosferze","Spłonięcie w atmosferze","Spłonięcie w atmosferze"],["Direct to Cell","Nie","Tylko wariant DTC","Umożliwia Mobile Gen 2"],["Fabryka","Redmond, WA","Redmond, WA","Redmond, WA"]]},"hi":{"t":"Starlink पीढ़ियों की तुलना","s":["सामान्य","आकार और द्रव्यमान","क्षमता","प्रणोदन और शक्ति","कक्षा"],"r":[["स्थिति","बंद कर दिया गया","सेवा में","उत्पादन में"],["पहली उड़ान","24 जनवरी 2021","27 फ़रवरी 2023","22 सितंबर 2026"],["प्रक्षेपण यान","Falcon 9","Falcon 9","Starship"],["प्रति प्रक्षेपण उपग्रह","52","28","60"],["प्रक्षेपण द्रव्यमान","306 kg","800 kg","2,000 kg"],["उपग्रह बस","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["सोलर ऐरे","1","2","2"],["सोलर ऐरे का आकार","8.1 × 2.8 m","12.8 × 4.1 m प्रति पंख","प्रति ऐरे 19 मी के 4 खंड"],["सोलर क्षेत्रफल","23 m²","105 m²","210 m²"],["विंगस्पैन","11 m","30 m","55 m"],["कुल क्षेत्रफल","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["डाउनलिंक बीम","16","192","2,048"],["अपलिंक बीम","8","144","2,048"],["उपयोगकर्ता एंटेना","4 Ku एरे","5 Ku एरे","विस्तृत Ku/Ka एरे"],["बैकहॉल एंटेना","Ka","Ka, E","Ka, E, V, W"],["RF बैकहॉल क्षमता","20 Gbps","150 Gbps","1,200 Gbps"],["लेज़र टर्मिनल","3","3","6"],["प्रति लेज़र टर्मिनल क्षमता","100 Gbps","200 Gbps","400 Gbps"],["कुल लेज़र क्षमता","300 Gbps","600 Gbps","2,400 Gbps"],["प्रणोदन ईंधन","क्रिप्टॉन","आर्गन","आर्गन"],["थ्रस्टर प्रकार","हॉल-प्रभाव","हॉल-प्रभाव","हॉल-प्रभाव"],["थ्रस्ट","70 mN","170 mN","400 mN"],["विशिष्ट आवेग","1,670 s","2,500 s","2,500 s"],["थ्रस्टर शक्ति","1.8 kW","4.2 kW","10 kW"],["सोलर शक्ति","3 kW","14 kW","28 kW"],["रिएक्शन व्हील","4","4","4"],["परिचालन ऊँचाई","550 km","480 km","350 km"],["कक्षीय अवधि","95 min","94 min","92 min"],["डिज़ाइन जीवन","5 वर्ष","5 वर्ष","5 वर्ष"],["जीवन का अंत","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट"],["Direct to Cell","नहीं","केवल DTC संस्करण","Mobile Gen 2 को सक्षम करता है"],["फैक्ट्री","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ar":{"t":"مقارنة أجيال أقمار Starlink","s":["عام","الأبعاد والكتلة","السعة","الدفع والطاقة","المدار"],"r":[["الحالة","أُوقف الإنتاج","في الخدمة","قيد الإنتاج"],["الرحلة الأولى","24 يناير 2021","27 فبراير 2023","22 سبتمبر 2026"],["مركبة الإطلاق","Falcon 9","Falcon 9","Starship"],["الأقمار لكل عملية إطلاق","52","28","60"],["كتلة الإطلاق","306 كجم","800 كجم","2,000 كجم"],["منصة القمر الصناعي","2.8 × 1.3 م","4.1 × 2.7 م","6.5 × 3.5 م"],["الألواح الشمسية","1","2","2"],["حجم اللوح الشمسي","8.1 × 2.8 م","12.8 × 4.1 م لكل جناح","4 أقسام بطول 19 م لكل مصفوفة"],["مساحة الألواح الشمسية","23 م²","105 م²","210 م²"],["امتداد الجناحين","11 م","30 م","55 م"],["المساحة الإجمالية","26 م²","116 م²","240 م²"],["Downlink","24 جيجابت/ثانية","96 جيجابت/ثانية","1,024 جيجابت/ثانية"],["Uplink","4 جيجابت/ثانية","8 جيجابت/ثانية","160 جيجابت/ثانية"],["حزم الإرسال الهابط","16","192","2,048"],["حزم الإرسال الصاعد","8","144","2,048"],["هوائيات المستخدم","4 مصفوفات Ku","5 مصفوفات Ku","مصفوفات Ku/Ka عريضة"],["هوائيات الوصلة الخلفية","Ka","Ka, E","Ka, E, V, W"],["سعة الوصلة الخلفية اللاسلكية","20 جيجابت/ثانية","150 جيجابت/ثانية","1,200 جيجابت/ثانية"],["محطات الليزر","3","3","6"],["السعة لكل محطة ليزر","100 جيجابت/ثانية","200 جيجابت/ثانية","400 جيجابت/ثانية"],["إجمالي سعة الليزر","300 جيجابت/ثانية","600 جيجابت/ثانية","2,400 جيجابت/ثانية"],["وقود الدفع","الكريبتون","الأرجون","الأرجون"],["نوع الدافع","تأثير هول","تأثير هول","تأثير هول"],["قوة الدفع","70 ملي نيوتن","170 ملي نيوتن","400 ملي نيوتن"],["الدفع النوعي","1,670 ثانية","2,500 ثانية","2,500 ثانية"],["قدرة الدافع","1.8 كيلوواط","4.2 كيلوواط","10 كيلوواط"],["القدرة الشمسية","3 كيلوواط","14 كيلوواط","28 كيلوواط"],["عجلات التفاعل","4","4","4"],["الارتفاع التشغيلي","550 كم","480 كم","350 كم"],["الفترة المدارية","95 دقيقة","94 دقيقة","92 دقيقة"],["عمر التصميم","5 سنوات","5 سنوات","5 سنوات"],["نهاية العمر","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي"],["Direct to Cell","لا","طراز DTC فقط","يُمكّن Mobile Gen 2"],["المصنع","Redmond, WA","Redmond, WA","Redmond, WA"]]},"tr":{"t":"Starlink Nesilleri Karşılaştırması","s":["Genel","Boyutlar ve Kütle","Kapasite","Tahrik ve Güç","Yörünge"],"r":[["Durum","Üretimi durduruldu","Hizmette","Üretimde"],["İlk uçuş","24 Ocak 2021","27 Şubat 2023","22 Eylül 2026"],["Fırlatma aracı","Falcon 9","Falcon 9","Starship"],["Fırlatma başına uydu","52","28","60"],["Fırlatma kütlesi","306 kg","800 kg","2,000 kg"],["Uydu platformu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Güneş panelleri","1","2","2"],["Güneş paneli boyutu","8.1 × 2.8 m","12.8 × 4.1 m kanat başına","dizi başına 19 m'lik 4 segment"],["Güneş paneli alanı","23 m²","105 m²","210 m²"],["Kanat açıklığı","11 m","30 m","55 m"],["Toplam alan","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["İniş bağlantısı ışın sayısı","16","192","2,048"],["Çıkış bağlantısı ışın sayısı","8","144","2,048"],["Kullanıcı antenleri","4 Ku dizisi","5 Ku dizisi","Geniş Ku/Ka dizileri"],["Geri taşıma antenleri","Ka","Ka, E","Ka, E, V, W"],["RF geri taşıma kapasitesi","20 Gbps","150 Gbps","1,200 Gbps"],["Lazer terminalleri","3","3","6"],["Lazer terminali başına kapasite","100 Gbps","200 Gbps","400 Gbps"],["Toplam lazer kapasitesi","300 Gbps","600 Gbps","2,400 Gbps"],["İtki yakıtı","Kripton","Argon","Argon"],["İtici tipi","Hall etkisi","Hall etkisi","Hall etkisi"],["İtki","70 mN","170 mN","400 mN"],["Özgül itki","1,670 s","2,500 s","2,500 s"],["İtici gücü","1.8 kW","4.2 kW","10 kW"],["Güneş enerjisi gücü","3 kW","14 kW","28 kW"],["Reaksiyon çarkları","4","4","4"],["Operasyonel irtifa","550 km","480 km","350 km"],["Yörünge periyodu","95 min","94 min","92 min"],["Tasarım ömrü","5 yıl","5 yıl","5 yıl"],["Ömür sonu","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma"],["Direct to Cell","Hayır","Yalnızca DTC modeli","Mobile Gen 2'yi mümkün kılar"],["Fabrika","Redmond, WA","Redmond, WA","Redmond, WA"]]}};
+        const STARLINK_SPECS_I18N = {"en":{"t":"Starlink Generations Compared","s":["General","Dimensions &amp; mass","Capacity","Propulsion &amp; power","Orbit"],"r":[["Status","Discontinued","In service","In production"],["Maiden flight","January 24, 2021","February 27, 2023","September 28, 2026"],["Launch vehicle","Falcon 9","Falcon 9","Starship"],["Satellites per launch","52","28","60"],["Launch mass","306 kg","800 kg","2,000 kg"],["Satellite bus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solar arrays","1","2","2"],["Solar array size","8.1 × 2.8 m","12.8 × 4.1 m per wing","4 segments of 19 m per array"],["Solar area","23 m²","105 m²","210 m²"],["Wingspan","11 m","30 m","55 m"],["Total area","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink beams","16","192","2,048"],["Uplink beams","8","144","2,048"],["User antennas","4 Ku arrays","5 Ku arrays","Wide Ku/Ka arrays"],["Backhaul antennas","Ka","Ka, E","Ka, E, V, W"],["RF backhaul capacity","20 Gbps","150 Gbps","1,200 Gbps"],["Laser terminals","3","3","6"],["Capacity per laser terminal","100 Gbps","200 Gbps","400 Gbps"],["Total laser capacity","300 Gbps","600 Gbps","2,400 Gbps"],["Propulsion fuel","Krypton","Argon","Argon"],["Thruster type","Hall-effect","Hall-effect","Hall-effect"],["Thrust","70 mN","170 mN","400 mN"],["Specific impulse","1,670 s","2,500 s","2,500 s"],["Thruster power","1.8 kW","4.2 kW","10 kW"],["Solar power","3 kW","14 kW","28 kW"],["Reaction wheels","4","4","4"],["Operational altitude","550 km","480 km","350 km"],["Orbital period","95 min","94 min","92 min"],["Design life","5 years","5 years","5 years"],["End of life","Atmospheric burn-up","Atmospheric burn-up","Atmospheric burn-up"],["Direct to Cell","No","DTC variant only","Enables Mobile Gen 2"],["Factory","Redmond, WA","Redmond, WA","Redmond, WA"]]},"he":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בייצור"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","28 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"iw":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בייצור"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","28 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"es":{"t":"Comparativa de generaciones de Starlink","s":["General","Dimensiones y masa","Capacidad","Propulsión y energía","Órbita"],"r":[["Estado","Retirado","En servicio","En producción"],["Vuelo inaugural","24 de enero de 2021","27 de febrero de 2023","28 de septiembre de 2026"],["Vehículo de lanzamiento","Falcon 9","Falcon 9","Starship"],["Satélites por lanzamiento","52","28","60"],["Masa de lanzamiento","306 kg","800 kg","2,000 kg"],["Plataforma del satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Paneles solares","1","2","2"],["Tamaño del panel solar","8.1 × 2.8 m","12.8 × 4.1 m por ala","4 segmentos de 19 m por panel"],["Superficie solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Superficie total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Haces de downlink","16","192","2,048"],["Haces de uplink","8","144","2,048"],["Antenas de usuario","4 paneles Ku","5 paneles Ku","Paneles Ku/Ka amplios"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidad de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminales láser","3","3","6"],["Capacidad por terminal láser","100 Gbps","200 Gbps","400 Gbps"],["Capacidad láser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustible de propulsión","Kriptón","Argón","Argón"],["Tipo de propulsor","Efecto Hall","Efecto Hall","Efecto Hall"],["Empuje","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potencia del propulsor","1.8 kW","4.2 kW","10 kW"],["Potencia solar","3 kW","14 kW","28 kW"],["Ruedas de reacción","4","4","4"],["Altitud operativa","550 km","480 km","350 km"],["Periodo orbital","95 min","94 min","92 min"],["Vida útil","5 años","5 años","5 años"],["Fin de vida","Combustión en la atmósfera","Combustión en la atmósfera","Combustión en la atmósfera"],["Direct to Cell","No","Solo variante DTC","Habilita Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"fr":{"t":"Comparaison des générations Starlink","s":["Général","Dimensions et masse","Capacité","Propulsion et énergie","Orbite"],"r":[["État","Abandonné","En service","En production"],["Vol inaugural","24 janvier 2021","27 février 2023","28 septembre 2026"],["Lanceur","Falcon 9","Falcon 9","Starship"],["Satellites par lancement","52","28","60"],["Masse au lancement","306 kg","800 kg","2,000 kg"],["Plateforme du satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panneaux solaires","1","2","2"],["Taille des panneaux solaires","8.1 × 2.8 m","12.8 × 4.1 m par aile","4 segments de 19 m par panneau"],["Surface solaire","23 m²","105 m²","210 m²"],["Envergure","11 m","30 m","55 m"],["Surface totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Faisceaux downlink","16","192","2,048"],["Faisceaux uplink","8","144","2,048"],["Antennes utilisateur","4 panneaux Ku","5 panneaux Ku","Larges panneaux Ku/Ka"],["Antennes backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacité backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminaux laser","3","3","6"],["Capacité par terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacité laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Ergol de propulsion","Krypton","Argon","Argon"],["Type de propulseur","Effet Hall","Effet Hall","Effet Hall"],["Poussée","70 mN","170 mN","400 mN"],["Impulsion spécifique","1,670 s","2,500 s","2,500 s"],["Puissance du propulseur","1.8 kW","4.2 kW","10 kW"],["Puissance solaire","3 kW","14 kW","28 kW"],["Roues de réaction","4","4","4"],["Altitude opérationnelle","550 km","480 km","350 km"],["Période orbitale","95 min","94 min","92 min"],["Durée de vie","5 ans","5 ans","5 ans"],["Fin de vie","Combustion dans l'atmosphère","Combustion dans l'atmosphère","Combustion dans l'atmosphère"],["Direct to Cell","Non","Variante DTC uniquement","Permet Mobile Gen 2"],["Usine","Redmond, WA","Redmond, WA","Redmond, WA"]]},"de":{"t":"Starlink-Generationen im Vergleich","s":["Allgemein","Abmessungen &amp; Masse","Kapazität","Antrieb &amp; Energie","Umlaufbahn"],"r":[["Status","Eingestellt","Im Einsatz","In Produktion"],["Erstflug","24. Januar 2021","27. Februar 2023","28. September 2026"],["Trägerrakete","Falcon 9","Falcon 9","Starship"],["Satelliten pro Start","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitenbus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solarpaneele","1","2","2"],["Größe der Solarpaneele","8.1 × 2.8 m","12.8 × 4.1 m pro Flügel","4 Segmente à 19 m pro Panel"],["Solarfläche","23 m²","105 m²","210 m²"],["Spannweite","11 m","30 m","55 m"],["Gesamtfläche","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-Strahlen","16","192","2,048"],["Uplink-Strahlen","8","144","2,048"],["Nutzerantennen","4 Ku-Arrays","5 Ku-Arrays","Breite Ku/Ka-Arrays"],["Backhaul-Antennen","Ka","Ka, E","Ka, E, V, W"],["RF-Backhaul-Kapazität","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Kapazität pro Laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Gesamte Laserkapazität","300 Gbps","600 Gbps","2,400 Gbps"],["Antriebstreibstoff","Krypton","Argon","Argon"],["Triebwerkstyp","Hall-Effekt","Hall-Effekt","Hall-Effekt"],["Schub","70 mN","170 mN","400 mN"],["Spezifischer Impuls","1,670 s","2,500 s","2,500 s"],["Triebwerksleistung","1.8 kW","4.2 kW","10 kW"],["Solarleistung","3 kW","14 kW","28 kW"],["Reaktionsräder","4","4","4"],["Betriebshöhe","550 km","480 km","350 km"],["Umlaufzeit","95 min","94 min","92 min"],["Lebensdauer","5 Jahre","5 Jahre","5 Jahre"],["Lebensende","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre"],["Direct to Cell","Nein","Nur DTC-Variante","Ermöglicht Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ru":{"t":"Сравнение поколений спутников Starlink","s":["Общее","Размеры и масса","Пропускная способность","Двигатели и питание","Орбита"],"r":[["Статус","Снят с производства","В эксплуатации","В производстве"],["Первый полёт","24 января 2021 г.","27 февраля 2023 г.","28 сентября 2026 г."],["Ракета-носитель","Falcon 9","Falcon 9","Starship"],["Спутников за запуск","52","28","60"],["Масса при запуске","306 кг","800 кг","2,000 кг"],["Платформа спутника","2.8 × 1.3 м","4.1 × 2.7 м","6.5 × 3.5 м"],["Солнечные батареи","1","2","2"],["Размер солнечной батареи","8.1 × 2.8 м","12.8 × 4.1 м на крыло","4 сегмента по 19 м на панель"],["Площадь солнечных батарей","23 м²","105 м²","210 м²"],["Размах","11 м","30 м","55 м"],["Общая площадь","26 м²","116 м²","240 м²"],["Downlink","24 Гбит/с","96 Гбит/с","1,024 Гбит/с"],["Uplink","4 Гбит/с","8 Гбит/с","160 Гбит/с"],["Лучи Downlink","16","192","2,048"],["Лучи Uplink","8","144","2,048"],["Пользовательские антенны","4 антенны Ku","5 антенн Ku","Широкие антенны Ku/Ka"],["Антенны backhaul","Ka","Ka, E","Ka, E, V, W"],["Пропускная способность RF backhaul","20 Гбит/с","150 Гбит/с","1,200 Гбит/с"],["Лазерные терминалы","3","3","6"],["Пропускная способность на терминал","100 Гбит/с","200 Гбит/с","400 Гбит/с"],["Суммарная лазерная пропускная способность","300 Гбит/с","600 Гбит/с","2,400 Гбит/с"],["Топливо двигателей","Криптон","Аргон","Аргон"],["Тип двигателя","Эффект Холла","Эффект Холла","Эффект Холла"],["Тяга","70 мН","170 мН","400 мН"],["Удельный импульс","1,670 с","2,500 с","2,500 с"],["Мощность двигателя","1.8 кВт","4.2 кВт","10 кВт"],["Солнечная мощность","3 кВт","14 кВт","28 кВт"],["Маховики","4","4","4"],["Рабочая высота","550 км","480 км","350 км"],["Период обращения","95 мин","94 мин","92 мин"],["Срок службы","5 лет","5 лет","5 лет"],["Окончание срока службы","Сгорание в атмосфере","Сгорание в атмосфере","Сгорание в атмосфере"],["Direct to Cell","Нет","Только вариант DTC","Обеспечивает Mobile Gen 2"],["Завод","Redmond, WA","Redmond, WA","Redmond, WA"]]},"zh":{"t":"Starlink 各代卫星对比","s":["概览","尺寸与质量","通信容量","推进与电力","轨道"],"r":[["状态","已停产","服役中","生产中"],["首飞","2021年1月24日","2023年2月27日","2026年9月28日"],["运载火箭","Falcon 9","Falcon 9","Starship"],["单次发射卫星数","52","28","60"],["发射质量","306 千克","800 千克","2,000 千克"],["卫星平台","2.8 × 1.3 米","4.1 × 2.7 米","6.5 × 3.5 米"],["太阳能帆板","1","2","2"],["太阳能帆板尺寸","8.1 × 2.8 米","12.8 × 4.1 米 每侧","每个阵列 4 段，每段 19 米"],["太阳能面积","23 平方米","105 平方米","210 平方米"],["翼展","11 米","30 米","55 米"],["总面积","26 平方米","116 平方米","240 平方米"],["Downlink","24 吉比特/秒","96 吉比特/秒","1,024 吉比特/秒"],["Uplink","4 吉比特/秒","8 吉比特/秒","160 吉比特/秒"],["下行波束数","16","192","2,048"],["上行波束数","8","144","2,048"],["用户天线","4 个 Ku 阵列","5 个 Ku 阵列","宽幅 Ku/Ka 阵列"],["回传天线","Ka","Ka, E","Ka, E, V, W"],["射频回传容量","20 吉比特/秒","150 吉比特/秒","1,200 吉比特/秒"],["激光终端数","3","3","6"],["单终端激光容量","100 吉比特/秒","200 吉比特/秒","400 吉比特/秒"],["总激光容量","300 吉比特/秒","600 吉比特/秒","2,400 吉比特/秒"],["推进剂","氪","氩","氩"],["推进器类型","霍尔效应","霍尔效应","霍尔效应"],["推力","70 毫牛","170 毫牛","400 毫牛"],["比冲","1,670 秒","2,500 秒","2,500 秒"],["推进器功率","1.8 千瓦","4.2 千瓦","10 千瓦"],["太阳能功率","3 千瓦","14 千瓦","28 千瓦"],["反作用轮","4","4","4"],["运行高度","550 千米","480 千米","350 千米"],["轨道周期","95 分钟","94 分钟","92 分钟"],["设计寿命","5 年","5 年","5 年"],["寿命终止方式","大气层烧毁","大气层烧毁","大气层烧毁"],["Direct to Cell","否","仅 DTC 版本","支持 Mobile Gen 2"],["工厂","Redmond, WA","Redmond, WA","Redmond, WA"]]},"it":{"t":"Confronto tra le generazioni Starlink","s":["Generale","Dimensioni e massa","Capacità","Propulsione ed energia","Orbita"],"r":[["Stato","Fuori produzione","In servizio","In produzione"],["Primo volo","24 gennaio 2021","27 febbraio 2023","28 settembre 2026"],["Vettore di lancio","Falcon 9","Falcon 9","Starship"],["Satelliti per lancio","52","28","60"],["Massa al lancio","306 kg","800 kg","2,000 kg"],["Piattaforma del satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Pannelli solari","1","2","2"],["Dimensione del pannello solare","8.1 × 2.8 m","12.8 × 4.1 m per ala","4 segmenti da 19 m per pannello"],["Superficie solare","23 m²","105 m²","210 m²"],["Apertura alare","11 m","30 m","55 m"],["Superficie totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Fasci downlink","16","192","2,048"],["Fasci uplink","8","144","2,048"],["Antenne utente","4 array Ku","5 array Ku","Ampi array Ku/Ka"],["Antenne di backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacità backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminali laser","3","3","6"],["Capacità per terminale laser","100 Gbps","200 Gbps","400 Gbps"],["Capacità laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Propellente","Cripto","Argon","Argon"],["Tipo di propulsore","Effetto Hall","Effetto Hall","Effetto Hall"],["Spinta","70 mN","170 mN","400 mN"],["Impulso specifico","1,670 s","2,500 s","2,500 s"],["Potenza del propulsore","1.8 kW","4.2 kW","10 kW"],["Potenza solare","3 kW","14 kW","28 kW"],["Ruote di reazione","4","4","4"],["Altitudine operativa","550 km","480 km","350 km"],["Periodo orbitale","95 min","94 min","92 min"],["Vita utile","5 anni","5 anni","5 anni"],["Fine vita","Combustione in atmosfera","Combustione in atmosfera","Combustione in atmosfera"],["Direct to Cell","No","Solo variante DTC","Abilita Mobile Gen 2"],["Fabbrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"cs":{"t":"Porovnání generací Starlink","s":["Obecné","Rozměry a hmotnost","Kapacita","Pohon a energie","Oběžná dráha"],"r":[["Stav","Vyřazeno","V provozu","Ve výrobě"],["První let","24. ledna 2021","27. února 2023","28. září 2026"],["Nosná raketa","Falcon 9","Falcon 9","Starship"],["Satelitů na start","52","28","60"],["Startovní hmotnost","306 kg","800 kg","2,000 kg"],["Platforma satelitu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solární panely","1","2","2"],["Velikost solárního panelu","8.1 × 2.8 m","12.8 × 4.1 m na křídlo","4 segmenty po 19 m na panel"],["Plocha solárních panelů","23 m²","105 m²","210 m²"],["Rozpětí","11 m","30 m","55 m"],["Celková plocha","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Paprsky downlink","16","192","2,048"],["Paprsky uplink","8","144","2,048"],["Uživatelské antény","4 anténní pole Ku","5 anténních polí Ku","Široké anténní pole Ku/Ka"],["Antény backhaul","Ka","Ka, E","Ka, E, V, W"],["Kapacita RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Laserové terminály","3","3","6"],["Kapacita na laserový terminál","100 Gbps","200 Gbps","400 Gbps"],["Celková laserová kapacita","300 Gbps","600 Gbps","2,400 Gbps"],["Palivo pohonu","Krypton","Argon","Argon"],["Typ motoru","Hallův jev","Hallův jev","Hallův jev"],["Tah","70 mN","170 mN","400 mN"],["Specifický impuls","1,670 s","2,500 s","2,500 s"],["Výkon motoru","1.8 kW","4.2 kW","10 kW"],["Solární výkon","3 kW","14 kW","28 kW"],["Reakční kola","4","4","4"],["Provozní výška","550 km","480 km","350 km"],["Oběžná doba","95 min","94 min","92 min"],["Životnost","5 let","5 let","5 let"],["Konec životnosti","Shoření v atmosféře","Shoření v atmosféře","Shoření v atmosféře"],["Direct to Cell","Ne","Pouze varianta DTC","Umožňuje Mobile Gen 2"],["Továrna","Redmond, WA","Redmond, WA","Redmond, WA"]]},"sv":{"t":"Jämförelse av Starlink-generationer","s":["Allmänt","Mått och massa","Kapacitet","Framdrivning och kraft","Bana"],"r":[["Status","Utgången","I drift","I produktion"],["Jungfrutur","24 januari 2021","27 februari 2023","28 september 2026"],["Bärraket","Falcon 9","Falcon 9","Starship"],["Satelliter per uppskjutning","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellitplattform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelens storlek","8.1 × 2.8 m","12.8 × 4.1 m per vinge","4 segment på 19 m per panel"],["Solpanelsyta","23 m²","105 m²","210 m²"],["Vingspann","11 m","30 m","55 m"],["Total yta","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-strålar","16","192","2,048"],["Uplink-strålar","8","144","2,048"],["Användarantenner","4 Ku-antenner","5 Ku-antenner","Breda Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Total laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Framdrivningsbränsle","Krypton","Argon","Argon"],["Motortyp","Halleffekt","Halleffekt","Halleffekt"],["Dragkraft","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Operativ höjd","550 km","480 km","350 km"],["Omloppstid","95 min","94 min","92 min"],["Livslängd","5 år","5 år","5 år"],["Livets slut","Förbränning i atmosfären","Förbränning i atmosfären","Förbränning i atmosfären"],["Direct to Cell","Nej","Endast DTC-variant","Möjliggör Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"nl":{"t":"Starlink-generaties vergeleken","s":["Algemeen","Afmetingen en massa","Capaciteit","Voortstuwing en energie","Baan"],"r":[["Status","Uit productie","In dienst","In productie"],["Eerste vlucht","24 januari 2021","27 februari 2023","28 september 2026"],["Draagraket","Falcon 9","Falcon 9","Starship"],["Satellieten per lancering","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellietplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Zonnepanelen","1","2","2"],["Grootte zonnepaneel","8.1 × 2.8 m","12.8 × 4.1 m per vleugel","4 segmenten van 19 m per paneel"],["Zonnepaneeloppervlak","23 m²","105 m²","210 m²"],["Spanwijdte","11 m","30 m","55 m"],["Totale oppervlakte","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-bundels","16","192","2,048"],["Uplink-bundels","8","144","2,048"],["Gebruikersantennes","4 Ku-arrays","5 Ku-arrays","Brede Ku/Ka-arrays"],["Backhaul-antennes","Ka","Ka, E","Ka, E, V, W"],["RF-backhaulcapaciteit","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Capaciteit per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Totale lasercapaciteit","300 Gbps","600 Gbps","2,400 Gbps"],["Stuwstof","Krypton","Argon","Argon"],["Type stuwraket","Halleffect","Halleffect","Halleffect"],["Stuwkracht","70 mN","170 mN","400 mN"],["Specifieke impuls","1,670 s","2,500 s","2,500 s"],["Stuwraketvermogen","1.8 kW","4.2 kW","10 kW"],["Zonnevermogen","3 kW","14 kW","28 kW"],["Reactiewielen","4","4","4"],["Operationele hoogte","550 km","480 km","350 km"],["Omlooptijd","95 min","94 min","92 min"],["Levensduur","5 jaar","5 jaar","5 jaar"],["Einde levensduur","Verbranding in de atmosfeer","Verbranding in de atmosfeer","Verbranding in de atmosfeer"],["Direct to Cell","Nee","Alleen DTC-variant","Maakt Mobile Gen 2 mogelijk"],["Fabriek","Redmond, WA","Redmond, WA","Redmond, WA"]]},"da":{"t":"Sammenligning af Starlink-generationer","s":["Generelt","Mål og masse","Kapacitet","Fremdrift og strøm","Bane"],"r":[["Status","Udgået","I drift","I produktion"],["Jomfruflyvning","24. januar 2021","27. februar 2023","28. september 2026"],["Bærerraket","Falcon 9","Falcon 9","Starship"],["Satellitter pr. opsendelse","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelstørrelse","8.1 × 2.8 m","12.8 × 4.1 m pr. vinge","4 segmenter på 19 m pr. panel"],["Solpanelareal","23 m²","105 m²","210 m²"],["Vingefang","11 m","30 m","55 m"],["Samlet areal","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-stråler","16","192","2,048"],["Uplink-stråler","8","144","2,048"],["Brugerantenner","4 Ku-antenner","5 Ku-antenner","Brede Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet pr. laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Samlet laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Fremdriftsbrændstof","Krypton","Argon","Argon"],["Motortype","Halleffekt","Halleffekt","Halleffekt"],["Skub","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Driftshøjde","550 km","480 km","350 km"],["Omløbstid","95 min","94 min","92 min"],["Levetid","5 år","5 år","5 år"],["Levetidens afslutning","Forbrænding i atmosfæren","Forbrænding i atmosfæren","Forbrænding i atmosfæren"],["Direct to Cell","Nej","Kun DTC-variant","Muliggør Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pt":{"t":"Comparação das gerações Starlink","s":["Geral","Dimensões e massa","Capacidade","Propulsão e energia","Órbita"],"r":[["Estado","Descontinuado","Em serviço","Em produção"],["Voo inaugural","24 de janeiro de 2021","27 de fevereiro de 2023","28 de setembro de 2026"],["Veículo de lançamento","Falcon 9","Falcon 9","Starship"],["Satélites por lançamento","52","28","60"],["Massa de lançamento","306 kg","800 kg","2,000 kg"],["Plataforma do satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Painéis solares","1","2","2"],["Tamanho do painel solar","8.1 × 2.8 m","12.8 × 4.1 m por asa","4 segmentos de 19 m por painel"],["Área solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Área total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Feixes de downlink","16","192","2,048"],["Feixes de uplink","8","144","2,048"],["Antenas de utilizador","4 painéis Ku","5 painéis Ku","Painéis Ku/Ka amplos"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidade de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminais laser","3","3","6"],["Capacidade por terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacidade laser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustível de propulsão","Crípton","Árgon","Árgon"],["Tipo de propulsor","Efeito Hall","Efeito Hall","Efeito Hall"],["Empuxo","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potência do propulsor","1.8 kW","4.2 kW","10 kW"],["Potência solar","3 kW","14 kW","28 kW"],["Rodas de reação","4","4","4"],["Altitude operacional","550 km","480 km","350 km"],["Período orbital","95 min","94 min","92 min"],["Vida útil","5 anos","5 anos","5 anos"],["Fim de vida","Combustão na atmosfera","Combustão na atmosfera","Combustão na atmosfera"],["Direct to Cell","Não","Apenas variante DTC","Habilita o Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pl":{"t":"Porównanie generacji Starlink","s":["Ogólne","Wymiary i masa","Przepustowość","Napęd i zasilanie","Orbita"],"r":[["Status","Wycofany","W eksploatacji","W produkcji"],["Pierwszy lot","24 stycznia 2021","27 lutego 2023","28 września 2026"],["Rakieta nośna","Falcon 9","Falcon 9","Starship"],["Satelitów na start","52","28","60"],["Masa startowa","306 kg","800 kg","2,000 kg"],["Platforma satelity","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panele słoneczne","1","2","2"],["Rozmiar panelu słonecznego","8.1 × 2.8 m","12.8 × 4.1 m na skrzydło","4 segmenty po 19 m na panel"],["Powierzchnia paneli słonecznych","23 m²","105 m²","210 m²"],["Rozpiętość","11 m","30 m","55 m"],["Powierzchnia całkowita","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Wiązki downlink","16","192","2,048"],["Wiązki uplink","8","144","2,048"],["Anteny użytkownika","4 anteny Ku","5 anten Ku","Szerokie anteny Ku/Ka"],["Anteny backhaul","Ka","Ka, E","Ka, E, V, W"],["Przepustowość RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Terminale laserowe","3","3","6"],["Przepustowość na terminal laserowy","100 Gbps","200 Gbps","400 Gbps"],["Łączna przepustowość laserowa","300 Gbps","600 Gbps","2,400 Gbps"],["Paliwo napędowe","Krypton","Argon","Argon"],["Typ silnika","Efekt Halla","Efekt Halla","Efekt Halla"],["Ciąg","70 mN","170 mN","400 mN"],["Impuls właściwy","1,670 s","2,500 s","2,500 s"],["Moc silnika","1.8 kW","4.2 kW","10 kW"],["Moc paneli słonecznych","3 kW","14 kW","28 kW"],["Koła reakcyjne","4","4","4"],["Wysokość operacyjna","550 km","480 km","350 km"],["Okres orbitalny","95 min","94 min","92 min"],["Żywotność","5 lat","5 lat","5 lat"],["Koniec eksploatacji","Spłonięcie w atmosferze","Spłonięcie w atmosferze","Spłonięcie w atmosferze"],["Direct to Cell","Nie","Tylko wariant DTC","Umożliwia Mobile Gen 2"],["Fabryka","Redmond, WA","Redmond, WA","Redmond, WA"]]},"hi":{"t":"Starlink पीढ़ियों की तुलना","s":["सामान्य","आकार और द्रव्यमान","क्षमता","प्रणोदन और शक्ति","कक्षा"],"r":[["स्थिति","बंद कर दिया गया","सेवा में","उत्पादन में"],["पहली उड़ान","24 जनवरी 2021","27 फ़रवरी 2023","28 सितंबर 2026"],["प्रक्षेपण यान","Falcon 9","Falcon 9","Starship"],["प्रति प्रक्षेपण उपग्रह","52","28","60"],["प्रक्षेपण द्रव्यमान","306 kg","800 kg","2,000 kg"],["उपग्रह बस","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["सोलर ऐरे","1","2","2"],["सोलर ऐरे का आकार","8.1 × 2.8 m","12.8 × 4.1 m प्रति पंख","प्रति ऐरे 19 मी के 4 खंड"],["सोलर क्षेत्रफल","23 m²","105 m²","210 m²"],["विंगस्पैन","11 m","30 m","55 m"],["कुल क्षेत्रफल","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["डाउनलिंक बीम","16","192","2,048"],["अपलिंक बीम","8","144","2,048"],["उपयोगकर्ता एंटेना","4 Ku एरे","5 Ku एरे","विस्तृत Ku/Ka एरे"],["बैकहॉल एंटेना","Ka","Ka, E","Ka, E, V, W"],["RF बैकहॉल क्षमता","20 Gbps","150 Gbps","1,200 Gbps"],["लेज़र टर्मिनल","3","3","6"],["प्रति लेज़र टर्मिनल क्षमता","100 Gbps","200 Gbps","400 Gbps"],["कुल लेज़र क्षमता","300 Gbps","600 Gbps","2,400 Gbps"],["प्रणोदन ईंधन","क्रिप्टॉन","आर्गन","आर्गन"],["थ्रस्टर प्रकार","हॉल-प्रभाव","हॉल-प्रभाव","हॉल-प्रभाव"],["थ्रस्ट","70 mN","170 mN","400 mN"],["विशिष्ट आवेग","1,670 s","2,500 s","2,500 s"],["थ्रस्टर शक्ति","1.8 kW","4.2 kW","10 kW"],["सोलर शक्ति","3 kW","14 kW","28 kW"],["रिएक्शन व्हील","4","4","4"],["परिचालन ऊँचाई","550 km","480 km","350 km"],["कक्षीय अवधि","95 min","94 min","92 min"],["डिज़ाइन जीवन","5 वर्ष","5 वर्ष","5 वर्ष"],["जीवन का अंत","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट"],["Direct to Cell","नहीं","केवल DTC संस्करण","Mobile Gen 2 को सक्षम करता है"],["फैक्ट्री","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ar":{"t":"مقارنة أجيال أقمار Starlink","s":["عام","الأبعاد والكتلة","السعة","الدفع والطاقة","المدار"],"r":[["الحالة","أُوقف الإنتاج","في الخدمة","قيد الإنتاج"],["الرحلة الأولى","24 يناير 2021","27 فبراير 2023","28 سبتمبر 2026"],["مركبة الإطلاق","Falcon 9","Falcon 9","Starship"],["الأقمار لكل عملية إطلاق","52","28","60"],["كتلة الإطلاق","306 كجم","800 كجم","2,000 كجم"],["منصة القمر الصناعي","2.8 × 1.3 م","4.1 × 2.7 م","6.5 × 3.5 م"],["الألواح الشمسية","1","2","2"],["حجم اللوح الشمسي","8.1 × 2.8 م","12.8 × 4.1 م لكل جناح","4 أقسام بطول 19 م لكل مصفوفة"],["مساحة الألواح الشمسية","23 م²","105 م²","210 م²"],["امتداد الجناحين","11 م","30 م","55 م"],["المساحة الإجمالية","26 م²","116 م²","240 م²"],["Downlink","24 جيجابت/ثانية","96 جيجابت/ثانية","1,024 جيجابت/ثانية"],["Uplink","4 جيجابت/ثانية","8 جيجابت/ثانية","160 جيجابت/ثانية"],["حزم الإرسال الهابط","16","192","2,048"],["حزم الإرسال الصاعد","8","144","2,048"],["هوائيات المستخدم","4 مصفوفات Ku","5 مصفوفات Ku","مصفوفات Ku/Ka عريضة"],["هوائيات الوصلة الخلفية","Ka","Ka, E","Ka, E, V, W"],["سعة الوصلة الخلفية اللاسلكية","20 جيجابت/ثانية","150 جيجابت/ثانية","1,200 جيجابت/ثانية"],["محطات الليزر","3","3","6"],["السعة لكل محطة ليزر","100 جيجابت/ثانية","200 جيجابت/ثانية","400 جيجابت/ثانية"],["إجمالي سعة الليزر","300 جيجابت/ثانية","600 جيجابت/ثانية","2,400 جيجابت/ثانية"],["وقود الدفع","الكريبتون","الأرجون","الأرجون"],["نوع الدافع","تأثير هول","تأثير هول","تأثير هول"],["قوة الدفع","70 ملي نيوتن","170 ملي نيوتن","400 ملي نيوتن"],["الدفع النوعي","1,670 ثانية","2,500 ثانية","2,500 ثانية"],["قدرة الدافع","1.8 كيلوواط","4.2 كيلوواط","10 كيلوواط"],["القدرة الشمسية","3 كيلوواط","14 كيلوواط","28 كيلوواط"],["عجلات التفاعل","4","4","4"],["الارتفاع التشغيلي","550 كم","480 كم","350 كم"],["الفترة المدارية","95 دقيقة","94 دقيقة","92 دقيقة"],["عمر التصميم","5 سنوات","5 سنوات","5 سنوات"],["نهاية العمر","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي"],["Direct to Cell","لا","طراز DTC فقط","يُمكّن Mobile Gen 2"],["المصنع","Redmond, WA","Redmond, WA","Redmond, WA"]]},"tr":{"t":"Starlink Nesilleri Karşılaştırması","s":["Genel","Boyutlar ve Kütle","Kapasite","Tahrik ve Güç","Yörünge"],"r":[["Durum","Üretimi durduruldu","Hizmette","Üretimde"],["İlk uçuş","24 Ocak 2021","27 Şubat 2023","28 Eylül 2026"],["Fırlatma aracı","Falcon 9","Falcon 9","Starship"],["Fırlatma başına uydu","52","28","60"],["Fırlatma kütlesi","306 kg","800 kg","2,000 kg"],["Uydu platformu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Güneş panelleri","1","2","2"],["Güneş paneli boyutu","8.1 × 2.8 m","12.8 × 4.1 m kanat başına","dizi başına 19 m'lik 4 segment"],["Güneş paneli alanı","23 m²","105 m²","210 m²"],["Kanat açıklığı","11 m","30 m","55 m"],["Toplam alan","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["İniş bağlantısı ışın sayısı","16","192","2,048"],["Çıkış bağlantısı ışın sayısı","8","144","2,048"],["Kullanıcı antenleri","4 Ku dizisi","5 Ku dizisi","Geniş Ku/Ka dizileri"],["Geri taşıma antenleri","Ka","Ka, E","Ka, E, V, W"],["RF geri taşıma kapasitesi","20 Gbps","150 Gbps","1,200 Gbps"],["Lazer terminalleri","3","3","6"],["Lazer terminali başına kapasite","100 Gbps","200 Gbps","400 Gbps"],["Toplam lazer kapasitesi","300 Gbps","600 Gbps","2,400 Gbps"],["İtki yakıtı","Kripton","Argon","Argon"],["İtici tipi","Hall etkisi","Hall etkisi","Hall etkisi"],["İtki","70 mN","170 mN","400 mN"],["Özgül itki","1,670 s","2,500 s","2,500 s"],["İtici gücü","1.8 kW","4.2 kW","10 kW"],["Güneş enerjisi gücü","3 kW","14 kW","28 kW"],["Reaksiyon çarkları","4","4","4"],["Operasyonel irtifa","550 km","480 km","350 km"],["Yörünge periyodu","95 min","94 min","92 min"],["Tasarım ömrü","5 yıl","5 yıl","5 yıl"],["Ömür sonu","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma"],["Direct to Cell","Hayır","Yalnızca DTC modeli","Mobile Gen 2'yi mümkün kılar"],["Fabrika","Redmond, WA","Redmond, WA","Redmond, WA"]]}};
         // How many rows each of the 5 sections has, in order - used to recover each flattened
         // row's (section, row-within-section) pair, matching how the DOM ids were generated.
         const STARLINK_SPECS_SECTION_ROW_COUNTS = [4, 7, 10, 7, 6];
@@ -9292,6 +9519,7 @@
             applySpacexRocketsTitleTranslation(currentLang);
             if (typeof applyStarlinkBizLabels === 'function') applyStarlinkBizLabels(currentLang);
             if (typeof applyStarlinkSpecsTranslations === 'function') applyStarlinkSpecsTranslations(currentLang);
+            if (typeof applyLaunchCadenceTranslations === 'function') applyLaunchCadenceTranslations(currentLang);
             if (typeof applyStarlinkDeploymentLabels === 'function') applyStarlinkDeploymentLabels(currentLang);
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             // Catches up the CRT-cutout hole (see updateAIComputeCrtHole) after any layout shift
@@ -10070,6 +10298,14 @@
                     <p class="text-xs text-zinc-500 mt-1 transition-colors duration-500">Next scheduled upcoming
                         missions</p>
                 </div>
+                <!-- Mobile-only entry point into the Launch Cadence chart modal, opposite this
+                     row's own title - lg:hidden companion to the desktop button beside
+                     #year-count-box further down, so exactly one of the two ever shows. -->
+                <button type="button" onclick="openLaunchCadenceModal()"
+                    class="flex lg:hidden items-center gap-1.5 bg-zinc-900 border border-zinc-800/80 rounded-xl px-3 py-2 text-emerald-400 shrink-0 transition-colors duration-500 hover:border-emerald-500/50">
+                    <i class="fa-solid fa-chart-line text-sm"></i>
+                    <span id="launch-cadence-btn-label-mobile" class="text-xs font-bold uppercase notranslate" translate="no" lang="en">Launch Cadence</span>
+                </button>
             </div>
 
             <div id="missions-grid"
@@ -10107,8 +10343,22 @@
                      two-line height; the counter comes before the Scroll hint in this column so
                      it's the one that lines up with the title, with Scroll underneath it. -->
                 <div class="flex flex-col items-end gap-2">
+                  <div class="flex items-center gap-2">
+                    <!-- Desktop-only entry point into the Launch Cadence chart modal, sized to
+                         match #year-count-box right beside it (same box treatment/min-width).
+                         Hidden on mobile - see the lg:hidden companion button in the "Scheduled
+                         Launches" header above instead. -->
+                    <button type="button" onclick="openLaunchCadenceModal()"
+                        class="hidden lg:flex bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex-col items-center justify-center flex-1 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm cursor-pointer select-none hover:border-emerald-500/50"
+                        aria-label="Launch Cadence">
+                        <div class="flex items-center gap-1 mb-0.5 sm:mb-1">
+                            <div id="launch-cadence-btn-label" class="text-[6px] sm:text-[10px] text-zinc-400 tracking-wide sm:tracking-widest font-bold uppercase whitespace-nowrap notranslate" translate="no" lang="en">Launch Cadence</div>
+                            <i class="fa-solid fa-circle-info text-emerald-400/70 text-[6px] sm:text-[9px]" aria-hidden="true"></i>
+                        </div>
+                        <i class="fa-solid fa-chart-line text-emerald-400 text-lg sm:text-4xl leading-none"></i>
+                    </button>
                     <div id="year-count-box"
-                        class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center shrink-0 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm cursor-pointer select-none"
+                        class="group relative bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex flex-col items-center justify-center flex-1 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm cursor-pointer select-none"
                         style="touch-action: manipulation;"
                         role="button" tabindex="0"
                         aria-haspopup="dialog" aria-expanded="false" aria-controls="year-count-breakdown"
@@ -10116,7 +10366,7 @@
                         onclick="toggleYearCountBreakdown(event)" onkeydown="activateOnEnterOrSpace(event)">
                         <div class="flex items-center gap-1 mb-0.5 sm:mb-1">
                             <div id="i18n-upcoming-launches"
-                                class="text-[6px] sm:text-[10px] text-zinc-500 tracking-wide sm:tracking-widest font-bold uppercase whitespace-nowrap notranslate"
+                                class="text-[6px] sm:text-[10px] text-zinc-400 tracking-wide sm:tracking-widest font-bold uppercase whitespace-nowrap notranslate"
                                 translate="no" lang="en">Launches This Year</div>
                             <i class="fa-solid fa-circle-info text-emerald-400/70 text-[6px] sm:text-[9px]" aria-hidden="true"></i>
                         </div>
@@ -10126,12 +10376,14 @@
                         <!-- פירוט פלקון 9 מול סטארשיפ - בריחוף בדסקטופ (md:group-hover:flex),
                              ובמובייל בלחיצה על התיבה (toggleYearCountBreakdown) כי אין hover.
                              ראו computeYearToDateLaunchCountByVehicle לחישוב.
-                             ממוקם בצד התיבה (לא מתחתיה) באמצעות end-full+me, שמתהפך אוטומטית בין
-                             RTL ל-LTR - לא top-full/end-0 (זה היה פותח למטה, לא לצד). w-full (לא
-                             min-w קבוע) משווה את הרוחב לזה של תיבת המונה עצמה (ההורה עם position:
-                             relative) במקום ערך מקובע שיצא מסונכרן אם רוחב התיבה ישתנה בעתיד. -->
+                             ממוקם מעל התיבה (לא בצד) באמצעות bottom-full+mb, ומרוכז אופקית עם
+                             left-1/2 + -translate-x-1/2 (ערכים פיזיים בכוונה, לא start/end -
+                             מרכוז אמצעי לא תלוי כיוון טקסט, אז אין צורך בהיפוך RTL/LTR כאן).
+                             w-full (לא min-w קבוע) משווה את הרוחב לזה של תיבת המונה עצמה (ההורה
+                             עם position: relative) במקום ערך מקובע שיצא מסונכרן אם רוחב התיבה
+                             ישתנה בעתיד. -->
                         <div id="year-count-breakdown"
-                            class="hidden md:group-hover:flex absolute top-0 end-full me-2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
+                            class="hidden md:group-hover:flex absolute bottom-full mb-2 left-1/2 -translate-x-1/2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
                             <div class="flex items-center justify-between gap-3 text-sm">
                                 <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span>Falcon 9</span></span>
                                 <span id="year-count-falcon9" class="font-orbitron font-bold text-emerald-400 text-base">0</span>
@@ -10142,6 +10394,7 @@
                             </div>
                         </div>
                     </div>
+                  </div>
                     <span class="text-xs text-zinc-500 inline-flex items-center gap-1 md:hidden">
                         Scroll <i class="fa-solid fa-arrows-left-right ml-1"></i>
                     </span>
@@ -11211,7 +11464,7 @@
                             <div id="ss-lbl-0-1" class="text-zinc-300 text-[11px] sm:text-xs font-semibold py-3 pe-2 leading-snug">Maiden flight</div>
                             <div id="ss-val-0-1-0" class="text-zinc-200 text-[11px] sm:text-xs font-semibold text-center py-3 leading-snug">January 24, 2021</div>
                             <div id="ss-val-0-1-1" class="text-zinc-200 text-[11px] sm:text-xs font-semibold text-center py-3 leading-snug">February 27, 2023</div>
-                            <div id="ss-val-0-1-2" class="text-zinc-200 text-[11px] sm:text-xs font-semibold text-center py-3 leading-snug">September 22, 2026</div>
+                            <div id="ss-val-0-1-2" class="text-zinc-200 text-[11px] sm:text-xs font-semibold text-center py-3 leading-snug">September 28, 2026</div>
                         </div>
                         <div class="grid grid-cols-4 gap-2 sm:gap-3 items-center border-b border-zinc-800/50 last:border-b-0 px-3 sm:px-5">
                             <div id="ss-lbl-0-2" class="text-zinc-300 text-[11px] sm:text-xs font-semibold py-3 pe-2 leading-snug">Launch vehicle</div>
@@ -11461,6 +11714,764 @@
             </div>
         </div>
     </div>
+
+    <!-- Launch Cadence chart - weekly/monthly/cumulative SpaceX launch pace, with a
+         competitor-comparison panel. Ported from the standalone launch-cadence-chart.html
+         draft; every id/class here is lc-prefixed so nothing collides with the rest of the
+         page. Opened from two entry points (desktop, next to #year-count-box; mobile, in the
+         "Scheduled Launches" header) - see openLaunchCadenceModal. -->
+    <div id="launch-cadence-modal" onclick="if (event.target.id === 'launch-cadence-modal') closeLaunchCadenceModal()"
+        class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto z-[110]">
+        <div class="relative max-w-4xl w-full my-auto">
+            <!-- end-0/-end-10 (logical, not right-0/-right-10) so this mirrors to the left
+                 automatically under RTL, matching #year-count-breakdown's own end-full/me-2
+                 convention elsewhere in this file. -->
+            <button onclick="closeLaunchCadenceModal()"
+                class="absolute -top-10 end-0 sm:top-2 sm:-end-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <!-- direction:ltr here keeps the scrollbar on the visual right even under RTL (a
+                 direction:rtl block puts its native scrollbar on the left) - the .lc-wrap>*
+                 rule below re-asserts rtl on every actual content child, so text/layout still
+                 reads right-to-left; only the scrollbar's own side is pinned. -->
+            <div class="lc-wrap max-h-[88vh] overflow-y-auto rounded-2xl p-4 sm:p-5" style="background:var(--lc-surface-page)">
+
+                <div class="mb-4">
+                    <h1 class="font-orbitron notranslate" id="lc-i18n-title" translate="no">Launch Cadence</h1>
+                </div>
+
+                <div class="lc-controls" role="group" aria-label="Chart display mode">
+                    <div class="lc-seg" role="radiogroup" aria-label="Bucket">
+                        <button type="button" role="radio" aria-checked="true" data-mode="weekly" class="is-active notranslate" id="lc-i18n-weekly" translate="no">Weekly</button>
+                        <button type="button" role="radio" aria-checked="false" data-mode="monthly" class="notranslate" id="lc-i18n-monthly" translate="no">Monthly</button>
+                        <button type="button" role="radio" aria-checked="false" data-mode="cumulative" class="notranslate" id="lc-i18n-cumulative" translate="no">Cumulative</button>
+                    </div>
+
+                    <div class="lc-divider"></div>
+
+                    <!-- notranslate on the container, not each pill - YTD/1Y/3Y/5Y are built by
+                         JS (see buildControls) and are deliberately never translated (see
+                         LAUNCH_CADENCE_I18N's own comment on why); without this, Google
+                         Translate was expanding "YTD" into a full translated phrase. -->
+                    <div class="lc-pillrow notranslate" id="lc-year-pills" role="group" aria-label="Time window" translate="no"></div>
+
+                    <button type="button" class="lc-toggle-link" id="lc-competitor-toggle" aria-pressed="false">
+                        <span aria-hidden="true">⇄</span> <span class="notranslate" id="lc-i18n-compare-toggle" translate="no">Compare vs. competitors</span>
+                    </button>
+                </div>
+
+                <div class="lc-competitor-panel" id="lc-competitor-panel">
+                    <div class="lc-competitor-group">
+                        <h3 class="font-orbitron notranslate" id="lc-i18n-united-states" translate="no">United States</h3>
+                        <!-- Company names (ULA, Blue Origin, Rocket Lab) built by JS here stay
+                             English on purpose - notranslate so Google doesn't touch them. -->
+                        <div id="lc-competitors-us" class="notranslate" translate="no"></div>
+                    </div>
+                    <div class="lc-competitor-group">
+                        <h3 class="font-orbitron notranslate" id="lc-i18n-china-group" translate="no">China</h3>
+                        <!-- "China" here is already translated by OUR OWN dictionary
+                             (providerDisplayName) - notranslate stops Google re-translating it. -->
+                        <div id="lc-competitors-cn" class="notranslate" translate="no"></div>
+                    </div>
+                    <div class="lc-competitor-group">
+                        <h3 class="font-orbitron notranslate" id="lc-i18n-europe-group" translate="no">Europe</h3>
+                        <!-- "Europe" is translated by OUR OWN dictionary, same as China. -->
+                        <div id="lc-competitors-eu" class="notranslate" translate="no"></div>
+                    </div>
+                    <div class="lc-competitor-group">
+                        <h3 class="font-orbitron notranslate" id="lc-i18n-russia-group" translate="no">Russia</h3>
+                        <!-- "Russia" is translated by OUR OWN dictionary; "Roscosmos" (the
+                             company/agency name) stays English, same as Arianespace. -->
+                        <div id="lc-competitors-ru" class="notranslate" translate="no"></div>
+                    </div>
+                </div>
+
+                <div class="lc-card">
+                    <div class="lc-card-head">
+                        <p class="lc-card-title font-orbitron notranslate" id="lc-card-title" translate="no">SpaceX — weekly launches</p>
+                        <p class="lc-card-note notranslate" id="lc-card-note" translate="no"></p>
+                    </div>
+                    <svg class="lc-chart" id="lc-chart-svg" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="lc-card-title"></svg>
+                    <div class="lc-legend notranslate" id="lc-legend" translate="no"></div>
+                    <div class="lc-tooltip notranslate" id="lc-tooltip" translate="no">
+                        <p class="lc-t-date" id="lc-t-date"></p>
+                        <div id="lc-t-rows"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Launch Cadence chart engine - ported from the standalone launch-cadence-chart.html
+    // draft. Wrapped in its own IIFE so its many short, generic-sounding internal names
+    // (render, state, PROVIDERS...) never leak into this page's huge global scope; only
+    // openLaunchCadenceModal/closeLaunchCadenceModal/applyLaunchCadenceTranslations are
+    // exported (assigned to window below), matching this file's existing modal convention.
+    // LAUNCH_CADENCE_I18N and lockBodyScroll/unlockBodyScroll are defined in the main
+    // <script> block elsewhere on this page - classic (non-module) inline scripts share one
+    // global scope, so they're reachable here without any import.
+    (function () {
+      'use strict';
+
+      var LC_LANG = 'en';
+      function lcDict() {
+        return (typeof LAUNCH_CADENCE_I18N !== 'undefined' && (LAUNCH_CADENCE_I18N[LC_LANG] || LAUNCH_CADENCE_I18N.en)) || {};
+      }
+      // Company/product NAMES (SpaceX, ULA, Blue Origin, Rocket Lab) are never translated;
+      // "China" is a country, not a company, so it IS. See LAUNCH_CADENCE_I18N's own comment.
+      function providerDisplayName(key) {
+        // "China" has no single company name (it merges CASC + commercial), so its display
+        // name IS the translated country. "Arianespace" is a real company name like ULA/Blue
+        // Origin/Rocket Lab, so it stays in English - only its GROUP HEADER ("Europe") is
+        // translated, not the company inside it. See LAUNCH_CADENCE_I18N's own comment.
+        if (key === 'china') { var d = lcDict(); return d.china || PROVIDERS[key].name; }
+        return PROVIDERS[key].name;
+      }
+      var LOCALE_TAG = { he: 'he', iw: 'he', ar: 'ar', zh: 'zh-CN', ru: 'ru', es: 'es', fr: 'fr', de: 'de', it: 'it', cs: 'cs', sv: 'sv', nl: 'nl', da: 'da', pt: 'pt', pl: 'pl', hi: 'hi', tr: 'tr', en: 'en' };
+      var monthFormatterCache = {};
+      // Month names come from the browser's own Intl locale data rather than a hand-written
+      // dictionary - 12 short month names x 17 languages would be a lot of hand-translated
+      // strings to maintain for something the platform already gets right.
+      function monthShort(date) {
+        var tag = LOCALE_TAG[LC_LANG] || 'en';
+        if (!monthFormatterCache[tag]) {
+          try { monthFormatterCache[tag] = new Intl.DateTimeFormat(tag, { month: 'short' }); }
+          catch (e) { monthFormatterCache[tag] = new Intl.DateTimeFormat('en', { month: 'short' }); }
+        }
+        return monthFormatterCache[tag].format(date);
+      }
+
+      /* ============================================================
+         1. DATA
+         ============================================================ */
+      var TODAY = new Date();
+      var CURRENT_YEAR = TODAY.getFullYear();
+
+      var PROVIDERS = {
+        spacex: { name: 'SpaceX',        country: 'us', color: 'var(--lc-accent)', hero: true,
+          totals: { 2018:21, 2019:13, 2020:27, 2021:33, 2022:61, 2023:98, 2024:133, 2025:167, 2026:110 },
+          shape: 'ramp' },
+        ula:    { name: 'ULA',           country: 'us', color: 'var(--lc-series-ula)',
+          totals: { 2018:8, 2019:5, 2020:6, 2021:4, 2022:3, 2023:3, 2024:5, 2025:6, 2026:5 },
+          shape: 'steady' },
+        blue:   { name: 'Blue Origin',   country: 'us', color: 'var(--lc-series-blue)',
+          totals: { 2018:0, 2019:0, 2020:0, 2021:0, 2022:0, 2023:0, 2024:0, 2025:2, 2026:3 },
+          shape: 'steady' },
+        rlab:   { name: 'Rocket Lab',    country: 'us', color: 'var(--lc-series-rlab)',
+          totals: { 2018:3, 2019:6, 2020:7, 2021:6, 2022:9, 2023:10, 2024:16, 2025:21, 2026:18 },
+          shape: 'steady' },
+        china:  { name: 'China',         country: 'cn', color: 'var(--lc-series-china)',
+          totals: { 2018:38, 2019:34, 2020:39, 2021:53, 2022:60, 2023:68, 2024:80, 2025:98, 2026:64 },
+          shape: 'steady' },
+        // Arianespace (Ariane 5/6, Vega/Vega C, plus Soyuz-from-Kourou through 2022) - Europe's
+        // sole orbital launch operator, so one line covers the continent the same way China's
+        // one line covers CASC+commercial. ESA itself isn't included separately: ESA funds and
+        // oversees these vehicles but doesn't operate launches itself - Arianespace does, under
+        // contract to ESA/member states - so a separate "ESA" series would just double-count
+        // the same missions. Figures are approximate (fragmented public reporting, especially
+        // 2022-2024's well-documented "launcher gap" between Ariane 5's retirement and Ariane
+        // 6's debut) - treat these as directional, not exact.
+        europe: { name: 'Arianespace',   country: 'eu', color: 'var(--lc-series-europe)',
+          totals: { 2018:11, 2019:9, 2020:6, 2021:15, 2022:5, 2023:3, 2024:3, 2025:6, 2026:5 },
+          shape: 'steady' },
+        // Roscosmos - Russia's single state launch operator (Soyuz-2, Proton-M, Angara), same
+        // "one named entity per country/continent" treatment as Arianespace. Figures are
+        // approximate public totals, not a WebSearch-verified exact count.
+        russia: { name: 'Roscosmos',     country: 'ru', color: 'var(--lc-series-russia)',
+          totals: { 2018:17, 2019:22, 2020:12, 2021:16, 2022:21, 2023:19, 2024:17, 2025:17, 2026:13 },
+          shape: 'steady' }
+      };
+
+      var SHAPES = {
+        ramp:   [0.055,0.058,0.068,0.072,0.078,0.082,0.082,0.086,0.088,0.092,0.108,0.131],
+        steady: [0.078,0.076,0.086,0.082,0.086,0.084,0.080,0.082,0.086,0.088,0.086,0.086]
+      };
+
+      function seeded(seed) {
+        var s = seed % 2147483647; if (s <= 0) s += 2147483646;
+        return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+      }
+
+      var WEEKS = 53;
+      function isoWeekOfDate(d) {
+        var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        var day = t.getUTCDay() || 7;
+        t.setUTCDate(t.getUTCDate() + 4 - day);
+        var yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+        return Math.ceil((((t - yearStart) / 86400000) + 1) / 7);
+      }
+      var TODAY_WEEK = isoWeekOfDate(TODAY);
+
+      // The CURRENT year is classified live from Launch Library 2 (see the standalone
+      // draft's own comment history for why this is ONE shared query, cached once per
+      // calendar day, rather than one live call per provider).
+      var LIVE_CACHE_KEY = 'launch_cadence_live_v2';
+      var liveData = {};
+      var liveDataFailed = false;
+
+      function weekIndexOfDate(d) {
+        var daysSinceJan1 = Math.floor((d - new Date(d.getFullYear(), 0, 1)) / 86400000);
+        return Math.max(0, Math.min(WEEKS - 1, Math.floor(daysSinceJan1 / 7)));
+      }
+
+      function classifyLiveProvider(launch) {
+        var lsp = launch && launch.launch_service_provider;
+        var name = ((lsp && lsp.name) || '').toLowerCase();
+        var country = (lsp && lsp.country_code) || '';
+        if (name.indexOf('spacex') >= 0) return 'spacex';
+        if (name.indexOf('united launch alliance') >= 0) return 'ula';
+        if (name.indexOf('blue origin') >= 0) return 'blue';
+        if (name.indexOf('rocket lab') >= 0) return 'rlab';
+        if (name.indexOf('arianespace') >= 0) return 'europe';
+        if (name.indexOf('roscosmos') >= 0) return 'russia';
+        if (country === 'CHN') return 'china';
+        return null;
+      }
+
+      function todayDateKey() { return TODAY.toISOString().slice(0, 10); }
+
+      function loadLiveCache() {
+        try {
+          var parsed = JSON.parse(localStorage.getItem(LIVE_CACHE_KEY) || 'null');
+          if (!parsed || parsed.dateKey !== todayDateKey()) return null;
+          return parsed.data;
+        } catch (e) { return null; }
+      }
+      function saveLiveCache(data) {
+        try { localStorage.setItem(LIVE_CACHE_KEY, JSON.stringify({ dateKey: todayDateKey(), data: data })); } catch (e) { }
+      }
+      function applyLiveBuckets(buckets) {
+        var lastWeek = Math.min(WEEKS, TODAY_WEEK);
+        Object.keys(buckets).forEach(function (key) {
+          var perWeek = buckets[key];
+          var total = perWeek.reduce(function (a, b) { return a + b; }, 0);
+          liveData[key] = { year: CURRENT_YEAR, perWeek: perWeek, lastWeek: lastWeek, total: total };
+        });
+      }
+
+      async function fetchLiveLaunchDataOncePerDay() {
+        var cached = loadLiveCache();
+        if (cached) { applyLiveBuckets(cached); render(); return; }
+        try {
+          var yearStart = new Date(CURRENT_YEAR, 0, 1).toISOString();
+          var url = 'https://ll.thespacedevs.com/2.2.0/launch/previous/?net__gte=' + yearStart +
+            '&limit=100&mode=list&ordering=net';
+          var results = [];
+          var guard = 0;
+          while (url && guard < 8) {
+            guard++;
+            var controller = new AbortController();
+            var timeout = setTimeout(function () { controller.abort(); }, 12000);
+            var res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var data = await res.json();
+            results = results.concat(data.results || []);
+            url = (data.next && results.length < (data.count || results.length)) ? data.next : null;
+          }
+          var buckets = { spacex: new Array(WEEKS).fill(0), ula: new Array(WEEKS).fill(0), blue: new Array(WEEKS).fill(0), rlab: new Array(WEEKS).fill(0), china: new Array(WEEKS).fill(0), europe: new Array(WEEKS).fill(0), russia: new Array(WEEKS).fill(0) };
+          results.forEach(function (launch) {
+            var d = new Date(launch.net);
+            if (isNaN(d.getTime()) || d.getFullYear() !== CURRENT_YEAR || d > TODAY) return;
+            var key = classifyLiveProvider(launch);
+            if (!key) return;
+            buckets[key][weekIndexOfDate(d)]++;
+          });
+          saveLiveCache(buckets);
+          applyLiveBuckets(buckets);
+        } catch (e) {
+          liveDataFailed = true;
+        }
+        render();
+      }
+
+      function buildWeeklySeries(providerKey, year) {
+        if (year === CURRENT_YEAR && liveData[providerKey] && liveData[providerKey].year === CURRENT_YEAR) {
+          var live = liveData[providerKey];
+          return { perWeek: live.perWeek, lastWeek: live.lastWeek, isCurrent: true, total: live.total };
+        }
+        var p = PROVIDERS[providerKey];
+        var total = p.totals[year];
+        if (total == null) return null;
+        var weights = SHAPES[p.shape];
+        var rand = seeded(year * 97 + providerKey.length * 13 + (p.name.charCodeAt(0) || 1));
+        var weeksPerMonth = WEEKS / 12;
+        var isCurrent = (year === CURRENT_YEAR);
+        var activeWeeks = isCurrent ? Math.min(WEEKS, TODAY_WEEK) : WEEKS;
+
+        if (total === 0) {
+          return { perWeek: new Array(WEEKS).fill(0), lastWeek: activeWeeks, isCurrent: isCurrent, total: 0 };
+        }
+
+        var raw = new Array(activeWeeks).fill(0);
+        for (var w = 0; w < activeWeeks; w++) {
+          var month = Math.min(11, Math.floor(w / weeksPerMonth));
+          var jitter = 0.82 + rand() * 0.36;
+          raw[w] = (weights[month] / weeksPerMonth) * total * jitter;
+        }
+        var smoothed = raw.map(function (_, i) {
+          var lo = Math.max(0, i - 1), hi = Math.min(activeWeeks - 1, i + 1);
+          var sum = 0; for (var k = lo; k <= hi; k++) sum += raw[k];
+          return sum / (hi - lo + 1);
+        });
+        var rawSum = smoothed.reduce(function (a, b) { return a + b; }, 0);
+
+        var scaled = smoothed.map(function (v) { return (v / rawSum) * total; });
+        var perWeekActive = scaled.map(Math.floor);
+        var used = perWeekActive.reduce(function (a, b) { return a + b; }, 0);
+        var remainder = total - used;
+        var order = scaled.map(function (v, i) { return { i: i, frac: v - Math.floor(v) }; })
+          .sort(function (a, b) { return b.frac - a.frac; });
+        for (var r = 0; r < remainder; r++) perWeekActive[order[r % activeWeeks].i] += 1;
+
+        var perWeek = new Array(WEEKS).fill(0);
+        for (var i2 = 0; i2 < activeWeeks; i2++) perWeek[i2] = perWeekActive[i2];
+
+        return { perWeek: perWeek, lastWeek: activeWeeks, isCurrent: isCurrent, total: total };
+      }
+
+      function windowStartDate(years) {
+        if (years === 0) return new Date(CURRENT_YEAR, 0, 1);
+        return new Date(TODAY.getFullYear() - years, TODAY.getMonth(), TODAY.getDate());
+      }
+
+      function buildWindowWeekly(providerKey, years) {
+        var start = windowStartDate(years);
+        var out = [];
+        for (var y = start.getFullYear(); y <= CURRENT_YEAR; y++) {
+          var weekly = buildWeeklySeries(providerKey, y);
+          if (!weekly) continue;
+          for (var w = 0; w < weekly.lastWeek; w++) {
+            var date = new Date(y, 0, 1 + w * 7);
+            if (date < start || date > TODAY) continue;
+            out.push({ date: date, count: weekly.perWeek[w] });
+          }
+        }
+        return out;
+      }
+
+      function buildWindowMonthly(points) {
+        var buckets = [], index = {};
+        points.forEach(function (pt) {
+          var key = pt.date.getFullYear() + '-' + pt.date.getMonth();
+          if (!(key in index)) {
+            index[key] = buckets.length;
+            buckets.push({ date: new Date(pt.date.getFullYear(), pt.date.getMonth(), 1), total: 0 });
+          }
+          buckets[index[key]].total += pt.count;
+        });
+        return buckets;
+      }
+
+      function buildWindowCumulative(points) {
+        var run = 0;
+        return points.map(function (pt) { run += pt.count; return { date: pt.date, total: run }; });
+      }
+
+      /* ============================================================
+         2. STATE
+         ============================================================ */
+      var state = {
+        mode: 'weekly',
+        windowYears: 0,             // shared by solo AND competitor mode - one control, not two
+        competitorMode: false,
+        competitors: []
+      };
+
+      var WINDOWS = [
+        { label: 'YTD', years: 0 },
+        { label: '1Y', years: 1 },
+        { label: '3Y', years: 3 },
+        { label: '5Y', years: 5 }
+      ];
+      function windowNote(years) {
+        var d = lcDict();
+        return years === 0 ? d.ytdNote : years === 1 ? d.y1Note : years === 3 ? d.y3Note : d.y5Note;
+      }
+
+      /* ============================================================
+         3. CONTROL BUILDING (deferred - see ensureLaunchCadenceInit)
+         ============================================================ */
+      var $yearPills, $competitorToggle, $competitorPanel;
+
+      function selectWindow(years) {
+        state.windowYears = years;
+        Array.prototype.forEach.call($yearPills.children, function (btn) {
+          var active = Number(btn.dataset.window) === years;
+          btn.classList.toggle('is-active', active);
+          btn.setAttribute('aria-pressed', String(active));
+        });
+        render();
+      }
+
+      function buildCompetitorChecks(containerId, countryCode) {
+        var container = document.getElementById(containerId);
+        Object.keys(PROVIDERS).forEach(function (key) {
+          if (key === 'spacex') return;
+          var p = PROVIDERS[key];
+          if (p.country !== countryCode) return;
+          var row = document.createElement('div'); row.className = 'lc-chk-row';
+          var id = 'lc-chk-' + key;
+          var input = document.createElement('input');
+          input.type = 'checkbox'; input.id = id; input.style.setProperty('--lc-chk-color', p.color);
+          var label = document.createElement('label'); label.setAttribute('for', id); label.textContent = providerDisplayName(key);
+          input.addEventListener('change', function () {
+            if (input.checked) state.competitors.push(key);
+            else state.competitors = state.competitors.filter(function (k) { return k !== key; });
+            render();
+          });
+          row.appendChild(input); row.appendChild(label);
+          container.appendChild(row);
+        });
+      }
+
+      function buildControls() {
+        $yearPills = document.getElementById('lc-year-pills');
+        WINDOWS.forEach(function (w) {
+          var btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'lc-pill'; btn.dataset.window = w.years;
+          btn.setAttribute('aria-pressed', w.years === 0 ? 'true' : 'false');
+          if (w.years === 0) btn.classList.add('is-active');
+          var dot = document.createElement('span'); dot.className = 'lc-dot';
+          var label = document.createElement('span'); label.textContent = w.label;
+          btn.appendChild(dot); btn.appendChild(label);
+          btn.addEventListener('click', function () { selectWindow(w.years); });
+          $yearPills.appendChild(btn);
+        });
+
+        buildCompetitorChecks('lc-competitors-us', 'us');
+        buildCompetitorChecks('lc-competitors-cn', 'cn');
+        buildCompetitorChecks('lc-competitors-eu', 'eu');
+        buildCompetitorChecks('lc-competitors-ru', 'ru');
+
+        document.querySelectorAll('#launch-cadence-modal .lc-seg [data-mode]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            state.mode = btn.dataset.mode;
+            document.querySelectorAll('#launch-cadence-modal .lc-seg [data-mode]').forEach(function (b) {
+              var active = b === btn;
+              b.classList.toggle('is-active', active);
+              b.setAttribute('aria-checked', String(active));
+            });
+            render();
+          });
+        });
+
+        $competitorToggle = document.getElementById('lc-competitor-toggle');
+        $competitorPanel = document.getElementById('lc-competitor-panel');
+        $competitorToggle.addEventListener('click', function () {
+          state.competitorMode = !state.competitorMode;
+          $competitorToggle.classList.toggle('is-active', state.competitorMode);
+          $competitorToggle.setAttribute('aria-pressed', String(state.competitorMode));
+          $competitorPanel.classList.toggle('is-open', state.competitorMode);
+          render();
+        });
+      }
+
+      /* ============================================================
+         4. CHART GEOMETRY + RENDER
+         ============================================================ */
+      var svg, VB_W = 1000, VB_H = 460;
+      var PAD = { top: 18, right: 26, bottom: 34, left: 46 };
+      var plotW = VB_W - PAD.left - PAD.right;
+      var plotH = VB_H - PAD.top - PAD.bottom;
+
+      function resolveColor(cssVar) {
+        if (cssVar.indexOf('var(') !== 0) return cssVar;
+        var name = cssVar.slice(4, -1);
+        return getComputedStyle(document.getElementById('launch-cadence-modal')).getPropertyValue(name).trim();
+      }
+
+      function activeSeriesList() {
+        if (state.competitorMode) {
+          var list = [{ key: 'spacex', windowYears: state.windowYears, hero: true }];
+          state.competitors.forEach(function (k) { list.push({ key: k, windowYears: state.windowYears, hero: false }); });
+          return list;
+        }
+        return [{ key: 'spacex', windowYears: state.windowYears, hero: true }];
+      }
+
+      function seriesColor(item) { return resolveColor(PROVIDERS[item.key].color); }
+      function seriesLabel(item) { return providerDisplayName(item.key); }
+
+      function getSeriesData(item) {
+        var weekly = buildWindowWeekly(item.key, item.windowYears);
+        if (!weekly.length) return null;
+        if (state.mode === 'weekly') return { points: weekly, y: weekly.map(function (p) { return p.count; }) };
+        if (state.mode === 'monthly') {
+          var m = buildWindowMonthly(weekly);
+          return { points: m, y: m.map(function (b) { return b.total; }) };
+        }
+        var c = buildWindowCumulative(weekly);
+        return { points: c, y: c.map(function (p) { return p.total; }) };
+      }
+
+      function multiYearWindow() {
+        return state.windowYears > 0;
+      }
+      function tickLabel(date, multiYear) {
+        var m = monthShort(date);
+        return multiYear ? m + " '" + String(date.getFullYear()).slice(-2) : m;
+      }
+      function hoverDateLabel(date, multiYear) {
+        var s = monthShort(date) + ' ' + date.getDate();
+        return multiYear ? s + ', ' + date.getFullYear() : s;
+      }
+
+      function render() {
+        if (!svg) return; // not yet initialized
+        var multiYear = multiYearWindow();
+        var items = activeSeriesList();
+        var seriesData = items.map(function (it) { return { item: it, data: getSeriesData(it) }; })
+          .filter(function (s) { return s.data; });
+
+        var n = seriesData.length ? seriesData[0].data.y.length : 1;
+        var maxY = 1;
+        seriesData.forEach(function (s) {
+          for (var i = 0; i < s.data.y.length; i++) maxY = Math.max(maxY, s.data.y[i]);
+        });
+        var step = maxY <= 10 ? 2 : maxY <= 30 ? 5 : maxY <= 100 ? 20 : 50;
+        var axisMax = Math.ceil(maxY / step) * step;
+        if (axisMax === maxY) axisMax += step;
+
+        // In RTL languages the surrounding chrome (title/note, controls, legend) already
+        // flows right-to-left via inherited `direction` - but that CSS property has no
+        // effect on these hand-computed SVG coordinates, so without this the chart itself
+        // kept running oldest-to-newest left-to-right even in Hebrew/Arabic. Flipping just
+        // the x fraction mirrors the whole plot (line, dots, x-axis ticks, hover mapping
+        // below) so "today" lands on the reading-start side, matching the rest of the modal.
+        var isRTL = (document.documentElement.getAttribute('dir') || getComputedStyle(document.documentElement).direction) === 'rtl';
+        function xPos(i) {
+          var frac = i / Math.max(1, n - 1);
+          if (isRTL) frac = 1 - frac;
+          return PAD.left + frac * plotW;
+        }
+        function yPos(v) { return PAD.top + plotH - (v / axisMax) * plotH; }
+
+        var svgParts = [];
+
+        var ticks = 4;
+        for (var t = 0; t <= ticks; t++) {
+          var v = (axisMax / ticks) * t;
+          var y = yPos(v);
+          svgParts.push('<line class="lc-gridline" x1="' + PAD.left + '" x2="' + (PAD.left + plotW) + '" y1="' + y + '" y2="' + y + '"/>');
+          svgParts.push('<text class="lc-axis-label" x="' + (PAD.left - 10) + '" y="' + (y + 3) + '" text-anchor="end">' + Math.round(v).toLocaleString() + '</text>');
+        }
+        svgParts.push('<line class="lc-axis-line" x1="' + PAD.left + '" x2="' + (PAD.left + plotW) + '" y1="' + (PAD.top + plotH) + '" y2="' + (PAD.top + plotH) + '"/>');
+
+        if (seriesData.length && n > 1) {
+          var tickCount = Math.min(6, n);
+          var seen = {};
+          for (var ti = 0; ti < tickCount; ti++) {
+            var idx = Math.round((ti / (tickCount - 1)) * (n - 1));
+            if (seen[idx]) continue;
+            seen[idx] = true;
+            var lab = tickLabel(seriesData[0].data.points[idx].date, multiYear);
+            svgParts.push('<text class="lc-axis-label" x="' + xPos(idx) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + lab + '</text>');
+          }
+        }
+
+        seriesData.forEach(function (s) {
+          var color = seriesColor(s.item);
+          var pts = [];
+          for (var i = 0; i < n; i++) pts.push(xPos(i) + ',' + yPos(s.data.y[i]));
+          if (pts.length < 2) return;
+          var pathD = 'M' + pts.join(' L');
+
+          if (s.item.hero) {
+            var areaD = pathD + ' L' + xPos(n - 1) + ',' + (PAD.top + plotH) + ' L' + xPos(0) + ',' + (PAD.top + plotH) + ' Z';
+            svgParts.push('<path class="lc-series-area" d="' + areaD + '" fill="' + color + '"/>');
+          }
+          svgParts.push('<path class="lc-series-line' + (s.item.hero ? ' is-hero' : '') + '" d="' + pathD + '" stroke="' + color + '"/>');
+          var lastX = xPos(n - 1), lastY = yPos(s.data.y[n - 1]);
+          svgParts.push('<circle class="lc-end-dot-ring" cx="' + lastX + '" cy="' + lastY + '" r="6"/>');
+          svgParts.push('<circle cx="' + lastX + '" cy="' + lastY + '" r="4" fill="' + color + '"/>');
+        });
+
+        svgParts.push('<rect class="lc-hit-layer" x="' + PAD.left + '" y="' + PAD.top + '" width="' + plotW + '" height="' + plotH + '"/>');
+        svgParts.push('<line class="lc-crosshair" id="lc-crosshair" x1="0" x2="0" y1="' + PAD.top + '" y2="' + (PAD.top + plotH) + '" style="opacity:0"/>');
+
+        svg.innerHTML = svgParts.join('');
+
+        attachHover(seriesData, xPos, yPos, n, multiYear, isRTL);
+        renderLegend(seriesData);
+        updateHeadline();
+      }
+
+      /* ============================================================
+         5. HOVER / TOOLTIP
+         ============================================================ */
+      function attachHover(seriesData, xPos, yPos, n, multiYear, isRTL) {
+        var hit = svg.querySelector('.lc-hit-layer');
+        var crosshair = svg.querySelector('#lc-crosshair');
+        var tooltip = document.getElementById('lc-tooltip');
+        var tDate = document.getElementById('lc-t-date');
+        var tRows = document.getElementById('lc-t-rows');
+        var card = svg.closest('.lc-card');
+
+        function move(evt) {
+          if (!seriesData.length) return;
+          var rect = svg.getBoundingClientRect();
+          var scaleX = VB_W / rect.width;
+          var px = (evt.clientX - rect.left) * scaleX;
+          var frac = (px - PAD.left) / plotW;
+          if (isRTL) frac = 1 - frac;
+          var idx = Math.round(frac * (n - 1));
+          idx = Math.max(0, Math.min(n - 1, idx));
+
+          var cx = xPos(idx);
+          crosshair.setAttribute('x1', cx); crosshair.setAttribute('x2', cx);
+          crosshair.style.opacity = 1;
+
+          var d = lcDict();
+          tDate.textContent = hoverDateLabel(seriesData[0].data.points[idx].date, multiYear) +
+            (state.mode === 'cumulative' ? ' — ' + d.cumulativeSuffix : state.mode === 'weekly' ? ' ' + d.wk : '');
+
+          var rowsHtml = '';
+          seriesData.slice().sort(function (a, b) { return b.data.y[idx] - a.data.y[idx]; }).forEach(function (s) {
+            var color = seriesColor(s.item);
+            var row = document.createElement('div');
+            row.className = 'lc-t-row'; row.style.color = color;
+            var key = document.createElement('span'); key.className = 'lc-key';
+            var name = document.createElement('span'); name.className = 'lc-name'; name.textContent = seriesLabel(s.item);
+            var val = document.createElement('span'); val.className = 'lc-val'; val.textContent = Math.round(s.data.y[idx]).toLocaleString();
+            row.appendChild(key); row.appendChild(name); row.appendChild(val);
+            rowsHtml += row.outerHTML;
+          });
+          tRows.innerHTML = rowsHtml;
+
+          var cardRect = card.getBoundingClientRect();
+          var leftPx = rect.left + cx / scaleX - cardRect.left;
+          var topPx = evt.clientY - cardRect.top;
+          var halfW = tooltip.offsetWidth / 2;
+          leftPx = Math.max(halfW + 4, Math.min(cardRect.width - halfW - 4, leftPx));
+          var minTop = tooltip.offsetHeight + 22;
+          tooltip.style.left = leftPx + 'px';
+          tooltip.style.top = Math.max(minTop, topPx - 10) + 'px';
+          tooltip.classList.add('is-visible');
+        }
+        function leave() { crosshair.style.opacity = 0; tooltip.classList.remove('is-visible'); }
+
+        hit.addEventListener('pointermove', move);
+        hit.addEventListener('pointerleave', leave);
+      }
+
+      function renderLegend(seriesData) {
+        var legend = document.getElementById('lc-legend');
+        if (seriesData.length < 2) { legend.innerHTML = ''; return; }
+        legend.innerHTML = seriesData.map(function (s) {
+          var color = seriesColor(s.item);
+          return '<span class="lc-legend-item" style="color:' + color + '"><span class="lc-key"></span>' +
+            '<strong>' + seriesLabel(s.item) + '</strong></span>';
+        }).join('');
+      }
+
+      function updateHeadline() {
+        var d = lcDict();
+        var title = document.getElementById('lc-card-title');
+        var note = document.getElementById('lc-card-note');
+        var modeLabel = state.mode === 'weekly' ? d.weeklyLaunches : state.mode === 'monthly' ? d.monthlyLaunches : d.cumulativeLaunches;
+        var liveTag = (liveData.spacex && liveData.spacex.year === CURRENT_YEAR) ? (' · ' + d.live) : '';
+        if (state.competitorMode) {
+          var names = state.competitors.map(providerDisplayName);
+          // "vs." is kept English everywhere on purpose, same reasoning as YTD/1Y/3Y/5Y -
+          // a near-universally borrowed comparison shorthand rather than site UI copy.
+          title.textContent = 'SpaceX vs. ' + (names.length ? names.join(', ') : d.theField) + ' — ' + modeLabel;
+          note.textContent = windowNote(state.windowYears) + liveTag;
+        } else {
+          title.textContent = 'SpaceX — ' + modeLabel;
+          note.textContent = windowNote(state.windowYears) + liveTag;
+        }
+      }
+
+      /* ============================================================
+         6. INIT / MODAL / TRANSLATIONS
+         ============================================================ */
+      var lcInitialized = false;
+      function ensureLaunchCadenceInit() {
+        if (lcInitialized) return;
+        lcInitialized = true;
+        svg = document.getElementById('lc-chart-svg');
+        buildControls();
+        fetchLiveLaunchDataOncePerDay();
+      }
+
+      // No "memory" between opens, by request - every open forces cumulative/YTD and clears
+      // any competitor selection, rather than leaving whatever the user last clicked.
+      function resetLaunchCadenceState() {
+        state.mode = 'cumulative';
+        state.windowYears = 0;
+        state.competitorMode = false;
+        state.competitors = [];
+
+        document.querySelectorAll('#launch-cadence-modal .lc-seg [data-mode]').forEach(function (b) {
+          var active = b.dataset.mode === 'cumulative';
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-checked', String(active));
+        });
+        if ($yearPills) {
+          Array.prototype.forEach.call($yearPills.children, function (btn) {
+            var active = Number(btn.dataset.window) === 0;
+            btn.classList.toggle('is-active', active);
+            btn.setAttribute('aria-pressed', String(active));
+          });
+        }
+        if ($competitorToggle) {
+          $competitorToggle.classList.remove('is-active');
+          $competitorToggle.setAttribute('aria-pressed', 'false');
+        }
+        if ($competitorPanel) $competitorPanel.classList.remove('is-open');
+        document.querySelectorAll('#launch-cadence-modal .lc-chk-row input[type="checkbox"]').forEach(function (cb) {
+          cb.checked = false;
+        });
+
+        render();
+      }
+
+      window.openLaunchCadenceModal = function () {
+        ensureLaunchCadenceInit();
+        resetLaunchCadenceState();
+        var modal = document.getElementById('launch-cadence-modal');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        if (typeof lockBodyScroll === 'function') lockBodyScroll();
+      };
+      window.closeLaunchCadenceModal = function () {
+        var modal = document.getElementById('launch-cadence-modal');
+        modal.classList.add('hidden'); modal.classList.remove('flex');
+        if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+      };
+
+      // Registered with the page's central translation dispatcher (see the big
+      // setInterval loop that calls applyLaunchLabelTranslations & friends) - updates the
+      // static i18n spans below AND re-renders the dynamic chart text/labels in the new
+      // language. Safe to call before the modal has ever been opened.
+      window.applyLaunchCadenceTranslations = function (currentLang) {
+        var lang = (currentLang || 'en').split('-')[0];
+        LC_LANG = lang;
+        var d = (typeof LAUNCH_CADENCE_I18N !== 'undefined' && (LAUNCH_CADENCE_I18N[lang] || LAUNCH_CADENCE_I18N.en)) || {};
+        var map = {
+          'lc-i18n-title': d.btn, 'launch-cadence-btn-label': d.btn, 'launch-cadence-btn-label-mobile': d.btn,
+          'lc-i18n-weekly': d.weekly, 'lc-i18n-monthly': d.monthly, 'lc-i18n-cumulative': d.cumulative,
+          'lc-i18n-compare-toggle': d.compareToggle, 'lc-i18n-united-states': d.unitedStates,
+          'lc-i18n-china-group': d.china, 'lc-i18n-europe-group': d.europe, 'lc-i18n-russia-group': d.russia
+        };
+        Object.keys(map).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && map[id]) el.textContent = map[id];
+        });
+        if (lcInitialized) {
+          // Competitor checkbox labels are built once, not re-rendered each frame - patch the
+          // "China" one directly (the only translated provider name; every other company,
+          // including Arianespace, stays in English and never needs this).
+          var chinaLabel = document.querySelector('label[for="lc-chk-china"]');
+          if (chinaLabel) chinaLabel.textContent = providerDisplayName('china');
+          render();
+        }
+      };
+    })();
+    </script>
 
     <!-- Simple patch summary card - opened by clicking a tile in the "SpaceX Mission Patches"
          strip. Deliberately NOT the full mission-detail modal (#mission-modal, opened from
@@ -24130,6 +25141,7 @@ if (heroNameEl) {
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
             const modalCloseOrder = [
+                ['launch-cadence-modal', closeLaunchCadenceModal],
                 ['doc-video-modal', closeDocVideoModal],
                 ['starlink-gen-lightbox', closeStarlinkGenLightbox],
                 ['starlink-specs-modal', closeStarlinkSpecsModal],
