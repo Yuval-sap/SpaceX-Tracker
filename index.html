@@ -5047,7 +5047,13 @@
            scroll/pan gesture - without it, mobile Safari/Chrome would grab the touch for
            scrolling mid-gesture and fire pointercancel, which is why a tap only ever
            flashed the tooltip for an instant before it vanished. */
-        #launch-cadence-modal .lc-hit-layer { fill: transparent; cursor: crosshair; touch-action: none; }
+        /* -webkit-touch-callout/user-select kill iOS's long-press "save image"/selection
+           callout on this element - touch-action alone stops scroll/zoom gestures but not
+           that separate long-press menu, which is what was hijacking a held tap. */
+        #launch-cadence-modal .lc-hit-layer {
+            fill: transparent; cursor: crosshair; touch-action: none;
+            -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+        }
         #launch-cadence-modal .lc-legend { display: flex; flex-wrap: wrap; gap: 14px 18px; padding: 14px 18px 6px; position: relative; }
         #launch-cadence-modal .lc-legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--lc-text-secondary); }
         #launch-cadence-modal .lc-legend-item .lc-key { width: 14px; height: 2.75px; border-radius: 2px; background: currentColor; }
@@ -12393,9 +12399,18 @@
         // tooltip stays at the last tapped point until the next tap or a real pointerleave
         // (mouse), matching how touch charts are normally expected to behave.
         function down(evt) {
+          // Stops the browser's own long-press timer before it ever starts - without this,
+          // holding a tap (which is what actually worked before this fix) would eventually
+          // fire the native "save image" / selection callout on top of the chart, even with
+          // the CSS callout/touch-action rules above. A single quick tap doesn't need this
+          // to already show the tooltip (move() below does that immediately either way).
+          if (evt.cancelable) evt.preventDefault();
           try { hit.setPointerCapture(evt.pointerId); } catch (e) { }
           move(evt);
         }
+        // Belt and suspenders for Android, which raises a real 'contextmenu' event on a
+        // held touch rather than (or in addition to) iOS's callout.
+        hit.addEventListener('contextmenu', function (evt) { evt.preventDefault(); });
         hit.addEventListener('pointerdown', down);
         hit.addEventListener('pointermove', move);
         hit.addEventListener('pointerleave', leave);
