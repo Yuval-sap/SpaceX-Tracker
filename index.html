@@ -4077,8 +4077,27 @@
             #countdown-box.mission-status-mode #hero-countdown {
                 font-size: clamp(1.35rem, 7vw, 2.1rem) !important;
             }
+            /* This header row ("MISSION STATUS" / "סטטוס המשימה" + the fixed T+88:88:88 clock)
+               genuinely does not fit a phone-width box at the desktop sizing: measured live,
+               the box's own content width here is 253px, while the label + the 2.25rem gap +
+               the clock sizer need ~298px in English and more in longer languages (German
+               "MISSIONSSTATUS" measured close behind) - a ~45px shortfall regardless of
+               language or direction. Below, font-size/letter-spacing/gap are all pulled in
+               together until the row actually fits with room to spare (verified live in
+               English, Hebrew and German) - shrinking only one of the three wasn't enough on
+               its own. */
+            #countdown-box.mission-status-mode #mission-status-hover-wrap { gap: 8px !important; }
             #countdown-box.mission-status-mode #i18n-countdown-to-launch,
-            #countdown-box.mission-status-mode #hero-tplus { font-size: 13px !important; }
+            #countdown-box.mission-status-mode #hero-tplus { font-size: 12px !important; letter-spacing: 0.5px !important; }
+            /* Same font-size rule again, scoped to html[dir="rtl"] specifically - that
+               selector's own unconditional (no max-width) rule above (16px, for RTL at any
+               width) has HIGHER specificity than the plain one just above (extra "html" type +
+               "[dir]" attribute selector), so on a narrow RTL screen it was winning over this
+               media query and keeping the larger RTL size instead of shrinking here too -
+               worsening the same overflow. Matching the RTL selector's own specificity is what
+               actually makes this win. */
+            html[dir="rtl"] #countdown-box.mission-status-mode #i18n-countdown-to-launch,
+            html[dir="rtl"] #countdown-box.mission-status-mode #hero-tplus { font-size: 12px !important; letter-spacing: 0.5px !important; }
         }
 
         /* Light mode only: the "Go for Launch" pill's green came out muted against the bright
