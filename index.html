@@ -19709,6 +19709,22 @@ setTimeout(() => {
             },
         ];
 
+        // A mission's category is a single value (detectCategory/mapLaunchToSchema picks
+        // "starship" before ever considering "starlink", since a Starship flight's own vehicle
+        // name always contains "Starship") - but some Starship flights ALSO deploy a batch of
+        // Starlink satellites right in their own name (e.g. "Starship | Starlink Group 31-1
+        // (Starship Flight 14)", the first Starship flight to do this). Filed under "starship"
+        // alone, a mission like that would never show up under the "Starlink" filter tab even
+        // though it plainly is one. Rather than turn `category` itself into a multi-value field
+        // (touching every other place that already assumes a single string), the filter tabs
+        // specifically treat "starship" + "starlink" as overlapping: a Starship-category mission
+        // whose own name also mentions Starlink matches BOTH the Starship and the Starlink tab.
+        function missionMatchesCategoryFilter(m, filter) {
+            if (filter === 'falcon') return m.category === 'falcon' || m.category === 'falcon_heavy';
+            if (filter === 'starlink' && m.category === 'starship' && /starlink/i.test(m.name || '')) return true;
+            return m.category === filter;
+        }
+
         // Rebuilds the grids for the current category tab (favorites/all/falcon/starship/
         // starlink/dragon) only - no search text involved. Search is applied afterward, as a
         // separate show/hide pass (applySearchFilter), so that typing in the search box never
@@ -19721,7 +19737,7 @@ setTimeout(() => {
             } else if (currentFilter === 'all') {
                 filteredUpcoming = upcomingForGrid;
             } else {
-                filteredUpcoming = upcomingForGrid.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
+                filteredUpcoming = upcomingForGrid.filter(m => missionMatchesCategoryFilter(m, currentFilter));
             }
             renderMissions(filteredUpcoming);
 
@@ -19732,7 +19748,7 @@ setTimeout(() => {
             if (currentFilter === 'favorites') {
                 filteredPast = filteredPast.filter(m => favoriteMissions.includes(m.id));
             } else if (currentFilter !== 'all') {
-                filteredPast = filteredPast.filter(m => currentFilter === 'falcon' ? (m.category === 'falcon' || m.category === 'falcon_heavy') : m.category === currentFilter);
+                filteredPast = filteredPast.filter(m => missionMatchesCategoryFilter(m, currentFilter));
             }
             renderPastMissions(filteredPast);
         }
