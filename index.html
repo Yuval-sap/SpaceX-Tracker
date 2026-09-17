@@ -5043,7 +5043,11 @@
         #launch-cadence-modal .lc-series-line.is-hero { stroke-width: 2.75; }
         #launch-cadence-modal .lc-end-dot-ring { fill: var(--lc-surface-1); }
         #launch-cadence-modal .lc-crosshair { stroke: var(--lc-border-strong); stroke-width: 1; pointer-events: none; }
-        #launch-cadence-modal .lc-hit-layer { fill: transparent; cursor: crosshair; }
+        /* touch-action: none stops the browser treating a finger-down on the chart as a
+           scroll/pan gesture - without it, mobile Safari/Chrome would grab the touch for
+           scrolling mid-gesture and fire pointercancel, which is why a tap only ever
+           flashed the tooltip for an instant before it vanished. */
+        #launch-cadence-modal .lc-hit-layer { fill: transparent; cursor: crosshair; touch-action: none; }
         #launch-cadence-modal .lc-legend { display: flex; flex-wrap: wrap; gap: 14px 18px; padding: 14px 18px 6px; position: relative; }
         #launch-cadence-modal .lc-legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--lc-text-secondary); }
         #launch-cadence-modal .lc-legend-item .lc-key { width: 14px; height: 2.75px; border-radius: 2px; background: currentColor; }
@@ -10382,8 +10386,11 @@
                              w-full (לא min-w קבוע) משווה את הרוחב לזה של תיבת המונה עצמה (ההורה
                              עם position: relative) במקום ערך מקובע שיצא מסונכרן אם רוחב התיבה
                              ישתנה בעתיד. -->
+                        <!-- Mobile keeps the original side-opening position (top-0 end-full me-2,
+                             flips with RTL/LTR automatically); desktop (md+) overrides to the
+                             newer above-and-centered position instead. -->
                         <div id="year-count-breakdown"
-                            class="hidden md:group-hover:flex absolute bottom-full mb-2 left-1/2 -translate-x-1/2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
+                            class="hidden md:group-hover:flex absolute top-0 end-full me-2 md:top-auto md:end-auto md:me-0 md:bottom-full md:mb-2 md:left-1/2 md:-translate-x-1/2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
                             <div class="flex items-center justify-between gap-3 text-sm">
                                 <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span>Falcon 9</span></span>
                                 <span id="year-count-falcon9" class="font-orbitron font-bold text-emerald-400 text-base">0</span>
@@ -12375,6 +12382,21 @@
         }
         function leave() { crosshair.style.opacity = 0; tooltip.classList.remove('is-visible'); }
 
+        // Touch has no hover: pointermove alone only fires while a finger is actively
+        // sliding, so a plain tap (down+up with no drag) never triggered move() - at best a
+        // tiny accidental shift fired it once, and then the browser's own scroll-gesture
+        // detection cancelled the touch a moment later, hiding it again just as fast. Capturing
+        // the pointer on down keeps every subsequent move targeted at this element even if the
+        // finger drifts outside its exact bounds (for the drag-to-scrub gesture), and calling
+        // move() immediately on down shows the tooltip right on tap instead of waiting for a
+        // move that may never come. Deliberately NOT hiding on pointerup/pointercancel - the
+        // tooltip stays at the last tapped point until the next tap or a real pointerleave
+        // (mouse), matching how touch charts are normally expected to behave.
+        function down(evt) {
+          try { hit.setPointerCapture(evt.pointerId); } catch (e) { }
+          move(evt);
+        }
+        hit.addEventListener('pointerdown', down);
         hit.addEventListener('pointermove', move);
         hit.addEventListener('pointerleave', leave);
       }
