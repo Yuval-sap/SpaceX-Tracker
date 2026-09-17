@@ -7627,7 +7627,9 @@
         // Translate, idiomatic titles like "Test Like You Fly" (an aerospace-testing phrase,
         // not a literal instruction) came out as nonsensical word-for-word translations —
         // same rationale as MILESTONES_I18N above, so these get the same manual treatment.
-        // Episode descriptions are left as-is for Google Translate.
+        // Episode descriptions are otherwise left as-is for Google Translate - Episode 3 is the
+        // one exception (see DOC_EP3_DESC_I18N below), added on explicit request after its
+        // Hebrew machine translation read poorly.
         const DOC_EPISODE_I18N = {
             en: { ep1: "Critical Path", ep2: "Test Like You Fly", ep3: "Holy Grail Of Rocketry" },
             he: { ep1: "המסלול הקריטי", ep2: "לבחון תוך כדי טיסה", ep3: "הגביע הקדוש של הרקטות" },
@@ -7649,6 +7651,34 @@
             tr: { ep1: "Kritik Yol", ep2: "Uçtuğun Gibi Test Et", ep3: "Roketçiliğin Kutsal Kâsesi" },
         };
 
+        // Episode 3's card description ("Holy Grail Of Rocketry", #doc-ep3-desc) - hand-
+        // translated rather than left to Google Translate (unlike every other episode
+        // description), because the Hebrew machine translation of this one specifically read
+        // poorly. Marking the element notranslate to fix just Hebrew would have also cut off
+        // Google's translation for every OTHER language reading this same paragraph, so all 18
+        // are covered here instead - "Starship"/"SpaceX" kept in Latin script in every language,
+        // matching the exact style of the Hebrew text this was requested with.
+        const DOC_EP3_DESC_I18N = {
+            en: "A fully and rapidly reusable rocket will fundamentally change how humanity accesses outer space. “The Holy Grail of Rocketry” continues the ongoing Starship series with a look back at the scrappy days of SpaceX engineers proving reuse was possible and takes you onboard a high-seas race to recover a floating Starship.",
+            he: "טיל שניתן לשימוש חוזר מלא ומהיר ישנה מהיסוד את האופן שבו האנושות מגיעה לחלל החיצון. “הגביע הקדוש של הרקטות” ממשיך את סדרת ה-Starship הנוכחית במבט לאחור על ימיהם מלאי התושייה והאלתור של מהנדסי SpaceX, כשהוכיחו ששימוש חוזר הוא אכן אפשרי, ולוקח אתכם היישר לתוך מרוץ בלב ים לחילוץ חללית Starship צפה.",
+            iw: "טיל שניתן לשימוש חוזר מלא ומהיר ישנה מהיסוד את האופן שבו האנושות מגיעה לחלל החיצון. “הגביע הקדוש של הרקטות” ממשיך את סדרת ה-Starship הנוכחית במבט לאחור על ימיהם מלאי התושייה והאלתור של מהנדסי SpaceX, כשהוכיחו ששימוש חוזר הוא אכן אפשרי, ולוקח אתכם היישר לתוך מרוץ בלב ים לחילוץ חללית Starship צפה.",
+            es: "Un cohete totalmente y rápidamente reutilizable cambiará fundamentalmente la forma en que la humanidad accede al espacio exterior. “El Santo Grial de la Cohetería” continúa la serie Starship con una mirada retrospectiva a los días de ingenio e improvisación de los ingenieros de SpaceX, que demostraron que la reutilización era posible, y te lleva a una carrera en alta mar para recuperar un Starship a la deriva.",
+            fr: "Une fusée entièrement et rapidement réutilisable va changer fondamentalement la façon dont l'humanité accède à l'espace. “Le Saint Graal de la Fuséologie” poursuit la série Starship en revenant sur les jours de débrouille des ingénieurs de SpaceX, qui ont prouvé que la réutilisation était possible, et vous embarque dans une course en haute mer pour récupérer un Starship à la dérive.",
+            de: "Eine vollständig und schnell wiederverwendbare Rakete wird grundlegend verändern, wie die Menschheit den Weltraum erreicht. “Der Heilige Gral der Raketentechnik” setzt die Starship-Serie fort, mit einem Rückblick auf die improvisationsreichen Tage der SpaceX-Ingenieure, die bewiesen, dass Wiederverwendung möglich ist, und nimmt dich mit auf ein Hochsee-Rennen zur Bergung eines treibenden Starships.",
+            ru: "Полностью и быстро многоразовая ракета коренным образом изменит то, как человечество получает доступ в космос. “Святой Грааль ракетостроения” продолжает сериал о Starship, оглядываясь на полные находчивости и импровизации дни инженеров SpaceX, доказавших, что повторное использование возможно, и берёт вас в морскую гонку за спасение дрейфующего Starship.",
+            zh: "一枚能够完全且快速重复使用的火箭将从根本上改变人类进入太空的方式。《火箭技术的圣杯》延续了正在播出的Starship系列，回顾了SpaceX工程师们靠着机智和临场应变证明重复使用切实可行的艰苦岁月，并带你参与一场在公海上抢救漂浮的Starship的竞速行动。",
+            it: "Un razzo completamente e rapidamente riutilizzabile cambierà radicalmente il modo in cui l'umanità accede allo spazio. “Il Santo Graal della Missilistica” continua la serie Starship con uno sguardo ai giorni di ingegnosità e improvvisazione degli ingegneri SpaceX, che hanno dimostrato che il riutilizzo era possibile, portandoti in una gara in alto mare per recuperare uno Starship alla deriva.",
+            cs: "Plně a rychle znovupoužitelná raketa zásadně změní způsob, jakým lidstvo přistupuje do kosmického prostoru. “Svatý grál raketové techniky” pokračuje v seriálu o Starship pohledem zpět na dny plné vynalézavosti a improvizace inženýrů SpaceX, kteří dokázali, že opětovné použití je možné, a vezme vás na námořní závod o záchranu unášeného Starship.",
+            sv: "En helt och snabbt återanvändningsbar raket kommer i grunden att förändra hur mänskligheten tar sig ut i rymden. “Den heliga graalen för raketteknik” fortsätter Starship-serien med en tillbakablick på SpaceX-ingenjörernas påhittiga och improviserade dagar då de bevisade att återanvändning var möjlig, och tar dig med på en kapplöpning på öppet hav för att rädda ett drivande Starship.",
+            nl: "Een volledig en snel herbruikbare raket zal fundamenteel veranderen hoe de mensheid de ruimte bereikt. “De Heilige Graal van de Raketkunde” zet de Starship-serie voort met een terugblik op de vindingrijke, improviserende dagen van SpaceX-ingenieurs die bewezen dat hergebruik mogelijk was, en neemt je mee op een race op volle zee om een afgedreven Starship te redden.",
+            da: "En fuldt og hurtigt genanvendelig raket vil grundlæggende ændre den måde, menneskeheden får adgang til det ydre rum. “Den hellige gral for raketteknik” fortsætter Starship-serien med et tilbageblik på SpaceX-ingeniørernes opfindsomme og improviserede dage, hvor de beviste, at genanvendelse var muligt, og tager dig med på et kapløb på åbent hav for at redde en drivende Starship.",
+            pt: "Um foguete totalmente e rapidamente reutilizável vai mudar fundamentalmente a forma como a humanidade acessa o espaço. “O Santo Graal da Foguetaria” continua a série Starship com um olhar retrospectivo aos dias de improviso e criatividade dos engenheiros da SpaceX, que provaram que a reutilização era possível, e leva você a uma corrida em alto mar para recuperar um Starship à deriva.",
+            pl: "Całkowicie i szybko wielokrotnego użytku rakieta fundamentalnie zmieni sposób, w jaki ludzkość dociera do kosmosu. “Święty Graal techniki rakietowej” jest kontynuacją serii Starship, spoglądając na pełne pomysłowości i improwizacji dni inżynierów SpaceX, którzy udowodnili, że wielokrotne użycie jest możliwe, i zabiera cię w morski wyścig o odzyskanie dryfującego Starship.",
+            hi: "पूरी तरह और तेज़ी से पुनः उपयोग की जा सकने वाली रॉकेट मानवता के अंतरिक्ष तक पहुँचने के तरीके को मूल रूप से बदल देगी। “रॉकेट विज्ञान की पवित्र खोज” चल रही Starship श्रृंखला को आगे बढ़ाती है, SpaceX इंजीनियरों के सूझबूझ और तात्कालिक समाधानों से भरे दिनों पर नज़र डालते हुए, जिन्होंने साबित किया कि पुनः उपयोग संभव है, और आपको एक बहती हुई Starship को बचाने की समुद्री दौड़ में ले जाती है।",
+            ar: "صاروخ قابل لإعادة الاستخدام الكامل والسريع سيغيّر جذريًا الطريقة التي تصل بها الإنسانية إلى الفضاء الخارجي. تُكمل “الكأس المقدسة لصناعة الصواريخ” سلسلة Starship المستمرة بنظرة إلى الأيام الحافلة بالحيلة والارتجال لمهندسي SpaceX الذين أثبتوا أن إعادة الاستخدام أمر ممكن، وتأخذك في سباق عبر عرض البحر لاستعادة مركبة Starship طافية.",
+            tr: "Tamamen ve hızlıca yeniden kullanılabilir bir roket, insanlığın uzaya erişim şeklini temelden değiştirecek. “Roketçiliğin Kutsal Kâsesi”, SpaceX mühendislerinin yeniden kullanımın mümkün olduğunu kanıtladığı beceriklilik ve improvizasyonla geçen günlere bakan devam eden Starship serisini sürdürüyor ve sizi sürüklenen bir Starship'i kurtarmak için açık denizde bir yarışa çıkarıyor.",
+        };
+
         let lastAppliedDocEpisodeLang = null;
         function applyDocEpisodeTranslations(currentLang) {
             let key = (currentLang || 'en').split('-')[0];
@@ -7662,6 +7692,8 @@
             if (ep1) ep1.innerText = dict.ep1;
             if (ep2) ep2.innerText = dict.ep2;
             if (ep3) ep3.innerText = dict.ep3;
+            const ep3Desc = document.getElementById('doc-ep3-desc');
+            if (ep3Desc) ep3Desc.innerText = DOC_EP3_DESC_I18N[key] || DOC_EP3_DESC_I18N.en;
         }
 
         // Manual transliterations for the real-world launch site names that show up in
@@ -7716,6 +7748,48 @@
                 : key === 'hi' ? 'लुइज़ियाना' : key === 'ar' ? 'لويزيانا' : 'Louisiana';
             out = out.replace(/Louisiana/g, louisianaName);
             return out;
+        }
+
+        // "Coordinates:" label above the mission modal's LAUNCH SITE map (#modal-pad-coordinate-
+        // label, see handleModalFeatures/buildRadarCoordLabel below). The lat/lng numbers and
+        // hemisphere letters (N/W) stay as-is in every language, same reasoning as facility
+        // codes elsewhere (SLC-4E, SFB, ...) - they're notation, not prose. Only this one word,
+        // plus the site name (already handled by localizeSiteStr), actually needs translating.
+        const COORDINATES_LABEL_I18N = {
+            en: "Coordinates", he: "קואורדינטות", iw: "קואורדינטות", es: "Coordenadas",
+            fr: "Coordonnées", de: "Koordinaten", ru: "Координаты", zh: "坐标",
+            it: "Coordinate", cs: "Souřadnice", sv: "Koordinater", nl: "Coördinaten",
+            da: "Koordinater", pt: "Coordenadas", pl: "Współrzędne", hi: "निर्देशांक",
+            ar: "الإحداثيات", tr: "Koordinatlar",
+        };
+        // Fixed per-site lat/lng + site-name text (see handleModalFeatures) - siteName is run
+        // through localizeSiteStr so "Vandenberg"/"Cape Canaveral"/"Starbase" localize exactly
+        // like every other on-page use of these facility names, while "SFB"/"TX"/"CA"/"FL"
+        // stay put.
+        const RADAR_COORD_DATA = {
+            starbase: { latLng: '25.99° N, 97.15° W', siteName: 'Boca Chica, TX' },
+            vandenberg: { latLng: '34.63° N, 120.61° W', siteName: 'Vandenberg SFB, CA' },
+            capeCanaveral: { latLng: '28.56° N, 80.57° W', siteName: 'Cape Canaveral, FL' },
+        };
+        // Returns HTML, not plain text - the lat/lng + site name half is wrapped in its own
+        // dir="ltr" span on purpose. In an RTL page, a plain string of [RTL word][":"][LTR
+        // numbers/Latin site name] hits the Unicode bidi algorithm's classic RTL-then-LTR
+        // boundary case: confirmed live, the browser reordered it to something like "25.99°
+        // :קואורדינטות N, 97.15° W" - the colon and even part of the LTR run drifting to the
+        // WRONG side of the Hebrew word instead of staying right after it. An explicit dir on
+        // the LTR half (same fix already used for the hero's date/site line - see
+        // heroDetailsTextEl above) pins its internal order regardless of the surrounding
+        // paragraph direction. A Hebrew place name inside that span (e.g. "ואנדנברג" from
+        // localizeSiteStr) still comes out correctly ordered - dir only controls how mixed-
+        // direction runs and neutrals are arranged, not how a strongly-RTL run's own characters
+        // are shaped, so the embedded Hebrew word isn't affected by the outer dir="ltr" - also
+        // confirmed live.
+        function buildRadarCoordLabel(siteKey, currentLang) {
+            const data = RADAR_COORD_DATA[siteKey] || RADAR_COORD_DATA.capeCanaveral;
+            const key = (currentLang || 'en').toLowerCase().split('-')[0];
+            const word = COORDINATES_LABEL_I18N[key] || COORDINATES_LABEL_I18N.en;
+            const rest = data.latLng + ' • ' + localizeSiteStr(data.siteName, currentLang);
+            return escapeHtml(word) + ': <span dir="ltr">' + escapeHtml(rest) + '</span>';
         }
 
         // Manual translations for the labels used to build the "Mission Objectives and
@@ -9133,6 +9207,13 @@
             // on every 500ms tick, since renderLocalizedMissionName can fire a network request.
             try {
                 const langNow = currentLang.split('-')[0];
+                // The mission modal's own "LAUNCH SITE" map (see applyRadarMapLanguage) - kept
+                // at the very top of this try block for the same reason the patch-title fix
+                // right below it is: a later statement in this sweep has been observed throwing
+                // on some page states, which silently stops everything after it for that tick
+                // (this whole try/catch exists because of exactly that) - anything that needs to
+                // run reliably belongs before the risky part, not after it.
+                if (typeof applyRadarMapLanguage === 'function') applyRadarMapLanguage(currentLang);
                 const patchTargets = [
                     ['patch-lightbox', 'patch-lightbox-name', window.currentOpenPatchLightboxName],
                     ['patch-mission-modal', 'patch-mission-modal-name', window.currentOpenPatchMissionName]
@@ -9306,6 +9387,23 @@
                 const modalSiteEl = document.getElementById('modal-site');
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && modalSiteEl && window.currentActiveMissionSite) {
                     modalSiteEl.innerText = localizeSiteStr(window.currentActiveMissionSite, currentLang);
+                }
+                // Same for the "Coordinates: ..." line above that same modal's LAUNCH SITE map
+                // (see buildRadarCoordLabel/handleModalFeatures) - plain English otherwise, with
+                // no Google Translate coverage at all (it's rewritten by JS on every site switch,
+                // which raced Google's own translation of it).
+                const coordLabelEl = document.getElementById('modal-pad-coordinate-label');
+                if (missionModalEl && !missionModalEl.classList.contains('hidden') && coordLabelEl && window.currentActiveRadarSiteKey) {
+                    // Google Translate's own DOM pass sometimes stamps a stale dir="ltr" onto
+                    // this element (observed live, on a page that never set it itself) from
+                    // whatever direction ITS content looked like at scan time - left in place,
+                    // that silently overrides the inner <span dir="ltr"> value's positioning
+                    // relative to the Hebrew label (see buildRadarCoordLabel), scrambling the
+                    // whole line's reading order even though the HTML itself is correct. Forcing
+                    // it back to the page's own real direction on every update is what actually
+                    // fixes it - confirmed live.
+                    coordLabelEl.setAttribute('dir', htmlEl.getAttribute('dir') || 'ltr');
+                    coordLabelEl.innerHTML = buildRadarCoordLabel(window.currentActiveRadarSiteKey, currentLang);
                 }
                 // Starbase Louisiana dossier is hand-translated (STARBASE_LA_I18N) and blocked
                 // from Google Translate — re-apply when the language changes while it is open.
@@ -10176,7 +10274,7 @@
                         onclick="return openDocVideoModal('mQCtXRtRuBc', event)"
                         class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer no-underline min-h-[367px]">
                         <img src="https://sxcontent9668.azureedge.us/cms-assets/assets/large_Ep003_Thumbnail_89a5b8fe72.png"
-                            class="absolute inset-0 w-full h-full object-cover object-[center_5%] scale-[1.05] origin-bottom" alt="Episode 3 Cover">
+                            class="absolute inset-0 w-full h-full object-cover object-[center_5%] scale-[1.6] origin-[center_80%]" alt="Episode 3 Cover">
                         <div class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
                             <div class="relative">
                                 <div class="doc-card-fade pointer-events-none absolute -top-12 -bottom-4 -inset-x-4 sm:-bottom-5 sm:-inset-x-5 md:-bottom-6 md:-inset-x-6"></div>
@@ -10189,7 +10287,7 @@
                                     <h4 id="doc-ep3-title" translate="no"
                                         class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
                                         Holy Grail Of Rocketry</h4>
-                                    <p class="mission-card-desc text-xs text-zinc-400 line-clamp-4">A fully and rapidly reusable rocket
+                                    <p id="doc-ep3-desc" translate="no" class="mission-card-desc text-xs text-zinc-400 line-clamp-4 notranslate">A fully and rapidly reusable rocket
                                         will fundamentally change how humanity accesses outer space. "The Holy Grail of Rocketry"
                                         continues the ongoing Starship series with a look back at the scrappy days of SpaceX
                                         engineers proving reuse was possible and takes you onboard a high-seas race to recover a
@@ -20723,6 +20821,54 @@ setTimeout(() => {
             return 'https://tiles.openfreemap.org/styles/dark';
         }
 
+        // OpenFreeMap's vector tiles (OpenMapTiles "planet" schema) carry a real translated
+        // name for almost every one of this site's own languages as a separate per-feature
+        // property - "name:he", "name:ar", "name:ru", "name:zh-Hans", ... (confirmed live by
+        // reading the tileset's own TileJSON field list) - the style just never asked for them,
+        // its built-in label layers hardcode a "name_en"-then-"name" coalesce. Site language
+        // code -> the tile's own property suffix; only zh needs remapping (this site's zh
+        // dictionaries are Simplified, the tiles split simplified/traditional into two fields).
+        const RADAR_MAP_LANG_CODE = {
+            en: 'en', he: 'he', iw: 'he', es: 'es', fr: 'fr', de: 'de', ru: 'ru',
+            zh: 'zh-Hans', it: 'it', cs: 'cs', sv: 'sv', nl: 'nl', da: 'da', pt: 'pt',
+            pl: 'pl', hi: 'hi', ar: 'ar', tr: 'tr',
+        };
+        // The dark style's own label layers (source-layer "place" for all but the first two) -
+        // read directly off the live style, not guessed.
+        const RADAR_MAP_LABEL_LAYERS = [
+            'water_name', 'highway_name_other', 'place_other', 'place_suburb', 'place_village',
+            'place_town', 'place_city', 'place_city_large', 'place_state',
+            'place_country_other', 'place_country_minor', 'place_country_major',
+        ];
+        // Re-run from the language-watch dispatcher below on every language change (and once
+        // per fresh map instance - see updateRadarMapTheme's reset of this) rather than off a
+        // single load/idle event: a style that hasn't finished fetching yet has none of these
+        // layers at all, and that dispatcher's own periodic retry already handles exactly that
+        // "not ready yet" case for everything else on this page, so a mission modal opened right
+        // as the map's style is still loading still ends up labeled correctly a tick later
+        // instead of silently not. Deliberately NOT gated on isStyleLoaded() - confirmed live
+        // that setLayoutProperty already works well before it flips true (sprites/glyphs, which
+        // isStyleLoaded also waits on, are irrelevant to a text-field swap), and gating on it
+        // meant this never ran at all.
+        let lastAppliedRadarMapLang = null;
+        function applyRadarMapLanguage(currentLang) {
+            if (!radarLeafletTileLayer || typeof radarLeafletTileLayer.getMaplibreMap !== 'function') return;
+            const key = (currentLang || 'en').toLowerCase().split('-')[0];
+            const osmCode = RADAR_MAP_LANG_CODE[key] || 'en';
+            if (lastAppliedRadarMapLang === osmCode) return;
+            let maplibreMap;
+            try { maplibreMap = radarLeafletTileLayer.getMaplibreMap(); } catch (e) { return; }
+            if (!maplibreMap || typeof maplibreMap.getLayer !== 'function' || !maplibreMap.getLayer(RADAR_MAP_LABEL_LAYERS[0])) return;
+            const textField = osmCode === 'en'
+                ? ['coalesce', ['get', 'name_en'], ['get', 'name']]
+                : ['coalesce', ['get', 'name:' + osmCode], ['get', 'name_en'], ['get', 'name']];
+            RADAR_MAP_LABEL_LAYERS.forEach(id => {
+                if (!maplibreMap.getLayer(id)) return;
+                try { maplibreMap.setLayoutProperty(id, 'text-field', textField); } catch (e) { /* best-effort only */ }
+            });
+            lastAppliedRadarMapLang = osmCode;
+        }
+
         // maxBounds/minZoom (see initRadarLeafletMap) only stop panning/zooming past the US -
         // OpenFreeMap's own style still happily LABELS Mexico/Cuba/Guatemala right where they
         // sit inside that view (Cape Canaveral is genuinely only ~450mi from Cuba), which is
@@ -20883,13 +21029,39 @@ setTimeout(() => {
                 radarLeafletTileLayer._radarStyleUrl = desiredUrl;
                 const layerForFilter = radarLeafletTileLayer;
                 restrictRadarMapToUS(() => layerForFilter.getMaplibreMap());
+                // Fresh maplibre instance, fresh style - starts back at the tile's own default
+                // labels regardless of what was already applied to the instance this just
+                // replaced. Forces applyRadarMapLanguage's next dispatcher tick to redo it.
+                lastAppliedRadarMapLang = null;
             } catch (e) { /* cosmetic only - never block a mode switch over this */ }
+        }
+
+        // MapLibre GL (unlike a browser's native text layout) doesn't reorder/shape Hebrew or
+        // Arabic glyphs into correct reading order on its own - without this plugin registered,
+        // every Hebrew/Arabic label on the map (see applyRadarMapLanguage) renders with its
+        // characters in storage order, i.e. visibly backwards, confirmed live. `lazy: true`
+        // means the plugin itself is only actually fetched the first time the map encounters
+        // text that needs it, so English/other-script users never pay for it. Registered once,
+        // globally on the `maplibregl` namespace - not per map instance - so this must run
+        // before the FIRST map is created, not after.
+        let radarMapRtlPluginRequested = false;
+        function ensureMaplibreRtlTextPlugin() {
+            if (radarMapRtlPluginRequested || typeof maplibregl === 'undefined' || typeof maplibregl.setRTLTextPlugin !== 'function') return;
+            radarMapRtlPluginRequested = true;
+            try {
+                maplibregl.setRTLTextPlugin(
+                    'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js',
+                    null,
+                    true
+                );
+            } catch (e) { /* best-effort only - map still works, RTL labels just stay backwards */ }
         }
 
         function initRadarLeafletMap() {
             if (radarLeafletMap || typeof L === 'undefined') return;
             const container = document.getElementById('radar-leaflet-map');
             if (!container) return;
+            ensureMaplibreRtlTextPlugin();
 
             radarLeafletMap = L.map(container, {
                 zoomControl: true,
@@ -21325,14 +21497,13 @@ setTimeout(() => {
                 bindRadarMapWheelZoomGate();
             }, 50);
 
-            if (siteKey === 'starbase') {
-                label.innerText = "Coordinates: 25.99° N, 97.15° W • Boca Chica, TX";
-            }
-            else if (siteKey === 'vandenberg') {
-                label.innerText = "Coordinates: 34.63° N, 120.61° W • Vandenberg SFB, CA";
-            }
-            else {
-                label.innerText = "Coordinates: 28.56° N, 80.57° W • Cape Canaveral, FL";
+            window.currentActiveRadarSiteKey = siteKey;
+            if (label) {
+                // See the matching comment in the language-watch dispatcher for why this
+                // explicit reset is needed - Google Translate can leave a stale dir="ltr" on
+                // this element that silently scrambles the line's reading order otherwise.
+                label.setAttribute('dir', document.documentElement.getAttribute('dir') || 'ltr');
+                label.innerHTML = buildRadarCoordLabel(siteKey, document.documentElement.lang);
             }
 
             const bFalcon = document.getElementById('scale-bar-falcon');
