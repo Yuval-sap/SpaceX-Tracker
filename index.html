@@ -12386,15 +12386,7 @@
           tooltip.style.top = Math.max(minTop, topPx - 10) + 'px';
           tooltip.classList.add('is-visible');
         }
-        // Touch fires pointerleave mid-drag too (the finger sliding off the hit-layer's exact
-        // bounds counts as "leaving" it even while captured), which was hiding the tooltip
-        // the moment a drag moved off the initial spot instead of letting it scrub along the
-        // line. Only a real mouse leaving the area should hide it - touch keeps showing
-        // whatever move() last computed (already clamped to the nearest valid point).
-        function leave(evt) {
-          if (evt && evt.pointerType && evt.pointerType !== 'mouse') return;
-          crosshair.style.opacity = 0; tooltip.classList.remove('is-visible');
-        }
+        function leave() { crosshair.style.opacity = 0; tooltip.classList.remove('is-visible'); }
 
         // Touch has no hover: pointermove alone only fires while a finger is actively
         // sliding, so a plain tap (down+up with no drag) never triggered move() - at best a
