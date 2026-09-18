@@ -19849,39 +19849,6 @@
             document.body.style.setProperty('--crt-card-holes', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
         }
 
-        // Shared by freezeCrtHoleForDrag and coarseCrtCardHoles below: the single-rect path-d
-        // fragment for one strip's worth of cards, or null if the strip isn't currently
-        // measurable/relevant. Pulled out on its own so the page-scroll case (potentially several
-        // strips visible at once) can union multiple of these into one mask instead of
-        // duplicating the per-strip math.
-        function crtStripHolePath(stripEl) {
-            if (!stripEl) return null;
-            const stripRect = stripEl.getBoundingClientRect();
-            if (stripRect.width < 2) return null;
-            // The strip element's OWN rect is taller than the cards themselves (container
-            // padding/gap), which left visible margins above/below the cards where the scanline
-            // overlay was absent for no reason - measure an actual card instead for the vertical
-            // extent, and use the strip only for how far left/right the hole needs to reach.
-            const card = stripEl.querySelector('.mission-card');
-            const cardRect = card ? card.getBoundingClientRect() : stripRect;
-            if (cardRect.height < 2) return null;
-            const padX = 4;
-            // .mission-card:hover is `transform: translateY(-6px) scale(1.015)` - lifts the top
-            // edge up further than the bottom (scale expands around the card's own center, so
-            // only the bottom's share of that expansion partly cancels the translateY, while the
-            // top's share adds to it). A hovered card's bottom edge is therefore always ABOVE the
-            // resting bottom used here - safe with no extra margin - but its top edge can rise
-            // above a hole whose top was measured at rest, exposing scanlines across the lifted
-            // card's own top strip. hoverLift covers that (6px translate + half of 1.5% of a
-            // ~367px card ≈ 2.75px, rounded up with headroom).
-            const hoverLift = 12;
-            const left = stripRect.left - padX;
-            const width = stripRect.width + padX * 2;
-            const top = cardRect.top - hoverLift;
-            const height = (cardRect.bottom - top);
-            return crtRoundedRectPath(left, top, width, height, 24);
-        }
-
         // scheduleCrtHoleUpdate freezes the precise per-card holes for the whole drag+momentum
         // gesture (see its own comment - rebuilding them every frame made dragging feel syrupy).
         // Leaving the STALE per-card holes in place while the cards themselves keep sliding
@@ -19897,43 +19864,33 @@
             const vw = document.documentElement.clientWidth;
             const vh = document.documentElement.clientHeight;
             if (vw < 1 || vh < 1) return;
-            const path = crtStripHolePath(stripEl);
-            if (!path) return;
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}"><path fill="black" fill-rule="evenodd" d="M0 0H${vw}V${vh}H0Z${path}"/></svg>`;
-            document.body.style.setProperty('--crt-card-holes', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
-        }
-
-        // Whole-page vertical scroll can have several card strips on screen at once (unlike a
-        // single carousel drag), so there's no one element to build freezeCrtHoleForDrag's single
-        // hole around - but "give up and hide the entire scanline layer" turned out to read as
-        // its own, more noticeable bug: the effect visibly flickering off during perfectly
-        // ordinary scrolling, not just fast drags. This instead unions ONE hole per relevant
-        // strip (not one per card - same idea as freezeCrtHoleForDrag, just repeated per strip)
-        // for the scroll's duration - coarser than the settled precise mask, but the scanline
-        // layer itself never disappears, and every hole edge is still anchored to something real
-        // on screen instead of a frozen stale position.
-        function coarseCrtCardHoles() {
-            const vw = document.documentElement.clientWidth;
-            const vh = document.documentElement.clientHeight;
-            if (vw < 1 || vh < 1) {
-                document.body.style.removeProperty('--crt-card-holes');
-                return;
-            }
-            const strips = ['missions-grid', 'past-launches-grid'].map((id) => document.getElementById(id));
-            const firstDocCard = document.querySelector('#tab-panel-more .mission-card');
-            if (firstDocCard) strips.push(firstDocCard.parentElement);
-            const parts = [`M0 0H${vw}V${vh}H0Z`];
-            strips.forEach((stripEl) => {
-                if (!stripEl) return;
-                const r = stripEl.getBoundingClientRect();
-                if (r.bottom < 0 || r.top > vh) return; // strip fully off-screen - not worth measuring
-                const path = crtStripHolePath(stripEl);
-                if (path) parts.push(path);
-            });
-            if (parts.length === 1) {
-                document.body.style.removeProperty('--crt-card-holes');
-                return;
-            }
+            const stripRect = stripEl.getBoundingClientRect();
+            if (stripRect.width < 2) return;
+            // The strip element's OWN rect is taller than the cards themselves (container
+            // padding/gap), which left visible margins above/below the cards where the scanline
+            // overlay was absent for no reason - measure an actual card instead for the vertical
+            // extent, and use the strip only for how far left/right the hole needs to reach.
+            const card = stripEl.querySelector('.mission-card');
+            const cardRect = card ? card.getBoundingClientRect() : stripRect;
+            if (cardRect.height < 2) return;
+            const padX = 4;
+            // .mission-card:hover is `transform: translateY(-6px) scale(1.015)` - lifts the top
+            // edge up further than the bottom (scale expands around the card's own center, so
+            // only the bottom's share of that expansion partly cancels the translateY, while the
+            // top's share adds to it). A hovered card's bottom edge is therefore always ABOVE the
+            // resting bottom used here - safe with no extra margin - but its top edge can rise
+            // above a hole whose top was measured at rest, exposing scanlines across the lifted
+            // card's own top strip. hoverLift covers that (6px translate + half of 1.5% of a
+            // ~367px card ≈ 2.75px, rounded up with headroom).
+            const hoverLift = 12;
+            const left = stripRect.left - padX;
+            const width = stripRect.width + padX * 2;
+            const top = cardRect.top - hoverLift;
+            const height = (cardRect.bottom - top);
+            const parts = [
+                `M0 0H${vw}V${vh}H0Z`,
+                crtRoundedRectPath(left, top, width, height, 24)
+            ];
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}"><path fill="black" fill-rule="evenodd" d="${parts.join('')}"/></svg>`;
             document.body.style.setProperty('--crt-card-holes', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
         }
@@ -19977,30 +19934,7 @@
                 updateAIComputeCrtHole();
             });
         }
-        // Whole-page vertical scroll (as opposed to a single horizontal carousel strip - see
-        // handleCarouselScrollForCrt below for that case) can have several card strips on screen
-        // at once, so there's no single element to build freezeCrtHoleForDrag's own substitute
-        // hole around. Swaps in coarseCrtCardHoles' one-hole-per-strip mask the instant a page
-        // scroll starts (an earlier version of this just hid the whole scanline layer instead -
-        // much simpler, but that read as its own bug: the effect visibly flickering off during
-        // completely ordinary scrolling, not just fast drags) and restores the precise per-card
-        // mask once scrolling has been quiet for a beat.
-        let _crtPageScrollRaf = 0;
-        let _crtPageScrollSettleTimer = null;
-        function handlePageScrollForCrt() {
-            if (!_crtPageScrollRaf) {
-                _crtPageScrollRaf = requestAnimationFrame(() => {
-                    _crtPageScrollRaf = 0;
-                    coarseCrtCardHoles();
-                });
-            }
-            if (_crtPageScrollSettleTimer) clearTimeout(_crtPageScrollSettleTimer);
-            _crtPageScrollSettleTimer = setTimeout(() => {
-                _crtPageScrollSettleTimer = null;
-                scheduleCrtHoleUpdate();
-            }, 140);
-        }
-        window.addEventListener('scroll', handlePageScrollForCrt, { passive: true });
+        window.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
         window.addEventListener('resize', scheduleCrtHoleUpdate);
 
         // freezeCrtHoleForDrag's single-big-hole trick was originally wired only to the
