@@ -9716,14 +9716,13 @@
             // that isn't a scroll/resize event - e.g. async content loading above this section
             // and changing its on-screen position. Cheap (one rect read + one style write when
             // the position actually changed), same reasoning as this loop's other per-tick catches.
-            // Skipped mid-drag/mid-scroll (same guards as scheduleCrtHoleUpdate) - this runs on
-            // its own ~500ms interval independent of any gesture, so without the guard it would
-            // periodically overwrite the coarse/frozen holes with a precise-for-that-instant
-            // recompute, which then itself goes stale as the page keeps moving - reintroducing
-            // the same misaligned-hole artifact this was meant to prevent, just at a slower
-            // cadence (this is what made it show up even on a slow drag: long enough to overlap
-            // one of these ticks).
-            if (typeof updateAIComputeCrtHole === 'function' && !document.querySelector('.drag-scroll-active') && !_crtPageScrollActive) updateAIComputeCrtHole();
+            // Skipped mid-drag (same .drag-scroll-active guard as scheduleCrtHoleUpdate) - this
+            // runs on its own ~500ms interval independent of the drag gesture, so without the
+            // guard it would periodically overwrite freezeCrtHoleForDrag's single frozen hole
+            // with a precise-for-that-instant recompute, which then itself goes stale as the row
+            // keeps scrolling - reintroducing the same misaligned-hole artifact this was meant to
+            // prevent, just at a slower cadence.
+            if (typeof updateAIComputeCrtHole === 'function' && !document.querySelector('.drag-scroll-active')) updateAIComputeCrtHole();
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
             applyDocEpisodeTranslations(currentLang);
@@ -19965,26 +19964,16 @@
             }
             updateCardCrtHoles();
         }
-        // True for the whole duration of an active page-scroll burst (set/cleared by
-        // handlePageScrollForCrt below) - checked anywhere a precise recompute could otherwise
-        // sneak in mid-scroll and race the coarse holes. Without this, e.g. the ~500ms language-
-        // watcher interval (see its own comment) or a hover-pulse firing WHILE the page is still
-        // moving would still call updateAIComputeCrtHole() directly with the page's position at
-        // that instant, then the page keeps scrolling past it before the next real settle - a
-        // hole miles from any card for a moment, reported as "jumping from way below to way
-        // above the cards" even on a slow, continuous drag (any drag long enough eventually
-        // overlaps one of these other triggers).
-        let _crtPageScrollActive = false;
         let _crtHoleRaf = 0;
         function scheduleCrtHoleUpdate() {
             // Rebuilding the CRT SVG mask (and reading layout for every card) during a
             // mouse-drag of #past-launches-grid was competing with the scroll itself.
             // Frozen holes for the gesture are cheaper than a hitch on every pixel.
-            if (document.querySelector('.drag-scroll-active') || _crtPageScrollActive) return;
+            if (document.querySelector('.drag-scroll-active')) return;
             if (_crtHoleRaf) return;
             _crtHoleRaf = requestAnimationFrame(() => {
                 _crtHoleRaf = 0;
-                if (document.querySelector('.drag-scroll-active') || _crtPageScrollActive) return;
+                if (document.querySelector('.drag-scroll-active')) return;
                 updateAIComputeCrtHole();
             });
         }
@@ -19999,7 +19988,6 @@
         let _crtPageScrollRaf = 0;
         let _crtPageScrollSettleTimer = null;
         function handlePageScrollForCrt() {
-            _crtPageScrollActive = true;
             if (!_crtPageScrollRaf) {
                 _crtPageScrollRaf = requestAnimationFrame(() => {
                     _crtPageScrollRaf = 0;
@@ -20009,7 +19997,6 @@
             if (_crtPageScrollSettleTimer) clearTimeout(_crtPageScrollSettleTimer);
             _crtPageScrollSettleTimer = setTimeout(() => {
                 _crtPageScrollSettleTimer = null;
-                _crtPageScrollActive = false;
                 scheduleCrtHoleUpdate();
             }, 140);
         }
