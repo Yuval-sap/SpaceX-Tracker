@@ -129,6 +129,15 @@ FALCON_HEAVY_TERM = {
     "sv": "Falcon Heavy", "nl": "Falcon Heavy", "da": "Falcon Heavy", "pt": "Falcon Heavy",
     "pl": "Falcon Heavy", "hi": "फाल्कन हेवी", "ar": "فالكون هيفي", "tr": "Falcon Heavy",
 }
+# Pins the noun "launch" (a ROCKET launch, not a product/service launch) only for languages
+# where a live mistranslation was actually confirmed - Hebrew's own word for "launch" defaults
+# to "השקה" (product launch) instead of "שיגור" (rocket launch) when a generic MT engine
+# translates it with no domain context, confirmed live in the update-log feature this pins for.
+# Other languages are left to the model's own judgment in UPDATE_PROMPT's general instruction
+# below rather than guessing at a term with no confirmed issue to fix.
+LAUNCH_NOUN_TERM = {
+    "he": "שיגור",
+}
 
 PROMPT = """You translate SpaceX launch-library mission fields from English into several languages.
 
@@ -194,6 +203,139 @@ Rules:
 Names:
 {names_block}
 """
+
+
+# Official update-log entries for a launch (Launch Library's launch.updates[].comment - terse
+# operations-log lines like "NET Sep 22, TBC." or "GO for launch.") shown in the site's
+# "Pre-Launch Updates" popup (renderModalUpdates in index.html, Starship flights only - see
+# is_starship_launch below). Same array-indexed response shape as NAME_PROMPT and for the same
+# reason (a JSON-key-per-entry format risks truncating a large batch past maxOutputTokens).
+UPDATE_PROMPT = """You translate short official status-update log entries for a SpaceX rocket
+launch, from English into several languages, for a chronological update feed on a
+launch-tracking website.
+
+Return ONLY valid JSON. Top-level keys must be exactly these language codes:
+{lang_keys}
+
+Each language value must be a JSON ARRAY of exactly {count} strings - the translations, in the
+SAME ORDER as the numbered entries below. Do not skip, merge, or reorder any entry.
+
+Rules:
+- Natural, accurate translation - not word-for-word. These are terse launch-operations log
+  entries, not full sentences - expand abbreviations naturally in the translation: NET = No
+  Earlier Than, TBC = To Be Confirmed, TBD = To Be Determined, "GO for launch" means the launch
+  has been approved/authorized to proceed.
+- CRITICAL: "launch" / "launched" / "launch window" here ALWAYS means a ROCKET launch (SpaceX
+  sending a vehicle to space) - NEVER a product or service launch. Use each language's own
+  correct term for a rocket launch specifically.{launch_term_note}
+- zh must be Simplified Chinese.
+- Keep as-is, untranslated, in every language: SpaceX, Falcon, Falcon 9, Falcon Heavy, Starship,
+  Dragon, dates, times, and mission/satellite codes such as USSF-153.
+- Do not add labels, markdown, or commentary.
+
+Entries:
+{entries_block}
+"""
+
+
+def call_gemini_update_batch(api_key: str, comments: list, langs: list) -> dict:
+    """Same call/response shape as call_gemini_name_batch below (array of translations,
+    index-matched to the input order) - see that function's own comment for why."""
+    pinned = {lang: LAUNCH_NOUN_TERM[lang] for lang in langs if lang in LAUNCH_NOUN_TERM}
+    launch_term_note = (
+        " Specifically: " + ", ".join(f"{lang}={term}" for lang, term in pinned.items())
+        if pinned else ""
+    )
+    entries_block = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(comments))
+    body = {
+        "contents": [{"parts": [{"text": UPDATE_PROMPT.format(
+            lang_keys=", ".join(langs),
+            count=len(comments),
+            launch_term_note=launch_term_note,
+            entries_block=entries_block,
+        )}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "responseMimeType": "application/json",
+            "maxOutputTokens": 8192,
+        },
+    }
+    payload = json.dumps(body).encode("utf-8")
+    global _active_model
+    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    last_error = None
+    for model in models_to_try:
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    gemini_url(model),
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": api_key,
+                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                text = (
+                    data.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+                parsed = json.loads(strip_json_fences(text))
+                if not isinstance(parsed, dict):
+                    raise ValueError("Gemini did not return a JSON object")
+                out = {}
+                for lang in langs:
+                    arr = parsed.get(lang)
+                    if not isinstance(arr, list) or len(arr) != len(comments):
+                        continue
+                    cleaned = {}
+                    for comment, val in zip(comments, arr):
+                        if isinstance(val, str) and val.strip():
+                            cleaned[comment] = val.strip()
+                    if cleaned:
+                        out[lang] = cleaned
+                if not out:
+                    raise ValueError("Gemini returned no usable update translations")
+                if model != _active_model:
+                    print(f"Using Gemini model {model}")
+                    _active_model = model
+                return out
+            except urllib.error.HTTPError as e:
+                detail = ""
+                try:
+                    detail = e.read().decode("utf-8", errors="replace")[:400]
+                except Exception:
+                    detail = str(e)
+                last_error = RuntimeError(f"HTTP {e.code} {model}: {detail}")
+                if e.code in (401, 403):
+                    raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
+                if e.code in (404, 400) and attempt == 0:
+                    print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    break
+                if e.code == 429:
+                    if "exceeded your current quota" in detail.lower():
+                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
+                    wait = 15 * (attempt + 1)
+                    print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                if attempt < 2:
+                    wait = 8 * (attempt + 1)
+                    print(f"Warning: Gemini update-batch call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                break
+            except Exception as e:
+                last_error = e
+                wait = 8 * (attempt + 1)
+                print(f"Warning: Gemini update-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
+                time.sleep(wait)
+    raise RuntimeError(last_error)
 
 
 def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
@@ -387,6 +529,21 @@ def extract_fields(launch: dict) -> dict:
     }
 
 
+# Must match index.html's own category classification (vLower.includes('starship') in
+# mapLaunchToSchema) - the update-log popup only ever shows for Starship flights, so
+# translating every other launch's updates here would just burn Gemini quota on comments the
+# site never displays.
+def is_starship_launch(launch: dict) -> bool:
+    vehicle_name = ((launch.get("rocket") or {}).get("configuration") or {}).get("full_name") or ""
+    return "starship" in vehicle_name.lower()
+
+
+# Must match index.html's own GENERIC_UPDATE_COMMENT_RE (renderModalUpdates) - the API's
+# placeholder entry present on nearly every launch ("Added launch."), which the site filters out
+# rather than displays, so translating it here would be pure wasted quota.
+GENERIC_UPDATE_RE = re.compile(r"^added launch\.?$", re.IGNORECASE)
+
+
 def description_hash(description: str) -> str:
     return hashlib.sha256(description.encode("utf-8")).hexdigest()
 
@@ -399,21 +556,25 @@ def name_hash(name: str) -> str:
 
 
 def load_existing() -> dict:
+    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}}
     if not OUTPUT_PATH.exists():
-        return {"version": 1, "generatedAt": "", "entries": {}, "names": {}}
+        return default
     try:
         data = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
     except Exception:
-        return {"version": 1, "generatedAt": "", "entries": {}, "names": {}}
+        return default
     if not isinstance(data, dict):
-        return {"version": 1, "generatedAt": "", "entries": {}, "names": {}}
+        return default
     data.setdefault("version", 1)
     data.setdefault("entries", {})
     data.setdefault("names", {})
+    data.setdefault("updates", {})
     if not isinstance(data["entries"], dict):
         data["entries"] = {}
     if not isinstance(data["names"], dict):
         data["names"] = {}
+    if not isinstance(data["updates"], dict):
+        data["updates"] = {}
     return data
 
 
@@ -479,6 +640,36 @@ def upcoming_still_needs_names(upcoming: list, names_store: dict) -> bool:
         existing = names_store.get(name_hash(raw_name))
         if not name_langs_complete(existing, list(LANG_NAMES)):
             return True
+    return False
+
+
+# Qualifying update-log comments for one launch - Starship only (matches index.html's own
+# category gate) and skips the API's generic "Added launch." placeholder, the same two filters
+# renderModalUpdates applies client-side. Shared by the priority check below and the real
+# translation pass in main() so the two can never disagree about which comments "count".
+def extract_update_comments(launch: dict) -> list:
+    if not is_starship_launch(launch):
+        return []
+    out = []
+    for update in launch.get("updates") or []:
+        comment = ((update or {}).get("comment") or "").strip()
+        if not comment or GENERIC_UPDATE_RE.match(comment):
+            continue
+        out.append(comment)
+    return out
+
+
+# Same "check before spending quota" role as upcoming_still_needs_names/-entries above.
+def upcoming_still_needs_updates(upcoming: list, updates_store: dict) -> bool:
+    seen = set()
+    for launch in upcoming:
+        for comment in extract_update_comments(launch):
+            if comment in seen:
+                continue
+            seen.add(comment)
+            existing = updates_store.get(name_hash(comment))
+            if not name_langs_complete(existing, list(LANG_NAMES)):
+                return True
     return False
 
 
@@ -601,6 +792,7 @@ def main() -> int:
     store = load_existing()
     entries = store["entries"]
     names_store = store["names"]
+    updates_store = store["updates"]
 
     # A brand-new upcoming mission (just entered the top-7 window, or a description LL2 only
     # just published) must be translated before this run spends any quota on the 365-day past
@@ -609,7 +801,11 @@ def main() -> int:
     # than an old past launch's card still being untranslated. Checked BEFORE even fetching the
     # previous-launches pages, so a run with upcoming work pending skips that fetch entirely and
     # puts every one of its (rate-limited, ~13s-per-call) requests toward upcoming missions only.
-    if upcoming_still_needs_entries(upcoming, entries) or upcoming_still_needs_names(upcoming, names_store):
+    if (
+        upcoming_still_needs_entries(upcoming, entries)
+        or upcoming_still_needs_names(upcoming, names_store)
+        or upcoming_still_needs_updates(upcoming, updates_store)
+    ):
         print("Upcoming launches still need translation - skipping the past-launch backlog this run.")
         previous = []
     else:
@@ -769,6 +965,90 @@ def main() -> int:
     print(
         f"Names: new={name_translated} reused={name_reused} failed={name_failed} "
         f"total_names={len(names_store)}"
+    )
+
+    # Update-log comments (#modal-preflight-status-tile in index.html) - Starship launches only,
+    # generic "Added launch." placeholder already excluded (see extract_update_comments). Same
+    # dedup-by-hash / chunk-and-reuse shape as the names pass just above, since both maps are
+    # {hash: {lang: string}} - a comment shared verbatim across launches (rare, but e.g. "GO for
+    # launch." could repeat) is only ever translated once.
+    update_translated = 0
+    update_reused = 0
+    update_failed = 0
+    seen_comments = set()
+    comments_to_translate = []
+    for launch in launches:
+        for comment in extract_update_comments(launch):
+            if comment in seen_comments:
+                continue
+            seen_comments.add(comment)
+            existing_update_entry = updates_store.get(name_hash(comment))
+            if not isinstance(existing_update_entry, dict):
+                existing_update_entry = {}
+            if name_langs_complete(existing_update_entry, list(LANG_NAMES)):
+                update_reused += 1
+                continue
+            comments_to_translate.append(comment)
+
+    # Same chunk size reasoning as NAME_CHUNK_SIZE above - keeps each response comfortably under
+    # Gemini's output budget across every language in a batch.
+    UPDATE_CHUNK_SIZE = 15
+    update_chunks = [
+        comments_to_translate[i:i + UPDATE_CHUNK_SIZE]
+        for i in range(0, len(comments_to_translate), UPDATE_CHUNK_SIZE)
+    ]
+
+    for chunk in update_chunks:
+        merged_by_comment = {}
+        for c in chunk:
+            existing = updates_store.get(name_hash(c))
+            merged_by_comment[c] = dict(existing) if isinstance(existing, dict) else {}
+
+        for batch in LANG_BATCHES:
+            comments_needing_batch = [c for c in chunk if not name_langs_complete(merged_by_comment[c], batch)]
+            if not comments_needing_batch:
+                continue
+            try:
+                result = call_gemini_update_batch(api_key, comments_needing_batch, batch)
+                for lang, comment_map in result.items():
+                    for c, translated_comment in comment_map.items():
+                        if c in merged_by_comment:
+                            merged_by_comment[c][lang] = translated_comment
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+            except GeminiAuthError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                for c in chunk:
+                    if merged_by_comment.get(c):
+                        updates_store[name_hash(c)] = merged_by_comment[c]
+                store["updates"] = updates_store
+                write_output(store)
+                return 1
+            except GeminiQuotaExceededError as e:
+                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+                for c in chunk:
+                    if merged_by_comment.get(c):
+                        updates_store[name_hash(c)] = merged_by_comment[c]
+                store["updates"] = updates_store
+                write_output(store)
+                return 0
+            except Exception as e:
+                print(f"Warning: skipped update-batch languages {','.join(batch)}: {e}", file=sys.stderr)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+
+        for c in chunk:
+            if merged_by_comment.get(c):
+                updates_store[name_hash(c)] = merged_by_comment[c]
+                if name_langs_complete(merged_by_comment[c], list(LANG_NAMES)):
+                    update_translated += 1
+                else:
+                    update_failed += 1
+            else:
+                update_failed += 1
+
+    store["updates"] = updates_store
+    print(
+        f"Updates: new={update_translated} reused={update_reused} failed={update_failed} "
+        f"total_updates={len(updates_store)}"
     )
 
     if translated == 0 and failed > 0 and not any(entries.values()):

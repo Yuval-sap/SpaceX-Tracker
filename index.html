@@ -7291,6 +7291,19 @@
             // without the definite article, which Google adds or drops depending on the sentence.
             [/רכב\s*השיגור/g, 'המשגר'],
             [/רכב\s*שיגור/g, 'משגר'],
+            // "Launch" (rocket sense) keeps coming back as "השקה" (product/service launch) -
+            // the exact same known mistranslation already documented and hand-fixed for the
+            // static UI labels (see LAUNCH_LABEL_I18N's own comment), but here for the
+            // #modal-preflight-status-tile update log (renderModalUpdates), whose text is
+            // dynamic per-mission API content that can't be hand-translated ahead of time the
+            // way a fixed label can. The "X אושרה" compound rule has to run BEFORE the generic
+            // noun swap below: אושרה is feminine, agreeing with the (wrong) feminine noun השקה -
+            // swapping only the noun to the masculine שיגור without also fixing the verb would
+            // leave "השיגור אושרה", trading one error for another.
+            [/ה?השקה\s*אושרה/g, 'השיגור אושר'],
+            [/ההשקה/g, 'השיגור'],
+            [/(^|[^֐-׿])השקה(?=[^֐-׿]|$)/g, '$1שיגור'],
+            [/השקות/g, 'שיגורים'],
             // "3rd flight of Starship V3" - Google spells the version out as "גרסה 3", which
             // clashes with the vehicle designation used everywhere else on the site (V3).
             [/(סטארשיפ|Starship)\s*גרסה\s*(\d+)/g, '$1 V$2'],
@@ -8341,19 +8354,26 @@
         // one fetch serves both maps, see translate_mission_purpose.py's own comment for why
         // names are keyed separately (by hash-of-the-name) from entries (hash-of-the-description).
         let _geminiNamesMap = null;
+        // Official update-log comments (#modal-preflight-status-tile / renderModalUpdates) from
+        // the same file's "updates" key - same shape as "names" (hash of the raw English comment
+        // -> plain translated string per language, see translate_mission_purpose.py), so
+        // lookupGeminiName below is reused as-is rather than duplicated for a third map.
+        let _geminiUpdatesMap = null;
         let _geminiPurposeLoad = null;
         function loadGeminiPurposeMap() {
             if (_geminiPurposeLoad) return _geminiPurposeLoad;
             _geminiPurposeLoad = fetch('mission-purpose-gemini.json', { cache: 'no-cache' })
-                .then(res => (res && res.ok ? res.json() : { entries: {}, names: {} }))
+                .then(res => (res && res.ok ? res.json() : { entries: {}, names: {}, updates: {} }))
                 .then(data => {
                     _geminiPurposeMap = (data && data.entries) || {};
                     _geminiNamesMap = (data && data.names) || {};
+                    _geminiUpdatesMap = (data && data.updates) || {};
                     return _geminiPurposeMap;
                 })
                 .catch(() => {
                     _geminiPurposeMap = {};
                     _geminiNamesMap = {};
+                    _geminiUpdatesMap = {};
                     return _geminiPurposeMap;
                 });
             return _geminiPurposeLoad;
@@ -8454,6 +8474,12 @@
             if (!text) return text;
             return text
                 .replace(/\bGO for launch\b/gi, 'Launch approved')
+                // "due to still pending X" is grammatically terse (subjectless) in the source
+                // English, and machine translation carries that awkwardness straight into every
+                // target language instead of smoothing it out - rephrasing to a normal
+                // subject-verb clause before translation reads naturally everywhere, not just
+                // English.
+                .replace(/\bdue to still pending\s+([^.]+)/gi, 'because $1 is still pending')
                 .replace(/\bNET\b/g, 'No Earlier Than')
                 .replace(/\bTBC\b/g, 'To Be Confirmed')
                 .replace(/\bTBD\b/g, 'To Be Determined');
@@ -8502,14 +8528,41 @@
                 }).join('');
             };
 
-            // Instant English render first - no blank flash while translation is in flight,
-            // same idiom as applyMissionPurposeHtml.
-            paint(real.map(u => u.comment));
+            // Instant English render first (jargon-expanded for readability) - no blank flash
+            // while translation is in flight, same idiom as applyMissionPurposeHtml.
+            const expandedEn = real.map(u => expandLaunchUpdateJargon(u.comment));
+            paint(expandedEn);
 
             let key = (currentLang || 'en').split('-')[0];
             if (key === 'iw') key = 'he';
             if (key === 'en') return;
-            translateBatchViaGoogle(real.map(u => u.comment), key).then(paint);
+
+            // Prefer mission-purpose-gemini.json's pre-baked "updates" map (see
+            // loadGeminiPurposeMap / translate_mission_purpose.py) - a real LLM given explicit
+            // domain instructions (what NET/TBC mean, and to use the correct rocket-launch term
+            // rather than the product-launch one) instead of literal machine translation, so it
+            // reads naturally and gets the terminology right on its own. Only whichever comments
+            // miss that cache (e.g. an update the scheduled GitHub Action hasn't processed yet)
+            // fall back to live Google translation, same as before this existed.
+            const applyGeminiOrGoogle = (map) => {
+                Promise.all(real.map(u => lookupGeminiName(map, u.comment, key))).then(hits => {
+                    if (_modalUpdatesGen !== myGen) return;
+                    const missIdx = [];
+                    hits.forEach((hit, i) => { if (!hit) missIdx.push(i); });
+                    if (missIdx.length === 0) {
+                        paint(hits.map(h => fixMistranslatedPhrasesText(h, key)));
+                        return;
+                    }
+                    translateBatchViaGoogle(missIdx.map(i => expandedEn[i]), key).then(translatedMisses => {
+                        if (_modalUpdatesGen !== myGen) return;
+                        const merged = hits.slice();
+                        missIdx.forEach((i, j) => { merged[i] = translatedMisses[j]; });
+                        paint(merged.map(t => fixMistranslatedPhrasesText(t, key)));
+                    });
+                });
+            };
+            if (_geminiUpdatesMap) applyGeminiOrGoogle(_geminiUpdatesMap);
+            else loadGeminiPurposeMap().then(() => applyGeminiOrGoogle(_geminiUpdatesMap));
         }
 
         function openPreflightStatusModal() {
@@ -18507,10 +18560,14 @@
             // "Added launch." entry (nobody tracks day-to-day news for a launch that happens every
             // few days) - the real-content filter lives in renderModalUpdates, not here, so the raw
             // data survives even if that filter logic changes later.
+            // Kept RAW here (not jargon-expanded) - renderModalUpdates hashes this exact text to
+            // look up a pre-baked Gemini translation from mission-purpose-gemini.json (written by
+            // translate_mission_purpose.py, which hashes the same raw API comment), and expands
+            // it only for the instant English render / Google-fallback translation input.
             const missionUpdates = Array.isArray(launch.updates)
                 ? launch.updates
                     .filter(u => u && u.comment)
-                    .map(u => ({ comment: expandLaunchUpdateJargon(u.comment), createdOn: u.created_on || null, infoUrl: u.info_url || null }))
+                    .map(u => ({ comment: u.comment, createdOn: u.created_on || null, infoUrl: u.info_url || null }))
                 : [];
 
             // Mission type / program / partner agencies (the "Mission Type:" / "Program:" /
