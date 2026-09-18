@@ -11921,7 +11921,10 @@
       // The CURRENT year is classified live from Launch Library 2 (see the standalone
       // draft's own comment history for why this is ONE shared query, cached once per
       // calendar day, rather than one live call per provider).
-      var LIVE_CACHE_KEY = 'launch_cadence_live_v2';
+      // Bumped to v3 to invalidate any cache already holding a bad all-zero fetch (which
+      // would otherwise sit there showing 0 for the rest of that calendar day - see the
+      // sanity check in loadLiveCache/fetchLiveLaunchDataOncePerDay below).
+      var LIVE_CACHE_KEY = 'launch_cadence_live_v3';
       var liveData = {};
       var liveDataFailed = false;
 
@@ -11946,10 +11949,20 @@
 
       function todayDateKey() { return TODAY.toISOString().slice(0, 10); }
 
+      // SpaceX having 0 launches since Jan 1 is never real (it's ~100+ by any point past the
+      // first couple weeks of the year) - it's the signature of a fetch that came back
+      // technically OK but empty (an API hiccup, an unexpected response shape, whatever the
+      // exact cause). Rejecting it here means a bad result never gets treated as trustworthy
+      // live data - it just falls through to the hardcoded totals instead of a broken chart.
+      function looksLikeValidBuckets(data) {
+        return !!(data && data.spacex && data.spacex.reduce(function (a, b) { return a + b; }, 0) > 0);
+      }
+
       function loadLiveCache() {
         try {
           var parsed = JSON.parse(localStorage.getItem(LIVE_CACHE_KEY) || 'null');
           if (!parsed || parsed.dateKey !== todayDateKey()) return null;
+          if (!looksLikeValidBuckets(parsed.data)) return null;
           return parsed.data;
         } catch (e) { return null; }
       }
@@ -11993,8 +12006,12 @@
             if (!key) return;
             buckets[key][weekIndexOfDate(d)]++;
           });
-          saveLiveCache(buckets);
-          applyLiveBuckets(buckets);
+          if (looksLikeValidBuckets(buckets)) {
+            saveLiveCache(buckets);
+            applyLiveBuckets(buckets);
+          } else {
+            liveDataFailed = true;
+          }
         } catch (e) {
           liveDataFailed = true;
         }
