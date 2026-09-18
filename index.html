@@ -2325,16 +2325,10 @@
             color: rgba(4, 120, 87, 0.7) !important;
         }
 
-        /* Documentary episode badges ("EPISODE 1 • RELEASED" / "EPISODE 3 • COMING SOON") sit
-           in a small translucent chip (bg-emerald-500/10 or bg-amber-500/10) directly over the
-           card's own photo+scrim - the default bright text-emerald-400/text-amber-400 washes
-           out in light theme for the same reason every other bright color did on these cards.
-           Same #047857 dark-green convention for released; a matching dark-amber (#92400e,
-           amber-800) for the not-yet-released state so it still reads as "amber" rather than
-           just becoming a second green. */
-        body.light-theme .doc-badge-released {
-            color: #047857 !important;
-        }
+        /* The "EPISODE N • RELEASED" badge is gone (episode number now prefixes the title
+           directly) - only the "EPISODE N • COMING SOON" state (for a not-yet-released
+           episode, none currently on the page) still uses this chip styling, so only its
+           rule remains here. */
         body.light-theme .doc-badge-upcoming {
             color: #92400e !important;
         }
@@ -7867,25 +7861,28 @@
         // Episode descriptions are otherwise left as-is for Google Translate - Episode 3 is the
         // one exception (see DOC_EP3_DESC_I18N below), added on explicit request after its
         // Hebrew machine translation read poorly.
+        // Each title is prefixed with its own episode number (e.g. "Episode 1 - Critical
+        // Path") since the separate "EPISODE N • RELEASED" badge chip was removed - the
+        // number now lives in the title itself instead of a second element.
         const DOC_EPISODE_I18N = {
-            en: { ep1: "Critical Path", ep2: "Test Like You Fly", ep3: "Holy Grail Of Rocketry" },
-            he: { ep1: "המסלול הקריטי", ep2: "לבחון תוך כדי טיסה", ep3: "הגביע הקדוש של הרקטות" },
-            iw: { ep1: "המסלול הקריטי", ep2: "לבחון תוך כדי טיסה", ep3: "הגביע הקדוש של הרקטות" },
-            es: { ep1: "Ruta Crítica", ep2: "Prueba Como Vuelas", ep3: "El Santo Grial de la Cohetería" },
-            fr: { ep1: "Chemin Critique", ep2: "Teste Comme Tu Voles", ep3: "Le Saint Graal de la Fuséologie" },
-            de: { ep1: "Kritischer Pfad", ep2: "Teste, Wie Du Fliegst", ep3: "Der Heilige Gral der Raketentechnik" },
-            ru: { ep1: "Критический Путь", ep2: "Испытывай, Как Летаешь", ep3: "Святой Грааль Ракетостроения" },
-            zh: { ep1: "关键路径", ep2: "像飞行一样测试", ep3: "火箭技术的圣杯" },
-            it: { ep1: "Percorso Critico", ep2: "Testa Come Voli", ep3: "Il Santo Graal della Missilistica" },
-            cs: { ep1: "Kritická Cesta", ep2: "Testuj, Jak Létáš", ep3: "Svatý Grál Raketové Techniky" },
-            sv: { ep1: "Kritisk Väg", ep2: "Testa Som Du Flyger", ep3: "Den Heliga Graalen för Raketteknik" },
-            nl: { ep1: "Kritiek Pad", ep2: "Test Zoals Je Vliegt", ep3: "De Heilige Graal van de Raketkunde" },
-            da: { ep1: "Kritisk Vej", ep2: "Test Som Du Flyver", ep3: "Den Hellige Gral for Raketteknik" },
-            pt: { ep1: "Caminho Crítico", ep2: "Teste Como Voa", ep3: "O Santo Graal da Foguetaria" },
-            pl: { ep1: "Ścieżka Krytyczna", ep2: "Testuj Tak, Jak Latasz", ep3: "Święty Graal Techniki Rakietowej" },
-            hi: { ep1: "क्रिटिकल पाथ", ep2: "जैसे उड़ो वैसे परखो", ep3: "रॉकेट विज्ञान की पवित्र खोज" },
-            ar: { ep1: "المسار الحرج", ep2: "اختبر كما تطير", ep3: "الكأس المقدسة لصناعة الصواريخ" },
-            tr: { ep1: "Kritik Yol", ep2: "Uçtuğun Gibi Test Et", ep3: "Roketçiliğin Kutsal Kâsesi" },
+            en: { ep1: "Episode 1 - Critical Path", ep2: "Episode 2 - Test Like You Fly", ep3: "Episode 3 - Holy Grail Of Rocketry" },
+            he: { ep1: "פרק 1 - המסלול הקריטי", ep2: "פרק 2 - לבחון תוך כדי טיסה", ep3: "פרק 3 - הגביע הקדוש של הרקטות" },
+            iw: { ep1: "פרק 1 - המסלול הקריטי", ep2: "פרק 2 - לבחון תוך כדי טיסה", ep3: "פרק 3 - הגביע הקדוש של הרקטות" },
+            es: { ep1: "Episodio 1 - Ruta Crítica", ep2: "Episodio 2 - Prueba Como Vuelas", ep3: "Episodio 3 - El Santo Grial de la Cohetería" },
+            fr: { ep1: "Épisode 1 - Chemin Critique", ep2: "Épisode 2 - Teste Comme Tu Voles", ep3: "Épisode 3 - Le Saint Graal de la Fuséologie" },
+            de: { ep1: "Episode 1 - Kritischer Pfad", ep2: "Episode 2 - Teste, Wie Du Fliegst", ep3: "Episode 3 - Der Heilige Gral der Raketentechnik" },
+            ru: { ep1: "Эпизод 1 - Критический Путь", ep2: "Эпизод 2 - Испытывай, Как Летаешь", ep3: "Эпизод 3 - Святой Грааль Ракетостроения" },
+            zh: { ep1: "第1集 - 关键路径", ep2: "第2集 - 像飞行一样测试", ep3: "第3集 - 火箭技术的圣杯" },
+            it: { ep1: "Episodio 1 - Percorso Critico", ep2: "Episodio 2 - Testa Come Voli", ep3: "Episodio 3 - Il Santo Graal della Missilistica" },
+            cs: { ep1: "Epizoda 1 - Kritická Cesta", ep2: "Epizoda 2 - Testuj, Jak Létáš", ep3: "Epizoda 3 - Svatý Grál Raketové Techniky" },
+            sv: { ep1: "Avsnitt 1 - Kritisk Väg", ep2: "Avsnitt 2 - Testa Som Du Flyger", ep3: "Avsnitt 3 - Den Heliga Graalen för Raketteknik" },
+            nl: { ep1: "Aflevering 1 - Kritiek Pad", ep2: "Aflevering 2 - Test Zoals Je Vliegt", ep3: "Aflevering 3 - De Heilige Graal van de Raketkunde" },
+            da: { ep1: "Episode 1 - Kritisk Vej", ep2: "Episode 2 - Test Som Du Flyver", ep3: "Episode 3 - Den Hellige Gral for Raketteknik" },
+            pt: { ep1: "Episódio 1 - Caminho Crítico", ep2: "Episódio 2 - Teste Como Voa", ep3: "Episódio 3 - O Santo Graal da Foguetaria" },
+            pl: { ep1: "Odcinek 1 - Ścieżka Krytyczna", ep2: "Odcinek 2 - Testuj Tak, Jak Latasz", ep3: "Odcinek 3 - Święty Graal Techniki Rakietowej" },
+            hi: { ep1: "एपिसोड 1 - क्रिटिकल पाथ", ep2: "एपिसोड 2 - जैसे उड़ो वैसे परखो", ep3: "एपिसोड 3 - रॉकेट विज्ञान की पवित्र खोज" },
+            ar: { ep1: "الحلقة 1 - المسار الحرج", ep2: "الحلقة 2 - اختبر كما تطير", ep3: "الحلقة 3 - الكأس المقدسة لصناعة الصواريخ" },
+            tr: { ep1: "Bölüm 1 - Kritik Yol", ep2: "Bölüm 2 - Uçtuğun Gibi Test Et", ep3: "Bölüm 3 - Roketçiliğin Kutsal Kâsesi" },
         };
 
         // Episode 3's card description ("Holy Grail Of Rocketry", #doc-ep3-desc) - hand-
@@ -10484,14 +10481,9 @@
                             <div class="relative">
                                 <div class="doc-card-fade pointer-events-none absolute -top-12 -bottom-4 -inset-x-4 sm:-bottom-5 sm:-inset-x-5 md:-bottom-6 md:-inset-x-6"></div>
                                 <div class="relative">
-                                    <div class="flex items-center gap-x-2 mb-2.5">
-                                        <span
-                                            class="doc-badge-released px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
-                                            1 • RELEASED</span>
-                                    </div>
                                     <h4 id="doc-ep1-title" translate="no"
                                         class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
-                                        Critical Path</h4>
+                                        Episode 1 - Critical Path</h4>
                                     <p class="mission-card-desc text-xs text-zinc-400 line-clamp-4">The path to launch is filled with obstacles
                                         and success is only possible through the tireless efforts of many working together
                                         towards a common goal. “Critical Path” continues the ongoing Starship series, following
@@ -10513,14 +10505,9 @@
                             <div class="relative">
                                 <div class="doc-card-fade pointer-events-none absolute -top-12 -bottom-4 -inset-x-4 sm:-bottom-5 sm:-inset-x-5 md:-bottom-6 md:-inset-x-6"></div>
                                 <div class="relative">
-                                    <div class="flex items-center gap-x-2 mb-2.5">
-                                        <span
-                                            class="doc-badge-released px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
-                                            2 • RELEASED</span>
-                                    </div>
                                     <h4 id="doc-ep2-title" translate="no"
                                         class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
-                                        Test Like You Fly</h4>
+                                        Episode 2 - Test Like You Fly</h4>
                                     <p class="mission-card-desc text-xs text-zinc-400 line-clamp-4">Three years since the first flight of
                                         Starship, the next generation is here. New ship. New booster. New engines. New pad and
                                         new test site. SpaceX engineers are working to solve one of the most difficult
@@ -10545,14 +10532,9 @@
                             <div class="relative">
                                 <div class="doc-card-fade pointer-events-none absolute -top-12 -bottom-4 -inset-x-4 sm:-bottom-5 sm:-inset-x-5 md:-bottom-6 md:-inset-x-6"></div>
                                 <div class="relative">
-                                    <div class="flex items-center gap-x-2 mb-2.5">
-                                        <span
-                                            class="doc-badge-released px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold rounded-full">EPISODE
-                                            3 • RELEASED</span>
-                                    </div>
                                     <h4 id="doc-ep3-title" translate="no"
                                         class="font-semibold mb-1.5 text-sm sm:text-base md:text-lg text-white transition-colors duration-500 notranslate">
-                                        Holy Grail Of Rocketry</h4>
+                                        Episode 3 - Holy Grail Of Rocketry</h4>
                                     <p id="doc-ep3-desc" translate="no" class="mission-card-desc text-xs text-zinc-400 line-clamp-4 notranslate">A fully and rapidly reusable rocket
                                         will fundamentally change how humanity accesses outer space. "The Holy Grail of Rocketry"
                                         continues the ongoing Starship series with a look back at the scrappy days of SpaceX
