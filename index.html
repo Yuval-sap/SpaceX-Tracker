@@ -19937,18 +19937,52 @@
         window.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
         window.addEventListener('resize', scheduleCrtHoleUpdate);
 
+        // freezeCrtHoleForDrag's single-big-hole trick was originally wired only to the
+        // mouse-specific drag path in enableDragScroll (.drag-scroll-active) - touch scrolling on
+        // mobile never sets that class, so #missions-grid/#past-launches-grid on a phone got no
+        // freeze at all, just scheduleCrtHoleUpdate's normal per-frame precise recompute. That
+        // recompute (one getBoundingClientRect() per visible card, then rebuilding a full-page
+        // SVG mask) is too slow to keep up with native touch-momentum scrolling, especially on a
+        // phone - the same "holes visibly trailing the cards" artifact as the mouse-drag case,
+        // just from the recompute genuinely falling behind rather than being deliberately frozen.
+        // Handles ANY input method uniformly instead of special-casing touch: every 'scroll' on
+        // one of these strips (mouse-drag's own scrollLeft writes fire 'scroll' too) swaps in the
+        // cheap single hole immediately (rAF-throttled to at most once/frame), then - once the
+        // strip has been quiet for a beat - settles back to the precise per-card holes. Purely
+        // additive alongside enableDragScroll's own freeze/settle: both just agree on the same
+        // state, so there's nothing for them to fight over.
+        let _crtScrollFreezeRaf = 0;
+        const _crtScrollSettleTimers = new WeakMap();
+        function handleCarouselScrollForCrt(el) {
+            if (!_crtScrollFreezeRaf) {
+                _crtScrollFreezeRaf = requestAnimationFrame(() => {
+                    _crtScrollFreezeRaf = 0;
+                    if (typeof freezeCrtHoleForDrag === 'function') freezeCrtHoleForDrag(el);
+                });
+            }
+            const existingTimer = _crtScrollSettleTimers.get(el);
+            if (existingTimer) clearTimeout(existingTimer);
+            _crtScrollSettleTimers.set(el, setTimeout(() => {
+                _crtScrollSettleTimers.delete(el);
+                // A mouse drag's own momentum-glide phase (still .drag-scroll-active) settles
+                // itself once IT finishes - don't race ahead of that with a premature precise
+                // recompute just because the scrollLeft writes briefly paused between frames.
+                if (!document.querySelector('.drag-scroll-active')) scheduleCrtHoleUpdate();
+            }, 140));
+        }
+
         function initCardCrtHoleScrollSync() {
             ['missions-grid', 'past-launches-grid'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el && !el.dataset.crtHoleScroll) {
-                    el.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
+                    el.addEventListener('scroll', () => handleCarouselScrollForCrt(el), { passive: true });
                     el.dataset.crtHoleScroll = '1';
                 }
             });
             const firstDocCard = document.querySelector('#tab-panel-more .mission-card');
             const docStrip = firstDocCard && firstDocCard.parentElement;
             if (docStrip && !docStrip.dataset.crtHoleScroll) {
-                docStrip.addEventListener('scroll', scheduleCrtHoleUpdate, { passive: true });
+                docStrip.addEventListener('scroll', () => handleCarouselScrollForCrt(docStrip), { passive: true });
                 docStrip.dataset.crtHoleScroll = '1';
             }
             let cardHoverHolesUntil = 0;
