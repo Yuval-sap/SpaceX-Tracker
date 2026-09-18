@@ -9716,7 +9716,13 @@
             // that isn't a scroll/resize event - e.g. async content loading above this section
             // and changing its on-screen position. Cheap (one rect read + one style write when
             // the position actually changed), same reasoning as this loop's other per-tick catches.
-            if (typeof updateAIComputeCrtHole === 'function') updateAIComputeCrtHole();
+            // Skipped mid-drag (same .drag-scroll-active guard as scheduleCrtHoleUpdate) - this
+            // runs on its own ~500ms interval independent of the drag gesture, so without the
+            // guard it would periodically overwrite freezeCrtHoleForDrag's single frozen hole
+            // with a precise-for-that-instant recompute, which then itself goes stale as the row
+            // keeps scrolling - reintroducing the same misaligned-hole artifact this was meant to
+            // prevent, just at a slower cadence.
+            if (typeof updateAIComputeCrtHole === 'function' && !document.querySelector('.drag-scroll-active')) updateAIComputeCrtHole();
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
             applyDocEpisodeTranslations(currentLang);
@@ -18836,6 +18842,7 @@
             let momentumGeneration = 0; // see the 3s safety-net setTimeout below
             let dragMoveRaf = null;
             let pendingDx = 0;
+            let crtHoleFrozenForGesture = false; // see freezeCrtHoleForDrag's own comment
 
             function stopMomentum() {
                 if (momentumFrame !== null) {
@@ -18894,6 +18901,7 @@
                 velocity = 0;
                 startScrollLeft = el.scrollLeft;
                 pendingDx = 0;
+                crtHoleFrozenForGesture = false;
                 if (dragMoveRaf !== null) {
                     cancelAnimationFrame(dragMoveRaf);
                     dragMoveRaf = null;
@@ -18923,6 +18931,10 @@
                     // never reaches this branch at all (moved never becomes true), so the class
                     // no longer touches plain clicks in any way.
                     el.classList.add('drag-scroll-active');
+                    if (!crtHoleFrozenForGesture) {
+                        crtHoleFrozenForGesture = true;
+                        if (typeof freezeCrtHoleForDrag === 'function') freezeCrtHoleForDrag(el);
+                    }
                     pendingDx = dx;
                     // High-rate mice fire pointermove far faster than the screen refreshes.
                     // Writing scrollLeft on every event forced layout + the CRT-hole listener
@@ -19833,6 +19845,52 @@
                 document.body.style.removeProperty('--crt-card-holes');
                 return;
             }
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}"><path fill="black" fill-rule="evenodd" d="${parts.join('')}"/></svg>`;
+            document.body.style.setProperty('--crt-card-holes', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+        }
+
+        // scheduleCrtHoleUpdate freezes the precise per-card holes for the whole drag+momentum
+        // gesture (see its own comment - rebuilding them every frame made dragging feel syrupy).
+        // Leaving the STALE per-card holes in place while the cards themselves keep sliding
+        // underneath is what actually produced the reported artifact: each hole's edge stays put
+        // while its card moves away from it, so the scanline overlay visibly cuts across the
+        // card as it scrolls past the frozen hole position. Called once, right when a drag is
+        // first detected (enableDragScroll), this swaps in a SINGLE big hole covering the whole
+        // strip's own bounding box instead - cheap (one measurement, not one per visible card)
+        // and, because it has no per-card edges to fall out of alignment, nothing to visibly
+        // desync no matter how far the row scrolls during the gesture. scheduleCrtHoleUpdate
+        // restores the precise per-card holes once the gesture actually ends.
+        function freezeCrtHoleForDrag(stripEl) {
+            const vw = document.documentElement.clientWidth;
+            const vh = document.documentElement.clientHeight;
+            if (vw < 1 || vh < 1) return;
+            const stripRect = stripEl.getBoundingClientRect();
+            if (stripRect.width < 2) return;
+            // The strip element's OWN rect is taller than the cards themselves (container
+            // padding/gap), which left visible margins above/below the cards where the scanline
+            // overlay was absent for no reason - measure an actual card instead for the vertical
+            // extent, and use the strip only for how far left/right the hole needs to reach.
+            const card = stripEl.querySelector('.mission-card');
+            const cardRect = card ? card.getBoundingClientRect() : stripRect;
+            if (cardRect.height < 2) return;
+            const padX = 4;
+            // .mission-card:hover is `transform: translateY(-6px) scale(1.015)` - lifts the top
+            // edge up further than the bottom (scale expands around the card's own center, so
+            // only the bottom's share of that expansion partly cancels the translateY, while the
+            // top's share adds to it). A hovered card's bottom edge is therefore always ABOVE the
+            // resting bottom used here - safe with no extra margin - but its top edge can rise
+            // above a hole whose top was measured at rest, exposing scanlines across the lifted
+            // card's own top strip. hoverLift covers that (6px translate + half of 1.5% of a
+            // ~367px card ≈ 2.75px, rounded up with headroom).
+            const hoverLift = 12;
+            const left = stripRect.left - padX;
+            const width = stripRect.width + padX * 2;
+            const top = cardRect.top - hoverLift;
+            const height = (cardRect.bottom - top);
+            const parts = [
+                `M0 0H${vw}V${vh}H0Z`,
+                crtRoundedRectPath(left, top, width, height, 24)
+            ];
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}"><path fill="black" fill-rule="evenodd" d="${parts.join('')}"/></svg>`;
             document.body.style.setProperty('--crt-card-holes', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
         }
