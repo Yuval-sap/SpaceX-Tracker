@@ -1082,6 +1082,56 @@
         #past-launches-grid .mission-card:active {
             box-shadow: 0 8px 16px -8px rgba(16, 185, 129, 0.3), 0 0 8px 1px rgba(16, 185, 129, 0.2);
         }
+        /* Same shrink-to-fit fix as #past-launches-grid above, but scoped to mobile only:
+           #documentary-strip only stays a real horizontal scroller (overflow-x-auto, so the
+           browser also computes overflow-y:auto - see #past-launches-grid's own comment on that)
+           below md, switching to overflow-visible md:grid at md+ where the full-size glow was
+           never actually clipped. Its pb-4 (16px) is nowhere near the ~45px the full glow needs
+           below the card, cutting it off at the bottom on mobile. */
+        @media (max-width: 767px) {
+            #documentary-strip .mission-card:hover,
+            #documentary-strip .mission-card:active {
+                box-shadow: 0 8px 16px -8px rgba(16, 185, 129, 0.3), 0 0 8px 1px rgba(16, 185, 129, 0.2);
+            }
+        }
+
+        /* Episode 3's cover (object-contain, not object-cover like episodes 1/2 - see the
+           comment where that image tag was chosen) is a wide/landscape photo that only reaches
+           ~185px tall once it's fit to this card's ~85vw mobile width - nowhere near the
+           min-h-[367px] all three cards share (sized for episodes 1/2's full-bleed object-cover
+           photos, which always fill their box regardless of height). Two earlier attempts at
+           this both made it worse: shrinking just ep3's own height left it visibly mismatched
+           against its still-367px siblings in the same horizontal strip, and keeping 367px while
+           only moving its text up (justify-start below) just relocated the empty leftover space
+           from above the title to a big flat unbroken color block below the description instead -
+           still an obvious empty rectangle, just moved.
+           Real fix: shrink ALL THREE cards together (mobile only - desktop's much wider
+           md:w-auto box was never reported as a problem) to roughly what ep3's image + text
+           actually need, so they stay the same height as each other AND there's no leftover
+           space anywhere. Episodes 1/2's object-cover photos have no minimum height of their own
+           - cover always fills whatever box it's given - so shrinking them uniformly alongside
+           ep3 just shows proportionally less of their vertical extent, not a broken layout. */
+        @media (max-width: 767px) {
+            #documentary-strip .mission-card,
+            #documentary-strip .mission-card > div {
+                min-height: 280px;
+            }
+            #doc-ep3-content {
+                justify-content: flex-start;
+                padding-top: 180px;
+            }
+            /* The image's own bg-[#0a1830] (a hand-picked navy matching the PHOTO's own ocean/sky
+               tones, not the card chrome) was barely visible as a sliver at the original 367px
+               height, but now that the card is only as tall as it needs to be, that same leftover
+               strip is a much bigger fraction of the card - and specifically because it's a
+               different dark shade than the card's own bg-zinc-900, it reads as a distinct,
+               separate block glued to the bottom rather than a natural part of the card. Matching
+               it to the card's own background lets it blend into the existing border/chrome
+               instead of standing out as its own rectangle. */
+            #doc-ep3-card img {
+                background-color: #18181b;
+            }
+        }
         /* Mobile: the 1px card border + rounded clip can leave a hairline of the photo
            under the fade at the bottom. The scrim is already -inset-px in the markup;
            keep the carousel from painting a styled scrollbar against that same edge. */
@@ -1256,6 +1306,19 @@
         }
         body:not(.light-theme) .mission-card {
             box-shadow: 0 15px 30px -8px rgba(148, 163, 184, 0.12), 0 6px 14px -6px rgba(148, 163, 184, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+        }
+        /* This resting shadow (unlike the hover/active glow, already shrunk for #documentary-strip
+           elsewhere in this file) is on every mission-card unconditionally, at rest, with no
+           hover/tap needed - so it was always clipped by the scroll container's 16px pb-4 on
+           mobile (needs ~40px), not just something that showed up on interaction. Same shrink-to-
+           fit treatment, same reasoning as the hover glow's own comment. */
+        @media (max-width: 767px) {
+            #documentary-strip .mission-card {
+                box-shadow: 0 8px 10px -4px rgba(0, 0, 0, 0.1), 0 3px 4px -3px rgba(0, 0, 0, 0.1);
+            }
+            body:not(.light-theme) #documentary-strip .mission-card {
+                box-shadow: 0 6px 12px -5px rgba(148, 163, 184, 0.12), 0 3px 6px -4px rgba(148, 163, 184, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+            }
         }
 
         .milestone-card {
@@ -10867,7 +10930,7 @@
             </div>
 
             <div class="relative -mx-4 px-4 md:mx-0 md:px-0">
-                <div
+                <div id="documentary-strip"
                     class="flex md:grid md:grid-cols-3 gap-4 md:gap-5 overflow-x-auto pb-4 md:pb-0 hide-scrollbar snap-x snap-mandatory md:overflow-visible">
                     <a href="https://www.youtube.com/watch?v=-a0ecQMq-rM" target="_blank"
                         onclick="return openDocVideoModal('-a0ecQMq-rM', event)"
@@ -10917,12 +10980,12 @@
                         </div>
                     </a>
 
-                    <a href="https://www.youtube.com/watch?v=EthkNLasUa8" target="_blank"
+                    <a id="doc-ep3-card" href="https://www.youtube.com/watch?v=EthkNLasUa8" target="_blank"
                         onclick="return openDocVideoModal('EthkNLasUa8', event)"
                         class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer no-underline min-h-[367px]">
                         <img src="starship-booster-splashdown.webp"
                             class="absolute inset-0 w-full h-full object-contain bg-[#0a1830] object-top" alt="Episode 3 Cover">
-                        <div class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
+                        <div id="doc-ep3-content" class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
                             <div class="relative">
                                 <div class="doc-card-fade pointer-events-none absolute -top-12 -bottom-4 -inset-x-4 sm:-bottom-5 sm:-inset-x-5 md:-bottom-6 md:-inset-x-6"></div>
                                 <div class="relative">
