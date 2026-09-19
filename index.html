@@ -1095,57 +1095,6 @@
             }
         }
 
-        /* Episode 3's cover (object-contain, not object-cover like episodes 1/2 - see the
-           comment where that image tag was chosen) is a wide/landscape photo that only reaches
-           ~185px tall once it's fit to this card's ~85vw mobile width - nowhere near the
-           min-h-[367px] all three cards share (sized for episodes 1/2's full-bleed object-cover
-           photos, which always fill their box regardless of height). Two earlier attempts at
-           this both made it worse: shrinking just ep3's own height left it visibly mismatched
-           against its still-367px siblings in the same horizontal strip, and keeping 367px while
-           only moving its text up (justify-start below) just relocated the empty leftover space
-           from above the title to a big flat unbroken color block below the description instead -
-           still an obvious empty rectangle, just moved.
-           Real fix: shrink ALL THREE cards together (mobile only - desktop's much wider
-           md:w-auto box was never reported as a problem) to roughly what ep3's image + text
-           actually need, so they stay the same height as each other AND there's no leftover
-           space anywhere. Episodes 1/2's object-cover photos have no minimum height of their own
-           - cover always fills whatever box it's given - so shrinking them uniformly alongside
-           ep3 just shows proportionally less of their vertical extent, not a broken layout. */
-        @media (max-width: 767px) {
-            #documentary-strip .mission-card,
-            #documentary-strip .mission-card > div {
-                min-height: 280px;
-            }
-            /* Deliberately NOT overriding #doc-ep3-content's justify-end/pt-[195px] (episodes
-               1/2's own shared classes) here - an earlier attempt switched just this card to
-               justify-start so its text would sit right under the image instead of being pushed
-               toward the card's bottom, but that put ep3's title at a visibly different height
-               than ep1/2's (both still justify-end), an obvious mismatch scrolling between them.
-               With the card already shrunk to roughly fit its content (right above), justify-end
-               ends up within ~20px of the same position justify-start gave anyway - there's
-               barely any slack left over to push against - so simply leaving ep3 on the exact
-               same alignment mechanics as its siblings gives both a consistent look AND a small
-               gap, instead of having to choose one or the other. */
-            /* The image's own bg-[#0a1830] (a hand-picked navy matching the PHOTO's own ocean/sky
-               tones, not the card chrome) was barely visible as a sliver at the original 367px
-               height, but now that the card is only as tall as it needs to be, that same leftover
-               strip is a much bigger fraction of the card - and specifically because it's a
-               different dark shade than the card's own bg-zinc-900, it reads as a distinct,
-               separate block glued to the bottom rather than a natural part of the card. Matching
-               it to the card's own background lets it blend into the existing border/chrome
-               instead of standing out as its own rectangle. Needs a light-theme variant too
-               (below) - hardcoding just the dark value here matched the dark-theme card fine but
-               mismatched the WHITE .bg-zinc-900 light theme actually remaps to (see that rule
-               elsewhere in this file), leaving a dark-tinted patch behind light theme's white
-               .doc-card-fade instead of blending into the card the same way it does in dark
-               theme. */
-            #doc-ep3-card img {
-                background-color: #18181b;
-            }
-            body.light-theme #doc-ep3-card img {
-                background-color: #ffffff;
-            }
-        }
         /* Mobile: the 1px card border + rounded clip can leave a hairline of the photo
            under the fade at the bottom. The scrim is already -inset-px in the markup;
            keep the carousel from painting a styled scrollbar against that same edge. */
@@ -10997,8 +10946,9 @@
                     <a id="doc-ep3-card" href="https://www.youtube.com/watch?v=EthkNLasUa8" target="_blank"
                         onclick="return openDocVideoModal('EthkNLasUa8', event)"
                         class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer no-underline min-h-[367px]">
-                        <img src="starship-booster-splashdown.webp"
-                            class="absolute inset-0 w-full h-full object-contain bg-[#0a1830] object-top" alt="Episode 3 Cover">
+                        <img src="https://img.youtube.com/vi/EthkNLasUa8/maxresdefault.jpg"
+                            onerror="this.src='https://img.youtube.com/vi/EthkNLasUa8/hqdefault.jpg'"
+                            class="absolute inset-0 w-full h-full object-cover object-[center_30%] scale-[1.2] origin-bottom" alt="Episode 3 Cover">
                         <div id="doc-ep3-content" class="relative z-20 flex flex-col justify-end min-h-[367px] p-4 sm:p-5 md:p-6 pt-[195px]">
                             <div class="relative">
                                 <div class="doc-card-fade pointer-events-none absolute -top-12 -bottom-4 -inset-x-4 sm:-bottom-5 sm:-inset-x-5 md:-bottom-6 md:-inset-x-6"></div>
