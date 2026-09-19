@@ -391,6 +391,18 @@
             z-index: 0;
         }
 
+        /* Bug found live: giving every Info Station panel its own z-index:0 stacking context
+           (right above) traps #starlink-biz-breakdown's z-[80] inside #starlink-customers-card's
+           new context - it's a descendant, so its z-index is only ever compared against OTHER
+           descendants of this same card, never against sibling panels like "Nice to Know" further
+           down the page. Two z:0 siblings tie-break by DOM order, so the later "Nice to Know"
+           panel painted over this card's popup whenever it dropped down far enough to overlap it,
+           regardless of the popup's own z-80. Raising just this card above its Info Station
+           siblings (still 0) lets its whole subtree - popup included - paint above them again. */
+        #tab-panel-more #starlink-customers-card {
+            z-index: 10;
+        }
+
         #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card)::before,
         #tab-panel-more .ai3d-card::before,
         #main-tabs::before {
@@ -11045,7 +11057,7 @@
                 </div>
 
                 <!-- Customers (Private + Business) card -->
-                <div
+                <div id="starlink-customers-card"
                     class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
