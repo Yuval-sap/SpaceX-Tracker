@@ -360,6 +360,137 @@
             -webkit-mask-position: 0 0;
         }
 
+        /* Info Station panels: same scanline texture as body::before above, but painted as a
+           local layer INSIDE each panel (z-index:-1 relative to its own box) instead of relying
+           on the fixed full-page overlay - so it sits behind that panel's own text/content but
+           on top of its own flat background, wherever the panel happens to scroll to. Per CSS
+           painting order, a negative-z-index pseudo-element paints after its own element's
+           background but before that same element's ordinary static in-flow children, which is
+           exactly this layering, with no JS position-tracking needed. border-radius:inherit
+           keeps the scanlines clipped to each panel's own rounded corners without needing
+           overflow:hidden on the panel (some panels, like the Starlink customers card, rely on
+           overflow staying visible so a hover dropdown can escape their bounds).
+           .mission-card is excluded on purpose - the documentary/launch-site photo cards already
+           render fully above the CRT overlay via ordinary z-index (see body::before's own
+           comment above) and have no flat "square" background for scanlines to sit on.
+           Also covers the AI Compute glass panel (.ai3d-card - its own flat background, separate
+           from that section's existing donut-hole CRT tracking, which only ever touches the
+           fixed page overlay, not this panel) and #main-tabs, the pill bar behind the Launch/Info
+           Station tab buttons - both sit outside #tab-panel-more so they're listed by their own
+           selector rather than the #tab-panel-more-scoped attribute one.
+           z-index:0 (not auto) on the position:relative rule below forces each panel to establish
+           its OWN stacking context - without it, the panel itself gets sorted into the ENCLOSING
+           context's "positioned, z-index:auto" paint bucket, which paints AFTER that same
+           enclosing context's negative-z-index bucket: the panel's own background would end up
+           painted on top of its own scanline pseudo, hiding it completely despite every computed
+           style looking correct. */
+        #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card),
+        #tab-panel-more .ai3d-card,
+        #main-tabs {
+            position: relative;
+            z-index: 0;
+        }
+
+        #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card)::before,
+        #tab-panel-more .ai3d-card::before,
+        #main-tabs::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 6px 100%;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Same 0.35 -> 0.1 dampening body.light-theme::before already applies to the page-wide
+           effect (see that rule above) - a BLACK stripe at 0.35 reads as a much bigger jump on a
+           near-white light-theme panel than on a near-black dark one. */
+        body.light-theme #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card)::before,
+        body.light-theme #tab-panel-more .ai3d-card::before,
+        body.light-theme #main-tabs::before {
+            opacity: 0.1;
+        }
+
+        /* Same scanline treatment on the Launches tab's own chrome: the hero card (including its
+           countdown box, weather pill and the two buttons under the title), the category filter
+           bar and search box above the missions grid, and the year-to-date launch counter plus
+           the Launch Cadence button beside it. Named explicitly by id rather than reusing the
+           [class~="bg-zinc-900"] attribute selector this panel's own background shade varies
+           (hero/filter bar are bg-zinc-900, the countdown box and weather pill are bg-zinc-950)
+           and this list is a specific, bounded set of elements rather than "every panel in this
+           tab" - #search-input itself can't take a ::before at all (form controls don't support
+           generated content), hence the #search-box-wrap id added around it. */
+        #hero-banner,
+        #countdown-box,
+        #hero-details-btn,
+        #hero-remind-btn,
+        #hero-weather,
+        #category-filter-bar,
+        #search-box-wrap,
+        #patches-search-box-wrap,
+        #year-count-box,
+        #launch-cadence-desktop-btn {
+            position: relative;
+            z-index: 0;
+        }
+
+        #hero-banner::before,
+        #countdown-box::before,
+        #hero-details-btn::before,
+        #hero-remind-btn::before,
+        #hero-weather::before,
+        #category-filter-bar::before,
+        #search-box-wrap::before,
+        #patches-search-box-wrap::before,
+        #year-count-box::before,
+        #launch-cadence-desktop-btn::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 6px 100%;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body.light-theme #hero-banner::before,
+        body.light-theme #countdown-box::before,
+        body.light-theme #hero-details-btn::before,
+        body.light-theme #hero-remind-btn::before,
+        body.light-theme #hero-weather::before,
+        body.light-theme #category-filter-bar::before,
+        body.light-theme #search-box-wrap::before,
+        body.light-theme #patches-search-box-wrap::before,
+        body.light-theme #year-count-box::before,
+        body.light-theme #launch-cadence-desktop-btn::before {
+            opacity: 0.1;
+        }
+
+        /* #search-box-wrap/#patches-search-box-wrap's scanline pseudo sits behind ALL of the
+           wrapper's children (icon + input), but the input itself is an opaque bg-zinc-900 box
+           that fills almost the entire wrapper - so in practice the scanlines were only ever
+           visible in the sliver of the wrapper that peeks out past the input's own edges,
+           reading as a bold ring around the box instead of a texture across it. Making the input
+           itself see-through (25%) lets that same underlying scanline read across the whole
+           field instead of just its border. Needs !important + the same rgba values
+           body.light-theme .bg-zinc-900 itself uses (see that rule above) to win over that
+           rule's own !important - a plain class swap to bg-zinc-900/80 wouldn't get the
+           light-theme recolor at all, since that remap targets the exact class name bg-zinc-900
+           (see this file's light-theme override section). */
+        #search-input,
+        #patches-search-input {
+            background-color: rgba(24, 24, 27, 0.75) !important;
+        }
+        body.light-theme #search-input,
+        body.light-theme #patches-search-input {
+            background-color: rgba(255, 255, 255, 0.75) !important;
+        }
+
         .font-space {
             font-family: 'Space Grotesk', 'Rubik', system_ui, sans-serif;
             font-weight: 600;
@@ -1487,6 +1618,31 @@
                direction (left-to-right vs right-to-left) is controlled purely by which
                keyframes are selected below, completely independent of this. */
             direction: ltr;
+            /* Sits directly under <body> (before the nav/main-content wrapper, which are
+               elevated to z-[60]/z-[51] specifically to escape body::before's z-50 CRT
+               overlay - see that element's own comment), with no z-index of its own, so it was
+               the one piece of page chrome still exposed to the overlay at full, undiminished
+               strength while every other element either escapes it entirely or shows this
+               file's own weaker, hand-tuned local recreation of it - hence reading as visibly
+               stronger than the rest of the page. Matching the wrapper's z-51 escapes the same
+               way, and the scanline pseudo below re-adds the same toned-down effect used
+               everywhere else instead of leaving the ticker with no texture at all. */
+            position: relative;
+            z-index: 51;
+        }
+
+        #news-ticker-wrap::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 6px 100%;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: -1;
+        }
+        body.light-theme #news-ticker-wrap::before {
+            opacity: 0.1;
         }
 
         #news-ticker-track {
@@ -3156,6 +3312,51 @@
         }
         body.moon-theme .booster-bar-fill {
             background-image: linear-gradient(to right, #175582, #3fa9f5);
+        }
+
+        /* linear-gradient's "to right"/"to left" keywords are PHYSICAL, not logical - they never
+           flip with dir="rtl" the way start/end-based layout properties do. The row above this
+           bar has no explicit dir, so it inherits the page's html[dir="rtl"] in Hebrew/Arabic/etc
+           - the bar itself (a plain block child, not flex) correctly starts filling from the
+           right in RTL, but its "to right" gradient kept painting dark on the physical left/light
+           on the physical right regardless, so the dark end landed on the bar's growing edge
+           instead of its start, mismatched from every LTR row. Flipping the keyword to "to left"
+           for RTL keeps the same color stops but re-anchors dark-at-start/light-at-growing-edge
+           to match the bar's own reversed fill direction. */
+        html[dir="rtl"] .booster-bar-fill {
+            background-image: linear-gradient(to left, #047857, #34d399);
+        }
+        html[dir="rtl"] body.light-theme .booster-bar-fill {
+            background-image: linear-gradient(to left, #047857, #10b981);
+        }
+        html[dir="rtl"] body.mars-theme .booster-bar-fill {
+            background-image: linear-gradient(to left, #9a3412, #ff6b35);
+        }
+        html[dir="rtl"] body.moon-theme .booster-bar-fill {
+            background-image: linear-gradient(to left, #175582, #3fa9f5);
+        }
+
+        /* Scanline effect drawn ON TOP of the bar (positive z-index, unlike this file's other
+           scanline pseudos which all sit behind their element's content) - the user asked for the
+           lines to cross visibly over the bar graphic itself, not sit hidden under the colored
+           fill. .booster-bar-track already has position:relative + overflow-hidden (Tailwind
+           classes in the markup), so the pill shape clips this automatically without needing
+           border-radius:inherit. */
+        .booster-bar-track {
+            z-index: 0;
+        }
+        .booster-bar-track::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 6px 100%;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 1;
+        }
+        body.light-theme .booster-bar-track::before {
+            opacity: 0.1;
         }
         .booster-sn {
             transition: filter 0.3s ease;
@@ -10462,7 +10663,7 @@
 
         <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-end mb-6">
             <div class="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
-                <div
+                <div id="category-filter-bar"
                     class="flex flex-wrap justify-center sm:justify-start bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 text-[11px] sm:text-sm w-full md:w-auto transition-colors duration-500 gap-1">
                     <button onclick="filterByCategory('all')" id="filter-all"
                         class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] font-medium transition-all whitespace-nowrap notranslate"
@@ -10483,7 +10684,7 @@
                         class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap notranslate"
                         translate="no" lang="en"><span id="i18n-filter-dragon">Dragon/Crew</span></button>
                 </div>
-                <div class="relative w-full sm:w-64 md:w-72">
+                <div id="search-box-wrap" class="relative w-full sm:w-64 md:w-72">
                     <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-500"></i>
                     <input id="search-input" type="text" placeholder="Search missions..."
                         class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500">
@@ -10552,7 +10753,7 @@
                          match #year-count-box right beside it (same box treatment/min-width).
                          Hidden on mobile - see the lg:hidden companion button in the "Scheduled
                          Launches" header above instead. -->
-                    <button type="button" onclick="openLaunchCadenceModal()"
+                    <button type="button" id="launch-cadence-desktop-btn" onclick="openLaunchCadenceModal()"
                         class="hidden lg:flex bg-zinc-900 border border-zinc-800/80 rounded-2xl md:rounded-3xl px-2 py-1 sm:px-6 sm:py-4 flex-col items-center justify-center flex-1 transition-colors duration-500 min-w-[68px] sm:min-w-[100px] shadow-sm cursor-pointer select-none hover:border-emerald-500/50"
                         aria-label="Launch Cadence">
                         <div class="flex items-center gap-1 mb-0.5 sm:mb-1">
@@ -10716,12 +10917,8 @@
                         </div>
                     </a>
 
-                    <!-- Not SpaceX's own upload - a placeholder reupload (channel: Launch Heaven)
-                         used until the official SpaceX channel posts this episode, at which
-                         point this videoId should be swapped for the real one (see episodes 1/2
-                         above for the pattern once that happens). -->
-                    <a href="https://www.youtube.com/watch?v=mQCtXRtRuBc" target="_blank"
-                        onclick="return openDocVideoModal('mQCtXRtRuBc', event)"
+                    <a href="https://www.youtube.com/watch?v=EthkNLasUa8" target="_blank"
+                        onclick="return openDocVideoModal('EthkNLasUa8', event)"
                         class="mission-card relative w-[85vw] max-w-[320px] md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer no-underline min-h-[367px]">
                         <img src="starship-booster-splashdown.webp"
                             class="absolute inset-0 w-full h-full object-contain bg-[#0a1830] object-top" alt="Episode 3 Cover">
@@ -11183,7 +11380,7 @@
                 <!-- Desktop only: sits on the end edge opposite the title (visual left in RTL
                      Hebrew, visual right in LTR English) — same control as #search-input. Hidden
                      on mobile so it doesn't compete with the strip's horizontal scroll. -->
-                <div class="hidden md:block relative w-64 md:w-72 shrink-0 notranslate" translate="no">
+                <div id="patches-search-box-wrap" class="hidden md:block relative w-64 md:w-72 shrink-0 notranslate" translate="no">
                     <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-500"></i>
                     <input id="patches-search-input" type="text" placeholder="Search tags..."
                         class="w-full bg-zinc-900 border border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none focus:border-emerald-500/50 transition-colors duration-500 notranslate"
