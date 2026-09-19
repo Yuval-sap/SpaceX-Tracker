@@ -11077,11 +11077,13 @@
                                 <i class="fa-solid fa-building text-[8px] shrink-0"></i>
                                 <span id="i18n-starlink-biz-btn">Business customers</span>
                             </div>
-                            <!-- Same hover/tap pattern as #year-count-breakdown: desktop CSS
-                                 hover (md:group-hover:flex), mobile tap. end-full (no me gap)
-                                 keeps the pointer on the group while moving onto the list. -->
+                            <!-- Click/tap-only now (per explicit request) - no more md:group-hover:flex,
+                                 so hovering the button alone no longer reveals this; opening is entirely
+                                 driven by toggleStarlinkBizBreakdown's hidden/flex toggle on click, same
+                                 as tap mode always worked. end-full (no me gap) keeps the pointer on the
+                                 group while moving onto the list once it's open. -->
                             <div id="starlink-biz-breakdown"
-                                class="hidden md:group-hover:flex absolute top-3 end-full flex-col w-80 sm:w-96 max-h-[min(70vh,32rem)] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80] font-medium tracking-normal normal-case whitespace-normal"
+                                class="hidden absolute top-3 end-full flex-col w-80 sm:w-96 max-h-[min(70vh,32rem)] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80] font-medium tracking-normal normal-case whitespace-normal"
                                 onclick="event.stopPropagation()">
                                 <div class="px-4 pt-3.5 pb-2.5 shrink-0">
                                     <div class="flex items-center gap-2 mb-1.5">
@@ -16856,12 +16858,10 @@
         function toggleStarlinkBizBreakdown(event) {
             if (event) event.stopPropagation();
             if (event && event.target && event.target.closest && event.target.closest('#starlink-biz-breakdown')) return;
-            // Desktop used to bail out here and rely on CSS hover alone (md:group-hover:flex),
-            // with a click doing nothing. Now a click pins the popup open on desktop too -
-            // toggling the 'hidden' class directly like this overrides the hover-only CSS rule,
-            // so it stays open after the mouse leaves until this same click (or the
-            // click-outside listener below) closes it again. Tap mode (no hover) already
-            // needed exactly this toggle, unchanged.
+            // Click/tap-only (per explicit request, desktop no longer also opens this on hover -
+            // see the md:group-hover:flex removal on the popup's own markup). This toggle is now
+            // the ONLY way to open it on any screen size: opens on click, stays open after the
+            // mouse leaves until this same click (or the click-outside listener below) closes it.
             const popup = document.getElementById('starlink-biz-breakdown');
             if (!popup) return;
             const opening = popup.classList.contains('hidden');
