@@ -12410,9 +12410,45 @@
         });
       }
 
+      // SpaceX doesn't need Launch Library 2 at all for its own weekly breakdown - this site
+      // already tracks every SpaceX launch itself (rawPastMissions, the same data
+      // computeYearToDateLaunchCount reads for the hero's "launches this year" counter), more
+      // accurately and with much lower latency than a generic third-party API call. Reported
+      // live: the two numbers could disagree (chart showed 110 while the counter already knew
+      // about 111) because the chart's own LL2 fetch is cached once per calendar day and has no
+      // way to notice a launch that happened after that cache was saved. Deriving the spacex
+      // bucket directly from the same data the counter itself uses - both counted by the same
+      // didMissionFly rule, over the same current-year date range - makes the two numbers the
+      // same number by construction, and lets this update the instant the counter does (see the
+      // updateYearToDateLaunchCount() call site) rather than waiting on any fetch/cache cycle at
+      // all. The other providers (ULA, Blue Origin, etc.) aren't tracked by this site, so they
+      // still come from the once-a-day LL2 fetch below same as before.
+      function computeSpacexPerWeekFromLocalData() {
+        var perWeek = new Array(WEEKS).fill(0);
+        var missions = (typeof rawPastMissions !== 'undefined' && rawPastMissions) || [];
+        missions.forEach(function (m) {
+          var d = new Date(m.date);
+          if (isNaN(d.getTime()) || d.getFullYear() !== CURRENT_YEAR || d > TODAY) return;
+          if (typeof didMissionFly === 'function' && !didMissionFly(m)) return;
+          perWeek[weekIndexOfDate(d)]++;
+        });
+        return perWeek;
+      }
+      // Exposed so the main app's updateYearToDateLaunchCount() can call this every time it
+      // refreshes rawPastMissions/the hero counter - re-derives the spacex bucket right then
+      // and re-renders if the chart has already been opened this session, independent of
+      // whether it's currently visible or of the once-a-day LL2 cycle for the other providers.
+      window.syncLaunchCadenceSpacexData = function () {
+        applyLiveBuckets({ spacex: computeSpacexPerWeekFromLocalData() });
+        if (lcInitialized) render();
+      };
+
       async function fetchLiveLaunchDataOncePerDay() {
+        // spacex is always overwritten with the locally-derived bucket above right after,
+        // regardless of whether this loads from cache or a fresh fetch - LL2's own spacex
+        // numbers in either path are simply never used.
         var cached = loadLiveCache();
-        if (cached) { applyLiveBuckets(cached); render(); return; }
+        if (cached) { applyLiveBuckets(cached); window.syncLaunchCadenceSpacexData(); return; }
         try {
           var yearStart = new Date(CURRENT_YEAR, 0, 1).toISOString();
           var url = 'https://ll.thespacedevs.com/2.2.0/launch/previous/?net__gte=' + yearStart +
@@ -12447,6 +12483,10 @@
         } catch (e) {
           liveDataFailed = true;
         }
+        // Overwrites whatever spacex bucket the block above just set (from LL2, or nothing at
+        // all if that fetch failed) with the locally-derived one - see this function's own
+        // comment above for why LL2's spacex numbers are never actually used.
+        applyLiveBuckets({ spacex: computeSpacexPerWeekFromLocalData() });
         render();
       }
 
@@ -12902,6 +12942,11 @@
         lcInitialized = true;
         svg = document.getElementById('lc-chart-svg');
         buildControls();
+        // Best-available spacex data synchronously, before the (async, once-a-day-cached) LL2
+        // fetch below even starts - the very first render this same open triggers (via
+        // resetLaunchCadenceState()'s render() call, right after this returns) already gets the
+        // accurate live number instead of briefly showing nothing/a hardcoded fallback for it.
+        applyLiveBuckets({ spacex: computeSpacexPerWeekFromLocalData() });
         fetchLiveLaunchDataOncePerDay();
       }
 
@@ -17643,6 +17688,12 @@
             if (el) el.innerText = computeYearToDateLaunchCount();
             updateYearToDateLaunchCountByVehicle();
             persistFalcon9CareerSuccessCount();
+            // Keeps the Launch Cadence chart's SpaceX line in sync with this same counter the
+            // instant it changes, instead of the chart's own once-a-day fetch cycle - see that
+            // function's own comment. Defined at page load regardless of whether the chart has
+            // ever been opened (it only actually re-renders if it has); the typeof guard is
+            // just normal defensive script-load-order safety, not gating on that.
+            if (typeof window.syncLaunchCadenceSpacexData === 'function') window.syncLaunchCadenceSpacexData();
         }
 
         // Own anchor (user-confirmed: 100 Falcon 9 + 2 Starship, out of 102 total, as of Aug 23
