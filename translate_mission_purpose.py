@@ -487,13 +487,17 @@ def fetch_previous_launches() -> list:
     return collected
 
 
-# Must match mapLaunchToSchema's own "Block 5" stripping in index.html EXACTLY (same regex,
-# same whitespace collapsing) - the client hashes its own cleaned m.name to look up the "names"
-# map, so if this script hashed the raw un-stripped API name instead, every single lookup would
+# Must match mapLaunchToSchema's own name cleanup in index.html EXACTLY (same regexes, same
+# order, same whitespace collapsing) - the client hashes its own cleaned m.name to look up the
+# "names" map, so if this script hashed a differently-cleaned name, every single lookup would
 # miss (different hash) and silently fall back to the live Google endpoint for every mission,
-# defeating the entire point of pre-translating names here.
+# defeating the entire point of pre-translating names here. Confirmed live: this is exactly what
+# happened when the Bandwagon parenthetical-stripping regex was added client-side only - every
+# Bandwagon title's card fell back to Google (which doesn't phoneticize "Falcon 9" the way the
+# Gemini names map does) until this second regex was added here too.
 def clean_mission_name(name: str) -> str:
     name = re.sub(r"\s*Block\s*5\b", "", name, flags=re.IGNORECASE)
+    name = re.sub(r"(bandwagon[^(]*)\([^)]*\)\s*$", r"\1", name, flags=re.IGNORECASE)
     name = re.sub(r"\s{2,}", " ", name)
     return name.strip()
 
