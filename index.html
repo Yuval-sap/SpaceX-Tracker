@@ -14844,6 +14844,43 @@
             preloadedMissionImages.push(img);
         }
 
+        // Same "warm the cache before the modal needs it" idea, for crew headshots - both the
+        // small circles in a crewed mission's modal (#modal-crew-container) and the bigger photo
+        // in an individual astronaut's own dossier (openAstronautModal, same URL) only ever set
+        // their <img src> the moment that specific modal opened, so both paid the same ~2-3s
+        // network-fetch delay reported live. Bulk-preloaded like the patches (not per-card
+        // hover, like the hero photo above) since crewed missions are a small minority of the
+        // full mission list and their headshots are modest-sized portraits, not multi-MB hero
+        // photos - cheap to warm all of them at once. CUSTOM_ASTRONAUT_IMAGES is defined lower
+        // in this file (module-level, not the near-duplicate local copy inside
+        // openMissionModal) - fine to reference here since this only ever runs later, once
+        // mission data has actually loaded, by which point the whole script has parsed.
+        const preloadedCrewImageUrls = new Set();
+        const preloadedCrewImages = [];
+        function preloadMissionCrewImages(missions) {
+            if (!missions || !missions.length) return;
+            missions.forEach(m => {
+                if (!m || !m.crew || !m.crew.length) return;
+                m.crew.forEach(c => {
+                    if (!c) return;
+                    const customImg = CUSTOM_ASTRONAUT_IMAGES[c.name] || CUSTOM_ASTRONAUT_IMAGES[(c.name || '').trim()];
+                    const url = customImg || c.image;
+                    if (!url || preloadedCrewImageUrls.has(url)) return;
+                    preloadedCrewImageUrls.add(url);
+                    const img = new Image();
+                    img.decoding = 'async';
+                    // Must match #modal-crew-container's own <img crossorigin="anonymous">
+                    // (needed there for alignAstronautHeadToTop's canvas pixel read) - a
+                    // same URL fetched with a different credentials mode is a SEPARATE cache
+                    // entry in most browsers, so a preload missing this attribute would warm
+                    // the wrong cache slot and the real <img> would still refetch from network.
+                    img.crossOrigin = 'anonymous';
+                    img.src = url;
+                    preloadedCrewImages.push(img);
+                });
+            });
+        }
+
         // Launch Library only carries mission_patches for some non-Starlink / non-Starship
         // flights. The same artwork is often already on Wikimedia Commons or the English
         // Wikipedia article (Crew-10, NROL-*, CRS-*, …). Used only when the API, the
@@ -18597,6 +18634,8 @@
 
             preloadMissionPatches(dbMissions);
             preloadMissionPatches(rawPastMissions);
+            preloadMissionCrewImages(dbMissions);
+            preloadMissionCrewImages(rawPastMissions);
 
             // Launches-this-year counter is independent of the (7-item-capped) upcoming list
             // above - fetch and render it separately so it always reflects the true YTD total.
