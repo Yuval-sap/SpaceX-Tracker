@@ -14875,6 +14875,13 @@
                     // entry in most browsers, so a preload missing this attribute would warm
                     // the wrong cache slot and the real <img> would still refetch from network.
                     img.crossOrigin = 'anonymous';
+                    // Silences a real but pre-existing, out-of-scope failure: the generic
+                    // no-profile-photo fallback ("eva_suit.jpg" on spacex.com) doesn't send
+                    // CORS headers, so a crossorigin="anonymous" request for it always fails -
+                    // true for the real modal <img> too, not something this preload causes.
+                    // Only suppresses this preload's own console noise for a fetch that could
+                    // never succeed either way.
+                    img.onerror = () => { };
                     img.src = url;
                     preloadedCrewImages.push(img);
                 });
@@ -19755,6 +19762,16 @@
 
             if (archiveChanged) savePatchArchive(archive);
 
+            // The archive built above is a superset of dbMissions/rawPastMissions - it also
+            // holds missions old enough to have rolled off the rolling past-launches window,
+            // still reachable via this strip's "Full Launch Details" link
+            // (findLaunchForPatchMission falls back to the archive entry itself once a mission
+            // isn't in either live list). Those crewed missions' avatars were never covered by
+            // the preloadMissionCrewImages(dbMissions)/(rawPastMissions) calls at data-load
+            // time, so they'd still hit the original click-time fetch delay - dedup means this
+            // costs nothing extra for the missions already covered there.
+            preloadMissionCrewImages(archive);
+
             const uniquePatchMissions = [...archive];
             // Newest first in DOM order - deliberately NOT reversed per language. #mission-
             // patches-strip has no dir of its own, so it inherits dir="rtl"/"ltr" from <html>
@@ -22304,7 +22321,8 @@ setTimeout(() => {
 
                 // מילון תמונות מותאמות אישית לאסטרונאוטים
                 const CUSTOM_ASTRONAUT_IMAGES = {
-                    "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg"
+                    "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg",
+                    "Oleg Vladimirovich Platonov": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Oleg_Platonov_portrait_2025_%28cropped%29.jpg/960px-Oleg_Platonov_portrait_2025_%28cropped%29.jpg"
                 };
 
                 const crewGridLang = (document.documentElement.lang || 'en').split('-')[0];
@@ -24934,7 +24952,13 @@ setTimeout(() => {
 
         // מילון תמונות מותאמות אישית לאסטרונאוטים
         const CUSTOM_ASTRONAUT_IMAGES = {
-            "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg"
+            "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg",
+            // The API's own profile_image for this cosmonaut is spacex.com's generic
+            // no-photo-yet placeholder (eva_suit.jpg), which also doesn't send CORS headers -
+            // always fails outright under this app's crossorigin="anonymous" <img> (needed for
+            // alignAstronautHeadToTop's canvas read), so it silently never rendered. Wikimedia
+            // Commons portrait, confirmed to load cross-origin.
+            "Oleg Vladimirovich Platonov": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Oleg_Platonov_portrait_2025_%28cropped%29.jpg/960px-Oleg_Platonov_portrait_2025_%28cropped%29.jpg"
         };
 
         // ה-API (Launch Library 2) לא מחזיר שדה מגדר לאסטרונאוטים בכלל, אז אין דרך "אמיתית"
