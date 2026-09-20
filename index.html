@@ -2239,6 +2239,29 @@
             background-color: rgba(241, 245, 249, 0.8) !important;
         }
 
+        /* Bug found live: this file's light/mars/moon-theme remaps of bg-zinc-800/80,
+           border-zinc-700 and text-zinc-300 all use !important to force every element with
+           those classes to that theme's resting palette - but !important doesn't stop applying
+           just because the element is also :hover'd, so it permanently pinned these three cyan
+           hover buttons (Compare Specs, Live Map, the Starlink customers-card business-customers
+           trigger) to their RESTING colors in all three non-default themes, with no way for
+           Tailwind's own md:hover:bg-cyan-500 (no !important) to ever win - the default (dark)
+           theme was never affected, since it has no equivalent remap. Each theme needs its own
+           !important + higher specificity (body.<theme> + the hover class itself beats
+           body.<theme> + the plain background class alone) to win back, using THAT theme's own
+           accent color rather than generic cyan-500 - see the matching pair of rules inside the
+           MARS MODE and MOON MODE sections below for the other two themes. */
+        body.light-theme .md\:hover\:bg-cyan-500:hover {
+            background-color: #0284c7 !important;
+            color: #fff !important;
+            border-color: #0284c7 !important;
+        }
+        body.light-theme .group:hover .md\:group-hover\:bg-cyan-500 {
+            background-color: #0284c7 !important;
+            color: #fff !important;
+            border-color: #0284c7 !important;
+        }
+
         body.light-theme .bg-black {
             background-color: #e2e8f0 !important;
         }
@@ -3222,6 +3245,16 @@
         body.mars-theme .from-cyan-400 {
             --tw-gradient-from: #ff6b35 !important;
         }
+        body.mars-theme .md\:hover\:bg-cyan-500:hover {
+            background-color: #ff8c5a !important;
+            color: #000 !important;
+            border-color: #ff8c5a !important;
+        }
+        body.mars-theme .group:hover .md\:group-hover\:bg-cyan-500 {
+            background-color: #ff8c5a !important;
+            color: #000 !important;
+            border-color: #ff8c5a !important;
+        }
 
         /* Resting shadow: same 3-layer shape as the default theme's own
            body:not(.light-theme) .mission-card rule (15px/30px/-8px + 6px/14px/-6px + 1px
@@ -3608,6 +3641,16 @@
         body.moon-theme .text-cyan-400,
         body.moon-theme .text-cyan-500 { color: #6abffb !important; }
         body.moon-theme .from-cyan-400 { --tw-gradient-from: #3fa9f5 !important; }
+        body.moon-theme .md\:hover\:bg-cyan-500:hover {
+            background-color: #6abffb !important;
+            color: #000 !important;
+            border-color: #6abffb !important;
+        }
+        body.moon-theme .group:hover .md\:group-hover\:bg-cyan-500 {
+            background-color: #6abffb !important;
+            color: #000 !important;
+            border-color: #6abffb !important;
+        }
         /* Resting shadow: same 3-layer shape as the default theme's own
            body:not(.light-theme) .mission-card rule (15px/30px/-8px + 6px/14px/-6px + 1px
            inset highlight), but deliberately stronger (darker + wider blur) than default's -
