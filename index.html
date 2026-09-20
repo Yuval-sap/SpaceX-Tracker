@@ -9614,7 +9614,19 @@
                 .replace(/\bFlight\s+(\d+)/gi, (_, n) => flTemplate.replace('{n}', n))
                 .replace(/starship/gi, starTerm)
                 .replace(/starlink/gi, linkTerm)
-                .replace(/bandwagon/gi, bwTerm);
+                .replace(/bandwagon/gi, bwTerm)
+                // "Crew-N" (Commercial Crew Program numbering) is deliberately translatable -
+                // "Crew" is an ordinary English word, not a brand, unlike everything else this
+                // function protects (see this function's own comment and the identical reasoning
+                // already established for #modal-crew-title, which this mirrors: "{word} {n}"
+                // built from the same crewWord dictionary key, e.g. "Crew-13" -> "צוות 13").
+                // Reported live: relying on Gemini/Google to translate this on their own left
+                // "Crew-13" sitting untranslated inside an otherwise-Hebrew card title for weeks -
+                // both apparently treat the hyphenated form as an identifier/code to leave alone
+                // rather than the ordinary word + number it actually is. Matching "Flight N"'s own
+                // fix for the exact same reason: instant + guaranteed correct, not dependent on
+                // any external translator's guess.
+                .replace(/\bCrew-(\d+)\b/gi, (_, n) => key === 'en' ? `Crew-${n}` : `${dict.crewWord || LAUNCH_LABEL_I18N.en.crewWord} ${n}`);
             // Surname, not the adjective for Rome — see PHRASE_FIXES_HE / shieldRomanTelescopeForMt.
             if (key === 'he') {
                 out = out
