@@ -391,18 +391,6 @@
             z-index: 0;
         }
 
-        /* Bug found live: giving every Info Station panel its own z-index:0 stacking context
-           (right above) traps #starlink-biz-breakdown's z-[80] inside #starlink-customers-card's
-           new context - it's a descendant, so its z-index is only ever compared against OTHER
-           descendants of this same card, never against sibling panels like "Nice to Know" further
-           down the page. Two z:0 siblings tie-break by DOM order, so the later "Nice to Know"
-           panel painted over this card's popup whenever it dropped down far enough to overlap it,
-           regardless of the popup's own z-80. Raising just this card above its Info Station
-           siblings (still 0) lets its whole subtree - popup included - paint above them again. */
-        #tab-panel-more #starlink-customers-card {
-            z-index: 10;
-        }
-
         #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card)::before,
         #tab-panel-more .ai3d-card::before,
         #main-tabs::before {
@@ -447,6 +435,33 @@
         #launch-cadence-desktop-btn {
             position: relative;
             z-index: 0;
+        }
+
+        /* Bug found live, then audited site-wide for every other instance of the same class:
+           giving a panel its own z-index:0 stacking context (every rule in this file that sets
+           z-index:0, including the one right above) traps any popup INSIDE it -
+           #starlink-biz-breakdown, #year-count-breakdown, #mission-status-breakdown, all
+           position:absolute with a high z-index of their own - within that panel's new local
+           context. A trapped popup's z-index is only ever compared against OTHER descendants of
+           that SAME panel, never against sibling panels/sections elsewhere on the page. Two z:0
+           siblings tie-break by DOM order, so whichever sibling happens to sit later in the DOM
+           (the Nice to Know panel; the milestones timeline further down the same hero card)
+           painted over the popup whenever it visually dropped down far enough to overlap it,
+           regardless of the popup's own z-80.
+           Every panel that owns one of these popups gets raised here, well above the z:0/auto
+           baseline every ordinary sibling in its own local context sits at (including the
+           milestone timeline nodes, which are z-10) - the popup itself doesn't need to change at
+           all, only the ceiling its trapped z-index is compared against locally. None of the
+           three otherwise overlap anything else on the page in normal layout, so this only ever
+           matters for exactly this popup-escaping case.
+           Each selector below is deliberately double-scoped (an ancestor id + the panel's own id,
+           e.g. #tab-panel-launches #countdown-box) purely to outrank the plain single-id z:0
+           rules above by specificity - source order alone would already put this block after
+           them, but this way the override holds even if either block ever gets reordered. */
+        #tab-panel-more #starlink-customers-card,
+        #tab-panel-launches #countdown-box,
+        #tab-panel-launches #year-count-box {
+            z-index: 20;
         }
 
         #hero-banner::before,
@@ -18151,8 +18166,7 @@
         // instant the tab becomes visible again instead of waiting for that: if a refresh was
         // already due while hidden, run one immediately rather than leaving stale state on
         // screen until the delayed timer gets around to it.
-        document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState !== 'visible') return;
+        function catchUpLaunchRefreshIfDue() {
             if (nextLaunchRefreshDueMs && Date.now() >= nextLaunchRefreshDueMs) {
                 if (refreshIntervalId) {
                     clearTimeout(refreshIntervalId);
@@ -18160,7 +18174,23 @@
                 }
                 runLaunchDataRefreshCycle();
             }
+        }
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState !== 'visible') return;
+            catchUpLaunchRefreshIfDue();
         });
+        // visibilitychange alone missed a real case (reported live: a mobile PWA left open for
+        // ~5 hours - screen presumably off/OS-backgrounded most of that time - still showing an
+        // hours-stale "in progress" hero on reopen, well past its 60/90-minute grace period,
+        // while a desktop tab opened around the same time had already refreshed correctly).
+        // Some mobile browser/PWA host contexts resume a suspended tab without firing
+        // visibilitychange the way a desktop tab reliably does. focus and pageshow (the latter
+        // specifically covers a bfcache restore, which skips a full reload and its normal init
+        // code entirely) are the standard redundant signals for "this page is back in front of
+        // the user" - same catch-up, just more chances to actually fire on whichever lifecycle
+        // event the device in question does support.
+        window.addEventListener('focus', catchUpLaunchRefreshIfDue);
+        window.addEventListener('pageshow', catchUpLaunchRefreshIfDue);
 
         // A several-hour launch WINDOW is not a liftoff. LL2's `net` is usually the window
         // OPEN time, so the clock passing that instant used to flip the hero to "MISSION IN
