@@ -19025,7 +19025,15 @@
                 // translation ("פלקון 9 בלוק 5 | ..."). Stripping it here instead means no
                 // downstream consumer - card, hero, modal, translated or not - ever sees it in
                 // the first place, in any language.
-                name: (launch.name || "SpaceX Mission").replace(/\s*Block\s*5\b/gi, '').replace(/\s{2,}/g, ' ').trim(),
+                // Bandwagon missions: LL2's own name always appends a "(Dedicated Rideshare to
+                // ...)"-style parenthetical describing the mission type - purely descriptive,
+                // not a proper-noun part of the title, and already repeated verbatim in the
+                // mission description shown right below the title. Stripped here for the exact
+                // same reason as "Block 5" above (same comment) - once on the raw English name,
+                // before any translation pipeline can see it, so it's gone in every language
+                // everywhere the title is shown, not just the ones this regex would still match
+                // post-translation.
+                name: (launch.name || "SpaceX Mission").replace(/\s*Block\s*5\b/gi, '').replace(/(bandwagon[^(]*)\([^)]*\)\s*$/i, '$1').replace(/\s{2,}/g, ' ').trim(),
                 date: launch.net || new Date().toISOString(),
                 window: windowStr,
                 windowStart: windowStartStr,
