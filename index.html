@@ -14380,6 +14380,9 @@
 
             startAutoThemeWatch();
             preloadModeBackgroundImages();
+            preloadMilestoneImages();
+            preloadFallbackImages();
+            preloadRocketDossierImages();
         }
 
         // Mars/Moon mode's desktop background photo (set via CSS background-image on
@@ -14402,6 +14405,74 @@
             schedule(function () {
                 new Image().src = 'https://imgix.bustle.com/uploads/image/2022/4/11/9acdc0da-c0f3-4e5a-a635-7f9e7f676c5f-screenshot-2022-04-11-at-17-24-18-spacex.jpg?w=920&h=560&fit=crop&crop=faces&dpr=2';
                 new Image().src = 'https://i.redd.it/dgantnoqqtp31.jpg';
+            });
+        }
+
+        // Same "warm the cache before it's needed" idea as preloadModeBackgroundImages above,
+        // for the Milestones strip's full-size photos: openMilestoneImage() only ever set
+        // img.src the moment a card was clicked, so the fetch of a several-hundred-KB external
+        // photo started right as the modal opened - a 2-3s spinner every single time, even for
+        // the same milestone clicked twice. Only 14 images total (MILESTONE_IMAGES is a small
+        // fixed list, not a growing archive like the patch strip), so preloading all of them
+        // is cheap. `preloadedMilestoneImages` keeps a reference to each Image so it can't be
+        // garbage-collected mid-fetch before the browser's HTTP cache actually has it - same
+        // gotcha preloadMissionPatch below guards against.
+        const preloadedMilestoneImages = [];
+        function preloadMilestoneImages() {
+            const schedule = window.requestIdleCallback || function (cb) { setTimeout(cb, 2000); };
+            schedule(function () {
+                MILESTONE_IMAGES.forEach(url => {
+                    const img = new Image();
+                    img.src = url;
+                    preloadedMilestoneImages.push(img);
+                });
+            });
+        }
+
+        // Same idea again, for the handful of shared stock photos mission cards/the hero
+        // banner/the mission modal all fall back to (FALLBACK_IMAGES below, defined per
+        // category - most missions don't carry their own unique photo at all, they reuse one
+        // of these ~6 URLs). A mission modal's hero photo IS already the exact same URL its
+        // card/the hero banner rendered moments earlier, so it's normally already cached by
+        // click time - the 2s wait reported live happened specifically when a modal opened
+        // before that first same-category card/hero image had itself finished its own
+        // multi-hundred-KB-to-multi-MB fetch (e.g. right after page load, or the very first
+        // mission of a given category the page renders). Preloading these ~6 shared URLs
+        // directly removes that race entirely, for every mission, everywhere - cheaper than
+        // it looks since there are only a handful of them, deduped like the others above.
+        const preloadedFallbackImages = [];
+        function preloadFallbackImages() {
+            const schedule = window.requestIdleCallback || function (cb) { setTimeout(cb, 2000); };
+            schedule(function () {
+                Object.values(FALLBACK_IMAGES).forEach(url => {
+                    const img = new Image();
+                    img.src = url;
+                    preloadedFallbackImages.push(img);
+                });
+            });
+        }
+
+        // Same idea a third time, for the "SpaceX ROCKETS" scale-comparison icons' click-through
+        // dossier (openRocketSpecs -> #rocket-modal-img): unlike the launch-site cards (whose
+        // dossier reuses the exact same photo already sitting in each static card, see
+        // SITE_DATABASE), ROCKET_DATABASE's images are their OWN separate URLs, never rendered
+        // anywhere else on the page first - #rocket-modal-img starts with an empty src and only
+        // ever gets one set the moment openRocketSpecs() runs, same "fetch starts at click time"
+        // gap as the milestones strip had. Starship's in particular is a 4096x4096 photo - the
+        // single biggest image this whole preload pass warms, and exactly the "Starship modal
+        // photo takes 2s" case reported live. ROCKET_DATABASE is defined later in this same
+        // script (must run after it, hence the call from initVisualMode() at the bottom rather
+        // than up here) but by the time this actually fires it's long since been evaluated.
+        const preloadedRocketDossierImages = [];
+        function preloadRocketDossierImages() {
+            const schedule = window.requestIdleCallback || function (cb) { setTimeout(cb, 2000); };
+            schedule(function () {
+                Object.values(ROCKET_DATABASE).forEach(entry => {
+                    if (!entry || !entry.image) return;
+                    const img = new Image();
+                    img.src = entry.image;
+                    preloadedRocketDossierImages.push(img);
+                });
             });
         }
 
@@ -14750,6 +14821,27 @@
         function preloadMissionPatches(missions) {
             if (!missions || !missions.length) return;
             missions.forEach(m => { if (m && m.patch) preloadMissionPatch(m.patch); });
+        }
+
+        // Same idea as preloadMissionPatch above, for the big hero photo (m.image) the modal
+        // reopens at full size - but NOT bulk-preloaded like the patches are, since hero photos
+        // are large, one-per-mission, external hotlinked photos rather than a handful of shared
+        // small badges (Starlink/Starship dedupe to one URL each) - eagerly fetching every
+        // mission's multi-hundred-KB photo on page load would cost real bandwidth for images
+        // most visitors never open. Preloaded per-card on pointerenter/touchstart instead (same
+        // trigger already used for the patch), which gives the fetch a head start before the
+        // click actually lands, so the modal's own <img src="..."> (same URL, same browser
+        // cache) resolves instantly instead of starting the ~2s network fetch only once the
+        // modal is already open.
+        const preloadedMissionImageUrls = new Set();
+        const preloadedMissionImages = [];
+        function preloadMissionImage(url) {
+            if (!url || preloadedMissionImageUrls.has(url)) return;
+            preloadedMissionImageUrls.add(url);
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = url;
+            preloadedMissionImages.push(img);
         }
 
         // Launch Library only carries mission_patches for some non-Starlink / non-Starship
@@ -21225,6 +21317,9 @@ setTimeout(() => {
                 if (m.patch) {
                     card.addEventListener('pointerenter', () => preloadMissionPatch(m.patch), { once: true });
                 }
+                if (m.image) {
+                    card.addEventListener('pointerenter', () => preloadMissionImage(m.image), { once: true });
+                }
                 // Protect "Starship" in the mission title (and anywhere else in the card,
                 // e.g. the description) before this card ever touches the live document.
                 // Google Translate's own MutationObserver watches document.body and can
@@ -21347,6 +21442,9 @@ setTimeout(() => {
                 card.onclick = () => openMissionModal(m);
                 if (m.patch) {
                     card.addEventListener('pointerenter', () => preloadMissionPatch(m.patch), { once: true });
+                }
+                if (m.image) {
+                    card.addEventListener('pointerenter', () => preloadMissionImage(m.image), { once: true });
                 }
                 // Same fix as renderMissions() above: protect "Starship" in the title
                 // before this (re-rendered, e.g. from a filter change) card is inserted
