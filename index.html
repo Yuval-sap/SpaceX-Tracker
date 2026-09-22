@@ -9677,7 +9677,12 @@
                     .replace(/Nancy Grace Roman/gi, 'ננסי גרייס רומן')
                     .replace(/טלסקופ\s+החלל\s+הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'טלסקופ החלל ננסי גרייס רומן')
                     .replace(/ננסי\s+גרייס\s+הרומ(?:י|אי)/g, 'ננסי גרייס רומן')
-                    .replace(/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן');
+                    .replace(/הרומ(?:י|אי)\s+ננסי\s+גרייס/g, 'ננסי גרייס רומן')
+                    // "Starlink Group N-M" needs Hebrew construct-state order ("קבוצת סטארלינק"),
+                    // not the word-by-word "סטארלינק קבוצה" that both the Gemini names cache and
+                    // the Google fallback produce - and on the instant pass (raw English in),
+                    // "Group" was simply left in English next to the already-localized brand.
+                    .replace(/סטארלינק\s+(?:Group|קבוצה)\s+/gi, 'קבוצת סטארלינק ');
             }
             return out;
         }
