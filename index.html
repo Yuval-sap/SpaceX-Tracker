@@ -10726,13 +10726,13 @@
                     <div class="space-y-3 order-last lg:order-none lg:pt-6">
                         <div class="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3">
                             <button id="hero-details-btn"
-                                class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
-                                <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black"></i> View
+                                class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
+                                <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i> View
                                 Brief
                             </button>
 
                             <button id="hero-remind-btn"
-                                class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-all duration-300 shadow-sm shrink-0"
+                                class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-colors duration-150 shadow-sm shrink-0"
                                 title="Remind Me">
                                 <i class="fa-solid fa-bell"></i>
                             </button>
@@ -21152,11 +21152,11 @@ setTimeout(() => {
                 if (remindBtn) {
                     const isReminded = remindedMissions.includes(nextLaunch.id);
                     if (isReminded) {
-                        remindBtn.className = "flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-emerald-500 text-black border border-emerald-500 rounded-xl transition-all duration-300 shadow-sm shrink-0";
+                        remindBtn.className = "flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-emerald-500 text-black border border-emerald-500 rounded-xl transition-colors duration-150 shadow-sm shrink-0";
                         remindBtn.title = "Cancel Reminder";
                         remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i>`;
                     } else {
-                        remindBtn.className = "flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-all duration-300 shadow-sm shrink-0";
+                        remindBtn.className = "flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 rounded-xl transition-colors duration-150 shadow-sm shrink-0";
                         remindBtn.title = "Remind Me";
                         remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i>`;
                     }
@@ -21401,7 +21401,11 @@ setTimeout(() => {
                         <div>
                             <div class="notranslate mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
                             <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
-                            <div class="notranslate mission-card-desc no-starship-protect text-sm text-zinc-400 mb-4 line-clamp-2" translate="no">${escapeHtml(m.description)}</div>
+                            <!-- min-h = exactly the 2 lines line-clamp-2 allows (text-sm's 1.25rem
+                                 line-height x2), so a 1-line description still takes the same room
+                                 as a full one - keeps the title, the divider and the whole bottom row
+                                 at the same height in every card instead of shifting per description. -->
+                            <div class="notranslate mission-card-desc no-starship-protect text-sm text-zinc-400 mb-4 line-clamp-2 min-h-[2.5rem]" translate="no">${escapeHtml(m.description)}</div>
                         </div>
                         <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end md:gap-2">
                             <div class="md:shrink-0">
