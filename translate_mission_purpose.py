@@ -822,70 +822,14 @@ def main() -> int:
         print("No launches fetched - leaving existing translations unchanged.", file=sys.stderr)
         return 0
 
-    translated = 0
-    reused = 0
-    skipped = 0
-    failed = 0
-    seen_hashes = set()
-
-    for launch in launches:
-        fields = extract_fields(launch)
-        description = fields["description"]
-        if not description or len(description) <= 30 or description.strip() == GENERIC_DESCRIPTION:
-            skipped += 1
-            continue
-        key = description_hash(description)
-        if key in seen_hashes:
-            continue
-        seen_hashes.add(key)
-
-        existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        missing_batches = [batch for batch in LANG_BATCHES if not langs_complete(existing, batch)]
-        if not missing_batches:
-            reused += 1
-            continue
-
-        name = launch.get("name") or launch.get("id") or "unknown"
-        merged = dict(existing)
-        batch_ok = True
-        for batch in missing_batches:
-            try:
-                merged.update(call_gemini_batch(api_key, fields, batch))
-                # See GEMINI_CALL_PACING_SECONDS's own comment - this has to stay at or above
-                # the account's real per-model RPM ceiling, not just be "conservative".
-                time.sleep(GEMINI_CALL_PACING_SECONDS)
-            except GeminiAuthError as e:
-                print(f"Error: {e}", file=sys.stderr)
-                if entries:
-                    store["entries"] = entries
-                    write_output(store)
-                return 1
-            except GeminiQuotaExceededError as e:
-                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
-                store["entries"] = entries
-                write_output(store)
-                return 0
-            except Exception as e:
-                batch_ok = False
-                print(f"Warning: skipped {name} languages {','.join(batch)}: {e}", file=sys.stderr)
-                time.sleep(GEMINI_CALL_PACING_SECONDS)
-
-        if not any(langs_complete({lang: merged.get(lang)}, [lang]) for lang in LANG_NAMES):
-            failed += 1
-            continue
-
-        entries[key] = merged
-        if batch_ok and langs_complete(merged, list(LANG_NAMES)):
-            translated += 1
-            print(f"Translated: {name}")
-        else:
-            failed += 1
-            print(f"Partial: {name}")
-
-    store["entries"] = entries
-
-    # Mission NAMES - a separate pass with its own "names" map (see call_gemini_name_batch's
-    # own comment for why names can't share the description-keyed entries above). Only names
+    # Mission NAMES - runs BEFORE the descriptions pass below, deliberately: a names call
+    # batches up to NAME_CHUNK_SIZE names per request, while descriptions cost a request per
+    # mission per language batch, so names are the cheapest pass by far and also the most
+    # visible one (card titles). Confirmed live: with descriptions first, the free-tier daily
+    # quota (20 requests) ran out mid-descriptions and this pass never ran at all - Bandwagon's
+    # card title stayed on the Google fallback, leaving "Falcon 9" in English. A separate
+    # pass with its own "names" map (see call_gemini_name_batch's own comment for why names
+    # can't share the description-keyed entries below). Only names
     # that are new or still missing a language batch get sent; anything already fully
     # translated from a previous run is skipped (name_reused), same reuse philosophy as entries.
     # (names_store was already pulled from `store` above, before the upcoming-vs-past decision.)
@@ -971,6 +915,67 @@ def main() -> int:
         f"Names: new={name_translated} reused={name_reused} failed={name_failed} "
         f"total_names={len(names_store)}"
     )
+
+    translated = 0
+    reused = 0
+    skipped = 0
+    failed = 0
+    seen_hashes = set()
+
+    for launch in launches:
+        fields = extract_fields(launch)
+        description = fields["description"]
+        if not description or len(description) <= 30 or description.strip() == GENERIC_DESCRIPTION:
+            skipped += 1
+            continue
+        key = description_hash(description)
+        if key in seen_hashes:
+            continue
+        seen_hashes.add(key)
+
+        existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
+        missing_batches = [batch for batch in LANG_BATCHES if not langs_complete(existing, batch)]
+        if not missing_batches:
+            reused += 1
+            continue
+
+        name = launch.get("name") or launch.get("id") or "unknown"
+        merged = dict(existing)
+        batch_ok = True
+        for batch in missing_batches:
+            try:
+                merged.update(call_gemini_batch(api_key, fields, batch))
+                # See GEMINI_CALL_PACING_SECONDS's own comment - this has to stay at or above
+                # the account's real per-model RPM ceiling, not just be "conservative".
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+            except GeminiAuthError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                store["entries"] = entries
+                write_output(store)
+                return 1
+            except GeminiQuotaExceededError as e:
+                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+                store["entries"] = entries
+                write_output(store)
+                return 0
+            except Exception as e:
+                batch_ok = False
+                print(f"Warning: skipped {name} languages {','.join(batch)}: {e}", file=sys.stderr)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+
+        if not any(langs_complete({lang: merged.get(lang)}, [lang]) for lang in LANG_NAMES):
+            failed += 1
+            continue
+
+        entries[key] = merged
+        if batch_ok and langs_complete(merged, list(LANG_NAMES)):
+            translated += 1
+            print(f"Translated: {name}")
+        else:
+            failed += 1
+            print(f"Partial: {name}")
+
+    store["entries"] = entries
 
     # Update-log comments (#modal-preflight-status-tile in index.html) - Starship launches only,
     # generic "Added launch." placeholder already excluded (see extract_update_comments). Same
