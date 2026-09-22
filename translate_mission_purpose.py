@@ -494,10 +494,11 @@ def fetch_previous_launches() -> list:
 # defeating the entire point of pre-translating names here. Confirmed live: this is exactly what
 # happened when the Bandwagon parenthetical-stripping regex was added client-side only - every
 # Bandwagon title's card fell back to Google (which doesn't phoneticize "Falcon 9" the way the
-# Gemini names map does) until this second regex was added here too.
+# Gemini names map does) until this second regex was added here too. Starship/Transporter added
+# alongside Bandwagon later, same reasoning each time - keep this list in sync with the JS one.
 def clean_mission_name(name: str) -> str:
     name = re.sub(r"\s*Block\s*5\b", "", name, flags=re.IGNORECASE)
-    name = re.sub(r"(bandwagon[^(]*)\([^)]*\)\s*$", r"\1", name, flags=re.IGNORECASE)
+    name = re.sub(r"((?:bandwagon|starship|transporter)[^(]*)\([^)]*\)\s*$", r"\1", name, flags=re.IGNORECASE)
     name = re.sub(r"\s{2,}", " ", name)
     return name.strip()
 

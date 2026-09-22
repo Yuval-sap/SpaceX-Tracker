@@ -19246,15 +19246,24 @@
                 // translation ("פלקון 9 בלוק 5 | ..."). Stripping it here instead means no
                 // downstream consumer - card, hero, modal, translated or not - ever sees it in
                 // the first place, in any language.
-                // Bandwagon missions: LL2's own name always appends a "(Dedicated Rideshare to
-                // ...)"-style parenthetical describing the mission type - purely descriptive,
-                // not a proper-noun part of the title, and already repeated verbatim in the
-                // mission description shown right below the title. Stripped here for the exact
-                // same reason as "Block 5" above (same comment) - once on the raw English name,
-                // before any translation pipeline can see it, so it's gone in every language
-                // everywhere the title is shown, not just the ones this regex would still match
-                // post-translation.
-                name: (launch.name || "SpaceX Mission").replace(/\s*Block\s*5\b/gi, '').replace(/(bandwagon[^(]*)\([^)]*\)\s*$/i, '$1').replace(/\s{2,}/g, ' ').trim(),
+                // Bandwagon/Starship/Transporter missions: LL2's own name always appends a
+                // descriptive parenthetical after these - "(Dedicated Rideshare to ...)" for
+                // Bandwagon/Transporter, "(Starship Flight N)" for Starship - purely
+                // descriptive, not a proper-noun part of the title, and already available
+                // elsewhere (the mission description for Bandwagon/Transporter's rideshare
+                // blurb, the vehicle dossier's own shipLabel for Starship's flight number).
+                // Stripped here for the exact same reason as "Block 5" above (same comment) -
+                // once on the raw English name, before any translation pipeline can see it, so
+                // it's gone in every language everywhere the title is shown, not just the ones
+                // this regex would still match post-translation.
+                name: (launch.name || "SpaceX Mission").replace(/\s*Block\s*5\b/gi, '').replace(/((?:bandwagon|starship|transporter)[^(]*)\([^)]*\)\s*$/i, '$1').replace(/\s{2,}/g, ' ').trim(),
+                // Same "Block 5" strip as `name` above, but WITHOUT the Bandwagon/Starship/
+                // Transporter parenthetical strip - explicit user request: the cleaned `name`
+                // drives the prominent title (card/hero/modal), but the small patch-badge tag
+                // next to the modal title (#modal-patch-wrap's lightbox, via dataset.rawName)
+                // should keep showing the fuller original text, same as the patches strip's own
+                // (separately-cached, never re-synced) archive copy.
+                patchTagName: (launch.name || "SpaceX Mission").replace(/\s*Block\s*5\b/gi, '').replace(/\s{2,}/g, ' ').trim(),
                 date: launch.net || new Date().toISOString(),
                 window: windowStr,
                 windowStart: windowStartStr,
@@ -22153,7 +22162,10 @@ setTimeout(() => {
                     // badge is clicked alt has already become "חללית | טיסה 14" - the English
                     // "Starship" is gone, and the localizer downstream has nothing left to
                     // correct. data-* attributes are not translated, so this keeps a clean copy.
-                    modalPatchEl.dataset.rawName = m.name;
+                    // patchTagName (not the cleaned `name` the title itself uses) - explicit
+                    // user request to keep this tag's own label unaffected by the Bandwagon/
+                    // Starship/Transporter parenthetical strip.
+                    modalPatchEl.dataset.rawName = m.patchTagName || m.name;
                     modalPatchEl.classList.remove('hidden');
                     if (modalPatchWrap) modalPatchWrap.classList.remove('hidden');
                 } else {
