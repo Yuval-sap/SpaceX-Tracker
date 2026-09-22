@@ -21329,13 +21329,24 @@ setTimeout(() => {
                 let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
                 let mStat = m.status.toLowerCase();
 
-                if (mStat.includes("tbd") || mStat.includes("tbc") || mStat.includes("determined")) {
+                if (mStat.includes("confirmed") || mStat.includes("tbc")) {
+                    // "To Be Confirmed": To Be Determined's gray fill + text, but Go for Launch's
+                    // green outline - per explicit user request.
+                    statusColor = "bg-zinc-800 text-zinc-400 border-emerald-500/30";
+                } else if (mStat.includes("tbd") || mStat.includes("determined")) {
                     statusColor = "bg-zinc-800 text-zinc-400 border-zinc-700/50";
                 } else if (mStat.includes("hold") || mStat.includes("review") || mStat.includes("delay")) {
                     statusColor = "bg-amber-500/10 text-amber-400 border-amber-500/30";
                 }
 
-                const statusBadge = `<div class="mission-status-badge absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
+                // Two placements, per explicit user request: mobile keeps the original spot over
+                // the photo (top corner, md:hidden); desktop moves it into the card's bottom row
+                // between the countdown and the buttons (see the flex-1 wrapper there for how it
+                // stays centered as the countdown's width changes).
+                // font-orbitron: same heading font as the card titles in every mode (Orbitron in
+                // day/night; the mars/moon theme blocks remap .font-orbitron to Zen Dots/Audiowide).
+                const statusBadgeMobile = `<div class="mission-status-badge font-orbitron md:hidden absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
+                const statusBadgeDesktop = `<div class="mission-status-badge font-orbitron max-w-full truncate whitespace-nowrap px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
 
                 const isFav = favoriteMissions.includes(m.id);
                 // Hollow star (fa-regular) even when favorited, matching the "Watchlist"
@@ -21360,18 +21371,27 @@ setTimeout(() => {
                 card.innerHTML = `
                     <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom" alt="${escapeHtml(m.name)}">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
-                    ${statusBadge}
+                    ${statusBadgeMobile}
                     <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pt-[182px]">
                         <div>
                             <div class="notranslate mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
                             <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
                             <div class="notranslate mission-card-desc no-starship-protect text-sm text-zinc-400 mb-4 line-clamp-2" translate="no">${escapeHtml(m.description)}</div>
                         </div>
-                        <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end">
-                            <div>
-                                <div class="text-[10px] text-zinc-500 font-bold tracking-wider mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
-                                <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400" translate="no" dir="ltr">--d --h --m</div>
+                        <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end md:gap-2">
+                            <div class="md:shrink-0">
+                                <!-- md:w-0 + nowrap (desktop only): the label still shows in full
+                                     (overflowing its zero-width box toward the badge column, one line
+                                     above it), but no longer sets this column's width - the digits
+                                     alone do, so the badge re-centers as the countdown's width changes. -->
+                                <div class="md:w-0 md:whitespace-nowrap text-[10px] text-zinc-500 font-bold tracking-wider mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
+                                <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400 md:whitespace-nowrap" translate="no" dir="ltr">--d --h --m</div>
                             </div>
+                            <!-- Desktop only. h-7 = the countdown digits' own line box (text-lg),
+                                 so the badge centers on that line; flex-1 + justify-center keeps it
+                                 midway between the countdown and the buttons as the digits' width
+                                 changes. -->
+                            <div class="hidden md:flex flex-1 min-w-0 h-7 items-center justify-center">${statusBadgeDesktop}</div>
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
