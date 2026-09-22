@@ -55,7 +55,9 @@ OUTPUT_DIR = Path(__file__).parent / "m"
 # if these ever drift apart.
 FALLBACK_IMAGES = {
     "starship": "https://spacexfantracker.com/starship-share.jpg",
-    "starlink": "https://everydayastronaut.com/wp-content/uploads/2019/11/starlink2.jpg",
+    # Same photo as index.html's starlink-launch-pad.webp, as a JPG with an absolute URL -
+    # link-preview crawlers need the full URL and handle JPG more reliably than WebP.
+    "starlink": "https://spacexfantracker.com/starlink-share.jpg",
     "falcon": "https://wp.technologyreview.com/wp-content/uploads/2024/07/AP24191572534430.jpg?w=3000",
     "falcon_heavy": "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg",
     "dragon": "https://i.insider.com/5c5b60d6342cca14f92e9a14?width=2000&format=jpeg&auto=webp",
