@@ -7784,6 +7784,30 @@
 
         function fitAllTitlesOneLine(root) {
             (root || document).querySelectorAll('.mission-title-fit').forEach(fitTitleOneLine);
+            (root || document).querySelectorAll('.status-badge-fit').forEach(fitStatusBadge);
+        }
+
+        // Desktop status pill in a launch card's bottom row (between the countdown and the
+        // buttons): shrinks its font only when the pill doesn't fit its slot - narrower windows,
+        // or Mars/Moon's wider heading fonts - and grows back once room returns. Not
+        // fitTitleOneLine: that caches on the element's OWN width, but this pill is
+        // shrink-to-fit, so once shrunk its own width stays small and the cache would never let
+        // it grow back. Keyed on the SLOT's width instead (which changes as the countdown's own
+        // width changes, every minute, and on resize), plus text and font family.
+        function fitStatusBadge(el) {
+            const slot = el && el.parentElement;
+            if (!slot || slot.offsetWidth === 0) return; // hidden (mobile placement is used there)
+            const key = el.textContent + '|' + slot.clientWidth + '|' + getComputedStyle(el).fontFamily;
+            if (el.dataset.fitKey === key) return;
+            el.style.fontSize = '';
+            let size = parseFloat(getComputedStyle(el).fontSize) || 12;
+            let guard = 0;
+            while (el.scrollWidth > el.clientWidth + 1 && size > 8 && guard < 40) {
+                size -= 0.25;
+                el.style.fontSize = size + 'px';
+                guard++;
+            }
+            el.dataset.fitKey = key;
         }
 
         function fitAllSectionTitles(root) {
@@ -7805,6 +7829,7 @@
                 delete el.dataset.fitForText;
                 delete el.dataset.fitForWidth;
             });
+            document.querySelectorAll('.status-badge-fit').forEach(el => { delete el.dataset.fitKey; });
             fitAllTitlesOneLine();
             fitAllSectionTitles();
             fitTitleOneLine(document.getElementById('hero-name'));
@@ -21346,7 +21371,7 @@ setTimeout(() => {
                 // font-orbitron: same heading font as the card titles in every mode (Orbitron in
                 // day/night; the mars/moon theme blocks remap .font-orbitron to Zen Dots/Audiowide).
                 const statusBadgeMobile = `<div class="mission-status-badge font-orbitron md:hidden absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
-                const statusBadgeDesktop = `<div class="mission-status-badge font-orbitron max-w-full truncate whitespace-nowrap px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
+                const statusBadgeDesktop = `<div class="mission-status-badge status-badge-fit font-orbitron max-w-full truncate whitespace-nowrap px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
 
                 const isFav = favoriteMissions.includes(m.id);
                 // Hollow star (fa-regular) even when favorited, matching the "Watchlist"
