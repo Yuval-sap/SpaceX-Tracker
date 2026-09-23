@@ -54,6 +54,20 @@
   #tip{position:absolute;left:0;top:0;padding:6px 9px;font:500 11px/1 Inter,sans-serif;color:#fff;background:rgba(10,12,16,.86);border:1px solid var(--line);border-radius:7px;pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap}
   #loader{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:#05070b;transition:opacity .7s;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.24em;color:var(--mute);text-transform:uppercase}
   #vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
+  /* day mode (site's light theme) */
+  html.day{--fg:#141a23;--mute:#5a6474;--line:rgba(0,0,0,.1);--panel:rgba(255,255,255,.82);--accent:#c2621f}
+  html.day body,html.day #loader{background:#e8ecf2}
+  html.day #vignette{background:radial-gradient(ellipse at 50% 45%,transparent 60%,rgba(40,50,70,.14) 100%)}
+  html.day .pill{color:#1f2733;background:rgba(255,255,255,.6);border-color:rgba(0,0,0,.14)}
+  html.day .pill:hover{background:#fff;border-color:rgba(0,0,0,.28);color:#000}
+  html.day .pill.on{color:#fff}
+  html.day #stats span,html.day #card .k,html.day #card .row span{color:#4c5666}
+  html.day .sep{color:#566072}
+  html.day #card p{color:#2a323e}
+  html.day .brand .mission{color:#2a323e}
+  html.day #tip{background:rgba(255,255,255,.95);color:#111;border-color:rgba(0,0,0,.12)}
+  html.day #ss-close{background:rgba(255,255,255,.7)}
+  html.day #nav .navbtns button{color:#1f2733;background:rgba(255,255,255,.6);border-color:rgba(0,0,0,.14)}
   /* scripts without Latin letters: no Inter/JetBrains glyphs, and wide tracking breaks them apart */
   html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(.brand h1,.eyebrow,.sep,#stats span,#card .k,#card .row span,#hint){letter-spacing:.02em}
   html:is([lang=he],[lang=ar]) body{font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif}
@@ -269,7 +283,23 @@ function applyI18n() {
   card.querySelector('.x').setAttribute('aria-label', U.close); $('ss-close').setAttribute('aria-label', U.close);
   buildPartsNav(); renderCard(); buildCubeFaces();
 }
+// day when the site is in its light theme; night, Moon and Mars all use the night look
+function readDay() {
+  try { const pd = parentDoc(); if (pd && pd.body) return pd.body.classList.contains('light-theme'); } catch (e) {}
+  return Q.get('theme') === 'day';
+}
+let DAY = null;
+function applyTheme() {
+  const d = readDay(); if (d === DAY) return; DAY = d;
+  document.documentElement.classList.toggle('day', d);
+  if (typeof scene === 'undefined') return;
+  scene.background.setHex(d ? 0xe8ecf2 : 0x05070b);
+  floorMat.color.setHex(d ? 0xc9d0da : 0x14161b); floorMat.emissive.setHex(d ? 0xffffff : 0x8a95ad); floorMat.emissiveIntensity = d ? 0.22 : 0.28;
+  ringLine.material.color.setHex(d ? 0x9aa3b1 : 0x3a404c);
+  renderer.toneMappingExposure = d ? 1.1 : 1.0;
+}
 setInterval(() => {
+  applyTheme();
   const l = readLang(), u = readUnits();
   if (l === LANG && u === UNITS) return;
   LANG = l; UNITS = u; I = SS_I18N[LANG]; UV = unitValues(); applyI18n();
@@ -301,7 +331,7 @@ composer.setPixelRatio(PR);
 composer.setSize(innerWidth, innerHeight);
 composer.addPass(new RenderPass(scene, camera));
 // guard: tight metal highlights near the engine lights can overflow half-float, which bloom would smear into black
-const clampPass = new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); if (!(c.r < 1e4) || !(c.g < 1e4) || !(c.b < 1e4)) c.rgb = vec3(40.0); gl_FragColor = vec4(min(c.rgb, vec3(40.0)), 1.0); }' });
+const clampPass = new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); if (!(c.r == c.r) || !(c.g == c.g) || !(c.b == c.b)) c.rgb = vec3(0.0); c.rgb = clamp(c.rgb, vec3(0.0), vec3(40.0)); gl_FragColor = vec4(min(c.rgb, vec3(40.0)), 1.0); }' });
 composer.addPass(clampPass);
 const bloom = new UnrealBloomPass(new V2(innerWidth, innerHeight), 0.4, 0.5, 2.2);
 composer.addPass(bloom);
@@ -347,16 +377,12 @@ function makeSteel() {
   B.fillStyle = 'rgb(128,128,128)'; B.fillRect(0, 0, W, H);
   const wrap = (ctx, x, y, w, h) => { ctx.fillRect(x, y, w, h); if (x + w > W) ctx.fillRect(x - W, y, w, h); if (x < 0) ctx.fillRect(x + W, y, w, h); };
   for (let i = 0; i < SEGN; i++) {
-    const y0 = i * rh, sheets = 3 + (rnd() < 0.4 ? 1 : 0), off = rnd() * W;
+    const y0 = i * rh, sheets = 1, off = 0;
     for (let s = 0; s < sheets; s++) {
       const x0 = (off + s * W / sheets) % W, w = W / sheets + 1;
       const tone = 204 + rnd() * 20, warm = (rnd() - 0.5) * 8;
       C.fillStyle = `rgb(${tone + warm | 0},${tone | 0},${tone - warm * 0.6 + 3 | 0})`; wrap(C, x0, y0, w, rh);
       const rv = 62 + rnd() * 26 | 0; Rg.fillStyle = `rgb(${rv},${rv},${rv})`; wrap(Rg, x0, y0, w, rh);
-      C.fillStyle = 'rgba(92,90,88,0.55)'; wrap(C, x0, y0, 2, rh);
-      Rg.fillStyle = 'rgb(150,150,150)'; wrap(Rg, x0 - 1, y0, 4, rh);
-      B.fillStyle = 'rgb(96,96,96)'; wrap(B, x0, y0, 2, rh);
-      B.fillStyle = 'rgb(160,160,160)'; wrap(B, x0 + 2, y0, 1, rh);
     }
   }
   for (let k = 0; k < 9000; k++) {        // brushed / rolled grain
@@ -712,11 +738,11 @@ float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
   return mix(mix(a,b,f.x), mix(c,d,f.x), f.y); }
 void main(){
   float s = 1.0 - vUv.y;
-  float edge = pow(vF, uCore > 0.5 ? 1.1 : 2.4);
+  float edge = pow(max(vF, 1e-4), uCore > 0.5 ? 1.1 : 2.4);
   float n = noise(vec2(vUv.x*14.0 + uSeed*7.0, s*7.0 - uTime*9.0));
   float n2 = noise(vec2(vUv.x*6.0 + uSeed, s*10.0 - uTime*18.0));
   float fall = 1.0 - smoothstep(0.0, 1.0, s);
-  float diam = 1.0 + 1.4 * pow(max(0.0, sin(s*28.0 + 0.8)), 10.0) * (1.0 - smoothstep(0.0, 0.55, s));
+  float diam = 1.0;
   vec3 cCore = vec3(1.0, 0.93, 0.86), cBlue = vec3(0.55, 0.62, 1.0), cPink = vec3(1.0, 0.52, 0.78), cOr = vec3(1.0, 0.52, 0.18);
   vec3 col = uCore > 0.5 ? mix(cCore, cBlue, s) : mix(mix(cBlue, cPink, smoothstep(0.0, 0.35, s)), cOr, smoothstep(0.3, 1.0, s));
   float a = edge * fall * diam * (0.75 + 0.4*n) * (0.9 + 0.2*n2) * uI;
@@ -724,7 +750,7 @@ void main(){
 }`;
 const glowFS = `
 uniform float uI; varying vec2 vUv;
-void main(){ float g = pow(vUv.y, 1.6);
+void main(){ float g = pow(max(vUv.y, 1e-4), 1.6);
   vec3 c = mix(vec3(1.0,0.32,0.07)*0.4, vec3(1.0,0.72,0.42)*1.9, g) * uI;
   gl_FragColor = vec4(c, 1.0); }`;
 const glowVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
@@ -737,7 +763,7 @@ const flameFS = `
 uniform float uTime, uI, uR0, uR1, uRB, uLen, uDiam, uSpeed, uDens, uSeed;
 uniform vec3 uCam;
 varying vec3 vPos;
-float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
              mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
@@ -758,12 +784,13 @@ void main(){
   if (abs(rd.y) > 1e-6) { float t0 = -ro.y / rd.y, t1 = (-uLen - ro.y) / rd.y; tn = max(tn, min(t0, t1)); tf = min(tf, max(t0, t1)); }
   if (tf <= tn) discard;
   float dt = (tf - tn) / float(STEPS);
-  float t = tn + dt * hash(vec3(gl_FragCoord.xy, fract(uTime) * 91.0));
+  // fixed half-step start: per-pixel jitter showed up as a grainy grid of dots near the nozzles
+  float t = tn + dt * 0.5;
   vec3 acc = vec3(0.0); float tr = 1.0;
   for (int i = 0; i < STEPS; i++) {
     vec3 p = ro + rd * t; t += dt;
     float s = clamp(-p.y / uLen, 0.0, 1.0);
-    float r = mix(uR0, uR1, pow(s, 0.65));
+    float r = mix(uR0, uR1, pow(max(s, 1e-4), 0.65));
     vec3 q = vec3(p.x, p.y + uTime * uSpeed, p.z) / uR0;
     float n = fbm(q * 0.55 + uSeed);
     float n2 = noise(q * 1.9 - uSeed);
@@ -774,8 +801,7 @@ void main(){
     float dens = body * tail * (0.35 + 1.1 * n * n2 + 0.4 * n);
     float temp = (1.0 - rr * 0.85) * (1.0 - s * 0.72) * (0.8 + 0.55 * n);
     // no discrete Mach-diamond bands: they read as hard white stripes rather than exhaust
-    temp += smoothstep(0.08, 0.0, s) * (1.0 - rr) * 0.3;    // white-hot right at the nozzle
-    vec3 col = fire(clamp(temp, 0.0, 1.0)) * (1.0 + 2.2 * smoothstep(0.7, 1.05, temp));
+    vec3 col = fire(clamp(temp, 0.0, 0.92)) * (1.0 + 0.35 * smoothstep(0.7, 1.0, temp));   // warm core, never a blown-out white block
     float k = dens * dt * uDens / uR0;
     acc += tr * col * k;
     tr *= exp(-k * 0.45);
@@ -783,7 +809,7 @@ void main(){
   }
   gl_FragColor = vec4(acc * uI, 1.0);
 }`;
-const FLAME_STEPS = isMobile ? 22 : 34;
+const FLAME_STEPS = isMobile ? 28 : 44;
 const flames = [];
 function makeFlame(parent, y0, R0, R1, L, diam, speed, dens, seed) {
   const RB = R1 * 1.3;
@@ -983,7 +1009,6 @@ tileShell(sAft, S0, S0 + 5.2);
 steelShell(sLox, 's-tanks', S0 + 5.2, S0 + 19, 'Ship LOX tank');
 tileShell(sLox, S0 + 5.2, S0 + 19);
 add(sLox, domeGeo(R - 0.03, 1.5, S0 + 5.2, -1), 's-tanks', 'steel', 'LOX aft dome');
-raceway(sLox, 's-tanks', S0 + 5.2, S0 + 19);
 fluid(sLox, 's-tanks', 'fluidLox', { y: S0 + 5.2, h: 1.5, dir: -1 }, S0 + 16.4);
 add(sLox, cylG(0.42, 0.42, S0 + 4.9, S0 + 17.6, 32, true), 's-tanks', 'steelNC', 'Methane downcomer · sea-level engines');
 for (let i = 0; i < 3; i++) {
@@ -997,7 +1022,6 @@ steelShell(sCh4, 's-tanks', S0 + 19, S0 + 28.4, 'Ship methane tank');
 tileShell(sCh4, S0 + 19, S0 + 28.4);
 add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 19, -1), 's-tanks', 'steel', 'Common dome');
 add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dome');
-raceway(sCh4, 's-tanks', S0 + 19, S0 + 28.4);
 fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
 // payload bay with the Pez slot: a long, narrow horizontal "mail slot" with rounded corners on the leeward side
 let SLOT = null;
@@ -1027,7 +1051,6 @@ let SLOT = null;
   shellOf(R, 'steelSlot', 'Payload bay');
   shellOf(R - 0.1, 'darkSlot', 'Payload bay liner');
   tileShell(sPay, y0, y1);
-  raceway(sPay, 's-payload', y0, y1);
   // a rounded frame tracing the slot's edge
   const cx = HALF_S - CR, cy = HALF_Y - CR, rr = CR + 0.06, ring2d = [];
   for (const [x, y, a0] of [[cx, cy, 0], [-cx, cy, Math.PI / 2], [-cx, -cy, Math.PI], [cx, -cy, 1.5 * Math.PI]])
@@ -1078,24 +1101,37 @@ function flapShape(s, cr, ct, drop) {
   sh.lineTo(0, cr); sh.lineTo(0, 0);
   return sh;
 }
-function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label) {
+function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tileSolid') {
   const holder = new THREE.Group(); holder.rotation.y = a - Math.PI / 2; group.add(holder);
   const rg = new THREE.Group(); rg.userData.radial = 2.3; holder.add(rg); radialGroups.push(rg);
   const inner = new THREE.Group(); inner.position.set(rootR, y0, 0); inner.rotation.z = tilt; rg.add(inner);
   const sh = flapShape(span, cr, ct, drop);
   const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
-  eg.translate(0, 0, -0.15); scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h);
-  add(inner, eg, 's-flaps', 'tileSolid', label);
+  eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
+  add(inner, eg, 's-flaps', kind, label);
   const hinge = new THREE.CylinderGeometry(0.4, 0.4, cr * 0.9, 24); hinge.translate(0.05, cr / 2, 0);
-  scaleUV(hinge, 2.5 / tileTex.w, cr / tileTex.h);
-  add(inner, hinge, 's-flaps', 'tileSolid', label + ' · hinge fairing');
+  if (kind === 'tileSolid') scaleUV(hinge, 2.5 / tileTex.w, cr / tileTex.h);
+  add(inner, hinge, 's-flaps', kind, label + ' · hinge fairing');
+  if (kind !== 'tileSolid') {
+    // stainless flap: tiles only on its windward (outer) face; the face toward the steel side stays bare
+    const sg = new THREE.ShapeGeometry(sh, 12); scaleUV(sg, 1 / tileTex.w, 1 / tileTex.h);
+    const sign = Math.sin(a - WINDWARD) > 0 ? 1 : -1;
+    const tm = add(inner, sg, 's-tiles', 'tileSolid', 'Heat shield tiles');
+    tm.position.z = sign * 0.235; if (sign < 0) tm.rotation.y = Math.PI, tm.scale.x = -1;
+  }
 }
 const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
 flap(sAft, FA1, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (left)');
 flap(sAft, FA2, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (right)');
 // forward flaps sit high on the nose and sweep up to a point
-flap(sNose, FA1 + 0.3, NOSE0 + 1.6, 5.6, 2.4, 2.6, 2.8, noseR(1.6) + 0.02, 0.24, 'Forward flap (left)');
-flap(sNose, FA2 - 0.3, NOSE0 + 1.6, 5.6, 2.4, 2.6, 2.8, noseR(1.6) + 0.02, 0.24, 'Forward flap (right)');
+// forward flaps: hinge line runs up the nose cone; the free tip hangs at the BOTTOM (aft) with a level lower edge
+// and a swept upper edge - root bottom sits just above the SpaceX logo
+const FF_Y = NOSE0 + 3.55, FF_TILT = Math.atan((noseR(3.55) - noseR(9.15)) / 5.6);
+// the flap body is tilted to follow the cone; drop its lower edge by the same slope (plus ~4°) so that edge ends up
+// square to the ship's axis, even angled slightly aft, as on the real ship
+const FF_DROP = -2.6 * (Math.tan(FF_TILT) + 0.07);
+flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC');
+flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC');
 
 // ---------------------------------------------------------------- serial stencils
 // Flight vehicles carry no livery - just stencilled serials in SpaceX's own short form ("B21", "S41"),
@@ -1125,9 +1161,9 @@ function logoCanvas() {
   return c;
 }
 // ship serial ("S41"), navy, running top-to-bottom, below the left end of the Pez slot (NSF photo of S42)
-function serialCanvas(text) {
+function serialCanvas(text, upward = false) {
   const c = mkCanvas(256, 768), g = c.getContext('2d');
-  g.translate(128, 384); g.rotate(Math.PI / 2);
+  g.translate(128, 384); g.rotate(upward ? -Math.PI / 2 : Math.PI / 2);
   // as big as the canvas allows: the real marking fills most of a steel ring
   let px = 300; const F = p => `700 ${p}px 'Arial Narrow', 'Roboto Condensed', Arial, sans-serif`;
   g.font = F(px); while (g.measureText(text).width > 730 && px > 60) g.font = F(--px);
@@ -1148,7 +1184,42 @@ function serialCanvas(text) {
   const panel = mkCanvas(64, 64), pg = panel.getContext('2d');
   pg.fillStyle = '#1b1d21'; pg.fillRect(4, 4, 56, 56); pg.strokeStyle = 'rgba(0,0,0,.6)'; pg.lineWidth = 3; pg.strokeRect(5, 5, 54, 54);
   for (const da of [-0.5, 0.5]) decal(sNose, 's-nose', panel, LOGO_Y, LEEWARD + da, 0.8, 0.85);
-  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`), ringY(59), LEEWARD - 0.6, 0.6, 1.8);
+  // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
+  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.05, 0.6, 1.8);
+  // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings
+  const fTop = ringY(59) + 0.85, groupsFor = [[sAft, 's-tanks', S0 + 0.8, S0 + 5.2], [sLox, 's-tanks', S0 + 5.2, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
+  for (const da of [-0.36, 0.36]) {
+    const a = LEEWARD + da;
+    for (const [grp, pid, ya, yb] of groupsFor) {
+      const len = yb - ya, pts = [];
+      const capTop = grp === sPay, capBot = grp === sAft;
+      for (let k = 0; k <= 12; k++) { const u = k / 12; pts.push([capBot ? 0.28 * Math.sin(u * Math.PI / 2) : 0.28, ya + u * Math.min(0.5, len)]); }
+      pts.push([0.28, yb - (capTop ? 0.5 : 0)]);
+      if (capTop) for (let k = 1; k <= 12; k++) { const u = k / 12; pts.push([Math.max(0.001, 0.28 * Math.cos(u * Math.PI / 2)), yb - 0.5 + 0.5 * Math.sin(u * Math.PI / 2)]); }
+      const g = lathe(pts, 20); g.scale(1, 1, 0.75);
+      g.rotateY(a); g.translate(Math.sin(a) * (R + 0.1), 0, Math.cos(a) * (R + 0.1));
+      scaleUV(g, 0.05, len / TEXM);
+      add(grp, g, pid, 'steelNC', 'Raceway (cable & line tunnel)');
+      for (let y = Math.ceil(ya / (RING * 4)) * RING * 4; y < yb - 0.4; y += RING * 4) {
+        const c = new THREE.CylinderGeometry(0.33, 0.33, 0.35, 20); c.scale(1, 1, 0.8); c.rotateY(a);
+        c.translate(Math.sin(a) * (R + 0.1), y, Math.cos(a) * (R + 0.1));
+        add(grp, c, pid, 'steelNC', 'Raceway (cable & line tunnel)');
+      }
+    }
+  }
+  // ports just under the slot: a flush black port in the middle, a protruding round port each side
+  const portY = ringY(59) + 0.1;
+  const hole = mkCanvas(128, 128), hg = hole.getContext('2d');
+  hg.fillStyle = '#07080a'; hg.beginPath(); hg.ellipse(64, 64, 60, 46, 0, 0, TAU); hg.fill();
+  decal(sPay, 's-payload', hole, portY, LEEWARD, 1.0, 0.75);
+  for (const da of [-0.72, 0.72]) {
+    const a = LEEWARD + da, boss = new THREE.CylinderGeometry(0.5, 0.56, 0.32, 32); boss.rotateX(Math.PI / 2);
+    const m = add(sPay, boss, 's-payload', 'steelNC', 'Docking port');
+    m.position.set(Math.sin(a) * (R + 0.14), portY, Math.cos(a) * (R + 0.14)); m.rotation.y = a;
+    const mouth = new THREE.CylinderGeometry(0.36, 0.36, 0.34, 32); mouth.rotateX(Math.PI / 2);
+    const h = add(sPay, mouth, 's-payload', 'engineDark', 'Docking port');
+    h.position.set(Math.sin(a) * (R + 0.16), portY, Math.cos(a) * (R + 0.16)); h.rotation.y = a;
+  }
 }
 
 // ---------------------------------------------------------------- stage, lights
@@ -1504,7 +1575,8 @@ canvas.addEventListener('pointermove', e => {
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
   if (gesture.mode === 'orbit' && ptrs.size === 1) {
     const k = e.pointerType === 'mouse' ? 0.0052 : 0.0068;
-    orbitCam(-dx * k, dy * k, navPivot); navVel.yaw = -dx * k; navVel.pitch = dy * k;
+    // the vehicle follows the pointer: drag up/right and the part you're looking at swings up/right
+    orbitCam(dx * k, -dy * k, navPivot); navVel.yaw = dx * k; navVel.pitch = -dy * k;
     gesture.moved += Math.abs(dx) + Math.abs(dy);
   } else if (gesture.mode === 'pan' && ptrs.size === 1) {
     panCam(dx, dy); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
@@ -1534,7 +1606,7 @@ canvas.addEventListener('wheel', e => {
 canvas.addEventListener('dblclick', e => flyToPoint(e.clientX, e.clientY));
 addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (selected) select(null); else if (EMBED) closeEmbed(); }
-  const k = { ArrowLeft: [0.07, 0], ArrowRight: [-0.07, 0], ArrowUp: [0, 0.05], ArrowDown: [0, -0.05] }[e.key];
+  const k = { ArrowLeft: [-0.07, 0], ArrowRight: [0.07, 0], ArrowUp: [0, -0.05], ArrowDown: [0, 0.05] }[e.key];
   if (k) { e.preventDefault(); userInteracted(); navVel.yaw = k[0] * 0.5; navVel.pitch = k[1] * 0.5; navPivot.copy(controls.target); }
   if (e.key === '+' || e.key === '=') { userInteracted(); zoomPt.copy(controls.target); zoomPending -= 0.4; }
   if (e.key === '-' || e.key === '_') { userInteracted(); zoomPt.copy(controls.target); zoomPending += 0.4; }
@@ -1584,7 +1656,8 @@ function tick() {
     en.plume.visible = false;
     en.core.material.uniforms.uI.value = i * (en.stage === 'b-raptors' ? 0 : 0.03) * flick;   // booster: the shared plume carries the hot core
     en.glow.material.uniforms.uI.value = i;
-    en.core.visible = en.glow.visible = i > 0.002;
+    en.glow.visible = i > 0.002;
+    en.core.visible = en.stage !== 'b-raptors' && i > 0.002;
     if (en.flame) { en.flame.material.uniforms.uI.value = i * flick; en.flame.visible = i > 0.002; }
     if (en.stage === 'b-raptors') bSum += i; else sSum += i;
   }
@@ -1739,7 +1812,7 @@ function onResize() {
 addEventListener('resize', onResize);
 window.__s = { camera, controls, st, select, spin, flyTo, parts, root, bloom, engines, flames, airLines, propPts, bFire, sFire, faceView, orbitCam, zoomCam, worldAt, look(y, off = [0, 0, 20]) { spin.updateMatrixWorld(true); const p = root.localToWorld(new V3(0, y, 0)); camAnim = null; userMoved = true; autoSpin = false; controls.target.copy(p); camera.position.copy(p).add(new V3(...off)); } };
 
-applyOrientation(); layout(); applyI18n();
+applyOrientation(); layout(); applyI18n(); applyTheme();
 // debug hook for screenshots: #dbg={"fire":1,"section":1,"explode":1,"sep":1,"turn":0.4,"face":1,"look":[y,dx,dy,dz],"sel":"b-raptors"}
 if (location.hash.startsWith('#dbg=')) setTimeout(() => {
   const d = JSON.parse(decodeURIComponent(location.hash.slice(5)));

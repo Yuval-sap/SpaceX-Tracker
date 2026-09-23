@@ -31,7 +31,7 @@ SS_I18N.en = {
     's-nose': { n: 'Nose cone', t: 'Nose cone & header tank', d: 'The ogive nose houses the liquid-oxygen header tank and the forward flap actuators. Stainless steel keeps its strength both at cryogenic temperatures and in reentry heat.', s: [['Shape', 'Ogive'], ['Houses', 'LOX header'], ['Flaps', '2 forward']] },
   },
   // hover labels are built from these pieces ("Grid fin 2", "Forward flap (left) · hinge fairing")
-  lb: {},
+  lb: { 'Docking port': 'Docking port',},
 };
 
 SS_I18N.he = {
@@ -60,6 +60,7 @@ SS_I18N.he = {
     's-nose': { n: 'חרטום', t: 'החרטום ומכל העזר', d: 'החרטום המעוגל מכיל את מכל העזר של החמצן הנוזלי ואת המפעילים של הכנפיים הקדמיות. הנירוסטה שומרת על החוזק שלה גם בטמפרטורות קריוגניות וגם בחום החזרה לאטמוספרה.', s: [['צורה', 'אוג\'יב'], ['מכיל', 'מכל עזר לחמצן'], ['כנפיים', '2 קדמיות']] },
   },
   lb: {
+    'Docking port': 'פתח עגינה',
     'Raptor 3': 'Raptor 3', 'center ring': 'טבעת מרכזית', 'middle ring': 'טבעת אמצעית', 'outer ring': 'טבעת חיצונית', 'Raptor': 'Raptor', 'sea-level': 'פני הים', 'Raptor Vacuum': 'Raptor Vacuum',
     'Thrust section': 'אזור הדחף', 'Thrust plate': 'לוח הדחף', 'Engine skirt': 'חצאית המנועים', 'access cutout': 'פתח גישה', 'External lines & junction boxes': 'צנרת חיצונית וקופסאות חיבור', 'Aft ring': 'טבעת תחתונה',
     'LOX tank': 'מכל החמצן', 'LOX aft dome': 'הכיפה התחתונה של מכל החמצן', 'Raceway (cable & line tunnel)': 'תעלת כבלים וצנרת', 'Methane downcomer': 'צינור הזנת מתאן', 'Chine': 'Chine',
@@ -100,6 +101,7 @@ SS_I18N.es = {
     's-nose': { n: 'Cono de morro', t: 'Cono de morro y tanque de cabecera', d: 'El morro ojival aloja el tanque de cabecera de oxígeno líquido y los actuadores de los flaps delanteros. El acero inoxidable conserva su resistencia tanto a temperaturas criogénicas como con el calor de la reentrada.', s: [['Forma', 'Ojival'], ['Contiene', 'Cabecera de LOX'], ['Flaps', '2 delanteros']] },
   },
   lb: {
+    'Docking port': 'Puerto de acoplamiento',
     'center ring': 'anillo central', 'middle ring': 'anillo intermedio', 'outer ring': 'anillo exterior', 'sea-level': 'nivel del mar',
     'Thrust section': 'Sección de empuje', 'Thrust plate': 'Placa de empuje', 'Engine skirt': 'Faldón de motores', 'access cutout': 'abertura de acceso', 'External lines & junction boxes': 'Conductos externos y cajas de conexión', 'Aft ring': 'Anillo inferior',
     'LOX tank': 'Tanque de LOX', 'LOX aft dome': 'Cúpula inferior de LOX', 'Raceway (cable & line tunnel)': 'Canal de cables y conductos', 'Methane downcomer': 'Downcomer de metano', 'Chine': 'Chine',
@@ -139,6 +141,7 @@ SS_I18N.fr = {
     's-nose': { n: 'Coiffe', t: 'Coiffe et réservoir de tête', d: 'Le nez ogival abrite le réservoir de tête d\'oxygène liquide et les actionneurs des volets avant. L\'acier inoxydable garde sa résistance aussi bien aux températures cryogéniques que dans la chaleur de rentrée.', s: [['Forme', 'Ogive'], ['Abrite', 'Tête LOX'], ['Volets', '2 avant']] },
   },
   lb: {
+    'Docking port': "Port d'amarrage",
     'center ring': 'anneau central', 'middle ring': 'anneau médian', 'outer ring': 'anneau extérieur', 'sea-level': 'niveau de la mer',
     'Thrust section': 'Section de poussée', 'Thrust plate': 'Plaque de poussée', 'Engine skirt': 'Jupe moteurs', 'access cutout': 'trappe d\'accès', 'External lines & junction boxes': 'Conduites externes et boîtiers de jonction', 'Aft ring': 'Anneau arrière',
     'LOX tank': 'Réservoir LOX', 'LOX aft dome': 'Dôme inférieur LOX', 'Raceway (cable & line tunnel)': 'Goulotte (câbles et conduites)', 'Methane downcomer': 'Downcomer de méthane', 'Chine': 'Chine',
@@ -178,6 +181,7 @@ SS_I18N.de = {
     's-nose': { n: 'Nasenkegel', t: 'Nasenkegel und Header-Tank', d: 'Die Ogivalnase enthält den Header-Tank für flüssigen Sauerstoff und die Aktuatoren der vorderen Klappen. Edelstahl behält seine Festigkeit sowohl bei kryogenen Temperaturen als auch in der Hitze des Wiedereintritts.', s: [['Form', 'Ogive'], ['Enthält', 'LOX-Header'], ['Klappen', '2 vorne']] },
   },
   lb: {
+    'Docking port': 'Andockport',
     'center ring': 'Mittelring', 'middle ring': 'mittlerer Ring', 'outer ring': 'Außenring', 'sea-level': 'Meereshöhe',
     'Thrust section': 'Schubsektion', 'Thrust plate': 'Schubplatte', 'Engine skirt': 'Triebwerksschürze', 'access cutout': 'Zugangsöffnung', 'External lines & junction boxes': 'Außenleitungen und Verteilerkästen', 'Aft ring': 'Heckring',
     'LOX tank': 'LOX-Tank', 'LOX aft dome': 'Unterer LOX-Dom', 'Raceway (cable & line tunnel)': 'Kabelkanal (Kabel und Leitungen)', 'Methane downcomer': 'Methan-Downcomer', 'Chine': 'Chine',
@@ -217,6 +221,7 @@ SS_I18N.it = {
     's-nose': { n: 'Ogiva', t: 'Ogiva e serbatoio di testa', d: 'Il muso ogivale ospita il serbatoio di testa dell\'ossigeno liquido e gli attuatori dei flap anteriori. L\'acciaio inox mantiene la sua resistenza sia alle temperature criogeniche sia nel calore del rientro.', s: [['Forma', 'Ogiva'], ['Contiene', 'Testa LOX'], ['Flap', '2 anteriori']] },
   },
   lb: {
+    'Docking port': 'Porta di attracco',
     'center ring': 'anello centrale', 'middle ring': 'anello intermedio', 'outer ring': 'anello esterno', 'sea-level': 'livello del mare',
     'Thrust section': 'Sezione di spinta', 'Thrust plate': 'Piastra di spinta', 'Engine skirt': 'Gonna motori', 'access cutout': 'apertura d\'accesso', 'External lines & junction boxes': 'Condotti esterni e scatole di giunzione', 'Aft ring': 'Anello posteriore',
     'LOX tank': 'Serbatoio LOX', 'LOX aft dome': 'Cupola inferiore LOX', 'Raceway (cable & line tunnel)': 'Canalina (cavi e condotti)', 'Methane downcomer': 'Downcomer del metano', 'Chine': 'Chine',
@@ -256,6 +261,7 @@ SS_I18N.pt = {
     's-nose': { n: 'Cone do nariz', t: 'Cone do nariz e tanque de cabeçalho', d: 'O nariz ogival abriga o tanque de cabeçalho de oxigênio líquido e os atuadores dos flaps dianteiros. O aço inoxidável mantém sua resistência tanto em temperaturas criogênicas quanto no calor da reentrada.', s: [['Forma', 'Ogiva'], ['Abriga', 'Cabeçalho LOX'], ['Flaps', '2 dianteiros']] },
   },
   lb: {
+    'Docking port': 'Porta de acoplamento',
     'center ring': 'anel central', 'middle ring': 'anel intermediário', 'outer ring': 'anel externo', 'sea-level': 'nível do mar',
     'Thrust section': 'Seção de empuxo', 'Thrust plate': 'Placa de empuxo', 'Engine skirt': 'Saia dos motores', 'access cutout': 'abertura de acesso', 'External lines & junction boxes': 'Linhas externas e caixas de junção', 'Aft ring': 'Anel traseiro',
     'LOX tank': 'Tanque de LOX', 'LOX aft dome': 'Cúpula inferior de LOX', 'Raceway (cable & line tunnel)': 'Calha de cabos e linhas', 'Methane downcomer': 'Downcomer de metano', 'Chine': 'Chine',
@@ -295,6 +301,7 @@ SS_I18N.nl = {
     's-nose': { n: 'Neuskegel', t: 'Neuskegel en headertank', d: 'De ogiefneus bevat de headertank voor vloeibare zuurstof en de actuatoren van de voorste flaps. Roestvrij staal behoudt zijn sterkte zowel bij cryogene temperaturen als in de hitte van de terugkeer.', s: [['Vorm', 'Ogief'], ['Bevat', 'LOX-header'], ['Flaps', '2 voor']] },
   },
   lb: {
+    'Docking port': 'Koppelpoort',
     'center ring': 'middenring', 'middle ring': 'tussenring', 'outer ring': 'buitenring', 'sea-level': 'zeeniveau',
     'Thrust section': 'Stuwkrachtsectie', 'Thrust plate': 'Stuwkrachtplaat', 'Engine skirt': 'Motorrok', 'access cutout': 'toegangsopening', 'External lines & junction boxes': 'Externe leidingen en verdeeldozen', 'Aft ring': 'Achterring',
     'LOX tank': 'LOX-tank', 'LOX aft dome': 'Onderste LOX-koepel', 'Raceway (cable & line tunnel)': 'Kabelgoot (kabels en leidingen)', 'Methane downcomer': 'Methaan-downcomer', 'Chine': 'Chine',
@@ -334,6 +341,7 @@ SS_I18N.sv = {
     's-nose': { n: 'Noskon', t: 'Noskon och headertank', d: 'Den ogivformade nosen rymmer headertanken för flytande syre och de främre klaffarnas manöverdon. Rostfritt stål behåller sin hållfasthet både vid kryogena temperaturer och i återinträdets hetta.', s: [['Form', 'Ogiv'], ['Rymmer', 'LOX-header'], ['Klaffar', '2 främre']] },
   },
   lb: {
+    'Docking port': 'Dockningsport',
     'center ring': 'mittring', 'middle ring': 'mellanring', 'outer ring': 'ytterring', 'sea-level': 'havsnivå',
     'Thrust section': 'Dragkraftsektion', 'Thrust plate': 'Dragkraftplatta', 'Engine skirt': 'Motorkjol', 'access cutout': 'åtkomstöppning', 'External lines & junction boxes': 'Utvändiga ledningar och kopplingsdosor', 'Aft ring': 'Aktre ring',
     'LOX tank': 'LOX-tank', 'LOX aft dome': 'Nedre LOX-kupol', 'Raceway (cable & line tunnel)': 'Kabelkanal (kablar och ledningar)', 'Methane downcomer': 'Metan-downcomer', 'Chine': 'Chine',
@@ -373,6 +381,7 @@ SS_I18N.da = {
     's-nose': { n: 'Næsekegle', t: 'Næsekegle og headertank', d: 'Den ogivale næse rummer headertanken til flydende ilt og aktuatorerne til de forreste klapper. Rustfrit stål bevarer sin styrke både ved kryogene temperaturer og i varmen ved genindtræden.', s: [['Form', 'Ogiv'], ['Rummer', 'LOX-header'], ['Klapper', '2 forreste']] },
   },
   lb: {
+    'Docking port': 'Dokningsport',
     'center ring': 'midterring', 'middle ring': 'mellemring', 'outer ring': 'yderring', 'sea-level': 'havniveau',
     'Thrust section': 'Trykkraftsektion', 'Thrust plate': 'Trykkraftplade', 'Engine skirt': 'Motorskørt', 'access cutout': 'adgangsåbning', 'External lines & junction boxes': 'Udvendige ledninger og samledåser', 'Aft ring': 'Agterring',
     'LOX tank': 'LOX-tank', 'LOX aft dome': 'Nederste LOX-kuppel', 'Raceway (cable & line tunnel)': 'Kabelkanal (kabler og ledninger)', 'Methane downcomer': 'Metan-downcomer', 'Chine': 'Chine',
@@ -412,6 +421,7 @@ SS_I18N.cs = {
     's-nose': { n: 'Špička', t: 'Špička a pomocná nádrž', d: 'Ogivální špička ukrývá pomocnou nádrž kapalného kyslíku a pohony předních klapek. Nerezová ocel si zachovává pevnost jak při kryogenních teplotách, tak v žáru návratu do atmosféry.', s: [['Tvar', 'Ogiva'], ['Obsahuje', 'Pomocná LOX'], ['Klapky', '2 přední']] },
   },
   lb: {
+    'Docking port': 'Dokovací port',
     'center ring': 'středový prstenec', 'middle ring': 'prostřední prstenec', 'outer ring': 'vnější prstenec', 'sea-level': 'hladina moře',
     'Thrust section': 'Tahová sekce', 'Thrust plate': 'Tahová deska', 'Engine skirt': 'Sukně motorů', 'access cutout': 'přístupový otvor', 'External lines & junction boxes': 'Vnější vedení a rozvodné skříně', 'Aft ring': 'Zadní prstenec',
     'LOX tank': 'Nádrž LOX', 'LOX aft dome': 'Spodní dno LOX', 'Raceway (cable & line tunnel)': 'Kabelový kanál (kabely a vedení)', 'Methane downcomer': 'Metanový downcomer', 'Chine': 'Chine',
@@ -451,6 +461,7 @@ SS_I18N.pl = {
     's-nose': { n: 'Stożek dziobowy', t: 'Stożek dziobowy i zbiornik pomocniczy', d: 'Ostrołukowy dziób mieści zbiornik pomocniczy ciekłego tlenu i siłowniki przednich klap. Stal nierdzewna zachowuje wytrzymałość zarówno w temperaturach kriogenicznych, jak i w żarze powrotu w atmosferę.', s: [['Kształt', 'Ostrołuk'], ['Mieści', 'Pomocniczy LOX'], ['Klapy', '2 przednie']] },
   },
   lb: {
+    'Docking port': 'Port dokujący',
     'center ring': 'pierścień środkowy', 'middle ring': 'pierścień pośredni', 'outer ring': 'pierścień zewnętrzny', 'sea-level': 'poziom morza',
     'Thrust section': 'Sekcja ciągu', 'Thrust plate': 'Płyta ciągu', 'Engine skirt': 'Osłona silników', 'access cutout': 'otwór dostępowy', 'External lines & junction boxes': 'Przewody zewnętrzne i skrzynki przyłączeniowe', 'Aft ring': 'Pierścień tylny',
     'LOX tank': 'Zbiornik LOX', 'LOX aft dome': 'Dolna kopuła LOX', 'Raceway (cable & line tunnel)': 'Kanał kablowy (kable i przewody)', 'Methane downcomer': 'Downcomer metanu', 'Chine': 'Chine',
@@ -490,6 +501,7 @@ SS_I18N.ru = {
     's-nose': { n: 'Носовой обтекатель', t: 'Носовой обтекатель и расходный бак', d: 'Оживальный нос вмещает расходный бак жидкого кислорода и приводы передних закрылков. Нержавеющая сталь сохраняет прочность и при криогенных температурах, и при нагреве во время входа в атмосферу.', s: [['Форма', 'Оживал'], ['Внутри', 'Расходный бак LOX'], ['Закрылки', '2 передних']] },
   },
   lb: {
+    'Docking port': 'Стыковочный порт',
     'center ring': 'центральное кольцо', 'middle ring': 'среднее кольцо', 'outer ring': 'внешнее кольцо', 'sea-level': 'морской',
     'Thrust section': 'Силовой отсек', 'Thrust plate': 'Силовая плита', 'Engine skirt': 'Юбка двигателей', 'access cutout': 'люк доступа', 'External lines & junction boxes': 'Внешние магистрали и распределительные коробки', 'Aft ring': 'Хвостовое кольцо',
     'LOX tank': 'Бак LOX', 'LOX aft dome': 'Нижнее днище LOX', 'Raceway (cable & line tunnel)': 'Кабельный короб (кабели и магистрали)', 'Methane downcomer': 'Downcomer метана', 'Chine': 'Chine',
@@ -529,6 +541,7 @@ SS_I18N.zh = {
     's-nose': { n: '头锥', t: '头锥与集液箱', d: '尖拱形头部内装有液氧集液箱和前襟翼作动器。不锈钢在低温和再入高温下都能保持强度。', s: [['形状', '尖拱形'], ['内含', '液氧集液箱'], ['襟翼', '前部 2 片']] },
   },
   lb: {
+    'Docking port': '对接口',
     'center ring': '中心环', 'middle ring': '中间环', 'outer ring': '外环', 'sea-level': '海平面型',
     'Thrust section': '推力段', 'Thrust plate': '推力板', 'Engine skirt': '发动机裙', 'access cutout': '检修口', 'External lines & junction boxes': '外置管线与接线盒', 'Aft ring': '尾部环',
     'LOX tank': '液氧贮箱', 'LOX aft dome': '液氧下箱底', 'Raceway (cable & line tunnel)': '电缆管线通道', 'Methane downcomer': '甲烷输送管', 'Chine': '边条',
@@ -568,6 +581,7 @@ SS_I18N.tr = {
     's-nose': { n: 'Burun konisi', t: 'Burun konisi ve başlık tankı', d: 'Ogival burun, sıvı oksijen başlık tankını ve ön flapların eyleyicilerini barındırır. Paslanmaz çelik, hem kriyojenik sıcaklıklarda hem de atmosfere giriş ısısında dayanımını korur.', s: [['Şekil', 'Ogival'], ['İçerir', 'LOX başlık tankı'], ['Flap', '2 ön']] },
   },
   lb: {
+    'Docking port': 'Kenetlenme portu',
     'center ring': 'merkez halka', 'middle ring': 'orta halka', 'outer ring': 'dış halka', 'sea-level': 'deniz seviyesi',
     'Thrust section': 'İtki bölümü', 'Thrust plate': 'İtki plakası', 'Engine skirt': 'Motor eteği', 'access cutout': 'erişim açıklığı', 'External lines & junction boxes': 'Harici hatlar ve bağlantı kutuları', 'Aft ring': 'Arka halka',
     'LOX tank': 'LOX tankı', 'LOX aft dome': 'LOX alt kubbesi', 'Raceway (cable & line tunnel)': 'Kablo kanalı (kablo ve hatlar)', 'Methane downcomer': 'Metan downcomer', 'Chine': 'Chine',
@@ -607,6 +621,7 @@ SS_I18N.hi = {
     's-nose': { n: 'नोज़ कोन', t: 'नोज़ कोन और हेडर टैंक', d: 'ओजाइव आकार की नोक में तरल-ऑक्सीजन हेडर टैंक और आगे के फ़्लैप के एक्चुएटर हैं। स्टेनलेस स्टील अत्यधिक ठंडे तापमान और वायुमंडल-प्रवेश की गर्मी, दोनों में अपनी मज़बूती बनाए रखता है।', s: [['आकार', 'ओजाइव'], ['अंदर', 'LOX हेडर'], ['फ़्लैप', '2 आगे']] },
   },
   lb: {
+    'Docking port': 'डॉकिंग पोर्ट',
     'center ring': 'मध्य रिंग', 'middle ring': 'बीच की रिंग', 'outer ring': 'बाहरी रिंग', 'sea-level': 'समुद्र-तल',
     'Thrust section': 'थ्रस्ट सेक्शन', 'Thrust plate': 'थ्रस्ट प्लेट', 'Engine skirt': 'इंजन स्कर्ट', 'access cutout': 'पहुँच छिद्र', 'External lines & junction boxes': 'बाहरी लाइनें और जंक्शन बॉक्स', 'Aft ring': 'पिछली रिंग',
     'LOX tank': 'LOX टैंक', 'LOX aft dome': 'LOX निचला गुंबद', 'Raceway (cable & line tunnel)': 'केबल और लाइन सुरंग', 'Methane downcomer': 'मीथेन डाउनकमर', 'Chine': 'चाइन',
@@ -646,6 +661,7 @@ SS_I18N.ar = {
     's-nose': { n: 'المخروط الأمامي', t: 'المخروط الأمامي والخزان الرأسي', d: 'تضم المقدمة المقوّسة الخزان الرأسي للأكسجين السائل ومشغلات الأجنحة الأمامية. يحتفظ الفولاذ المقاوم للصدأ بمتانته في درجات الحرارة المنخفضة جدًا وفي حرارة العودة إلى الغلاف الجوي على حد سواء.', s: [['الشكل', 'مقوّس'], ['يضم', 'خزان LOX رأسي'], ['الأجنحة', '2 أمامية']] },
   },
   lb: {
+    'Docking port': 'منفذ الالتحام',
     'center ring': 'الحلقة المركزية', 'middle ring': 'الحلقة الوسطى', 'outer ring': 'الحلقة الخارجية', 'sea-level': 'مستوى البحر',
     'Thrust section': 'قسم الدفع', 'Thrust plate': 'لوحة الدفع', 'Engine skirt': 'تنورة المحركات', 'access cutout': 'فتحة وصول', 'External lines & junction boxes': 'خطوط خارجية وصناديق توصيل', 'Aft ring': 'الحلقة الخلفية',
     'LOX tank': 'خزان الأكسجين', 'LOX aft dome': 'القبة السفلية لخزان الأكسجين', 'Raceway (cable & line tunnel)': 'مجرى الكابلات والخطوط', 'Methane downcomer': 'أنبوب تغذية الميثان', 'Chine': 'Chine',
