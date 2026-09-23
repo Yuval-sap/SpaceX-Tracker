@@ -23,19 +23,19 @@
   .pill.on{background:var(--accent);color:#1b1208;border-color:var(--accent)}
   .pill i{font-style:normal;opacity:.5;margin-right:7px;font-family:'JetBrains Mono',monospace;font-size:10.5px}
   .pill.on i{opacity:.7}
-  .sep{font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--mute);margin:6px 0 1px 2px;text-transform:uppercase}
+  .sep{font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#9aa3b1;margin:6px 0 1px 2px;text-transform:uppercase}
   #stats{position:absolute;right:28px;top:24px;display:flex;gap:24px;font-family:'JetBrains Mono',monospace}
   #stats div{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
-  #stats span{font-size:9.5px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
-  #stats b{font-weight:500;font-size:12.5px;color:var(--fg);white-space:nowrap}
+  #stats span{font-size:11px;letter-spacing:.12em;color:#aeb6c3;text-transform:uppercase}
+  #stats b{font-weight:500;font-size:14px;color:var(--fg);white-space:nowrap}
   #card{position:absolute;right:28px;top:80px;width:310px;background:var(--panel);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px;pointer-events:auto;opacity:0;transform:translateY(-6px);visibility:hidden;transition:opacity .25s,transform .25s,visibility .25s}
   #card.show{opacity:1;transform:none;visibility:visible}
-  #card .k{font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--mute);text-transform:uppercase}
+  #card .k{font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#aeb6c3;text-transform:uppercase}
   #card h2{margin:8px 0 10px;font-size:19px;font-weight:600;letter-spacing:.005em}
   #card p{margin:0;font-size:12.5px;line-height:1.55;color:#c3c9d3}
   #card .row{display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
   #card .row div{flex:1;min-width:0}
-  #card .row span{display:block;font:500 9px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+  #card .row span{display:block;font:500 10.5px/1.1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#aeb6c3;text-transform:uppercase}
   #card .row b{display:block;margin-top:6px;font:500 11.5px/1.2 'JetBrains Mono',monospace;color:var(--fg)}
   #card .x{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--mute);font-size:16px;cursor:pointer;transition:background-color .15s,color .15s}
   #card .x:hover{background:rgba(255,255,255,.08);color:#fff}
@@ -56,6 +56,7 @@
   /* scripts without Latin letters: no Inter/JetBrains glyphs, and wide tracking breaks them apart */
   html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(.brand h1,.eyebrow,.sep,#stats span,#card .k,#card .row span,#hint){letter-spacing:.02em}
   html:is([lang=he],[lang=ar]) body{font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif}
+  html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(#stats span,#card .k,#card .row span,.sep,.eyebrow){font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif;font-size:12px;font-weight:500}
   /* right-to-left languages: mirror the whole overlay */
   html[dir=rtl] .brand{left:auto;right:28px;text-align:right}
   html[dir=rtl] #parts{left:auto;right:28px;align-items:flex-end}
@@ -109,8 +110,8 @@
 <div id="ui">
   <div class="brand">
     <div class="eyebrow" id="t-eyebrow">SpaceX · Vehicle study</div>
-    <h1 id="t-title">STARSHIP</h1>
-    <div class="sub">Super Heavy + Ship · Block 3</div>
+    <h1 id="t-title">STARSHIP V3</h1>
+    <div class="sub" id="t-sub">Super Heavy + Ship · Block 3</div>
   </div>
   <nav id="parts"></nav>
   <div id="stats">
@@ -224,8 +225,9 @@ function applyI18n() {
   html.lang = LANG; html.dir = I.dir;
   const U = I.ui;
   $('t-eyebrow').textContent = U.eyebrow;
-  $('t-title').textContent = I.starship.toLocaleUpperCase(LANG);
-  document.title = `${I.starship} · 3D`;
+  $('t-title').textContent = `${I.starship.toLocaleUpperCase(LANG)} V3`;   // same naming as the site's "Starship V3"
+  $('t-sub').textContent = `Super Heavy + ${I.shipName || 'Ship'} · Block 3`;
+  document.title = `${I.starship} V3 · 3D`;
   for (const k of ['height', 'diameter', 'raptors', 'thrust', 'liftoff', 'selected']) $('t-' + k).textContent = U[k];
   for (const k of ['height', 'diameter', 'thrust', 'liftoff']) $('v-' + k).textContent = UV[k];
   $('hint').textContent = U.hint;
@@ -1292,7 +1294,7 @@ document.querySelector('#nav .navbtns').addEventListener('click', e => {
 const partsNav = document.getElementById('parts');
 const card = document.getElementById('card'), station = document.getElementById('station');
 card.querySelector('.x').addEventListener('click', () => select(null));
-const grpName = g => g === 'sh' ? 'Super Heavy' : g === 'inter' ? I.ui.interstage : 'Ship';
+const grpName = g => g === 'sh' ? 'Super Heavy' : g === 'inter' ? I.ui.interstage : (I.shipName || 'Ship');
 const partT = id => I.parts[id];
 const num2 = i => String(i + 1).padStart(2, '0');
 function buildPartsNav() {
