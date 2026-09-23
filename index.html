@@ -611,6 +611,21 @@
             }
         }
 
+        /* Starship flights' first row (Vehicle Type, Booster, Status, Starship Simulation): equal
+           1fr columns left the big gaps inside the short tiles while "Starship Simulation" + its
+           icon wrapped to 2 lines. From md up the columns size to their content instead and the
+           spare room is shared out between them, with the simulation title kept on one line; the
+           other tiles' values can still wrap. Phones keep their 2-per-row layout. */
+        @media (min-width: 768px) {
+            #modal-vehicle-info-grid.starship-row {
+                grid-template-columns: repeat(4, auto) !important;
+                justify-content: space-between;
+            }
+            #modal-vehicle-info-grid.starship-row #i18n-starship-sim {
+                white-space: nowrap;
+            }
+        }
+
         /* The 0.7rem/0.8rem shrink right above exists ONLY because Orbitron (this label's
            declared font-family, see .modal-subhead above) is wide enough to wrap these 6 labels
            to 2 lines in English at their original text-sm/text-base size. Orbitron has no Hebrew
@@ -8885,6 +8900,7 @@
                 vGrid.append(vehicle, booster, status, sim);
                 bGrid.append(site, orbit, landing, preflight);
                 sim.classList.remove('hidden');
+                vGrid.classList.add('starship-row');
                 const n = preflight.classList.contains('hidden') ? 3 : 4;
                 // 2 per row on phones (these labels are long), all in one row from md up
                 bGrid.classList.remove('grid-cols-2', 'grid-cols-3', 'md:grid-cols-3', 'md:grid-cols-4');
@@ -8893,6 +8909,7 @@
                 vGrid.append(vehicle, site, orbit, status, sim);
                 bGrid.append(booster, landing, preflight);
                 sim.classList.add('hidden');
+                vGrid.classList.remove('starship-row');
                 bGrid.classList.remove('md:grid-cols-3', 'md:grid-cols-4');
             }
         }
