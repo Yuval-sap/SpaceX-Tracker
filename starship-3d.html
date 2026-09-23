@@ -745,8 +745,7 @@ void main(){
     float tail = 1.0 - smoothstep(0.62, 1.0, s + 0.2 * (n - 0.5));
     float dens = body * tail * (0.35 + 1.1 * n * n2 + 0.4 * n);
     float temp = (1.0 - rr * 0.85) * (1.0 - s * 0.72) * (0.8 + 0.55 * n);
-    float dia = pow(0.5 + 0.5 * cos(-p.y / uDiam * 6.2831853), 10.0) * exp(-s * 6.0) * smoothstep(0.55, 0.0, rr);
-    temp += dia * 0.5; dens += dia * 1.4;
+    // no discrete Mach-diamond bands: they read as hard white stripes rather than exhaust
     temp += smoothstep(0.08, 0.0, s) * (1.0 - rr) * 0.3;    // white-hot right at the nozzle
     vec3 col = fire(clamp(temp, 0.0, 1.0)) * (1.0 + 2.2 * smoothstep(0.7, 1.05, temp));
     float k = dens * dt * uDens / uR0;
@@ -1494,7 +1493,7 @@ function tick() {
     const i = sstep(clamp((st.fire * 1.5 - en.delay) / 0.35)) * gate;
     const flick = 0.9 + 0.1 * Math.sin(t * 57 + en.x * 3.1 + en.z * 1.7);
     en.plume.visible = false;
-    en.core.material.uniforms.uI.value = i * (en.stage === 'b-raptors' ? 0.02 : 0.05) * flick;
+    en.core.material.uniforms.uI.value = i * (en.stage === 'b-raptors' ? 0 : 0.03) * flick;   // booster: the shared plume carries the hot core
     en.glow.material.uniforms.uI.value = i;
     en.core.visible = en.glow.visible = i > 0.002;
     if (en.flame) { en.flame.material.uniforms.uI.value = i * flick; en.flame.visible = i > 0.002; }
