@@ -17,6 +17,7 @@
   .eyebrow{font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
   .brand h1{margin:9px 0 0;font-weight:500;font-size:44px;letter-spacing:.16em;line-height:1}
   .brand .sub{margin-top:9px;color:var(--accent);font-size:12.5px;letter-spacing:.01em}
+  .brand .mission{margin-top:7px;color:#d6dbe3;font-size:13px;font-weight:500;letter-spacing:.01em}
   #parts{position:absolute;left:28px;top:152px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;pointer-events:auto}
   .pill{font:500 11.5px/1 Inter,sans-serif;color:#cfd4dc;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:background-color .15s,color .15s,border-color .15s}
   .pill:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.26);color:#fff}
@@ -49,7 +50,7 @@
   #nav .navbtns button{width:32px;height:32px;padding:0;border-radius:50%;font:500 15px/1 Inter,sans-serif;color:#cfd4dc;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
   #nav .navbtns button:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#fff}
   #pivot{position:absolute;left:0;top:0;width:12px;height:12px;margin:-7px 0 0 -7px;border:1.5px solid var(--accent);border-radius:50%;box-shadow:0 0 0 4px rgba(238,167,116,.16);opacity:0;transition:opacity .15s;pointer-events:none}
-  #hint{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--mute);white-space:nowrap;transition:opacity .8s;text-transform:uppercase}
+  #hint{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--mute);white-space:normal;text-align:center;line-height:1.6;width:max-content;max-width:min(1100px,calc(100vw - 520px));transition:opacity .8s;text-transform:uppercase}
   #tip{position:absolute;left:0;top:0;padding:6px 9px;font:500 11px/1 Inter,sans-serif;color:#fff;background:rgba(10,12,16,.86);border:1px solid var(--line);border-radius:7px;pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap}
   #loader{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:#05070b;transition:opacity .7s;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.24em;color:var(--mute);text-transform:uppercase}
   #vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
@@ -74,6 +75,16 @@
   html.embed #stats{right:82px}
   html.embed[dir=rtl] #ss-close{right:auto;left:22px}
   html.embed[dir=rtl] #stats{right:auto;left:82px}
+  @media (max-width:1100px) and (min-width:761px){
+    #stats .opt{display:none}
+    .brand h1{font-size:36px}
+  }
+  @media (max-height:720px) and (min-width:761px){
+    #parts{gap:5px}
+    #parts .pill{padding:5px 11px;font-size:11px}
+    .sep{margin:3px 0 0 2px}
+  }
+  @media (max-height:620px) and (min-width:761px){ #hint{display:none} }
   @media (max-width:760px){
     .brand{left:16px;top:16px}
     .brand h1{font-size:28px}
@@ -99,7 +110,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js"></script>
+<script src="starship-3d-i18n.js?v=3"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -112,6 +123,7 @@
     <div class="eyebrow" id="t-eyebrow">SpaceX · Vehicle study</div>
     <h1 id="t-title">STARSHIP V3</h1>
     <div class="sub" id="t-sub">Super Heavy + Ship · Block 3</div>
+    <div class="mission" id="t-mission" hidden></div>
   </div>
   <nav id="parts"></nav>
   <div id="stats">
@@ -220,6 +232,12 @@ function setControlLabels() {
   b('section').textContent = I.ui.section; b('flow').textContent = I.ui.flow; b('reset').textContent = I.ui.reset;
   b('pause').textContent = paused ? I.ui.play : I.ui.pause;
 }
+// the parts list starts just under the title block, which grows by a line when a mission is shown
+function placeParts() {
+  if (innerWidth <= 760) { partsNav.style.top = ''; return; }
+  partsNav.style.top = Math.round(document.querySelector('.brand').getBoundingClientRect().bottom + (innerHeight < 720 ? 14 : 28)) + 'px';
+}
+addEventListener('resize', placeParts);
 function applyI18n() {
   const html = document.documentElement;
   html.lang = LANG; html.dir = I.dir;
@@ -227,6 +245,17 @@ function applyI18n() {
   $('t-eyebrow').textContent = U.eyebrow;
   $('t-title').textContent = `${I.starship.toLocaleUpperCase(LANG)} V3`;   // same naming as the site's "Starship V3"
   $('t-sub').textContent = `Super Heavy + ${I.shipName || 'Ship'} · Block 3`;
+  // ?f=14&b=21&bf=1&s=41&sf=1 - flight number, booster/ship serials and how many flights each has flown
+  {
+    const n = k => { const v = parseInt(Q.get(k), 10); return v > 0 ? v : null; };
+    const f = n('f'), b = n('b'), bf = n('bf'), sh = n('s'), sf = n('sf'), bits = [];
+    const ft = (tpl, v) => tpl.replace('{n}', nf(v));
+    if (f) bits.push(ft(U.mFlight, f));
+    if (b) bits.push(`${U.booster} ${b}` + (bf ? ` (${ft(U.vFlight, bf)})` : ''));
+    if (sh) bits.push(`Ship ${sh}` + (sf ? ` (${ft(U.vFlight, sf)})` : ''));
+    const el = $('t-mission'); el.hidden = !bits.length; el.textContent = bits.join(' · ');
+  }
+  placeParts();
   document.title = `${I.starship} V3 · 3D`;
   for (const k of ['height', 'diameter', 'raptors', 'thrust', 'liftoff', 'selected']) $('t-' + k).textContent = U[k];
   for (const k of ['height', 'diameter', 'thrust', 'liftoff']) $('v-' + k).textContent = UV[k];
@@ -1017,9 +1046,9 @@ let SLOT = null;
   // satellites stacked flat above the slot; the lowest one is sliding out
   const satGeo = new THREE.BoxGeometry(5.0, 0.22, 3.0);
   const sm = ['sat', 'sat', 'solar', 'sat', 'sat', 'sat'];
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 26; i++) {
     const m = add(sPay, satGeo, 's-payload', sm, `Starlink satellite ${i + 1}`);
-    m.position.copy(dirA(DC, i === 0 ? 3.6 : 1.0)).setY(d0_ + (i === 0 ? 0.5 : 1.0 + i * 0.4)); m.rotation.y = DC - Math.PI / 2;
+    m.position.copy(dirA(DC, i === 0 ? 3.6 : 1.0)).setY(d0_ + (i === 0 ? 0.5 : 1.0 + i * 0.32)); m.rotation.y = DC - Math.PI / 2;
   }
   for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, y1 - d0 - 1.2, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y1 - 1.2) / 2 + 0.2); m.rotation.y = DC; }
 }
@@ -1204,9 +1233,13 @@ function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; 
 function flyTo(v) { camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
 const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
 function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
+const FLAME_ROOM = 44;           // metres of plume to keep in frame below the booster when upright
 function defaultView() {
   const x = extents(st.explodeT, st.sepT), tv = tvHalf(), asp = camera.aspect, target = vehicleCenter();
-  const d = !vertical ? Math.max((x.L / 2) / (tv * asp) * 1.38, 30 / tv) : Math.max((x.L / 2 + 1) / tv * 1.3, 14 / (tv * asp));
+  const fl = vertical && st.fireT ? FLAME_ROOM : 0;
+  target.y -= fl / 2;
+  const L = x.L + fl;
+  const d = !vertical ? Math.max((L / 2) / (tv * asp) * 1.38, 30 / tv) : Math.max((L / 2 + 1) / tv * 1.3, 14 / (tv * asp));
   return { target, pos: target.clone().add(defaultDir().multiplyScalar(d)) };
 }
 
@@ -1347,7 +1380,7 @@ document.getElementById('controls').addEventListener('click', e => {
   if (a === 'explode') { st.explodeT = st.explodeT ? 0 : 1; btn('explode').classList.toggle('on', !!st.explodeT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'stage') { st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; btn('section').classList.toggle('on', !!st.sectionT); }
-  if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); }
+  if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'reset') {
     st.explodeT = st.sectionT = st.fireT = st.sepT = 0; paused = false; select(null);
@@ -1486,7 +1519,9 @@ function tick() {
 
   // engines
   let bSum = 0, sSum = 0;
-  const shipGate = sstep(clamp(Math.max(st.explode, st.sep) * 2 - 1));
+  // ship engines fire only for hot staging (stages separated); in the exploded view their plumes would
+  // shoot straight through the booster's own parts
+  const shipGate = sstep(clamp(st.sep * 2 - 1)) * (1 - sstep(clamp(st.explode * 2)));
   for (const en of engines) {
     // ship engines sit on top of the booster when stacked, so they only light once the stages are apart
     const gate = en.stage === 'b-raptors' ? 1 : shipGate;
@@ -1507,7 +1542,10 @@ function tick() {
 
   // airflow streaks
   const fk = sstep(clamp(st.fire));
-  airLines.visible = fk > 0.01;
+  // upright, the plume would be cut off by the stage floor - fade the floor out while firing
+  const floorK = vertical ? 1 - fk : 1;
+  floorMat.opacity = floorK; ringLine.material.opacity = 0.6 * floorK; floor.visible = ringLine.visible = floorK > 0.01;
+  airLines.visible = false;   // the airflow streaks read as stray white lines across the fire; the plume alone reads better
   if (airLines.visible) {
     for (let i = 0; i < AIR_N; i++) {
       air.y[i] -= air.s[i] * adt;
@@ -1617,7 +1655,12 @@ function tick() {
     const h = pick(), m = h && h.object;
     hovered = m ? m.userData.part : null;
     canvas.style.cursor = m ? 'pointer' : 'grab';
-    if (m && m.userData.label) { tip.textContent = trLabel(m.userData.label); tip.style.transform = `translate(${mx + 14}px, ${my + 14}px)`; tip.style.opacity = 1; }
+    if (m && m.userData.label) {
+      tip.textContent = trLabel(m.userData.label);
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      const tx = mx + 14 + tw > innerWidth - 8 ? mx - 14 - tw : mx + 14, ty = my + 14 + th > innerHeight - 8 ? my - 14 - th : my + 14;
+      tip.style.transform = `translate(${Math.max(8, tx)}px, ${Math.max(8, ty)}px)`; tip.style.opacity = 1;
+    }
     else tip.style.opacity = 0;
   }
   if (gesture) { canvas.style.cursor = gesture.mode === 'pan' ? 'move' : 'grabbing'; tip.style.opacity = 0; }

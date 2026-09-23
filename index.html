@@ -8877,6 +8877,7 @@
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
         // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
         // language/unit switches live. The iframe is unloaded on close so it stops rendering.
+        const STARSHIP_SIM_VERSION = '3';
         function openStarshipSim() {
             const modal = document.getElementById('starship-sim-modal');
             const frame = document.getElementById('starship-sim-frame');
@@ -8884,7 +8885,13 @@
             // show first, then load: the viewer frames the camera from its size at startup
             modal.classList.remove('hidden');
             modal.style.display = 'block';
-            if (!frame.src || frame.src === 'about:blank' || !frame.src.includes('starship-3d.html')) frame.src = 'starship-3d.html?embed=1';
+            // opened from a Starship flight's modal: tell the sim which flight/booster/ship it is
+            const missionOpen = !document.getElementById('mission-modal').classList.contains('hidden');
+            const sm = missionOpen ? window.currentActiveSimMission : null;
+            const qs = new URLSearchParams({ embed: '1' });
+            if (sm) for (const k of ['f', 'b', 'bf', 's', 'sf']) if (sm[k]) qs.set(k, sm[k]);
+            qs.set('v', STARSHIP_SIM_VERSION);   // bump on every sim change so browsers don't show a cached old copy
+            frame.src = 'starship-3d.html?' + qs.toString();
             lockBodyScroll();
             frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) {} }, { once: true });
         }
@@ -22573,6 +22580,15 @@ setTimeout(() => {
             wireModalLiveButton(m, isPastMission);
 
             window.currentActiveMissionCategory = m.category;
+            // what the 3D simulation shows for this flight (see openStarshipSim)
+            {
+                const num = v => { const x = String(v || '').match(/(\d+)/); return x ? x[1] : ''; };
+                window.currentActiveSimMission = m.category === 'starship' ? {
+                    f: num((String(m.patchTagName || m.name || '').match(/flight\s*(\d+)/i) || [])[1]),   // the display name drops "(Starship Flight 14)"
+                    b: num(m.boosterSerial), bf: m.boosterFlightNum || '',
+                    s: num(m.shipSerial || m.shipLabel), sf: m.shipFlightNum || '',
+                } : null;
+            }
             window.currentActiveMissionDescription = m.description;
             window.currentActiveMissionType = m.missionType;
             window.currentActiveMissionProgramNames = m.programNames;
@@ -24445,7 +24461,7 @@ setTimeout(() => {
                 image: "https://pbs.twimg.com/media/HN63sZMXYAAKuWo?format=jpg&name=4096x4096",
                 alignmentClass: "object-top",
                 height: { imperial: { num: "407", unit: "ft" }, metric: { num: "124", unit: "m" } },
-                thrust: { imperial: { num: "16.6M", unit: "lbf" }, metric: { num: "74,000", unit: "kN" } },
+                thrust: { imperial: { num: "20.4M", unit: "lbf" }, metric: { num: "90,600", unit: "kN" } },   // Block 3: 33 Raptor 3 x ~280 tf
                 thrustNote: "totalSystem",
                 payload: { imperial: { num: "220,000+", unit: "lbs" }, metric: { num: "100,000+", unit: "kg" } },
                 payloadNote: "reusable",
