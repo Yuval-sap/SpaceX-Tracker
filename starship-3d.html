@@ -42,13 +42,14 @@
   #card .x:hover{background:rgba(255,255,255,.08);color:#fff}
   #controls{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto}
   #controls .pill{padding:8px 15px}
-  #nav{position:absolute;right:22px;bottom:18px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:auto}
+  #nav{position:absolute;right:22px;bottom:18px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
   #cube{width:112px;height:112px;cursor:pointer;display:block}
   #nav .navbtns{display:flex;gap:6px}
   #nav .views{display:flex;flex-direction:column;gap:5px;align-items:flex-end;position:absolute;right:124px;bottom:44px}
   #nav .views .pill{padding:6px 11px;font-size:11px}
   #nav .navbtns button{width:32px;height:32px;padding:0;border-radius:50%;font:500 15px/1 Inter,sans-serif;color:#cfd4dc;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
   #nav .navbtns button:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#fff}
+  #nav .navbtns button.on,#nav .navbtns button.on:hover{color:#fff;background:var(--accent);border-color:var(--accent)}
   #pivot{position:absolute;left:0;top:0;width:12px;height:12px;margin:-7px 0 0 -7px;border:1.5px solid var(--accent);border-radius:50%;box-shadow:0 0 0 4px rgba(238,167,116,.16);opacity:0;transition:opacity .15s;pointer-events:none}
   #hint{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--mute);white-space:normal;text-align:center;line-height:1.6;width:max-content;max-width:min(1100px,calc(100vw - 520px));transition:opacity .8s;text-transform:uppercase}
   #tip{position:absolute;left:0;top:0;padding:6px 9px;font:500 11px/1 Inter,sans-serif;color:#fff;background:rgba(10,12,16,.86);border:1px solid var(--line);border-radius:7px;pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap}
@@ -68,6 +69,7 @@
   html.day #tip{background:rgba(255,255,255,.95);color:#111;border-color:rgba(0,0,0,.12)}
   html.day #ss-close{background:rgba(255,255,255,.7)}
   html.day #nav .navbtns button{color:#1f2733;background:rgba(255,255,255,.6);border-color:rgba(0,0,0,.14)}
+  html.day #nav .navbtns button.on,html.day #nav .navbtns button.on:hover{color:#fff;background:var(--accent);border-color:var(--accent)}
   /* scripts without Latin letters: no Inter/JetBrains glyphs, and wide tracking breaks them apart */
   html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(.brand h1,.eyebrow,.sep,#stats span,#card .k,#card .row span,#hint){letter-spacing:.02em}
   html:is([lang=he],[lang=ar]) body{font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif}
@@ -137,7 +139,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=5"></script>
+<script src="starship-3d-i18n.js?v=8"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -175,7 +177,7 @@
     <button class="pill" data-act="explode">Explode</button>
     <button class="pill" data-act="stage">Separate</button>
     <button class="pill" data-act="section">Section</button>
-    <button class="pill" data-act="flow">Flow</button>
+    <button class="pill" data-act="flow">Ignition</button>
     <button class="pill" data-act="pause">Pause</button>
     <button class="pill" data-act="reset">Reset</button>
   </div>
@@ -185,6 +187,7 @@
     </div>
     <canvas id="cube" aria-label="View cube: click a face to look from that side"></canvas>
     <div class="navbtns">
+      <button data-z="roll" aria-label="Spin on its axis">⟳</button>
       <button data-z="in" aria-label="Zoom in">+</button>
       <button data-z="out" aria-label="Zoom out">−</button>
       <button data-z="fit" aria-label="Fit whole vehicle">⤢</button>
@@ -281,9 +284,11 @@ function applyI18n() {
     const ft = (tpl, v) => tpl.replace('{n}', nf(v));
     if (f) bits.push(ft(U.mFlight, f));
     if (b) bits.push(`${U.booster} ${b}` + (bf ? ` (${ft(U.vFlight, bf)})` : ''));
-    if (sh) bits.push(`Ship ${sh}` + (sf ? ` (${ft(U.vFlight, sf)})` : ''));
-    if (MISSION_SATS) bits.push(`${nf(MISSION_SATS)} × ${I.starlink} V3`);
-    const el = $('t-mission'); el.hidden = !bits.length; el.textContent = bits.join(' · ');
+    if (sh) bits.push(`${I.shipName || 'Ship'} ${sh}` + (sf ? ` (${ft(U.vFlight, sf)})` : ''));
+    if (MISSION_SATS) bits.push(U.satLine.replace('{n}', nf(MISSION_SATS)).replace('{starlink}', I.starlink));
+    // each piece isolated (FSI…PDI): Hebrew/Arabic mixed with "V3", numbers and brackets otherwise
+    // gets reordered across the separators
+    const el = $('t-mission'); el.hidden = !bits.length; el.textContent = bits.map(b => '\u2068' + b + '\u2069').join(' · ');
   }
   placeParts();
   document.title = `${I.starship} V3 · 3D`;
@@ -294,7 +299,8 @@ function applyI18n() {
   setControlLabels();
   document.querySelectorAll('#nav .views [data-face]').forEach(b => { b.textContent = U[FACE_KEYS[+b.dataset.face]]; });
   const zb = document.querySelectorAll('#nav .navbtns button');
-  zb[0].setAttribute('aria-label', U.zoomIn); zb[1].setAttribute('aria-label', U.zoomOut); zb[2].setAttribute('aria-label', U.fit);
+  zb[0].setAttribute('aria-label', U.roll); zb[0].title = U.roll;
+  zb[1].setAttribute('aria-label', U.zoomIn); zb[2].setAttribute('aria-label', U.zoomOut); zb[3].setAttribute('aria-label', U.fit);
   $('cube').setAttribute('aria-label', U.cube);
   card.querySelector('.x').setAttribute('aria-label', U.close); $('ss-close').setAttribute('aria-label', U.close);
   buildPartsNav(); renderCard(); buildCubeFaces();
@@ -351,7 +357,12 @@ composer.setPixelRatio(PR);
 composer.setSize(innerWidth, innerHeight);
 composer.addPass(new RenderPass(scene, camera));
 // guard: tight metal highlights near the engine lights can overflow half-float, which bloom would smear into black
-const clampPass = new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); if (!(c.r == c.r) || !(c.g == c.g) || !(c.b == c.b)) c.rgb = vec3(0.0); c.rgb = clamp(c.rgb, vec3(0.0), vec3(40.0)); gl_FragColor = vec4(min(c.rgb, vec3(40.0)), 1.0); }' });
+// NaN/Inf test on the float's bits (exponent all ones): comparisons like x != x get folded away by some GPU
+// compilers, this can't be
+const FINITE_GLSL = `
+float finite1(float x, float hi){ if ((floatBitsToUint(x) & 0x7f800000u) == 0x7f800000u) return 0.0; return clamp(x, 0.0, hi); }
+vec3 finite3(vec3 c, float hi){ return vec3(finite1(c.r, hi), finite1(c.g, hi), finite1(c.b, hi)); }`;
+const clampPass = new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; ' + FINITE_GLSL + ' void main(){ vec4 c = texture2D(tDiffuse, vUv); gl_FragColor = vec4(finite3(c.rgb, 40.0), 1.0); }' });
 composer.addPass(clampPass);
 const bloom = new UnrealBloomPass(new V2(innerWidth, innerHeight), 0.4, 0.5, 2.2);
 composer.addPass(bloom);
@@ -518,6 +529,7 @@ const MAKERS = {
   dark: () => new THREE.MeshStandardMaterial({ color: 0x3a3c41, metalness: 0.3, roughness: 0.5, side: THREE.DoubleSide }),
   darkNC: () => new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.6, roughness: 0.55 }),
   tile: () => { const T = shieldTex(); return new THREE.MeshStandardMaterial({ color: 0xffffff, map: T.map, roughnessMap: T.rough, bumpMap: T.bump, bumpScale: 2.2, alphaMap: T.mask, alphaTest: 0.5, metalness: 0.05, roughness: 1, side: THREE.DoubleSide }); },
+  noseTile: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: noseTileTex.map, roughnessMap: noseTileTex.rb, bumpMap: noseTileTex.rb, bumpScale: 2.2, alphaTest: 0.5, metalness: 0.05, roughness: 1, side: THREE.DoubleSide }),
   tileSolid: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: tileTex.map, roughnessMap: tileTex.rough, bumpMap: tileTex.bump, bumpScale: 2.2, metalness: 0.05, roughness: 1, side: THREE.DoubleSide }),
   // Raptor 3 is finished in black satin: head, plumbing and nozzle alike
   engineSteel: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42 }),
@@ -537,7 +549,7 @@ const MAKERS = {
   fluidLox: () => new THREE.MeshStandardMaterial({ color: 0x9fd8ff, emissive: 0x2a7fd0, emissiveIntensity: 0.55, transparent: true, opacity: 0.5, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
   fluidCh4: () => new THREE.MeshStandardMaterial({ color: 0xffc38a, emissive: 0xd2601a, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
 };
-const CLIP_KINDS = new Set(['ribbed', 'steelSlot', 'darkSlot', 'steel', 'steelMatte', 'dark', 'finDark', 'tile', 'tileSolid', 'fluidLox', 'fluidCh4']);
+const CLIP_KINDS = new Set(['noseTile', 'ribbed', 'steelSlot', 'darkSlot', 'steel', 'steelMatte', 'dark', 'finDark', 'tile', 'tileSolid', 'fluidLox', 'fluidCh4']);
 const FLUID_KINDS = new Set(['fluidLox', 'fluidCh4']);
 
 const PART_INFO = [
@@ -632,8 +644,17 @@ const bEng = G(-16, 0), bAft = G(-9, 1), bLox = G(-3, 2), bCh4 = G(2, 3), bFwd =
 const sEng = G(13, 6, true), sAft = G(19, 7, true), sLox = G(23, 8, true), sCh4 = G(27.5, 9, true), sPay = G(32, 10, true), sNose = G(37, 11, true);
 
 const S0 = 72.3;                       // ship base (Block 3 booster incl. hot-stage truss)
-const NOSE0 = S0 + 39.9, NOSE_L = 12.2, RHO = (R * R + NOSE_L * NOSE_L) / (2 * R), NOSE_TOP = NOSE0 + NOSE_L - 0.25;
-function noseR(x) { if (x <= 0) return R; if (x >= NOSE_L) return 0; return Math.max(0, Math.sqrt(RHO * RHO - x * x) - (RHO - R)); }
+// spherically blunted tangent ogive: the ogive arc runs smoothly into a round cap of radius NOSE_RN, and the
+// ogive radius is solved so the tip still sits NOSE_L above the nose base
+const NOSE0 = S0 + 39.9, NOSE_L = 12.2, NOSE_RN = 0.9, NOSE_TOP = NOSE0 + NOSE_L - 0.25;
+const capX = rho => Math.sqrt((rho - NOSE_RN) ** 2 - (rho - R) ** 2);   // cap centre height for ogive radius rho
+const RHO = (() => { let lo = R + 0.01, hi = 400; for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (capX(m) + NOSE_RN > NOSE_L) hi = m; else lo = m; } return (lo + hi) / 2; })();
+const NOSE_XS = capX(RHO), NOSE_XT = NOSE_XS * RHO / (RHO - NOSE_RN);  // cap centre, ogive-to-cap tangent point
+function noseR(x) {
+  if (x <= 0) return R; if (x >= NOSE_L) return 0;
+  if (x < NOSE_XT) return Math.sqrt(RHO * RHO - x * x) - (RHO - R);
+  return Math.sqrt(Math.max(0, NOSE_RN * NOSE_RN - (x - NOSE_XS) ** 2));
+}
 const WINDWARD = Math.PI / 4;          // tiles face down-and-toward the default camera
 const LEEWARD = WINDWARD + Math.PI;
 const dirA = (a, r = 1) => new V3(Math.sin(a) * r, 0, Math.cos(a) * r);
@@ -656,6 +677,116 @@ function tileAt(th, y) {
   if (d < half) return true;
   if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
   return false;
+}
+// Nose tile skin texture: u = angle round the nose, v = distance along its surface. Every row of tiles gets as many
+// tiles as fit its own circumference (so the tiles keep the hull's size all the way up), and each tile is the
+// Voronoi cell of its centre measured on the real surface. Where neighbouring rows have the same count the cells come
+// out as exactly the hull's hexagons (the first rows continue the hull's own rows); where the count steps down, the
+// few cells around the step become slightly irregular - like the custom-cut tiles on the real ship - instead of a
+// seam ring, a wedge-shaped hole or overlapping tiles. Rendered once on the GPU into two textures: colour + alpha (the
+// ragged heat-shield edge, whole tiles only) and bump (R) + roughness (G).
+let noseTileTex = null;
+const NOSE_ROWS_MAX = 96;
+function makeNoseTiles(prof, arc) {
+  const W = isMobile ? 2048 : 4096, H = isMobile ? 1024 : 2048, S = arc[arc.length - 1];
+  const repU = Math.round(CIRC / tileTex.w), NB = repU * 18, TWm = CIRC / NB, P = tileTex.h / 18;
+  const at = sv => {                          // radius and height of the tile surface at distance sv along it
+    let i = 1; while (i < arc.length - 1 && arc[i] < sv) i++;
+    const t = clamp((sv - arc[i - 1]) / ((arc[i] - arc[i - 1]) || 1));
+    return [lerp(prof[i - 1][0], prof[i][0], t), lerp(prof[i - 1][1], prof[i][1], t)];
+  };
+  // rows: centre distance along the surface, radius, height, tile count, phase (in tiles)
+  const rs = [], rr = [], rx = [], rn = [], ro = [];
+  const m0 = Math.floor((NOSE0 - S0) / P) - 2;
+  for (let m = m0; rs.length < NOSE_ROWS_MAX; m++) {
+    const sv = S0 + m * P - NOSE0;
+    if (sv - 2 * P > S) break;
+    const [r, x] = at(clamp(sv, 0, S)), N = Math.max(6, Math.round(TAU * r / TWm));
+    let off;
+    if (!rn.length || N === NB && rn[rn.length - 1] === NB) off = (m % 2 + 2) % 2 ? 0.5 : 0;   // the hull's own stagger
+    else {
+      // interlock exactly on the windward centre line (the side you see most); the mismatch of a count change is
+      // pushed round to the leeward side, which is mostly bare steel
+      const k = rn.length - 1, Np = rn[k], i = Math.round(WINDWARD / TAU * Np - ro[k]);
+      const target = (i + ro[k] + 0.5) / Np;                       // between two tiles of the row below
+      off = ((target * N) % 1 + 1) % 1;
+    }
+    rs.push(sv); rr.push(r); rx.push(x); rn.push(N); ro.push(off);
+  }
+  const pad = a => { const o = new Array(NOSE_ROWS_MAX).fill(0); a.forEach((v, i) => { o[i] = v; }); return o; };
+  const grout = TWm / 2 * 0.046, bevel = TWm / 2 * 0.137;         // same proportions as the hull tiles (makeTiles)
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uS: { value: S }, uP: { value: P }, uRows: { value: rs.length }, uMode: { value: 0 },
+      uRowS: { value: pad(rs) }, uRowR: { value: pad(rr) }, uRowX: { value: pad(rx) }, uRowN: { value: pad(rn) }, uRowOff: { value: pad(ro) },
+      uGrout: { value: grout }, uBevel: { value: bevel }, uNose0: { value: NOSE0 }, uWind: { value: WINDWARD },
+    },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `
+#define ROWS ${NOSE_ROWS_MAX}
+uniform float uS, uP, uGrout, uBevel, uNose0, uWind; uniform int uRows, uMode;
+uniform float uRowS[ROWS], uRowR[ROWS], uRowX[ROWS], uRowN[ROWS], uRowOff[ROWS];
+varying vec2 vUv;
+const float TAU = 6.28318530718, PI = 3.14159265359;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float rAt(float s){
+  float f = (s - uRowS[0]) / uP; int k = int(clamp(floor(f), 0.0, float(uRows - 2)));
+  return mix(uRowR[k], uRowR[k + 1], clamp(f - float(k), 0.0, 1.0));
+}
+bool tiled(float th, float y){                       // = tileAt() in the page script
+  float d = abs(mod(th - uWind + PI, TAU) - PI);
+  float t = clamp((y - (uNose0 - 7.0)) / 8.5, 0.0, 1.0);
+  if (d < 1.62 + 0.42 * t * t * (3.0 - 2.0 * t)) return true;
+  return y > uNose0 + 7.3 + 0.7 * (d / PI);
+}
+void main(){
+  float s = vUv.y * uS, phi = vUv.x * TAU, r = rAt(s);
+  int kc = int(floor((s - uRowS[0]) / uP + 0.5));
+  vec2 cand[24]; int nc = 0;
+  float best = 1e9; vec2 b1 = vec2(0.0); int bk = 0; float bi = 0.0;
+  for (int dk = -2; dk <= 2; dk++) {
+    int k = kc + dk; if (k < 0 || k >= uRows) continue;
+    float N = uRowN[k], off = uRowOff[k], rm = 0.5 * (r + uRowR[k]);
+    float i0 = floor(phi / TAU * N - off);
+    for (int di = -1; di <= 2; di++) {
+      float i = i0 + float(di);
+      float dphi = (i + off) / N * TAU - phi; dphi -= TAU * floor(dphi / TAU + 0.5);
+      vec2 c = vec2(dphi * rm, uRowS[k] - s); float d = dot(c, c);
+      if (nc < 24) { cand[nc] = c; nc++; }
+      if (d < best) { best = d; b1 = c; bk = k; bi = mod(i, N); }
+    }
+  }
+  float e = 1e9;                                     // distance to the nearest cell edge (bisector)
+  for (int j = 0; j < 24; j++) { if (j >= nc) break; vec2 dd = cand[j] - b1; float L = length(dd); if (L < 1e-5) continue; e = min(e, (dot(cand[j], cand[j]) - best) / (2.0 * L)); }
+  float th = (bi + uRowOff[bk]) / uRowN[bk] * TAU;
+  if (!tiled(th, uNose0 + uRowX[bk])) { gl_FragColor = uMode == 0 ? vec4(0.0) : vec4(55.0 / 255.0, 240.0 / 255.0, 0.0, 1.0); return; }
+  vec2 id = vec2(float(bk), bi);
+  float h1 = hash(id), h2 = hash(id + 7.1), h3 = hash(id + 13.7);
+  float aa = max(fwidth(e), 1e-5);
+  float inTile = smoothstep(uGrout - aa, uGrout + aa, e), inTop = smoothstep(uBevel - aa, uBevel + aa, e);
+  if (uMode == 0) {
+    float v = 48.0 + h1 * 14.0, tint = h2 * 3.0;
+    vec3 c = mix(vec3(16.0, 16.0, 18.0), vec3(v + tint, v, v - 1.0), inTile) / 255.0;
+    gl_FragColor = vec4(pow(c, vec3(2.2)), 1.0);    // linear; the sRGB target encodes it
+  } else {
+    float bump = mix(55.0, mix(150.0, 168.0, inTop), inTile), rough = mix(240.0, 120.0 + h3 * 40.0, inTile);
+    gl_FragColor = vec4(bump / 255.0, rough / 255.0, 0.0, 1.0);
+  }
+}`,
+    depthTest: false, depthWrite: false,
+  });
+  const qScene = new THREE.Scene(), qCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  qScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+  const opts = { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.RepeatWrapping, wrapT: THREE.ClampToEdgeWrapping, depthBuffer: false };
+  const A = new THREE.WebGLRenderTarget(W, H, { ...opts, colorSpace: THREE.SRGBColorSpace });
+  const B = new THREE.WebGLRenderTarget(W, H, opts);
+  const prev = renderer.getRenderTarget();
+  mat.uniforms.uMode.value = 0; renderer.setRenderTarget(A); renderer.render(qScene, qCam);
+  mat.uniforms.uMode.value = 1; renderer.setRenderTarget(B); renderer.render(qScene, qCam);
+  renderer.setRenderTarget(prev);
+  mat.dispose();
+  for (const t of [A.texture, B.texture]) t.anisotropy = maxAniso;
+  return { map: A.texture, rb: B.texture };
 }
 let shieldTexCache = null;
 function shieldTex() {
@@ -791,7 +922,7 @@ const glowVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectio
 // runs down -Y from the nozzle exit at y = 0). Turbulent 3D noise scrolls downstream, temperature maps to a
 // blackbody-like ramp, and Mach diamonds brighten the first few meters.
 const flameVS = `varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
-const flameFS = `
+const flameFS = FINITE_GLSL + `
 uniform float uTime, uI, uR0, uR1, uRB, uLen, uDiam, uSpeed, uDens, uSeed;
 uniform vec3 uCam;
 varying vec3 vPos;
@@ -839,7 +970,7 @@ void main(){
     tr *= exp(-k * 0.45);
     if (tr < 0.03) break;
   }
-  gl_FragColor = vec4(acc * uI, 1.0);
+  gl_FragColor = vec4(finite3(acc * uI, 30.0), 1.0);
 }`;
 const FLAME_STEPS = isMobile ? 28 : 44;
 const flames = [];
@@ -1172,23 +1303,67 @@ let SLOT = null;
   for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, d0 - y0 - 0.6, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y0) / 2 + 0.3); m.rotation.y = DC; }
 }
 // nose cone
+// profile [r, x]: ogive part by height, then the cap by angle so the round tip is evenly sampled
 const nosePts = [];
-for (let i = 0; i <= 44; i++) { const x = (NOSE_L - 0.7) * i / 44; nosePts.push([noseR(x), x]); }
-{ const r0 = noseR(NOSE_L - 0.7); for (let k = 1; k <= 8; k++) { const a = k / 8 * Math.PI / 2; nosePts.push([r0 * Math.cos(a), NOSE_L - 0.7 + 0.45 * Math.sin(a)]); } }
+for (let i = 0; i <= 48; i++) { const x = NOSE_XT * i / 48; nosePts.push([noseR(x), x]); }
+{ const a0 = Math.asin((NOSE_XT - NOSE_XS) / NOSE_RN); for (let k = 1; k <= 16; k++) { const a = a0 + (Math.PI / 2 - a0) * k / 16; nosePts.push([NOSE_RN * Math.cos(a), NOSE_XS + NOSE_RN * Math.sin(a)]); } }
 nosePts[nosePts.length - 1][0] = 0.001;
+// tile skin: pushed out along the surface normal (not just radially, which would leave the tip bare)
+function noseOffset(pts, d) {
+  return pts.map(([r, x], i) => {
+    const [r0, x0] = pts[Math.max(0, i - 1)], [r1, x1] = pts[Math.min(pts.length - 1, i + 1)];
+    const dr = r1 - r0, dx = x1 - x0, l = Math.hypot(dr, dx) || 1;
+    return [Math.max(0.001, r + d * dx / l), x - d * dr / l];
+  });
+}
 {
   const g = lathe(nosePts.map(([r, y]) => [r, y + NOSE0]), 128);
   scaleUV(g, 1, 12 / TEXM, 0, NOSE0 / TEXM);
   add(sNose, g, 's-nose', 'steel', 'Nose cone');
-  const tg = shipUV(lathe(nosePts.map(([r, y]) => [r + 0.04, y + NOSE0]), 128));
-  add(sNose, tg, 's-tiles', 'tile', 'Heat shield tiles · nose').userData.maskFn = tileAt;
+  // tiles keep one size and shape all the way up, like the real ship: below the dome every row of hexes gets
+  // its own tile count from its own circumference (makeNoseTiles), rows lined up with the hull's rows at the
+  // base; the dome is a separate cap mapped outward from the tip by distance along the surface. The two
+  // patterns meet in a ring at the dome, as on the real nose.
+  // the cap takes over where the nose has narrowed to ~1.6 m radius: above that the circumference shrinks so fast
+  // that row bands would need a seam every row or two
+  let SEAM = NOSE_XT; while (noseR(SEAM) < 1.6 && SEAM > 0) SEAM -= 0.02;
+  const tp = noseOffset(nosePts, 0.04);
+  const lowPts = tp.filter(([, x]) => x < SEAM); lowPts.push([noseR(SEAM) + 0.04, SEAM]);
+  lowPts[0] = [R + 0.04, 0];                 // meet the hull's tile skin exactly at the nose base
+  const lowArc = [0]; for (let i = 1; i < lowPts.length; i++) lowArc.push(lowArc[i - 1] + Math.hypot(lowPts[i][0] - lowPts[i - 1][0], lowPts[i][1] - lowPts[i - 1][1]));
+  const S = lowArc[lowArc.length - 1];
+  const tg = lathe(lowPts.map(([r, y]) => [r, y + NOSE0]), 128), tuv = tg.attributes.uv;
+  for (let k = 0; k < tuv.count; k++) tuv.setY(k, lowArc[k % lowPts.length] / S);   // v = distance along the surface
+  noseTileTex = makeNoseTiles(lowPts, lowArc);
+  add(sNose, tg, 's-tiles', 'noseTile', 'Heat shield tiles · nose').userData.maskFn = tileAt;
+  const capPts = [[noseR(SEAM) + 0.04, SEAM], ...tp.filter(([, x]) => x > SEAM)].reverse();   // tip first
+  const arc = [0]; for (let i = 1; i < capPts.length; i++) arc.push(arc[i - 1] + Math.hypot(capPts[i][0] - capPts[i - 1][0], capPts[i][1] - capPts[i - 1][1]));
+  const SEG = 128, pos = [], uv = [], idx = [];
+  capPts.forEach(([r, x], i) => {
+    for (let j = 0; j <= SEG; j++) {
+      const ph = j / SEG * TAU;
+      pos.push(Math.sin(ph) * r, x + NOSE0, Math.cos(ph) * r);
+      // radius in the map = geometric mean of distance-from-tip and true radius: splits the unavoidable flattening
+      // error evenly between the two directions, so cap tiles stay close to their true shape out to its edge
+      const rho = Math.sqrt(arc[i] * Math.max(r, 1e-4));
+      uv.push(rho * Math.sin(ph) / tileTex.w + 0.37, rho * Math.cos(ph) / tileTex.h + 0.21);
+    }
+  });
+  for (let i = 0; i < capPts.length - 1; i++) for (let j = 0; j < SEG; j++) {
+    const a = i * (SEG + 1) + j, b = a + SEG + 1;
+    idx.push(a, a + 1, b, a + 1, b + 1, b);
+  }
+  const cap = new THREE.BufferGeometry();
+  cap.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); cap.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  cap.setIndex(idx); cap.computeVertexNormals();
+  add(sNose, cap, 's-tiles', 'tileSolid', 'Heat shield tiles · nose');
   const ht = new THREE.SphereGeometry(1.35, 40, 20); ht.translate(0, NOSE0 + 3.2, 0);
   add(sNose, ht, 's-nose', 'steelNC', 'LOX header tank', { inner: true });
   add(sNose, cylG(0.17, 0.17, NOSE0 - 0.3, NOSE0 + 1.9, 16, true), 's-nose', 'steelNC', 'Header transfer tube', { inner: true });
 }
 // flaps
-function flapShape(s, cr, ct, drop) {
-  const sh = new THREE.Shape(), rr = Math.min(0.9, ct * 0.25), yB = drop, yT = drop + ct;
+function flapShape(s, cr, ct, drop, corner = 0.9) {
+  const sh = new THREE.Shape(), rr = Math.min(corner, ct * 0.25), yB = drop, yT = drop + ct;
   sh.moveTo(0, 0);
   sh.lineTo(s - rr, yB * (s - rr) / s);
   sh.quadraticCurveTo(s, yB, s, yB + rr);
@@ -1197,15 +1372,15 @@ function flapShape(s, cr, ct, drop) {
   sh.lineTo(0, cr); sh.lineTo(0, 0);
   return sh;
 }
-function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tileSolid') {
+function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tileSolid', hingeR = 0.4, corner = 0.9) {
   const holder = new THREE.Group(); holder.rotation.y = a - Math.PI / 2; group.add(holder);
   const rg = new THREE.Group(); rg.userData.radial = 2.3; holder.add(rg); radialGroups.push(rg);
   const inner = new THREE.Group(); inner.position.set(rootR, y0, 0); inner.rotation.z = tilt; rg.add(inner);
-  const sh = flapShape(span, cr, ct, drop);
+  const sh = flapShape(span, cr, ct, drop, corner);
   const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
   eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
   add(inner, eg, 's-flaps', kind, label);
-  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(0.4, 0.4, cr * 0.9, 24, 1, false, ts, Math.PI); g.translate(0.05, cr / 2, 0);
+  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, cr * 0.9, 24, 1, false, ts, Math.PI); g.translate(hingeR * 0.12, cr / 2, 0);
     scaleUV(g, kd === 'tileSolid' ? 1.25 / tileTex.w : 0.1, kd === 'tileSolid' ? cr / tileTex.h : 0.2); add(inner, g, 's-flaps', kd, label + ' · hinge fairing'); };
   if (kind === 'tileSolid') hingeHalf(0, 'tileSolid'), hingeHalf(Math.PI, 'tileSolid');
   else {
@@ -1223,8 +1398,10 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   }
 }
 const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
-flap(sAft, FA1, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (left)');
-flap(sAft, FA2, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (right)');
+// aft flaps (per photos): flat lower edge level with the bottom of the ship, a long vertical outer edge, then a steep
+// straight edge back up to the hull; sharp corners
+flap(sAft, FA1, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (left)', 'tileSolid', 0.4, 0.2);
+flap(sAft, FA2, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (right)', 'tileSolid', 0.4, 0.2);
 // forward flaps sit high on the nose and sweep up to a point
 // forward flaps: hinge line runs up the nose cone; the free tip hangs at the BOTTOM (aft) with a level lower edge
 // and a swept upper edge - root bottom sits just above the SpaceX logo
@@ -1232,8 +1409,8 @@ const FF_Y = NOSE0 + 3.55, FF_TILT = Math.atan((noseR(3.55) - noseR(9.15)) / 5.6
 // the flap body is tilted to follow the cone; drop its lower edge by the same slope (plus ~4°) so that edge ends up
 // square to the ship's axis, even angled slightly aft, as on the real ship
 const FF_DROP = -2.6 * (Math.tan(FF_TILT) + 0.07);
-flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC');
-flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC');
+flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC', 0.22);
+flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC', 0.22);
 
 // ---------------------------------------------------------------- serial stencils
 // Flight vehicles carry no livery - just stencilled serials in SpaceX's own short form ("B21", "S41"),
@@ -1425,6 +1602,7 @@ function applyOrientation() {
 // the cursor, pans with the right button / two fingers, can go all the way underneath, and glides with inertia.
 const controls = { target: new V3(), update() { camera.up.set(0, 1, 0); camera.lookAt(this.target); } };
 const navVel = { yaw: 0, pitch: 0, px: 0, py: 0 };
+let rolling = false;          // ⟳ button: the whole stack turns slowly about its own long axis
 const navPivot = new V3(), zoomPt = new V3();
 let zoomPending = 0, camAnim = null, gesture = null;
 const tvHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -1476,7 +1654,7 @@ const cubeCanvas = document.getElementById('cube');
 const CUBE_PX = isMobile ? 84 : 112;
 const cubeR = new THREE.WebGLRenderer({ canvas: cubeCanvas, alpha: true, antialias: true });
 cubeR.setPixelRatio(PR); cubeR.setSize(CUBE_PX, CUBE_PX, false);
-const cubeScene = new THREE.Scene(), cubeCam = new THREE.OrthographicCamera(-1.62, 1.62, 1.62, -1.62, 0.1, 20);
+const cubeScene = new THREE.Scene(), cubeCam = new THREE.OrthographicCamera(-1.78, 1.78, 1.78, -1.78, 0.1, 20);   // fits the cube's corner-on diagonal (√3)
 const FACE_KEYS = ['nose', 'engines', 'top', 'belly', 'side', 'side'];     // +x -x +y -y +z -z in the vehicle frame
 function faceTex(label, hot) {
   const c = mkCanvas(128, 128), g = c.getContext('2d');
@@ -1502,8 +1680,9 @@ const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), faceMats);
 cube.add(new THREE.LineSegments(new THREE.EdgesGeometry(cube.geometry), new THREE.LineBasicMaterial({ color: 0x8a93a3 })));
 cubeScene.add(cube);
 function vehicleBasis() {
-  const A = Y.clone().applyQuaternion(pivot.quaternion);                  // toward the nose
-  const U = dirA(WINDWARD).applyQuaternion(pivot.quaternion).negate();    // away from the belly
+  const q = pivot.quaternion.clone().multiply(root.quaternion);           // orientation + roll about the axis
+  const A = Y.clone().applyQuaternion(q);                                  // toward the nose
+  const U = dirA(WINDWARD).applyQuaternion(q).negate();                    // away from the belly
   return { A, U, S: new V3().crossVectors(A, U) };
 }
 function syncCube() { pivot.updateMatrix(); const { A, U, S } = vehicleBasis(); cube.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(A, U, S)); }
@@ -1544,6 +1723,7 @@ cubeCanvas.addEventListener('click', e => { const i = cubeHit(e); if (i < 0) ret
 document.querySelector('#nav .views').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.face; if (f === undefined) return; userInteracted(); flyTo(faceView(+f)); });
 document.querySelector('#nav .navbtns').addEventListener('click', e => {
   const z = e.target.closest('button')?.dataset.z; if (!z) return;
+  if (z === 'roll') { rolling = !rolling; e.target.closest('button').classList.toggle('on', rolling); return; }
   userInteracted();
   if (z === 'fit') { flyTo(defaultView()); return; }
   zoomPt.copy(controls.target); zoomPending += z === 'in' ? -0.55 : 0.55;
@@ -1624,6 +1804,7 @@ document.getElementById('controls').addEventListener('click', e => {
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'reset') {
     st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; paused = false; select(null);
+    rolling = false; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
     for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
     userMoved = false; autoSpin = true; flyTo(defaultView());
   }
@@ -1648,7 +1829,7 @@ function pick() {
   }
   return null;
 }
-let lastTap = { t: 0, x: 0, y: 0 };
+let lastTap = { t: 0, x: 0, y: 0 }, lastSelectT = 0;
 function clickAt(e) {
   const now = performance.now();
   // a second tap in the same spot flies there (double-tap on touch; mice also get dblclick below)
@@ -1656,7 +1837,11 @@ function clickAt(e) {
   lastTap = { t: now, x: e.clientX, y: e.clientY };
   mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   const h = pick();
-  if (h) select(h.object.userData.part, false); else if (selected) select(null);
+  // click selects (highlight + info card); clicking the same part again or anywhere else clears it. A quick second
+  // click is a double-click (fly there), not a toggle, so it keeps the selection
+  const pid = h && h.object.userData.part;
+  if (pid && pid !== selected) { select(pid, false); lastSelectT = now; }
+  else if (selected && !(pid === selected && now - lastSelectT < 350)) select(null);
 }
 function flyToPoint(x, y) {
   const P = worldAt(x, y); if (!P) return;
@@ -1827,7 +2012,7 @@ function tick() {
   // highlight
   const pulse = 0.16 + 0.1 * Math.sin(performance.now() / 260);
   for (const id in parts) {
-    const kk = id === selected ? pulse : id === hovered ? 0.035 : 0;
+    const kk = id === selected ? pulse : 0;
     const innerOnly = parts[id].inner && st.sectionT && id === selected;
     for (const m of parts[id].mats) {
       const key = Object.keys(parts[id].cache).find(q => parts[id].cache[q] === m);
@@ -1865,8 +2050,9 @@ function tick() {
     scene.environmentRotation.setFromQuaternion(ENV_Q.copy(camera.quaternion).invert());
   }
 
-  // shadows only need re-rendering while parts are moving or being cut
-  const moving = Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
+  if (rolling) { root.rotation.y = (root.rotation.y + dt * 0.35) % TAU; syncCube(); }
+  // shadows only need re-rendering while parts are moving, being cut or turning
+  const moving = rolling || Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
   if (moving || frameNo < 4) renderer.shadowMap.needsUpdate = true;
   // bloom is only there for the fire, so skip both full-screen passes when nothing is burning
   bloom.enabled = clampPass.enabled = st.fire > 0.01;
@@ -1943,6 +2129,7 @@ if (location.hash.startsWith('#dbg=')) setTimeout(() => {
   paused = !d.run; autoSpin = false; userMoved = true; layout(); camera.updateMatrixWorld();
   const dv = d.face !== undefined ? faceView(d.face) : defaultView(); camAnim = null; camera.position.copy(dv.pos); controls.target.copy(dv.target);
   if (d.turn) orbitCam(d.turn, 0, controls.target);
+  if (d.roll) document.querySelector('#nav [data-z="roll"]').click();
   if (d.sel) select(d.sel, !d.look);
   if (d.look) setTimeout(() => window.__s.look(d.look[0], d.look.slice(1)), 50);
   // "frame":["b-fwd",x,y,z,dist,meshIndex]: aim at one mesh of a part from a model-space direction, no animation
