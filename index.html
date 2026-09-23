@@ -7930,6 +7930,18 @@
             hi: "बैंडवैगन", ar: "باندواغون", tr: "Bandwagon"
         };
 
+        // "Transporter N" is SpaceX's other rideshare program name. Gemini and Google both leave it
+        // in Latin script inside an otherwise-translated title ("פלקון 9 | Transporter 18" -
+        // reported live), so it gets the same fixed-term treatment as Bandwagon. Only matched
+        // when followed by its flight number, so the ordinary word in a description is untouched.
+        const TRANSPORTER_I18N = {
+            en: "Transporter", he: "טרנספורטר", iw: "טרנספורטר", es: "Transporter", fr: "Transporter",
+            de: "Transporter", ru: "Транспортер", zh: "运输者", it: "Transporter", cs: "Transporter",
+            sv: "Transporter", nl: "Transporter", da: "Transporter", pt: "Transporter", pl: "Transporter",
+            hi: "ट्रांसपोर्टर", ar: "ترانسبورتر", tr: "Transporter"
+        };
+        const TRANSPORTER_NAME_RE = /\btransporter(?=[\s-]*\d)/gi;
+
         const STARLINK_BIZ_I18N = {
             en: { btn: 'Business customers', title: 'Business customers', aviation: 'Aviation', maritime: 'Maritime', telecom: 'Telecom', government: 'Government', loading: 'Loading Wikipedia…', error: 'Wikipedia could not be reached. Showing known names.', footnote: 'Publicly reported names — not an official SpaceX list.', source: 'Wikipedia' },
             he: { btn: 'לקוחות עסקיים', title: 'לקוחות עסקיים', aviation: 'תעופה', maritime: 'ימי', telecom: 'סלולר', government: 'ממשלתי', loading: 'טוען את ויקיפדיה…', error: 'לא ניתן לטעון את ויקיפדיה. מוצגים שמות ידועים.', footnote: 'שמות שפורסמו בציבור — לא רשימה רשמית של SpaceX.', source: 'ויקיפדיה' },
@@ -8516,6 +8528,7 @@
         // with an unrelated dictionary meaning, not just an invented brand Google has no entry
         // for at all).
         const BANDWAGON_MT_PLACEHOLDER = 'XBANDWAGONZQ9X';
+        const TRANSPORTER_MT_PLACEHOLDER = 'XTRANSPORTERZQ9X';
         // Same class of problem as Starship: Google's MT reads the surname "Roman" as the
         // adjective for ancient Rome. Longest phrase first so "Nancy Grace Roman Space
         // Telescope" is not left as a leftover "Space Telescope" after the shorter name swap.
@@ -8545,12 +8558,14 @@
             const hasStarship = /\bstarship\b/i.test(text);
             const hasStarlink = /\bstarlink\b/i.test(text);
             const hasBandwagon = /\bbandwagon\b/i.test(text);
+            const hasTransporter = /\btransporter(?=[\s-]*\d)/i.test(text);
             const hasRoman = /Nancy Grace Roman/i.test(text);
             let textToSend = text;
             if (hasRoman) textToSend = shieldRomanTelescopeForMt(textToSend);
             if (hasStarship) textToSend = textToSend.replace(/\bstarship\b/gi, STARSHIP_MT_PLACEHOLDER);
             if (hasStarlink) textToSend = textToSend.replace(/\bstarlink\b/gi, STARLINK_MT_PLACEHOLDER);
             if (hasBandwagon) textToSend = textToSend.replace(/\bbandwagon\b/gi, BANDWAGON_MT_PLACEHOLDER);
+            if (hasTransporter) textToSend = textToSend.replace(TRANSPORTER_NAME_RE, TRANSPORTER_MT_PLACEHOLDER);
             const googleLang = GOOGLE_TRANSLATE_LANG_MAP[langKey] || langKey;
             const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=' +
                 encodeURIComponent(googleLang) + '&dt=t&q=' + encodeURIComponent(textToSend);
@@ -8585,6 +8600,10 @@
                         if (hasBandwagon) {
                             const bandwagonTerm = BANDWAGON_I18N[langKey] || BANDWAGON_I18N.en;
                             translated = translated.replace(new RegExp(BANDWAGON_MT_PLACEHOLDER, 'gi'), bandwagonTerm);
+                        }
+                        if (hasTransporter) {
+                            const transporterTerm = TRANSPORTER_I18N[langKey] || TRANSPORTER_I18N.en;
+                            translated = translated.replace(new RegExp(TRANSPORTER_MT_PLACEHOLDER, 'gi'), transporterTerm);
                         }
                         if (hasRoman) translated = restoreRomanTelescopeFromMt(translated, langKey);
                         // Applied here, on the whole sentence, rather than only after insertion:
@@ -9744,6 +9763,7 @@
             const starTerm = STARSHIP_I18N[key] || STARSHIP_I18N.en;
             const linkTerm = STARLINK_I18N[key] || STARLINK_I18N.en;
             const bwTerm = BANDWAGON_I18N[key] || BANDWAGON_I18N.en;
+            const tpTerm = TRANSPORTER_I18N[key] || TRANSPORTER_I18N.en;
             // "Flight" first: doing "Starship" first would leave a localized term sitting next to
             // the still-English "Flight N", and some languages' flight template starts with the
             // number (tr: "{n}. Uçuş"), so the two substitutions must not overlap. "Starlink" has
@@ -9763,6 +9783,7 @@
                 .replace(/starship/gi, starTerm)
                 .replace(/starlink/gi, linkTerm)
                 .replace(/bandwagon/gi, bwTerm)
+                .replace(TRANSPORTER_NAME_RE, tpTerm)
                 // "Crew-N" (Commercial Crew Program numbering) is deliberately translatable -
                 // "Crew" is an ordinary English word, not a brand, unlike everything else this
                 // function protects (see this function's own comment and the identical reasoning
