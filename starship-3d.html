@@ -1,0 +1,1665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05070b">
+<title>Starship Vehicle Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Heebo:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--accent:#eea774;--fg:#e9ecf1;--mute:#7b8392;--line:rgba(255,255,255,.1);--panel:rgba(12,14,19,.74)}
+  html,body{margin:0;height:100%;background:#05070b;color:var(--fg);font-family:Inter,system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+  canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:2}
+  .brand{position:absolute;left:28px;top:22px}
+  .eyebrow{font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+  .brand h1{margin:9px 0 0;font-weight:500;font-size:44px;letter-spacing:.16em;line-height:1}
+  .brand .sub{margin-top:9px;color:var(--accent);font-size:12.5px;letter-spacing:.01em}
+  #parts{position:absolute;left:28px;top:152px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;pointer-events:auto}
+  .pill{font:500 11.5px/1 Inter,sans-serif;color:#cfd4dc;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:background-color .15s,color .15s,border-color .15s}
+  .pill:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.26);color:#fff}
+  .pill.on{background:var(--accent);color:#1b1208;border-color:var(--accent)}
+  .pill i{font-style:normal;opacity:.5;margin-right:7px;font-family:'JetBrains Mono',monospace;font-size:10.5px}
+  .pill.on i{opacity:.7}
+  .sep{font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--mute);margin:6px 0 1px 2px;text-transform:uppercase}
+  #stats{position:absolute;right:28px;top:24px;display:flex;gap:24px;font-family:'JetBrains Mono',monospace}
+  #stats div{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+  #stats span{font-size:9.5px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+  #stats b{font-weight:500;font-size:12.5px;color:var(--fg);white-space:nowrap}
+  #card{position:absolute;right:28px;top:80px;width:310px;background:var(--panel);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px;pointer-events:auto;opacity:0;transform:translateY(-6px);visibility:hidden;transition:opacity .25s,transform .25s,visibility .25s}
+  #card.show{opacity:1;transform:none;visibility:visible}
+  #card .k{font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--mute);text-transform:uppercase}
+  #card h2{margin:8px 0 10px;font-size:19px;font-weight:600;letter-spacing:.005em}
+  #card p{margin:0;font-size:12.5px;line-height:1.55;color:#c3c9d3}
+  #card .row{display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  #card .row div{flex:1;min-width:0}
+  #card .row span{display:block;font:500 9px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+  #card .row b{display:block;margin-top:6px;font:500 11.5px/1.2 'JetBrains Mono',monospace;color:var(--fg)}
+  #card .x{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--mute);font-size:16px;cursor:pointer;transition:background-color .15s,color .15s}
+  #card .x:hover{background:rgba(255,255,255,.08);color:#fff}
+  #controls{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto}
+  #controls .pill{padding:8px 15px}
+  #nav{position:absolute;right:22px;bottom:18px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:auto}
+  #cube{width:112px;height:112px;cursor:pointer;display:block}
+  #nav .navbtns{display:flex;gap:6px}
+  #nav .views{display:flex;flex-direction:column;gap:5px;align-items:flex-end;position:absolute;right:124px;bottom:44px}
+  #nav .views .pill{padding:6px 11px;font-size:11px}
+  #nav .navbtns button{width:32px;height:32px;padding:0;border-radius:50%;font:500 15px/1 Inter,sans-serif;color:#cfd4dc;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
+  #nav .navbtns button:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#fff}
+  #pivot{position:absolute;left:0;top:0;width:12px;height:12px;margin:-7px 0 0 -7px;border:1.5px solid var(--accent);border-radius:50%;box-shadow:0 0 0 4px rgba(238,167,116,.16);opacity:0;transition:opacity .15s;pointer-events:none}
+  #hint{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--mute);white-space:nowrap;transition:opacity .8s;text-transform:uppercase}
+  #tip{position:absolute;left:0;top:0;padding:6px 9px;font:500 11px/1 Inter,sans-serif;color:#fff;background:rgba(10,12,16,.86);border:1px solid var(--line);border-radius:7px;pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap}
+  #loader{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:#05070b;transition:opacity .7s;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.24em;color:var(--mute);text-transform:uppercase}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
+  /* scripts without Latin letters: no Inter/JetBrains glyphs, and wide tracking breaks them apart */
+  html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(.brand h1,.eyebrow,.sep,#stats span,#card .k,#card .row span,#hint){letter-spacing:.02em}
+  html:is([lang=he],[lang=ar]) body{font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif}
+  /* right-to-left languages: mirror the whole overlay */
+  html[dir=rtl] .brand{left:auto;right:28px;text-align:right}
+  html[dir=rtl] #parts{left:auto;right:28px;align-items:flex-end}
+  html[dir=rtl] .pill i{margin-right:0;margin-left:7px}
+  html[dir=rtl] #stats{right:auto;left:28px}
+  html[dir=rtl] #stats div{align-items:flex-start}
+  html[dir=rtl] #card{right:auto;left:28px}
+  html[dir=rtl] #card .x{right:auto;left:10px}
+  html[dir=rtl] #nav{right:auto;left:22px}
+  html[dir=rtl] #nav .views{right:auto;left:124px;align-items:flex-start}
+  /* embedded in the site: a close button in the site's own style */
+  #ss-close{display:none;position:absolute;top:18px;right:22px;width:38px;height:38px;border-radius:50%;border:2px solid #34d399;background:rgba(5,7,11,.55);color:#34d399;font-size:20px;line-height:1;cursor:pointer;pointer-events:auto;transition:background-color .15s,color .15s,border-color .15s;z-index:3}
+  #ss-close:hover{background:rgba(52,211,153,.12);color:#6ee7b7;border-color:#6ee7b7}
+  html.embed #ss-close{display:grid;place-items:center}
+  html.embed #stats{right:82px}
+  html.embed[dir=rtl] #ss-close{right:auto;left:22px}
+  html.embed[dir=rtl] #stats{right:auto;left:82px}
+  @media (max-width:760px){
+    .brand{left:16px;top:16px}
+    .brand h1{font-size:28px}
+    .brand .sub{font-size:11.5px}
+    #stats{display:none}
+    #parts{top:auto;bottom:70px;left:0;right:0;flex-direction:row;overflow-x:auto;padding:4px 16px;scrollbar-width:none;align-items:center}
+    #parts::-webkit-scrollbar{display:none}
+    .sep{display:none}
+    #controls{bottom:max(16px,env(safe-area-inset-bottom));gap:4px}
+    #controls .pill{padding:8px 8px;font-size:10.5px}
+    #nav{top:12px;right:10px;bottom:auto;gap:6px;align-items:flex-end}
+    #cube{width:84px;height:84px}
+    #nav .views{display:none}
+    #nav .navbtns button{width:28px;height:28px;font-size:13px}
+    #card{left:12px;right:12px;width:auto;top:auto;bottom:156px}
+    #hint{display:none}
+    html[dir=rtl] .brand{right:16px}
+    html[dir=rtl] #parts{left:0;right:0;flex-direction:row-reverse}
+    html[dir=rtl] #nav{left:10px;right:auto;align-items:flex-start}
+    html[dir=rtl] #card{left:12px}
+    #ss-close{top:12px;right:10px;width:34px;height:34px}
+    html.embed #nav{top:56px}
+    html.embed[dir=rtl] #ss-close{left:10px}
+  }
+</style>
+<script src="starship-3d-i18n.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+<div id="vignette"></div>
+<div id="ui">
+  <div class="brand">
+    <div class="eyebrow" id="t-eyebrow">SpaceX · Vehicle study</div>
+    <h1 id="t-title">STARSHIP</h1>
+    <div class="sub">Super Heavy + Ship · Block 3</div>
+  </div>
+  <nav id="parts"></nav>
+  <div id="stats">
+    <div><span id="t-height">Height</span><b id="v-height">124.4 m</b></div>
+    <div><span id="t-diameter">Diameter</span><b id="v-diameter">9 m</b></div>
+    <div class="opt"><span id="t-raptors">Raptors</span><b>39</b></div>
+    <div class="opt"><span id="t-thrust">Thrust</span><b id="v-thrust">~90,600 kN</b></div>
+    <div class="opt"><span id="t-liftoff">Liftoff mass</span><b id="v-liftoff">~5,300 t</b></div>
+    <div><span id="t-selected">Selected</span><b id="station">—</b></div>
+  </div>
+  <button id="ss-close" aria-label="Close">×</button>
+  <aside id="card">
+    <button class="x" aria-label="Close">×</button>
+    <div class="k" id="card-k"></div>
+    <h2 id="card-t"></h2>
+    <p id="card-d"></p>
+    <div class="row" id="card-s"></div>
+  </aside>
+  <div id="hint">DRAG TO ORBIT AROUND ANY POINT · SCROLL TO ZOOM WHERE YOU POINT · RIGHT-DRAG TO PAN · DOUBLE-CLICK TO FLY THERE · CUBE FOR VIEWS</div>
+  <div id="controls">
+    <button class="pill" data-act="explode">Explode</button>
+    <button class="pill" data-act="stage">Separate</button>
+    <button class="pill" data-act="section">Section</button>
+    <button class="pill" data-act="flow">Flow</button>
+    <button class="pill" data-act="pause">Pause</button>
+    <button class="pill" data-act="reset">Reset</button>
+  </div>
+  <div id="nav">
+    <div class="views">
+      <button class="pill" data-face="4">Side</button><button class="pill" data-face="2">Top</button><button class="pill" data-face="3">Belly</button><button class="pill" data-face="1">Engines</button><button class="pill" data-face="0">Nose</button>
+    </div>
+    <canvas id="cube" aria-label="View cube: click a face to look from that side"></canvas>
+    <div class="navbtns">
+      <button data-z="in" aria-label="Zoom in">+</button>
+      <button data-z="out" aria-label="Zoom out">−</button>
+      <button data-z="fit" aria-label="Fit whole vehicle">⤢</button>
+    </div>
+  </div>
+  <div id="pivot"></div>
+  <div id="tip"></div>
+</div>
+<div id="loader">INITIALIZING</div>
+<script>
+  // decide language/direction before first paint so the overlay never flashes in the wrong layout
+  (function () { try { const q = new URLSearchParams(location.search); if (q.get('embed')) document.documentElement.classList.add('embed'); } catch (e) {} })();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const V2 = THREE.Vector2, V3 = THREE.Vector3;
+const TAU = Math.PI * 2;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const sstep = x => x * x * (3 - 2 * x);
+const lerp = (a, b, t) => a + (b - a) * t;
+function rng(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+
+// ---------------------------------------------------------------- language, units, embed
+// Language and unit system follow the site when embedded (same-origin iframe: read the parent's
+// <html lang> and window.currentUnitSystem, re-checked every 500ms like the site's own label
+// dispatcher), or ?lang=/&units= when opened on its own.
+const Q = new URLSearchParams(location.search);
+const EMBED = !!Q.get('embed');
+function langKey(raw) { let k = String(raw || 'en').toLowerCase().split('-')[0]; if (k === 'iw') k = 'he'; return SS_I18N[k] ? k : 'en'; }
+function parentDoc() { try { return window.parent !== window ? window.parent.document : null; } catch (e) { return null; } }
+function readLang() { const pd = parentDoc(); return langKey((pd && pd.documentElement.lang) || Q.get('lang') || 'en'); }
+function readUnits() { try { if (window.parent !== window && window.parent.currentUnitSystem) return window.parent.currentUnitSystem; } catch (e) {} return Q.get('units') === 'imperial' ? 'imperial' : 'metric'; }
+function closeEmbed() { try { window.parent.postMessage({ type: 'starship-sim-close' }, location.origin); } catch (e) {} }
+const NUM_LOCALE = { en: 'en-US', he: 'he-IL', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', ru: 'ru-RU', zh: 'zh-CN', it: 'it-IT', cs: 'cs-CZ', sv: 'sv-SE', nl: 'nl-NL', da: 'da-DK', pt: 'pt-BR', pl: 'pl-PL', hi: 'hi-IN', ar: 'ar-EG', tr: 'tr-TR' };
+let LANG = readLang(), UNITS = readUnits(), I = SS_I18N[LANG];
+const nf = (n, d = 0) => new Intl.NumberFormat((NUM_LOCALE[LANG] || 'en-US') + '-u-nu-latn', { maximumFractionDigits: d, minimumFractionDigits: d }).format(n);
+function unitValues() {
+  const u = I.units, imp = UNITS === 'imperial';
+  return imp ? {
+    height: `${nf(408)} ${u.ft}`, diameter: `${nf(29.5, 1)} ${u.ft}`, thrust: `~${nf(20400000)} ${u.lbf}`, liftoff: `~${nf(11700000)} ${u.lb}`,
+    raptorThrust: `~${nf(617000)} ${u.lbf}`, rvacExit: `~${nf(7.5, 1)} ${u.ft}`, loxTemp: `< −${nf(297)} °F`, ch4Temp: `< −${nf(260)} °F`, tilePeak: `~${nf(2550)} °F`, payload: `${nf(220000)}+ ${u.lb}`,
+  } : {
+    height: `${nf(124.4, 1)} ${u.m}`, diameter: `${nf(9)} ${u.m}`, thrust: `~${nf(90600)} ${u.kN}`, liftoff: `~${nf(5300)} ${u.t}`,
+    raptorThrust: `~${nf(2750)} ${u.kN}`, rvacExit: `~${nf(2.3, 1)} ${u.m}`, loxTemp: `< −${nf(183)} °C`, ch4Temp: `< −${nf(162)} °C`, tilePeak: `~${nf(1400)} °C`, payload: `${nf(100)}+ ${u.t}`,
+  };
+}
+let UV = unitValues();
+function fillT(str) { return String(str).replace(/\{(\w+)\}/g, (m, k) => k === 'starlink' ? I.starlink : k === 'starship' ? I.starship : (UV[k] ?? m)); }
+// hover labels are built from pieces: "Forward flap (left) · hinge fairing", "Grid fin 2", "Raptor 3 · outer ring 14"
+function trLabel(label) {
+  return label.split(' · ').map(seg => {
+    const m = seg.match(/^(.*?)(?: \((left|right)\))?(?: (\d+))?$/);
+    let out = fillT(I.lb[m[1]] ?? m[1]);
+    if (m[2]) out += ` (${I.lb[m[2]] ?? m[2]})`;
+    if (m[3]) out += ` ${m[3]}`;
+    return out;
+  }).join(' · ');
+}
+const $ = id => document.getElementById(id);
+function setControlLabels() {
+  const b = a => document.querySelector(`[data-act="${a}"]`);
+  if (!b('explode')) return;
+  b('explode').textContent = st.explodeT ? I.ui.assemble : I.ui.explode;
+  b('stage').textContent = st.sepT ? I.ui.stack : I.ui.separate;
+  b('section').textContent = I.ui.section; b('flow').textContent = I.ui.flow; b('reset').textContent = I.ui.reset;
+  b('pause').textContent = paused ? I.ui.play : I.ui.pause;
+}
+function applyI18n() {
+  const html = document.documentElement;
+  html.lang = LANG; html.dir = I.dir;
+  const U = I.ui;
+  $('t-eyebrow').textContent = U.eyebrow;
+  $('t-title').textContent = I.starship.toLocaleUpperCase(LANG);
+  document.title = `${I.starship} · 3D`;
+  for (const k of ['height', 'diameter', 'raptors', 'thrust', 'liftoff', 'selected']) $('t-' + k).textContent = U[k];
+  for (const k of ['height', 'diameter', 'thrust', 'liftoff']) $('v-' + k).textContent = UV[k];
+  $('hint').textContent = U.hint;
+  const loader = $('loader'); if (loader) loader.textContent = U.loading;
+  setControlLabels();
+  document.querySelectorAll('#nav .views [data-face]').forEach(b => { b.textContent = U[FACE_KEYS[+b.dataset.face]]; });
+  const zb = document.querySelectorAll('#nav .navbtns button');
+  zb[0].setAttribute('aria-label', U.zoomIn); zb[1].setAttribute('aria-label', U.zoomOut); zb[2].setAttribute('aria-label', U.fit);
+  $('cube').setAttribute('aria-label', U.cube);
+  card.querySelector('.x').setAttribute('aria-label', U.close); $('ss-close').setAttribute('aria-label', U.close);
+  buildPartsNav(); renderCard(); buildCubeFaces();
+}
+setInterval(() => {
+  const l = readLang(), u = readUnits();
+  if (l === LANG && u === UNITS) return;
+  LANG = l; UNITS = u; I = SS_I18N[LANG]; UV = unitValues(); applyI18n();
+}, 500);
+document.getElementById('ss-close').addEventListener('click', closeEmbed);
+
+// ---------------------------------------------------------------- renderer
+const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+const PR = Math.min(devicePixelRatio, isMobile ? 1.75 : 2);
+renderer.setPixelRatio(PR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;           // the scene is static most of the time; shadows are re-rendered only while something moves
+renderer.localClippingEnabled = true;
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070b);
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.5, 3000);
+
+const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: isMobile ? 2 : 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(PR);
+composer.setSize(innerWidth, innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+// guard: tight metal highlights near the engine lights can overflow half-float, which bloom would smear into black
+const clampPass = new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); if (!(c.r < 1e4) || !(c.g < 1e4) || !(c.b < 1e4)) c.rgb = vec3(40.0); gl_FragColor = vec4(min(c.rgb, vec3(40.0)), 1.0); }' });
+composer.addPass(clampPass);
+const bloom = new UnrealBloomPass(new V2(innerWidth, innerHeight), 0.4, 0.5, 2.2);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---------------------------------------------------------------- studio environment (reflections)
+function buildEnv() {
+  const env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(80, 32, 16), new THREE.MeshBasicMaterial({ color: 0x07080b, side: THREE.BackSide })));
+  const O = new V3();
+  const panel = (w, h, k, color, pos) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.copy(pos); m.lookAt(O); env.add(m);
+  };
+  panel(60, 26, 1.1, 0xffffff, new V3(0, 55, 0));        // overhead softbox
+  panel(70, 40, 1.5, 0xffffff, new V3(-10, 18, 60));      // big frontal softbox (behind the viewer)
+  panel(130, 4.5, 3.2, 0xe4ecff, new V3(0, 24, -58));      // long back strip
+  panel(130, 3.5, 2.4, 0xffffff, new V3(0, 9, 62));        // long front strip
+  panel(4, 90, 3, 0xffffff, new V3(-62, 15, 12));      // vertical strips
+  panel(4, 90, 2.2, 0xcfdcff, new V3(62, 15, -14));
+  panel(110, 110, 0.85, 0xd4dcea, new V3(0, -50, 0));    // big soft bounce from below, so undersides don't go black
+  panel(130, 4, 1.8, 0xffffff, new V3(0, -22, 58));       // low strips: highlights along the underside
+  panel(130, 4, 1.5, 0xdfe6f5, new V3(0, -24, -58));
+  panel(90, 20, 0.25, 0xff9a5a, new V3(0, -40, 30));      // a touch of warm bounce
+  const pm = new THREE.PMREMGenerator(renderer);
+  const t = pm.fromScene(env, 0.02).texture;
+  pm.dispose();
+  return t;
+}
+scene.environment = buildEnv();
+
+// ---------------------------------------------------------------- procedural textures
+const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const toTex = (c, srgb) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = maxAniso; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
+
+const RING = 1.83, SEGN = 8, TEXM = RING * SEGN;   // steel texture covers 8 rings vertically
+const R = 4.5, CIRC = TAU * R;
+
+function makeSteel() {
+  const W = 2048, H = 1024, rh = H / SEGN, rnd = rng(11);
+  const cc = mkCanvas(W, H), rc = mkCanvas(W, H), bc = mkCanvas(W, H);
+  const C = cc.getContext('2d'), Rg = rc.getContext('2d'), B = bc.getContext('2d');
+  B.fillStyle = 'rgb(128,128,128)'; B.fillRect(0, 0, W, H);
+  const wrap = (ctx, x, y, w, h) => { ctx.fillRect(x, y, w, h); if (x + w > W) ctx.fillRect(x - W, y, w, h); if (x < 0) ctx.fillRect(x + W, y, w, h); };
+  for (let i = 0; i < SEGN; i++) {
+    const y0 = i * rh, sheets = 3 + (rnd() < 0.4 ? 1 : 0), off = rnd() * W;
+    for (let s = 0; s < sheets; s++) {
+      const x0 = (off + s * W / sheets) % W, w = W / sheets + 1;
+      const tone = 204 + rnd() * 20, warm = (rnd() - 0.5) * 8;
+      C.fillStyle = `rgb(${tone + warm | 0},${tone | 0},${tone - warm * 0.6 + 3 | 0})`; wrap(C, x0, y0, w, rh);
+      const rv = 62 + rnd() * 26 | 0; Rg.fillStyle = `rgb(${rv},${rv},${rv})`; wrap(Rg, x0, y0, w, rh);
+      C.fillStyle = 'rgba(92,90,88,0.55)'; wrap(C, x0, y0, 2, rh);
+      Rg.fillStyle = 'rgb(150,150,150)'; wrap(Rg, x0 - 1, y0, 4, rh);
+      B.fillStyle = 'rgb(96,96,96)'; wrap(B, x0, y0, 2, rh);
+      B.fillStyle = 'rgb(160,160,160)'; wrap(B, x0 + 2, y0, 1, rh);
+    }
+  }
+  for (let k = 0; k < 9000; k++) {        // brushed / rolled grain
+    const y = rnd() * H, x = rnd() * W, l = 60 + rnd() * 500, a = 0.012 + rnd() * 0.025, light = rnd() < 0.5;
+    C.fillStyle = light ? `rgba(255,255,255,${a})` : `rgba(40,44,52,${a})`; wrap(C, x, y, l, 1);
+    Rg.fillStyle = light ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`; wrap(Rg, x, y, l, 1);
+  }
+  for (let k = 0; k < 70; k++) {          // discoloration
+    const x = rnd() * W, y = rnd() * H, r = 30 + rnd() * 160, warmB = rnd() < 0.5;
+    const g = C.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, warmB ? 'rgba(170,140,100,0.10)' : 'rgba(60,70,90,0.10)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    C.fillStyle = g; C.fillRect(x - r, y - r, 2 * r, 2 * r);
+    const g2 = Rg.createRadialGradient(x, y, 0, x, y, r);
+    g2.addColorStop(0, 'rgba(255,255,255,0.10)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
+    Rg.fillStyle = g2; Rg.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+  for (let i = 0; i <= SEGN; i++) {       // circumferential welds
+    const y = i * rh;
+    C.fillStyle = 'rgba(118,98,76,0.6)'; C.fillRect(0, y - 2, W, 4);
+    C.fillStyle = 'rgba(255,245,230,0.25)'; C.fillRect(0, y - 3, W, 1);
+    Rg.fillStyle = 'rgb(170,170,170)'; Rg.fillRect(0, y - 3, W, 6);
+    B.fillStyle = 'rgb(150,150,150)'; B.fillRect(0, y - 4, W, 2);
+    B.fillStyle = 'rgb(78,78,78)'; B.fillRect(0, y - 2, W, 3);
+    B.fillStyle = 'rgb(176,176,176)'; B.fillRect(0, y + 1, W, 2);
+  }
+  return { map: toTex(cc, true), rough: toTex(rc), bump: toTex(bc) };
+}
+
+function makeTiles() {
+  const n = 18, W = 1024, hw = W / n, H = Math.round(n * 1.5 * hw / Math.sqrt(3)), rowH = H / n, r = rowH / 1.5, rnd = rng(5);
+  const cc = mkCanvas(W, H), rc = mkCanvas(W, H), bc = mkCanvas(W, H);
+  const C = cc.getContext('2d'), Rg = rc.getContext('2d'), B = bc.getContext('2d');
+  C.fillStyle = 'rgb(16,16,18)'; C.fillRect(0, 0, W, H);
+  Rg.fillStyle = 'rgb(240,240,240)'; Rg.fillRect(0, 0, W, H);
+  B.fillStyle = 'rgb(55,55,55)'; B.fillRect(0, 0, W, H);
+  const hex = (ctx, cx, cy, rr) => { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3, x = cx + rr * Math.cos(a), y = cy + rr * Math.sin(a); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.fill(); };
+  for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) {
+    const cx = col * hw + (row % 2 ? hw / 2 : 0), cy = row * rowH;
+    const v = 48 + rnd() * 14, tint = rnd() * 3, rv = 120 + rnd() * 40 | 0;
+    for (const dx of [-W, 0, W]) for (const dy of [-H, 0, H]) {
+      const x = cx + dx, y = cy + dy;
+      if (x < -hw || x > W + hw || y < -hw || y > H + hw) continue;
+      C.fillStyle = `rgb(${v + tint | 0},${v | 0},${v - 1 | 0})`; hex(C, x, y, r - 1.5);
+      Rg.fillStyle = `rgb(${rv},${rv},${rv})`; hex(Rg, x, y, r - 1.5);
+      B.fillStyle = 'rgb(150,150,150)'; hex(B, x, y, r - 1.5);
+      B.fillStyle = 'rgb(168,168,168)'; hex(B, x, y, r - 4.5);
+    }
+  }
+  const tileW = n * 0.32;
+  return { map: toTex(cc, true), rough: toTex(rc), bump: toTex(bc), w: tileW, h: tileW * H / W };
+}
+
+function makeSolar() {
+  const c = mkCanvas(256, 256), g = c.getContext('2d');
+  g.fillStyle = '#0a1830'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) {
+    const v = 30 + Math.random() * 16;
+    g.fillStyle = `rgb(${v * 0.4 | 0},${v * 0.8 | 0},${v * 1.9 | 0})`; g.fillRect(i * 16 + 1, j * 16 + 1, 14, 14);
+  }
+  return toTex(c, true);
+}
+
+function makeDot() {
+  const c = mkCanvas(64, 64), g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+function makeFloorAlpha() {
+  const c = mkCanvas(512, 512), g = c.getContext('2d');
+  const gr = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+  gr.addColorStop(0, '#fff'); gr.addColorStop(0.93, '#fff'); gr.addColorStop(1, '#000');
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(c);
+}
+
+function makeRibs(n) {
+  const W = 2048, H = 64, c = mkCanvas(W, H), b = mkCanvas(W, H), g = c.getContext('2d'), gb = b.getContext('2d'), w = W / n;
+  for (let i = 0; i < n; i++) {
+    const x = i * w, v = 190 + (i * 37 % 23);
+    const gr = g.createLinearGradient(x, 0, x + w, 0);
+    gr.addColorStop(0, `rgb(${v - 70},${v - 68},${v - 64})`); gr.addColorStop(0.35, `rgb(${v},${v},${v + 4})`); gr.addColorStop(0.7, `rgb(${v - 25},${v - 24},${v - 20})`); gr.addColorStop(1, `rgb(${v - 80},${v - 78},${v - 74})`);
+    g.fillStyle = gr; g.fillRect(x, 0, w + 1, H);
+    const bb = gb.createLinearGradient(x, 0, x + w, 0);
+    bb.addColorStop(0, '#202020'); bb.addColorStop(0.5, '#e0e0e0'); bb.addColorStop(1, '#202020');
+    gb.fillStyle = bb; gb.fillRect(x, 0, w + 1, H);
+  }
+  return { map: toTex(c, true), bump: toTex(b) };
+}
+const ribTex = makeRibs(128);
+const steelTex = makeSteel(), tileTex = makeTiles(), solarTex = makeSolar(), dotTex = makeDot();
+
+// ---------------------------------------------------------------- parts, materials, clipping
+const clipLocal = new THREE.Plane(new V3(0, 0, -1), 20);
+const clipPlane = new THREE.Plane();
+const CLIPS = [clipPlane];
+
+const MAKERS = {
+  steel: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: steelTex.map, roughnessMap: steelTex.rough, bumpMap: steelTex.bump, bumpScale: 1.6, metalness: 1, roughness: 1, side: THREE.DoubleSide }),
+  steelMatte: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: steelTex.map, roughnessMap: steelTex.rough, metalness: 1, roughness: 1.9, side: THREE.DoubleSide }),
+  steelSlot: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: steelTex.map, roughnessMap: steelTex.rough, bumpMap: steelTex.bump, bumpScale: 1.6, alphaMap: SLOT.mask, alphaTest: 0.5, metalness: 1, roughness: 1, side: THREE.DoubleSide }),
+  darkSlot: () => new THREE.MeshStandardMaterial({ color: 0x2a2c30, alphaMap: SLOT.mask, alphaTest: 0.5, metalness: 0.6, roughness: 0.55, side: THREE.DoubleSide }),
+  steelNC: () => new THREE.MeshStandardMaterial({ color: 0xe6e8ec, map: steelTex.map, roughnessMap: steelTex.rough, metalness: 1, roughness: 0.9 }),
+  dark: () => new THREE.MeshStandardMaterial({ color: 0x3a3c41, metalness: 0.3, roughness: 0.5, side: THREE.DoubleSide }),
+  darkNC: () => new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.6, roughness: 0.55 }),
+  tile: () => { const T = shieldTex(); return new THREE.MeshStandardMaterial({ color: 0xffffff, map: T.map, roughnessMap: T.rough, bumpMap: T.bump, bumpScale: 2.2, alphaMap: T.mask, alphaTest: 0.5, metalness: 0.05, roughness: 1, side: THREE.DoubleSide }); },
+  tileSolid: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: tileTex.map, roughnessMap: tileTex.rough, bumpMap: tileTex.bump, bumpScale: 2.2, metalness: 0.05, roughness: 1, side: THREE.DoubleSide }),
+  // Raptor 3 is finished in black satin: head, plumbing and nozzle alike
+  engineSteel: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42 }),
+  engineDark: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42 }),
+  nozzle: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42, side: THREE.DoubleSide }),   // same finish as the engine head
+  // Raptor Vacuum: stainless skirt with vertical ribs outside, white inside (per NSF / StarshipGazer photos)
+  rvacOuter: () => new THREE.MeshStandardMaterial({ color: 0xe2e3e7, map: ribTex.map, bumpMap: ribTex.bump, bumpScale: 1.4, metalness: 1, roughness: 0.34 }),
+  rvacInner: () => new THREE.MeshStandardMaterial({ color: 0xeceae4, metalness: 0.02, roughness: 0.78, side: THREE.BackSide }),
+  ribbed: () => { const m = ribTex.map.clone(), b = ribTex.bump.clone(); m.repeat.set(1, 1); b.repeat.set(1, 1); m.needsUpdate = b.needsUpdate = true;
+    return new THREE.MeshStandardMaterial({ color: 0xb9bcc2, map: m, bumpMap: b, bumpScale: 1.6, metalness: 1, roughness: 0.42, side: THREE.BackSide }); },
+  finDark: () => new THREE.MeshStandardMaterial({ color: 0x3a3c40, metalness: 0.3, roughness: 0.45, side: THREE.DoubleSide }),
+  sat: () => new THREE.MeshStandardMaterial({ color: 0xb8bdc6, metalness: 0.75, roughness: 0.35 }),
+  solar: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: solarTex, metalness: 0.35, roughness: 0.22 }),
+  fluidLox: () => new THREE.MeshStandardMaterial({ color: 0x9fd8ff, emissive: 0x2a7fd0, emissiveIntensity: 0.55, transparent: true, opacity: 0.5, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
+  fluidCh4: () => new THREE.MeshStandardMaterial({ color: 0xffc38a, emissive: 0xd2601a, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
+};
+const CLIP_KINDS = new Set(['ribbed', 'steelSlot', 'darkSlot', 'steel', 'steelMatte', 'dark', 'finDark', 'tile', 'tileSolid', 'fluidLox', 'fluidCh4']);
+const FLUID_KINDS = new Set(['fluidLox', 'fluidCh4']);
+
+const PART_INFO = [
+  { id: 'b-raptors', n: 'Raptor engines', k: 'Super Heavy · 01', title: 'Raptor 3 engines', desc: 'Thirty-three Raptor 3 engines burn liquid methane and liquid oxygen. Raptor 3 builds most of its plumbing into the engine body, so the heavy engine shielding was deleted and the engines hang fully exposed beneath the booster. The 13 inner engines gimbal to steer.', stats: [['COUNT', '33'], ['CYCLE', 'Full-flow'], ['THRUST', '~280 tf each']] },
+  { id: 'b-aft', n: 'Thrust section', k: 'Super Heavy · 02', title: 'Thrust section', desc: 'A steel plate carries the thrust of all 33 engines into the airframe. The plate tapers downward, so the engines protrude out the bottom. The pipes, power and data cables that used to sit behind the shielding now run around the outside in rings of lines and junction boxes.', stats: [['PLATE', 'Tapered'], ['SHIELDING', 'None'], ['LINES', 'External']] },
+  { id: 'b-lox', n: 'LOX tank', k: 'Super Heavy · 03', title: 'Liquid oxygen tank & chines', desc: 'This is the largest tank in the stack. Liquid oxygen, densified below its −183 °C boiling point, sits directly above the engines. The walls are stainless-steel rings, each about 1.8 m tall, welded together. Two long chines run along its lower half.', stats: [['OXIDIZER', 'LOX'], ['TEMP', '< −183 °C'], ['SKIN', 'Stainless']] },
+  { id: 'b-ch4', n: 'Methane tank', k: 'Super Heavy · 04', title: 'Methane tank & downcomer', desc: 'Liquid methane is stored above the oxygen tank, separated from it by a shared common dome. A wide pipe called the downcomer runs straight down through the middle of the oxygen tank and delivers the fuel to the engines.', stats: [['FUEL', 'Liquid CH₄'], ['TEMP', '< −162 °C'], ['DOME', 'Common']] },
+  { id: 'b-fwd', n: 'Grid fins', k: 'Super Heavy · 05', title: 'Grid fins', desc: 'Block 3 uses three grid fins instead of four. Each one is about 50% larger and sits lower, in a pod welded to the methane tank, in a T layout. The tower’s chopsticks catch the booster directly on these fins, so it needs no separate lift points.', stats: [['FINS', '3'], ['SIZE', '+50%'], ['RECOVERY', 'Tower catch']] },
+  { id: 'hsr', n: 'Hot-stage truss', k: 'Interstage · 06', title: 'Integrated hot-stage truss', desc: 'Ship lights its engines while it is still attached to the booster. Block 3 replaces the old separate vented ring with an open truss of V-shaped struts built into the booster. The ship’s exhaust flows between the struts and hits the booster’s forward dome directly.', stats: [['DESIGN', 'V-truss'], ['JETTISON', 'None'], ['SINCE', 'Flight 12']] },
+  { id: 's-raptors', n: 'Ship engines', k: 'Ship · 07', title: 'Ship Raptor engines', desc: 'Three sea-level Raptors in the center gimbal for steering and landing. Around them, three Raptor Vacuum engines with large fixed nozzle extensions provide the more efficient thrust needed in space.', stats: [['SEA-LEVEL', '3'], ['VACUUM', '3'], ['RVAC EXIT', '~2.3 m']] },
+  { id: 's-tanks', n: 'Ship tanks', k: 'Ship · 08', title: 'Ship propellant tanks', desc: 'The ship carries its own oxygen and methane in two main tanks; on Block 3 the common and aft domes moved lower to hold more methane. Methane reaches the engines through downcomers that run through the oxygen tank: one shared by the three sea-level engines and a dedicated one for each Raptor Vacuum. Small header tanks keep landing propellant settled after the main tanks run low.', stats: [['MAIN TANKS', '2'], ['DOWNCOMERS', '4'], ['HEADERS', '2']] },
+  { id: 's-tiles', n: 'Heat shield', k: 'Ship · 09', title: 'Heat shield', desc: 'About 18,000 hexagonal ceramic tiles cover the windward side of the ship. They are pinned to the steel skin and protect it from reentry heat of up to about 1,400 °C. The hexagonal pattern stops hot plasma from flowing straight through the gaps.', stats: [['TILES', '~18,000'], ['SHAPE', 'Hexagonal'], ['PEAK', '~1,400 °C']] },
+  { id: 's-flaps', n: 'Flaps', k: 'Ship · 10', title: 'Forward & aft flaps', desc: 'Four body flaps work like a skydiver’s arms. During the bellyflop descent they control the ship’s attitude, until it flips upright and lights its engines to land.', stats: [['COUNT', '4'], ['ACTUATION', 'Electric'], ['MODE', 'Bellyflop']] },
+  { id: 's-payload', n: 'Payload bay', k: 'Ship · 11', title: 'Payload bay & Pez slot', desc: 'On Starlink flights the satellites sit in a stack inside the payload bay. A long, narrow horizontal slot nicknamed the “Pez dispenser” opens on the leeward side, and the satellites slide out through it one at a time.', stats: [['DOOR', 'Mail slot'], ['PAYLOAD', '100+ t'], ['CARGO', 'Starlink']] },
+  { id: 's-nose', n: 'Nose cone', k: 'Ship · 12', title: 'Nose cone & header tank', desc: 'The ogive nose houses the liquid-oxygen header tank and the forward flap actuators. Stainless steel keeps its strength both at cryogenic temperatures and in reentry heat.', stats: [['SHAPE', 'Ogive'], ['HOUSES', 'LOX header'], ['FLAPS', '2 forward']] },
+];
+const parts = {};
+PART_INFO.forEach((p, i) => { parts[p.id] = { ...p, idx: i, grp: p.id.startsWith('b-') ? 'sh' : p.id === 'hsr' ? 'inter' : 'ship', mats: [], cache: {}, meshes: [] }; });
+
+function pmat(pid, kind) {
+  const P = parts[pid];
+  if (!P.cache[kind]) {
+    const m = MAKERS[kind]();
+    if (CLIP_KINDS.has(kind)) m.clippingPlanes = CLIPS;
+    P.cache[kind] = m; P.mats.push(m);
+  }
+  return P.cache[kind];
+}
+
+const pickables = [];
+const fluids = [];
+function add(parent, geo, pid, kind, label, opt = {}) {
+  const mat = Array.isArray(kind) ? kind.map(k => pmat(pid, k)) : pmat(pid, kind);
+  const m = new THREE.Mesh(geo, mat);
+  const isFluid = !Array.isArray(kind) && FLUID_KINDS.has(kind);
+  m.castShadow = !isFluid && opt.cast !== false;
+  m.receiveShadow = !isFluid;
+  m.userData.part = pid; m.userData.label = label;
+  parent.add(m);
+  parts[pid].meshes.push(m);
+  if (isFluid) { fluids.push(m); m.visible = false; m.renderOrder = 1; }
+  else if (opt.pick !== false) pickables.push(m);
+  return m;
+}
+
+// ---------------------------------------------------------------- geometry helpers
+function scaleUV(g, su, sv, ou = 0, ov = 0) {
+  const uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
+  uv.needsUpdate = true; return g;
+}
+function cylG(r0, r1, y0, y1, seg = 128, open = true, ts = 0, tl = TAU) {
+  const g = new THREE.CylinderGeometry(r1, r0, y1 - y0, seg, 1, open, ts, tl);
+  g.translate(0, (y0 + y1) / 2, 0); return g;
+}
+function merge(list) {
+  const nonIdx = list.some(g => !g.index);
+  const arr = list.map(g => (nonIdx && g.index) ? g.toNonIndexed() : g);
+  arr.forEach(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); });
+  return mergeGeometries(arr, false);
+}
+function lathe(pts, seg = 48, ps = 0, pl = TAU) { return new THREE.LatheGeometry(pts.map(p => new V2(p[0], p[1])), seg, ps, pl); }
+function tube(pts, r, seg = 24) { return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p))), seg, r, 8, false); }
+function domeParams(rb, h) { const Rs = (rb * rb + h * h) / (2 * h); return { Rs, th: Math.asin(rb / Rs) }; }
+function domeGeo(rb, h, yBase, dir) {
+  const { Rs, th } = domeParams(rb, h);
+  const g = new THREE.SphereGeometry(Rs, 96, 20, 0, TAU, 0, th);
+  if (dir > 0) g.translate(0, yBase - Rs * Math.cos(th), 0);
+  else { g.rotateX(Math.PI); g.translate(0, yBase + Rs * Math.cos(th), 0); }
+  return g;
+}
+function domeY(r, rb, h, yBase, dir) {
+  const { Rs, th } = domeParams(rb, h);
+  return yBase + dir * (Math.sqrt(Math.max(0, Rs * Rs - r * r)) - Rs * Math.cos(th));
+}
+function fluidGeo(bot, top, r = 4.34) {
+  const pts = [];
+  for (let i = 0; i <= 16; i++) { const rr = r * i / 16; pts.push(new V2(rr, domeY(rr, 4.45, bot.h, bot.y, bot.dir) + 0.05)); }
+  pts.push(new V2(r, top)); pts.push(new V2(0.001, top));
+  return new THREE.LatheGeometry(pts, 64);
+}
+
+// ---------------------------------------------------------------- scene graph
+const spin = new THREE.Group(); scene.add(spin);          // free rotation (drag), centered on the vehicle
+const pivot = new THREE.Group(); spin.add(pivot);         // orientation (horizontal / vertical)
+const root = new THREE.Group(); pivot.add(root);          // rocket local space, +Y = up the stack
+const groups = [], radialGroups = [];
+function G(dy, order, ship = false) { const g = new THREE.Group(); g.userData = { dy, order, ship }; root.add(g); groups.push(g); return g; }
+
+const bEng = G(-16, 0), bAft = G(-9, 1), bLox = G(-3, 2), bCh4 = G(2, 3), bFwd = G(2, 4), hsrG = G(11, 5);
+const sEng = G(13, 6, true), sAft = G(19, 7, true), sLox = G(23, 8, true), sCh4 = G(27.5, 9, true), sPay = G(32, 10, true), sNose = G(37, 11, true);
+
+const S0 = 72.3;                       // ship base (Block 3 booster incl. hot-stage truss)
+const NOSE0 = S0 + 39.9, NOSE_L = 12.2, RHO = (R * R + NOSE_L * NOSE_L) / (2 * R), NOSE_TOP = NOSE0 + NOSE_L - 0.25;
+function noseR(x) { if (x <= 0) return R; if (x >= NOSE_L) return 0; return Math.max(0, Math.sqrt(RHO * RHO - x * x) - (RHO - R)); }
+const WINDWARD = Math.PI / 4;          // tiles face down-and-toward the default camera
+const LEEWARD = WINDWARD + Math.PI;
+const dirA = (a, r = 1) => new V3(Math.sin(a) * r, 0, Math.cos(a) * r);
+const TA0 = WINDWARD - 1.658, TAL = 3.316;
+const RACEWAY = LEEWARD + 1.05;
+
+function steelShell(group, pid, y0, y1, label, ts = 0, tl = TAU) {
+  const g = cylG(R, R, y0, y1, 128, true, ts, tl);
+  scaleUV(g, tl / TAU, (y1 - y0) / TEXM, ts / TAU, y0 / TEXM);
+  return add(group, g, pid, 'steel', label);
+}
+// The heat shield is a full wrap of tiles cut by a mask (u = angle around, v = height on the ship). The mask is
+// decided per hexagon, so the edge of the shield runs along whole tiles, like the real ship, instead of a cut line.
+const SHIP_H = NOSE_TOP - S0;
+const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+function tileAt(th, y) {
+  const d = angDist(th, WINDWARD), rel = y - S0;
+  const half = 1.62 + 0.42 * sstep(clamp((y - (NOSE0 - 7)) / 8.5));   // sweeps toward the forward flaps
+  if (d < half) return true;
+  if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
+  const dl = angDist(th, WINDWARD + Math.PI);                          // two dark access patches on the steel side
+  if (dl < 0.17 && ((rel > 13.2 && rel < 14.8) || (rel > 22.6 && rel < 24.4))) return true;
+  return false;
+}
+let shieldTexCache = null;
+function shieldTex() {
+  if (shieldTexCache) return shieldTexCache;
+  // a whole number of tile repeats around the hull, so the pattern closes up where the wrap meets itself
+  const repU = Math.round(CIRC / tileTex.w), repV = SHIP_H / tileTex.h;
+  // hex lattice of the tile texture, in its own canvas pixels (see makeTiles)
+  const n = 18, TW = 1024, hw = TW / n, TH = Math.round(n * 1.5 * hw / Math.sqrt(3)), rowH = TH / n;
+  const W = 2048, H = 3072, c = mkCanvas(W, H), g = c.getContext('2d'), img = g.createImageData(W, H), d = img.data;
+  for (let r = 0; r < H; r++) {
+    const v = 1 - (r + 0.5) / H, Y = (1 - v * repV) * TH;
+    const row0 = Math.floor(Y / rowH);
+    for (let q = 0; q < W; q++) {
+      const X = (q + 0.5) / W * repU * TW;
+      let best = 1e9, bx = 0, by = 0;
+      for (let rr = row0 - 1; rr <= row0 + 1; rr++) {
+        const off = (((rr % 2) + 2) % 2) ? hw / 2 : 0, cy = rr * rowH, col = Math.round((X - off) / hw);
+        for (let cc = col - 1; cc <= col + 1; cc++) {
+          const cx = cc * hw + off, dd = (cx - X) * (cx - X) + (cy - Y) * (cy - Y);
+          if (dd < best) { best = dd; bx = cx; by = cy; }
+        }
+      }
+      const th = bx / (repU * TW) * TAU, y = S0 + (1 - by / TH) / repV * SHIP_H;
+      const on = tileAt(th, y) ? 255 : 0, i = (r * W + q) * 4;
+      d[i] = d[i + 1] = d[i + 2] = on; d[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const mask = new THREE.CanvasTexture(c);
+  mask.minFilter = THREE.LinearFilter; mask.generateMipmaps = false;
+  const repT = t => { const x = t.clone(); x.repeat.set(repU, repV); x.needsUpdate = true; return x; };
+  shieldTexCache = { mask, map: repT(tileTex.map), rough: repT(tileTex.rough), bump: repT(tileTex.bump) };
+  return shieldTexCache;
+}
+function shipUV(g) {                     // u stays the geometry's own angle; v becomes height along the ship
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setY(i, (pos.getY(i) - S0) / SHIP_H);
+  uv.needsUpdate = true; return g;
+}
+function tileShell(group, y0, y1) {
+  const m = add(group, shipUV(cylG(R + 0.04, R + 0.04, y0, y1, 128, true)), 's-tiles', 'tile', 'Heat shield tiles');
+  m.userData.maskFn = tileAt; return m;
+}
+function raceway(group, pid, y0, y1) {
+  const g = new THREE.BoxGeometry(0.55, y1 - y0, 0.3);
+  scaleUV(g, 0.02, (y1 - y0) / TEXM, 0, y0 / TEXM);
+  const m = add(group, g, pid, 'steel', 'Raceway (cable & line tunnel)');
+  m.position.set(Math.sin(RACEWAY) * (R + 0.13), (y0 + y1) / 2, Math.cos(RACEWAY) * (R + 0.13));
+  m.rotation.y = RACEWAY;
+}
+function fluid(group, pid, kind, bot, top) { add(group, fluidGeo(bot, top), pid, kind, ''); }
+
+// ---------------------------------------------------------------- Raptor engines
+function nozzleProfile(yT, yE, rT, rE, n = 44) {
+  const pts = [];
+  for (let i = n; i >= 0; i--) { const t = i / n; pts.push([rT + (rE - rT) * (1 - Math.pow(1 - t, 2.2)), yT + (yE - yT) * t]); }
+  return pts;                           // ascending y (exit first)
+}
+function buildRaptor(vac) {
+  // Raptor 3: clean stacked head, two looping hot-gas ducts, black bell
+  const yT = -1.98, rT = 0.16, yE = vac ? -4.3 : -3.1, rE = vac ? 1.15 : 0.6;
+  const st = [], dk = [];
+  const cyl = (r0, r1, y0, y1, list, x = 0, seg = 32) => { const c = new THREE.CylinderGeometry(r1, r0, y1 - y0, seg); c.translate(x, (y0 + y1) / 2, 0); list.push(c); };
+  const tor = (r, tb, y, list) => { const t = new THREE.TorusGeometry(r, tb, 10, 40); t.rotateX(Math.PI / 2); t.translate(0, y, 0); list.push(t); };
+  cyl(0.3, 0.3, -0.3, 0, dk);                 // gimbal block
+  cyl(0.42, 0.42, -0.38, -0.3, dk);           // mounting flange
+  cyl(0.34, 0.36, -0.72, -0.38, st);          // turbopump housing
+  tor(0.37, 0.04, -0.5, dk); tor(0.37, 0.035, -0.64, dk);
+  cyl(0.27, 0.3, -1.02, -0.72, st);
+  cyl(0.35, 0.35, -1.12, -1.02, dk);          // collar
+  cyl(0.24, 0.27, -1.42, -1.12, st);
+  st.push(lathe([[0.16, -1.98], [0.2, -1.9], [0.28, -1.78], [0.31, -1.62], [0.31, -1.44], [0.001, -1.42]], 40));   // chamber
+  tor(0.33, 0.085, -1.47, dk);                // main manifold
+  const pump = (x, r, h, y) => { cyl(r, r, y - h / 2, y + h / 2, st, x, 24); const cap = new THREE.SphereGeometry(r, 20, 8, 0, TAU, Math.PI / 2, Math.PI / 2); cap.translate(x, y - h / 2, 0); st.push(cap); };
+  pump(0.44, 0.17, 0.46, -0.72); pump(-0.44, 0.15, 0.42, -0.74);
+  for (const sg of [1, -1]) {                 // the two big looping ducts
+    dk.push(tube([[0.44 * sg, -0.95, 0], [0.66 * sg, -1.12, 0.12 * sg], [0.62 * sg, -1.36, 0.26 * sg], [0.36 * sg, -1.5, 0.3 * sg]], 0.075, 32));
+    dk.push(tube([[0.2 * sg, -0.4, 0.3 * sg], [0.36 * sg, -0.62, 0.34 * sg], [0.3 * sg, -1.0, 0.3 * sg], [0.22 * sg, -1.3, 0.26 * sg]], 0.035, 24));
+  }
+  const noz = nozzleProfile(yT, yE, rT, rE);
+  const nozzle = lathe(noz, 56);
+  const pos = nozzle.attributes.position, col = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const t = clamp((yT - pos.getY(i)) / (yT - yE)), v = 0.085 + 0.012 * Math.sin(t * 9);
+    col[i * 3] = v * 1.02; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 1.04;
+  }
+  nozzle.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const nr = t => rT + (rE - rT) * (1 - Math.pow(1 - t, 2.2));
+  const vr = [];
+  const ringAt = (t, tb, list = dk) => tor(nr(t) + 0.015, tb, yT + (yE - yT) * t, list);
+  ringAt(0.1, 0.06);
+  if (vac) { ringAt(0.5, 0.04, vr); ringAt(1, 0.06, vr); }
+  else ringAt(1, 0.03);
+  const glow = lathe(noz.map(([r, y]) => [r * 0.975, y]), 40);
+  const proxy = new THREE.CylinderGeometry(0.45, rE, -yE, 12); proxy.translate(0, yE / 2, 0);
+  return { steel: merge(st), dark: merge(dk), nozzle, vacRing: vac ? merge(vr) : null, glow, proxy, rE, yE };
+}
+const RSL = buildRaptor(false), RVAC = buildRaptor(true);
+
+const timeU = { value: 0 };
+const plumeVS = `
+varying vec2 vUv; varying float vF;
+void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position,1.0);
+  vec3 n = normalize(normalMatrix * normal); vF = abs(dot(n, normalize(-mv.xyz)));
+  gl_Position = projectionMatrix * mv; }`;
+const plumeFS = `
+uniform float uTime, uI, uSeed, uCore; varying vec2 vUv; varying float vF;
+float h(float n){ return fract(sin(n)*43758.5453); }
+float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  float a=h(i.x+i.y*57.0), b=h(i.x+1.0+i.y*57.0), c=h(i.x+(i.y+1.0)*57.0), d=h(i.x+1.0+(i.y+1.0)*57.0);
+  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y); }
+void main(){
+  float s = 1.0 - vUv.y;
+  float edge = pow(vF, uCore > 0.5 ? 1.1 : 2.4);
+  float n = noise(vec2(vUv.x*14.0 + uSeed*7.0, s*7.0 - uTime*9.0));
+  float n2 = noise(vec2(vUv.x*6.0 + uSeed, s*10.0 - uTime*18.0));
+  float fall = 1.0 - smoothstep(0.0, 1.0, s);
+  float diam = 1.0 + 1.4 * pow(max(0.0, sin(s*28.0 + 0.8)), 10.0) * (1.0 - smoothstep(0.0, 0.55, s));
+  vec3 cCore = vec3(1.0, 0.93, 0.86), cBlue = vec3(0.55, 0.62, 1.0), cPink = vec3(1.0, 0.52, 0.78), cOr = vec3(1.0, 0.52, 0.18);
+  vec3 col = uCore > 0.5 ? mix(cCore, cBlue, s) : mix(mix(cBlue, cPink, smoothstep(0.0, 0.35, s)), cOr, smoothstep(0.3, 1.0, s));
+  float a = edge * fall * diam * (0.75 + 0.4*n) * (0.9 + 0.2*n2) * uI;
+  gl_FragColor = vec4(col * a * (uCore > 0.5 ? 5.0 : 2.6), 1.0);
+}`;
+const glowFS = `
+uniform float uI; varying vec2 vUv;
+void main(){ float g = pow(vUv.y, 1.6);
+  vec3 c = mix(vec3(1.0,0.32,0.07)*0.4, vec3(1.0,0.72,0.42)*1.9, g) * uI;
+  gl_FragColor = vec4(c, 1.0); }`;
+const glowVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+
+// Volumetric exhaust: each plume is raymarched through a capped cylinder around its axis (object space, the flame
+// runs down -Y from the nozzle exit at y = 0). Turbulent 3D noise scrolls downstream, temperature maps to a
+// blackbody-like ramp, and Mach diamonds brighten the first few meters.
+const flameVS = `varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+const flameFS = `
+uniform float uTime, uI, uR0, uR1, uRB, uLen, uDiam, uSpeed, uDens, uSeed;
+uniform vec3 uCam;
+varying vec3 vPos;
+float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float fbm(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * noise(p); p = p * 2.07 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return s; }
+vec3 fire(float t){
+  vec3 c = mix(vec3(0.0), vec3(0.75, 0.08, 0.01), smoothstep(0.02, 0.22, t));
+  c = mix(c, vec3(1.0, 0.36, 0.05), smoothstep(0.18, 0.45, t));
+  c = mix(c, vec3(1.0, 0.72, 0.30), smoothstep(0.42, 0.7, t));
+  c = mix(c, vec3(1.0, 0.95, 0.82), smoothstep(0.68, 0.95, t));
+  return c;
+}
+void main(){
+  vec3 ro = uCam, rd = normalize(vPos - uCam);
+  float tn = 0.0, tf = 1e5;
+  float a = dot(rd.xz, rd.xz), b = dot(ro.xz, rd.xz), c = dot(ro.xz, ro.xz) - uRB * uRB;
+  if (a > 1e-6) { float disc = b * b - a * c; if (disc < 0.0) discard; float sq = sqrt(disc); tn = max(tn, (-b - sq) / a); tf = min(tf, (-b + sq) / a); }
+  else if (c > 0.0) discard;
+  if (abs(rd.y) > 1e-6) { float t0 = -ro.y / rd.y, t1 = (-uLen - ro.y) / rd.y; tn = max(tn, min(t0, t1)); tf = min(tf, max(t0, t1)); }
+  if (tf <= tn) discard;
+  float dt = (tf - tn) / float(STEPS);
+  float t = tn + dt * hash(vec3(gl_FragCoord.xy, fract(uTime) * 91.0));
+  vec3 acc = vec3(0.0); float tr = 1.0;
+  for (int i = 0; i < STEPS; i++) {
+    vec3 p = ro + rd * t; t += dt;
+    float s = clamp(-p.y / uLen, 0.0, 1.0);
+    float r = mix(uR0, uR1, pow(s, 0.65));
+    vec3 q = vec3(p.x, p.y + uTime * uSpeed, p.z) / uR0;
+    float n = fbm(q * 0.55 + uSeed);
+    float n2 = noise(q * 1.9 - uSeed);
+    float rr = length(p.xz) / (r * (0.78 + 0.5 * n));
+    if (rr > 1.25) continue;
+    float body = smoothstep(1.0, 0.15, rr);
+    float tail = 1.0 - smoothstep(0.62, 1.0, s + 0.2 * (n - 0.5));
+    float dens = body * tail * (0.35 + 1.1 * n * n2 + 0.4 * n);
+    float temp = (1.0 - rr * 0.85) * (1.0 - s * 0.72) * (0.8 + 0.55 * n);
+    float dia = pow(0.5 + 0.5 * cos(-p.y / uDiam * 6.2831853), 10.0) * exp(-s * 6.0) * smoothstep(0.55, 0.0, rr);
+    temp += dia * 0.5; dens += dia * 1.4;
+    temp += smoothstep(0.08, 0.0, s) * (1.0 - rr) * 0.3;    // white-hot right at the nozzle
+    vec3 col = fire(clamp(temp, 0.0, 1.0)) * (1.0 + 2.2 * smoothstep(0.7, 1.05, temp));
+    float k = dens * dt * uDens / uR0;
+    acc += tr * col * k;
+    tr *= exp(-k * 0.45);
+    if (tr < 0.03) break;
+  }
+  gl_FragColor = vec4(acc * uI, 1.0);
+}`;
+const FLAME_STEPS = isMobile ? 22 : 34;
+const flames = [];
+function makeFlame(parent, y0, R0, R1, L, diam, speed, dens, seed) {
+  const RB = R1 * 1.3;
+  const g = new THREE.CylinderGeometry(RB, RB, L, 40, 1, false); g.translate(0, -L / 2, 0);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: timeU, uI: { value: 0 }, uCam: { value: new V3() }, uR0: { value: R0 }, uR1: { value: R1 }, uRB: { value: RB }, uLen: { value: L }, uDiam: { value: diam }, uSpeed: { value: speed }, uDens: { value: dens }, uSeed: { value: seed } },
+    defines: { STEPS: FLAME_STEPS }, vertexShader: flameVS, fragmentShader: flameFS,
+    side: THREE.FrontSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+  });
+  const m = new THREE.Mesh(g, mat); m.position.y = y0; m.renderOrder = 5; m.visible = false; m.frustumCulled = false;
+  m.userData.bound = { RB, L };
+  parent.add(m); flames.push(m); return m;
+}
+
+const plumeGeo = {}, coreGeo = {};
+function getPlumeGeo(vac) {
+  const k = vac ? 'v' : 's';
+  if (!plumeGeo[k]) {
+    const e = vac ? RVAC : RSL, L = vac ? 13 : 19;
+    const g = new THREE.CylinderGeometry(e.rE * 0.96, e.rE * 2.1, L, 32, 24, true); g.translate(0, e.yE - L / 2, 0); plumeGeo[k] = g;
+    const c = new THREE.CylinderGeometry(e.rE * 0.7, e.rE * 0.22, L * 0.38, 24, 12, true); c.translate(0, e.yE - L * 0.19, 0); coreGeo[k] = c;
+  }
+  return [plumeGeo[k], coreGeo[k]];
+}
+const proxyMat = new THREE.MeshBasicMaterial({ visible: false });
+const engineBatches = new Map();
+function flushEngineBatches() {
+  for (const [group, b] of engineBatches) for (const kind of ['engineSteel', 'engineDark', 'nozzle', 'rvacOuter', 'rvacInner']) {
+    if (!b[kind].length) continue;
+    const m = new THREE.Mesh(kind === 'nozzle' ? mergeGeometries(b[kind], false) : merge(b[kind]), pmat(b.pid, kind));
+    m.castShadow = m.receiveShadow = true; m.userData.part = b.pid;
+    group.add(m); parts[b.pid].meshes.push(m);
+  }
+  engineBatches.clear();
+}
+const engines = [];
+function placeEngine(group, pid, vac, x, y, z, label, delay) {
+  const E = vac ? RVAC : RSL;
+  const e = new THREE.Group(); e.position.set(x, y, z); e.rotation.y = Math.atan2(x, z) + 0.3; group.add(e);
+  e.updateMatrix();
+  if (!engineBatches.has(group)) engineBatches.set(group, { pid, engineSteel: [], engineDark: [], nozzle: [], rvacOuter: [], rvacInner: [] });
+  const batch = engineBatches.get(group);
+  const pieces = vac ? [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'rvacOuter'], [E.vacRing, 'rvacOuter'], [E.nozzle, 'rvacInner']]
+    : [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'nozzle']];
+  for (const [geo, kind] of pieces) batch[kind].push(geo.clone().applyMatrix4(e.matrix));
+  const proxy = new THREE.Mesh(E.proxy, proxyMat); proxy.userData.part = pid; proxy.userData.label = label; e.add(proxy); pickables.push(proxy); parts[pid].meshes.push(proxy);
+  const glowMat = new THREE.ShaderMaterial({ uniforms: { uI: { value: 0 } }, vertexShader: glowVS, fragmentShader: glowFS, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+  const glow = new THREE.Mesh(E.glow, glowMat); glow.renderOrder = 3; glow.visible = false; e.add(glow);
+  const [, cg] = getPlumeGeo(vac);
+  const core = new THREE.Mesh(cg, new THREE.ShaderMaterial({ uniforms: { uTime: timeU, uI: { value: 0 }, uSeed: { value: Math.random() * 10 }, uCore: { value: 1 } }, vertexShader: plumeVS, fragmentShader: plumeFS, side: THREE.FrontSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+  core.renderOrder = 4; core.visible = false; e.add(core);
+  const plume = { visible: false };
+  // ship engines each get their own volumetric flame; the booster's 33 share one big plume (below)
+  const flame = pid === 's-raptors' ? makeFlame(e, E.yE, E.rE * 0.92, vac ? 3.4 : 2.3, vac ? 17 : 21, vac ? 1.7 : 1.05, 24, 1.0, Math.random() * 20) : null;
+  engines.push({ e, glow, plume, core, flame, delay, stage: pid, x, z, y });
+  return e;
+}
+
+// ---------------------------------------------------------------- SUPER HEAVY
+const bEngPos = [];
+function ring(n, r, off, name, delay0, y) {
+  for (let i = 0; i < n; i++) {
+    const a = off + i / n * TAU;
+    bEngPos.push({ x: Math.sin(a) * r, z: Math.cos(a) * r, y, name: `${name} ${i + 1}`, delay: delay0 + i / n * 0.12 });
+  }
+}
+// the thrust plate tapers down toward the middle, so inner engines hang lowest
+const B_AFT = 3.3;
+ring(3, 0.85, 0.3, 'Raptor 3 · center ring', 0.0, B_AFT - 0.75);
+ring(10, 2.35, 0.0, 'Raptor 3 · middle ring', 0.1, B_AFT - 0.4);
+ring(20, 3.85, 0.08, 'Raptor 3 · outer ring', 0.24, B_AFT - 0.05);
+for (const p of bEngPos) placeEngine(bEng, 'b-raptors', false, p.x, p.y, p.z, p.name, p.delay);
+// the 33 jets merge into one big volumetric plume a few meters below the nozzles
+const clusterPlume = makeFlame(bEng, B_AFT - 0.75 - 3.1, 4.3, 10, 70, 3.2, 42, 1.0, 3.3);
+
+// thrust section: dark band with external lines and junction boxes, tapered thrust plate below
+{
+  const y0 = B_AFT, y1 = B_AFT + 3.2;
+  add(bAft, cylG(R, R, y0, y1, 128, true), 'b-aft', 'dark', 'Thrust section');
+  add(bAft, cylG(R, 2.2, y0, y0 - 0.6, 96, false), 'b-aft', 'dark', 'Thrust plate');
+  // skirt band around the top ~15% of the engines (gimbal + top of the head), slightly inset so the
+  // outer ring's heads sit just in front of it, with its row of square cutouts
+  const SK = 0.55, rS = 4.2;
+  add(bAft, cylG(rS, rS, y0 - SK, y0, 128, true), 'b-aft', 'dark', 'Engine skirt');
+  add(bAft, (() => { const g = new THREE.RingGeometry(rS, R, 128); g.rotateX(Math.PI / 2); g.translate(0, y0, 0); return g; })(), 'b-aft', 'dark', 'Engine skirt');
+  const win = [];
+  for (let i = 0; i < 40; i++) { const w = new THREE.BoxGeometry(0.22, 0.2, 0.06); w.translate(0, y0 - SK * 0.5, rS + 0.01); w.rotateY((i + 0.5) / 40 * TAU); win.push(w); }
+  add(bAft, merge(win), 'b-aft', 'engineDark', 'Engine skirt · access cutout');
+  const skLip = new THREE.TorusGeometry(rS, 0.05, 8, 128); skLip.rotateX(Math.PI / 2); skLip.translate(0, y0 - SK, 0);
+  add(bAft, skLip, 'b-aft', 'dark', 'Engine skirt');
+  const lines = [];
+  for (const [y, tb] of [[y0 + 0.55, 0.09], [y0 + 1.25, 0.07], [y0 + 1.5, 0.07], [y0 + 2.45, 0.1]]) { const t = new THREE.TorusGeometry(R + 0.12, tb, 10, 128); t.rotateX(Math.PI / 2); t.translate(0, y, 0); lines.push(t); }
+  for (let i = 0; i < 40; i++) {
+    const a = i / 40 * TAU;
+    const b = new THREE.BoxGeometry(0.34, 0.55, 0.26); b.translate(0, y0 + 1.95, R + 0.16); b.rotateY(a); lines.push(b);
+    const w = new THREE.BoxGeometry(0.26, 0.26, 0.08); w.translate(0, y0 + 0.95, R + 0.03); w.rotateY(a + 0.08); lines.push(w);
+  }
+  add(bAft, merge(lines), 'b-aft', 'engineDark', 'External lines & junction boxes');
+  const lip = new THREE.TorusGeometry(R, 0.07, 10, 128); lip.rotateX(Math.PI / 2); lip.translate(0, y1, 0);
+  add(bAft, lip, 'b-aft', 'steel', 'Aft ring');
+}
+// LOX tank
+const B_LOX0 = B_AFT + 3.2, B_CD = 41, B_TOP = 68.8;
+steelShell(bLox, 'b-lox', B_LOX0, B_CD, 'LOX tank');
+add(bLox, domeGeo(R - 0.03, 1.8, B_LOX0, -1), 'b-lox', 'steel', 'LOX aft dome');
+raceway(bLox, 'b-lox', B_LOX0, B_CD);
+fluid(bLox, 'b-lox', 'fluidLox', { y: B_LOX0, h: 1.8, dir: -1 }, 37.2);
+{ const g = cylG(0.6, 0.6, B_LOX0 - 1.7, B_CD - 1.7, 32, true); add(bLox, g, 'b-ch4', 'steelNC', 'Methane downcomer'); }
+// chines: two long fairings along the lower booster
+for (const a of [Math.PI / 2, -Math.PI / 2]) {
+  const sh = new THREE.Shape();
+  sh.moveTo(0, 0); sh.lineTo(0.62, 2.2); sh.lineTo(0.62, 19); sh.lineTo(0, 22.5); sh.lineTo(0, 0);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 1.1, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 1 });
+  g.translate(0, 0, -0.55); scaleUV(g, 1 / CIRC, 1 / TEXM);
+  const holder = new THREE.Group(); holder.rotation.y = a - Math.PI / 2; bLox.add(holder);
+  const m = add(holder, g, 'b-lox', 'steel', 'Chine'); m.position.set(R - 0.05, B_LOX0 + 0.8, 0);
+}
+// CH4 tank (runs to the top of the booster; the forward dome sits inside the hot-stage truss)
+steelShell(bCh4, 'b-ch4', B_CD, B_TOP, 'Methane tank');
+add(bCh4, domeGeo(R - 0.03, 1.8, B_CD, -1), 'b-ch4', 'steel', 'Common dome');
+add(bCh4, domeGeo(R - 0.03, 1.8, B_TOP, 1), 'b-ch4', 'steel', 'Forward dome');
+raceway(bCh4, 'b-ch4', B_CD, B_TOP);
+fluid(bCh4, 'b-ch4', 'fluidCh4', { y: B_CD, h: 1.8, dir: -1 }, 65.5);
+// Block 3 grid fins: three, larger, dark, deep diamond cells with a scalloped edge, T layout
+function gridFinGeo() {
+  const h = 0.36, D = 1.05, t = 0.055, list = [], seen = new Set();
+  const inside = (u, v) => u > 0.55 && u < 4.9 && Math.abs(v) < 2.45 - Math.max(0, u - 3.6) * 0.55;
+  const wall = (x0, z0, x1, z1) => {
+    const k = [x0, z0, x1, z1].map(n => n.toFixed(2)).join(), k2 = [x1, z1, x0, z0].map(n => n.toFixed(2)).join();
+    if (seen.has(k) || seen.has(k2)) return; seen.add(k);
+    const len = Math.hypot(x1 - x0, z1 - z0), b = new THREE.BoxGeometry(len, D, t);
+    b.rotateY(-Math.atan2(z1 - z0, x1 - x0)); b.translate((x0 + x1) / 2, 0, (z0 + z1) / 2); list.push(b);
+  };
+  for (let i = -2; i < 16; i++) for (let j = -10; j < 10; j++) for (const off of [0, h]) {
+    const cx = i * 2 * h + off, cz = j * 2 * h + off;
+    if (!inside(cx, cz)) continue;
+    wall(cx - h, cz, cx, cz + h); wall(cx, cz + h, cx + h, cz); wall(cx + h, cz, cx, cz - h); wall(cx, cz - h, cx - h, cz);
+  }
+  const spine = new THREE.BoxGeometry(0.5, D + 0.1, 5.0); spine.translate(0.4, 0, 0); list.push(spine);
+  const pod = new THREE.BoxGeometry(0.7, 2.2, 1.8); pod.translate(0.05, -0.2, 0); list.push(pod);
+  return merge(list);
+}
+{
+  const fg = gridFinGeo();
+  // two fins opposite each other plus one between them on the far side (T layout)
+  [Math.PI / 2, -Math.PI / 2, Math.PI].forEach((a, i) => {
+    const holder = new THREE.Group(); holder.rotation.y = a - Math.PI / 2; bFwd.add(holder);
+    const rg = new THREE.Group(); rg.userData.radial = 2.5; holder.add(rg); radialGroups.push(rg);
+    const m = add(rg, fg, 'b-fwd', 'finDark', `Grid fin ${i + 1}`); m.position.set(R, 65.6, 0);
+  });
+}
+// integrated hot-stage truss: V-shaped tubular struts from the booster top ring up to the ship
+{
+  const y0 = B_TOP, y1 = S0, N = 20, list = [], brackets = [];
+  steelShell(hsrG, 'hsr', y0, y0 + 0.35, 'Hot-stage truss · base ring');
+  steelShell(hsrG, 'hsr', y1 - 0.3, y1, 'Hot-stage truss · top ring');
+  for (let i = 0; i < N; i++) {
+    const a = i / N * TAU, rB = R - 0.18, rT = R - 0.2;
+    const bx = Math.sin(a) * rB, bz = Math.cos(a) * rB;
+    for (const sg of [-1, 1]) {
+      const at = a + sg * (TAU / N) / 2, tx = Math.sin(at) * rT, tz = Math.cos(at) * rT;
+      const p0 = new V3(bx, y0 + 0.65, bz), p1 = new V3(tx, y1 - 0.3, tz);
+      const dir = p1.clone().sub(p0), len = dir.length();
+      const prof = [];
+      for (let k = 0; k <= 16; k++) { const t = k / 16; prof.push([0.055 + 0.105 * Math.pow(Math.sin(Math.PI * t), 0.45), -len / 2 + t * len]); }
+      const strut = lathe(prof, 14);
+      strut.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), dir.clone().normalize()));
+      strut.translate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, (p0.z + p1.z) / 2);
+      list.push(strut);
+    }
+    const b = new THREE.BoxGeometry(0.2, 0.55, 0.2); b.translate(0, y0 + 0.55, R - 0.12); b.rotateY(a); brackets.push(b);
+  }
+  const truss = merge(list); scaleUV(truss, 0.05, 0.05);
+  add(hsrG, truss, 'hsr', 'steel', 'Hot-stage truss · V strut');
+  add(hsrG, merge(brackets), 'hsr', 'dark', 'Hot-stage truss · strut bracket');
+}
+
+// ---------------------------------------------------------------- SHIP
+const sEngPos = [];
+for (let i = 0; i < 3; i++) { const a = i / 3 * TAU; sEngPos.push({ vac: false, x: Math.sin(a) * 1.05, z: Math.cos(a) * 1.05, y: S0 + 3.5, name: `Raptor · sea-level ${i + 1}`, delay: 0.3 + i * 0.03 }); }
+for (let i = 0; i < 3; i++) { const a = (i + 0.5) / 3 * TAU; sEngPos.push({ vac: true, x: Math.sin(a) * 3.0, z: Math.cos(a) * 3.0, y: S0 + 4.3, name: `Raptor Vacuum ${i + 1}`, delay: 0.4 + i * 0.03 }); }
+for (const p of sEngPos) placeEngine(sEng, 's-raptors', p.vac, p.x, p.y, p.z, p.name, p.delay);
+flushEngineBatches();
+
+// aft section
+steelShell(sAft, 's-tanks', S0, S0 + 5.2, 'Ship aft skirt');
+tileShell(sAft, S0, S0 + 5.2);
+{
+  const g = cylG(R - 0.1, 0.001, S0 + 4.45, S0 + 4.46, 96, false); add(sAft, g, 's-tanks', 'dark', 'Ship engine shield');
+  const rib = cylG(R - 0.06, R - 0.06, S0 + 0.05, S0 + 4.45, 192, true); scaleUV(rib, 1, 1);
+  add(sAft, rib, 's-tanks', 'ribbed', 'Ship aft skirt');
+  const lip = new THREE.TorusGeometry(R - 0.03, 0.06, 8, 128); lip.rotateX(Math.PI / 2); lip.translate(0, S0 + 0.03, 0);
+  add(sAft, lip, 's-tanks', 'steel', 'Ship aft skirt');
+  add(sAft, cylG(1.7, 1.7, S0 + 4.6, S0 + 4.9, 48, false), 's-tanks', 'dark', 'Thrust structure');
+}
+// LOX tank
+steelShell(sLox, 's-tanks', S0 + 5.2, S0 + 19, 'Ship LOX tank');
+tileShell(sLox, S0 + 5.2, S0 + 19);
+add(sLox, domeGeo(R - 0.03, 1.5, S0 + 5.2, -1), 's-tanks', 'steel', 'LOX aft dome');
+raceway(sLox, 's-tanks', S0 + 5.2, S0 + 19);
+fluid(sLox, 's-tanks', 'fluidLox', { y: S0 + 5.2, h: 1.5, dir: -1 }, S0 + 16.4);
+add(sLox, cylG(0.42, 0.42, S0 + 4.9, S0 + 17.6, 32, true), 's-tanks', 'steelNC', 'Methane downcomer · sea-level engines');
+for (let i = 0; i < 3; i++) {
+  const a = (i + 0.5) / 3 * TAU, x = Math.sin(a) * 2.55, z = Math.cos(a) * 2.55;
+  const m = add(sLox, cylG(0.26, 0.26, S0 + 5.0, S0 + 18.6, 20, true), 's-tanks', 'steelNC', `Methane downcomer · RVac ${i + 1}`);
+  m.position.set(x, 0, z);
+}
+{ const g = new THREE.SphereGeometry(1.0, 40, 20); g.translate(1.7, S0 + 16.8, 0); add(sLox, g, 's-tanks', 'steelNC', 'Methane header tank'); }
+// CH4 tank
+steelShell(sCh4, 's-tanks', S0 + 19, S0 + 28.4, 'Ship methane tank');
+tileShell(sCh4, S0 + 19, S0 + 28.4);
+add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 19, -1), 's-tanks', 'steel', 'Common dome');
+add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dome');
+raceway(sCh4, 's-tanks', S0 + 19, S0 + 28.4);
+fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
+// payload bay with the Pez slot: a long, narrow horizontal "mail slot" with rounded corners on the leeward side
+let SLOT = null;
+{
+  const y0 = S0 + 28.4, y1 = S0 + 39.9, d0 = S0 + 30.15, d1 = S0 + 31.15, DA = 1.5, DC = LEEWARD;
+  const HALF_S = R * DA / 2, HALF_Y = (d1 - d0) / 2, YC = (d0 + d1) / 2, CR = 0.42;
+  // signed distance-style test for a rounded rectangle in (arc length, height) around the slot center
+  const inSlot = (th, y) => {
+    const sArc = R * Math.atan2(Math.sin(th - DC), Math.cos(th - DC));
+    const qx = Math.abs(sArc) - (HALF_S - CR), qy = Math.abs(y - YC) - (HALF_Y - CR);
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) < CR;
+  };
+  const MW = 2048, MH = 1024, c = mkCanvas(MW, MH), g = c.getContext('2d'), img = g.createImageData(MW, MH);
+  for (let r = 0; r < MH; r++) {
+    const y = y0 + (1 - (r + 0.5) / MH) * (y1 - y0);
+    for (let q = 0; q < MW; q++) { const v = inSlot((q + 0.5) / MW * TAU, y) ? 0 : 255, i = (r * MW + q) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  }
+  g.putImageData(img, 0, 0);
+  const mask = new THREE.CanvasTexture(c);
+  // shell UVs are scaled for the steel texture (v * h/TEXM + y0/TEXM); undo that for the mask
+  mask.repeat.set(1, TEXM / (y1 - y0)); mask.offset.set(0, -y0 / (y1 - y0));
+  SLOT = { mask };
+  const shellOf = (r, kind, label) => {
+    const geo = cylG(r, r, y0, y1, 192, true); scaleUV(geo, 1, (y1 - y0) / TEXM, 0, y0 / TEXM);
+    const m = add(sPay, geo, 's-payload', kind, label); m.userData.maskFn = (th, y) => !inSlot(th, y); return m;
+  };
+  shellOf(R, 'steelSlot', 'Payload bay');
+  shellOf(R - 0.1, 'darkSlot', 'Payload bay liner');
+  tileShell(sPay, y0, y1);
+  raceway(sPay, 's-payload', y0, y1);
+  // a rounded frame tracing the slot's edge
+  const cx = HALF_S - CR, cy = HALF_Y - CR, rr = CR + 0.06, ring2d = [];
+  for (const [x, y, a0] of [[cx, cy, 0], [-cx, cy, Math.PI / 2], [-cx, -cy, Math.PI], [cx, -cy, 1.5 * Math.PI]])
+    for (let k = 0; k <= 10; k++) { const a = a0 + k / 10 * Math.PI / 2; ring2d.push([x + rr * Math.cos(a), y + rr * Math.sin(a)]); }
+  const pts = [];
+  ring2d.forEach((p0, i) => {
+    const p1 = ring2d[(i + 1) % ring2d.length], seg = Math.max(1, Math.ceil(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / 0.25));
+    for (let k = 0; k < seg; k++) {
+      const sx = lerp(p0[0], p1[0], k / seg), sy = lerp(p0[1], p1[1], k / seg), th = DC + sx / R;
+      pts.push(new V3(Math.sin(th) * (R + 0.03), YC + sy, Math.cos(th) * (R + 0.03)));
+    }
+  });
+  add(sPay, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 320, 0.07, 8, true), 's-payload', 'steel', 'Pez slot frame');
+  const d0_ = d0;
+  // satellites stacked flat above the slot; the lowest one is sliding out
+  const satGeo = new THREE.BoxGeometry(5.0, 0.22, 3.0);
+  const sm = ['sat', 'sat', 'solar', 'sat', 'sat', 'sat'];
+  for (let i = 0; i < 20; i++) {
+    const m = add(sPay, satGeo, 's-payload', sm, `Starlink satellite ${i + 1}`);
+    m.position.copy(dirA(DC, i === 0 ? 3.6 : 1.0)).setY(d0_ + (i === 0 ? 0.5 : 1.0 + i * 0.4)); m.rotation.y = DC - Math.PI / 2;
+  }
+  for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, y1 - d0 - 1.2, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y1 - 1.2) / 2 + 0.2); m.rotation.y = DC; }
+}
+// nose cone
+const nosePts = [];
+for (let i = 0; i <= 44; i++) { const x = (NOSE_L - 0.7) * i / 44; nosePts.push([noseR(x), x]); }
+{ const r0 = noseR(NOSE_L - 0.7); for (let k = 1; k <= 8; k++) { const a = k / 8 * Math.PI / 2; nosePts.push([r0 * Math.cos(a), NOSE_L - 0.7 + 0.45 * Math.sin(a)]); } }
+nosePts[nosePts.length - 1][0] = 0.001;
+{
+  const g = lathe(nosePts.map(([r, y]) => [r, y + NOSE0]), 128);
+  scaleUV(g, 1, 12 / TEXM, 0, NOSE0 / TEXM);
+  add(sNose, g, 's-nose', 'steel', 'Nose cone');
+  const tg = shipUV(lathe(nosePts.map(([r, y]) => [r + 0.04, y + NOSE0]), 128));
+  add(sNose, tg, 's-tiles', 'tile', 'Heat shield tiles · nose').userData.maskFn = tileAt;
+  const ht = new THREE.SphereGeometry(1.35, 40, 20); ht.translate(0, NOSE0 + 3.2, 0);
+  add(sNose, ht, 's-nose', 'steelNC', 'LOX header tank');
+  add(sNose, cylG(0.17, 0.17, NOSE0 - 0.3, NOSE0 + 1.9, 16, true), 's-nose', 'steelNC', 'Header transfer tube');
+}
+// flaps
+function flapShape(s, cr, ct, drop) {
+  const sh = new THREE.Shape(), rr = Math.min(0.9, ct * 0.25), yB = drop, yT = drop + ct;
+  sh.moveTo(0, 0);
+  sh.lineTo(s - rr, yB * (s - rr) / s);
+  sh.quadraticCurveTo(s, yB, s, yB + rr);
+  sh.lineTo(s, yT - rr);
+  sh.quadraticCurveTo(s, yT, s - rr, yT + (cr - yT) * (rr / s));
+  sh.lineTo(0, cr); sh.lineTo(0, 0);
+  return sh;
+}
+function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label) {
+  const holder = new THREE.Group(); holder.rotation.y = a - Math.PI / 2; group.add(holder);
+  const rg = new THREE.Group(); rg.userData.radial = 2.3; holder.add(rg); radialGroups.push(rg);
+  const inner = new THREE.Group(); inner.position.set(rootR, y0, 0); inner.rotation.z = tilt; rg.add(inner);
+  const sh = flapShape(span, cr, ct, drop);
+  const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
+  eg.translate(0, 0, -0.15); scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h);
+  add(inner, eg, 's-flaps', 'tileSolid', label);
+  const hinge = new THREE.CylinderGeometry(0.4, 0.4, cr * 0.9, 24); hinge.translate(0.05, cr / 2, 0);
+  scaleUV(hinge, 2.5 / tileTex.w, cr / tileTex.h);
+  add(inner, hinge, 's-flaps', 'tileSolid', label + ' · hinge fairing');
+}
+const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
+flap(sAft, FA1, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (left)');
+flap(sAft, FA2, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (right)');
+// forward flaps sit high on the nose and sweep up to a point
+flap(sNose, FA1 + 0.3, NOSE0 + 1.6, 5.6, 2.4, 2.6, 2.8, noseR(1.6) + 0.02, 0.24, 'Forward flap (left)');
+flap(sNose, FA2 - 0.3, NOSE0 + 1.6, 5.6, 2.4, 2.6, 2.8, noseR(1.6) + 0.02, 0.24, 'Forward flap (right)');
+
+// ---------------------------------------------------------------- stage, lights
+const floorGlow = (() => { const c = mkCanvas(256, 256), g = c.getContext('2d'), gr = g.createRadialGradient(100, 110, 0, 128, 128, 128);
+  gr.addColorStop(0, '#fff'); gr.addColorStop(0.55, '#5a6070'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c); })();
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x14161b, roughness: 0.5, metalness: 0.3, transparent: true, alphaMap: makeFloorAlpha(), emissive: 0x8a95ad, emissiveMap: floorGlow, emissiveIntensity: 0.28 });
+const floor = new THREE.Mesh(new THREE.CircleGeometry(1, 128), floorMat);
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const ringLine = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.303, 128), new THREE.MeshBasicMaterial({ color: 0x3a404c, transparent: true, opacity: 0.6 }));
+ringLine.rotation.x = -Math.PI / 2; ringLine.position.y = 0.02; scene.add(ringLine);
+
+// every light on the vehicle is tied to the viewer (see the loop), so whatever you look at is lit from your side;
+// only a soft, direction-less ambient stays fixed
+scene.add(new THREE.HemisphereLight(0x9aa6bc, 0x9aa6bc, 0.4));
+// a soft light that rides with the camera: whatever side you look at is lit
+const headlight = new THREE.DirectionalLight(0xffffff, 2.6); scene.add(headlight, headlight.target);
+const headFill = new THREE.DirectionalLight(0xdfe6f5, 0.8); scene.add(headFill, headFill.target);
+const key = new THREE.SpotLight(0xe6edff, 0.9, 0, 0.55, 0.9, 0);   // mostly there to cast the vehicle's shadow on the stage
+key.position.set(14, 175, 60); key.target.position.set(0, 0, 0);
+key.castShadow = true; key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
+key.shadow.camera.near = 60; key.shadow.camera.far = 300; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.04;
+scene.add(key, key.target);
+const bFire = new THREE.PointLight(0xff6a24, 0, 55, 1.6); bFire.position.set(0, -9, 0); bEng.add(bFire);
+const sFire = new THREE.PointLight(0xff7a30, 0, 70, 1.4); sFire.position.set(0, S0 - 8, 0); sEng.add(sFire);
+
+// ---------------------------------------------------------------- airflow (streaks) + propellant particles
+const AIR_N = isMobile ? 600 : 1100;
+const air = { y: new Float32Array(AIR_N), a: new Float32Array(AIR_N), o: new Float32Array(AIR_N), s: new Float32Array(AIR_N), l: new Float32Array(AIR_N) };
+const airPos = new Float32Array(AIR_N * 6), airCol = new Float32Array(AIR_N * 6);
+const airGeo = new THREE.BufferGeometry();
+airGeo.setAttribute('position', new THREE.BufferAttribute(airPos, 3));
+airGeo.setAttribute('color', new THREE.BufferAttribute(airCol, 3));
+const airLines = new THREE.LineSegments(airGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+airLines.frustumCulled = false; airLines.visible = false; root.add(airLines);
+function spawnAir(i, anywhere) {
+  air.y[i] = anywhere ? -25 + Math.random() * 200 : 172 + Math.random() * 12;
+  air.a[i] = Math.random() * TAU;
+  air.o[i] = 0.2 + Math.pow(Math.random(), 2.2) * 7;
+  air.s[i] = 38 + Math.random() * 30;
+  air.l[i] = 3 + Math.random() * 7;
+}
+for (let i = 0; i < AIR_N; i++) spawnAir(i, true);
+function hullR(y) { if (y > NOSE0) return noseR(y - NOSE0); if (y > -0.5) return R; return R * 0.9; }
+
+const flows = [];
+function addFlow(pts, color, n) { flows.push({ pts, color, n, cur: pts.map(() => new V3()), len: [] }); }
+for (const p of bEngPos) {
+  addFlow([[bLox, 0, B_CD - 1.9, 0], [bLox, 0, B_LOX0 - 1.6, 0], [bAft, p.x * 0.45, B_AFT - 0.3, p.z * 0.45], [bEng, p.x, p.y - 0.05, p.z]], [1.0, 0.62, 0.25], 12);
+  addFlow([[bLox, p.x * 0.55, 30, p.z * 0.55], [bLox, p.x * 0.78, B_LOX0 + 0.2, p.z * 0.78], [bAft, p.x * 0.96, B_AFT + 0.2, p.z * 0.96], [bEng, p.x, p.y - 0.05, p.z]], [0.45, 0.8, 1.0], 12);
+}
+for (const p of sEngPos) {
+  if (p.vac) addFlow([[sLox, p.x * 0.85, S0 + 18.4, p.z * 0.85], [sLox, p.x * 0.85, S0 + 5.0, p.z * 0.85], [sEng, p.x, p.y, p.z]], [1.0, 0.62, 0.25], 22);
+  else addFlow([[sLox, 0, S0 + 17.3, 0], [sLox, 0, S0 + 5.0, 0], [sEng, p.x, p.y, p.z]], [1.0, 0.62, 0.25], 22);
+  addFlow([[sLox, p.x * 0.6, S0 + 12, p.z * 0.6], [sLox, p.x * 0.85, S0 + 5.4, p.z * 0.85], [sEng, p.x, p.y, p.z]], [0.45, 0.8, 1.0], 22);
+}
+const PN = flows.reduce((s, f) => s + f.n, 0);
+const pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3), pU = new Float32Array(PN), pJ = new Float32Array(PN * 3), pF = new Uint16Array(PN);
+{ let k = 0; flows.forEach((f, fi) => { for (let i = 0; i < f.n; i++, k++) { pU[k] = Math.random(); pF[k] = fi; pJ[k * 3] = (Math.random() - 0.5) * 0.35; pJ[k * 3 + 1] = (Math.random() - 0.5) * 0.35; pJ[k * 3 + 2] = (Math.random() - 0.5) * 0.35; } }); }
+const propGeo = new THREE.BufferGeometry();
+propGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+propGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+const propPts = new THREE.Points(propGeo, new THREE.PointsMaterial({ size: 0.55, map: dotTex, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
+propPts.frustumCulled = false; propPts.visible = false; root.add(propPts);
+
+// ---------------------------------------------------------------- state & layout
+const st = { explode: 0, explodeT: 0, section: 0, sectionT: 0, fire: 0, fireT: 0, sep: 0, sepT: 0 };
+let vertical = innerHeight > innerWidth * 1.05;
+let paused = false, userMoved = false, autoSpin = true, lastInteract = 0, selected = null, hovered = null;
+const MIN0 = B_AFT - 0.75 - 3.1, SEP = 28, VEH_R = 8.5;
+function extents(e, sp) {
+  const mn = lerp(MIN0, MIN0 - 16, e), top = lerp(NOSE_TOP, NOSE_TOP + 37, e) + SEP * sp;
+  return { mn, top, c: (mn + top) / 2, L: top - mn };
+}
+const Y = new V3(0, 1, 0), IDQ = new THREE.Quaternion();
+// height of the vehicle's center so its lowest point clears the stage
+function liftFor(q, L) {
+  const ax = Y.clone().applyQuaternion(pivot.quaternion).applyQuaternion(q);
+  return Math.abs(ax.y) * L / 2 + VEH_R * Math.sqrt(Math.max(0, 1 - ax.y * ax.y)) + 1.2;
+}
+let firstLayout = true;
+function layout() {
+  const x = extents(sstep(clamp(st.explode)), sstep(clamp(st.sep)));
+  root.position.y = -x.c;
+  pivot.rotation.z = vertical ? 0 : -Math.PI / 2;
+  pivot.updateMatrix();
+  const ny = liftFor(IDQ, x.L), dy = ny - spin.position.y;
+  spin.position.y = ny;
+  // keep the camera locked on the vehicle while it rises or sinks (vertical layout, explode)
+  if (!firstLayout && dy && !camAnim) { camera.position.y += dy; controls.target.y += dy; }
+  firstLayout = false;
+}
+function applyOrientation() {
+  const s = vertical ? 34 : 92;
+  floor.scale.setScalar(s); ringLine.scale.setScalar(s);
+  key.angle = vertical ? 0.36 : 0.56;
+  syncCube();
+}
+
+// ---------------------------------------------------------------- camera navigation
+// A free orbit camera built for a long, thin vehicle: it orbits around whatever point you grab, zooms toward
+// the cursor, pans with the right button / two fingers, can go all the way underneath, and glides with inertia.
+const controls = { target: new V3(), update() { camera.up.set(0, 1, 0); camera.lookAt(this.target); } };
+const navVel = { yaw: 0, pitch: 0, px: 0, py: 0 };
+const navPivot = new V3(), zoomPt = new V3();
+let zoomPending = 0, camAnim = null, gesture = null;
+const tvHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+function orbitCam(yaw, pitch, pv) {
+  pv = pv.clone();                                          // callers often pass controls.target itself
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const el = Math.asin(clamp(dir.y, -1, 1));
+  pitch = clamp(el + pitch, -1.53, 1.53) - el;               // stop just short of straight up/down
+  const axis = new V3().crossVectors(dir, Y); if (axis.lengthSq() < 1e-8) axis.set(1, 0, 0); axis.normalize();
+  const q = new THREE.Quaternion().setFromAxisAngle(Y, yaw).multiply(new THREE.Quaternion().setFromAxisAngle(axis, pitch));
+  camera.position.sub(pv).applyQuaternion(q).add(pv);
+  controls.target.sub(pv).applyQuaternion(q).add(pv);
+}
+function panCam(dx, dy) {
+  camera.updateMatrixWorld();
+  const s = 2 * camera.position.distanceTo(controls.target) * tvHalf() / innerHeight;
+  const off = new V3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(-dx * s)
+    .add(new V3().setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(dy * s));
+  camera.position.add(off); controls.target.add(off);
+}
+function zoomCam(f, P) {
+  const d = camera.position.distanceTo(P);
+  if (f < 1 && d * f < 1.6) f = Math.min(1, 1.6 / d);        // never dive through the surface you're zooming to
+  if (d * f > 900) f = 900 / d;
+  camera.position.sub(P).multiplyScalar(f).add(P);
+  controls.target.sub(P).multiplyScalar(f).add(P);
+}
+function worldAt(x, y) {                                       // the point on the vehicle under the pointer (or null)
+  mouse.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
+  const h = pick(); return h ? h.point.clone() : null;
+}
+function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); }
+function flyTo(v) { camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
+const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
+function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
+function defaultView() {
+  const x = extents(st.explodeT, st.sepT), tv = tvHalf(), asp = camera.aspect, target = vehicleCenter();
+  const d = !vertical ? Math.max((x.L / 2) / (tv * asp) * 1.38, 30 / tv) : Math.max((x.L / 2 + 1) / tv * 1.3, 14 / (tv * asp));
+  return { target, pos: target.clone().add(defaultDir().multiplyScalar(d)) };
+}
+
+// ---------------------------------------------------------------- view cube
+let cubeHot = -1;
+const cubeCanvas = document.getElementById('cube');
+const CUBE_PX = isMobile ? 84 : 112;
+const cubeR = new THREE.WebGLRenderer({ canvas: cubeCanvas, alpha: true, antialias: true });
+cubeR.setPixelRatio(PR); cubeR.setSize(CUBE_PX, CUBE_PX, false);
+const cubeScene = new THREE.Scene(), cubeCam = new THREE.OrthographicCamera(-1.62, 1.62, 1.62, -1.62, 0.1, 20);
+const FACE_KEYS = ['nose', 'engines', 'top', 'belly', 'side', 'side'];     // +x -x +y -y +z -z in the vehicle frame
+function faceTex(label, hot) {
+  const c = mkCanvas(128, 128), g = c.getContext('2d');
+  g.fillStyle = hot ? 'rgba(238,167,116,0.95)' : 'rgba(22,25,31,0.92)'; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = hot ? '#eea774' : 'rgba(255,255,255,0.22)'; g.lineWidth = 4; g.strokeRect(2, 2, 124, 124);
+  g.fillStyle = hot ? '#1b1208' : '#eef1f5';
+  let px = 28; g.font = `700 ${px}px Inter, Heebo, 'Noto Sans Arabic', sans-serif`;
+  while (px > 12 && g.measureText(label).width > 112) { px--; g.font = `700 ${px}px Inter, Heebo, 'Noto Sans Arabic', sans-serif`; }
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, 64, 66);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const faceTexs = FACE_KEYS.map(() => [null, null]);
+const faceMats = FACE_KEYS.map(() => new THREE.MeshBasicMaterial());
+function buildCubeFaces() {
+  FACE_KEYS.forEach((k, i) => {
+    const label = I.ui[k].toLocaleUpperCase(LANG);
+    for (const t of faceTexs[i]) if (t) t.dispose();
+    faceTexs[i] = [faceTex(label, false), faceTex(label, true)];
+    faceMats[i].map = faceTexs[i][i === cubeHot ? 1 : 0]; faceMats[i].needsUpdate = true;
+  });
+}
+const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), faceMats);
+cube.add(new THREE.LineSegments(new THREE.EdgesGeometry(cube.geometry), new THREE.LineBasicMaterial({ color: 0x8a93a3 })));
+cubeScene.add(cube);
+function vehicleBasis() {
+  const A = Y.clone().applyQuaternion(pivot.quaternion);                  // toward the nose
+  const U = dirA(WINDWARD).applyQuaternion(pivot.quaternion).negate();    // away from the belly
+  return { A, U, S: new V3().crossVectors(A, U) };
+}
+function syncCube() { pivot.updateMatrix(); const { A, U, S } = vehicleBasis(); cube.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(A, U, S)); }
+function faceView(i) {
+  const { A, U, S } = vehicleBasis();
+  const D = [A, A.clone().negate(), U, U.clone().negate(), S, S.clone().negate()][i].clone();
+  // end views are taken three-quarters on (a dead-on view sits inside the exhaust and flattens the cluster)
+  if (i < 2) D.add(U.clone().multiplyScalar(0.5)).add(S.clone().multiplyScalar(0.45)).normalize();
+  // don't dive far under the stage for the belly: keep it lit by looking up from a shallow angle
+  if (D.y < -0.4) { D.y = -0.4; D.normalize(); }
+  if (Math.abs(D.y) > 0.97) D.add(new V3(0, 0, 0.15)).normalize();
+  const x = extents(st.explodeT, st.sepT), tv = tvHalf(), asp = camera.aspect, target = vehicleCenter();
+  let d;
+  if (i < 2) { target.add((i === 0 ? A : A.clone().negate()).multiplyScalar(x.L / 2 - 4)); d = 9 / (tv * Math.min(1, asp)); }
+  else {
+    const Aw = Math.abs(A.dot(new V3().setFromMatrixColumn(camera.matrixWorld, 1)));
+    d = Math.max((x.L / 2) / (tv * asp), (x.L / 2) / tv * Math.abs(A.y), 20 / tv) * 1.18 + Aw * 0;
+  }
+  return { target, pos: target.clone().add(D.multiplyScalar(d)) };
+}
+const cubeRay = new THREE.Raycaster(), cubeMouse = new V2();
+
+function cubeHit(e) {
+  const r = cubeCanvas.getBoundingClientRect();
+  cubeMouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  cubeRay.setFromCamera(cubeMouse, cubeCam);
+  const h = cubeRay.intersectObject(cube, false)[0];
+  return h ? h.face.materialIndex : -1;
+}
+function setCubeHot(i) {
+  if (i === cubeHot) return;
+  if (cubeHot >= 0) faceMats[cubeHot].map = faceTexs[cubeHot][0];
+  cubeHot = i; if (i >= 0) faceMats[i].map = faceTexs[i][1];
+}
+cubeCanvas.addEventListener('pointermove', e => setCubeHot(cubeHit(e)));
+cubeCanvas.addEventListener('pointerleave', () => setCubeHot(-1));
+cubeCanvas.addEventListener('click', e => { const i = cubeHit(e); if (i < 0) return; userInteracted(); flyTo(faceView(i)); });
+document.querySelector('#nav .views').addEventListener('click', e => { const f = e.target.closest('button')?.dataset.face; if (f === undefined) return; userInteracted(); flyTo(faceView(+f)); });
+document.querySelector('#nav .navbtns').addEventListener('click', e => {
+  const z = e.target.closest('button')?.dataset.z; if (!z) return;
+  userInteracted();
+  if (z === 'fit') { flyTo(defaultView()); return; }
+  zoomPt.copy(controls.target); zoomPending += z === 'in' ? -0.55 : 0.55;
+});
+
+// ---------------------------------------------------------------- UI
+const partsNav = document.getElementById('parts');
+const card = document.getElementById('card'), station = document.getElementById('station');
+card.querySelector('.x').addEventListener('click', () => select(null));
+const grpName = g => g === 'sh' ? 'Super Heavy' : g === 'inter' ? I.ui.interstage : 'Ship';
+const partT = id => I.parts[id];
+const num2 = i => String(i + 1).padStart(2, '0');
+function buildPartsNav() {
+  partsNav.innerHTML = '';
+  let lastGroup = '';
+  for (const p of PART_INFO) {
+    const P = parts[p.id];
+    if (P.grp !== lastGroup) { const s = document.createElement('div'); s.className = 'sep'; s.textContent = grpName(P.grp); partsNav.appendChild(s); lastGroup = P.grp; }
+    const b = document.createElement('button'); b.className = 'pill' + (selected === p.id ? ' on' : ''); b.dataset.part = p.id;
+    const i = document.createElement('i'); i.textContent = num2(P.idx);
+    b.append(i, document.createTextNode(fillT(partT(p.id).n)));
+    b.addEventListener('click', () => select(selected === p.id ? null : p.id, true));
+    partsNav.appendChild(b);
+  }
+}
+function select(id, focus) {
+  selected = id;
+  partsNav.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.part === id));
+  if (!id) { card.classList.remove('show'); station.textContent = '—'; return; }
+  renderCard();
+  card.classList.add('show');
+  if (focus) focusPart(id);
+}
+function renderCard() {
+  if (!selected) return;
+  const P = parts[selected], T = partT(selected);
+  document.getElementById('card-k').textContent = `${grpName(P.grp)} · ${num2(P.idx)}`;
+  document.getElementById('card-t').textContent = fillT(T.t);
+  document.getElementById('card-d').textContent = fillT(T.d);
+  const row = document.getElementById('card-s'); row.innerHTML = '';
+  for (const [a, b] of T.s) { const d = document.createElement('div'), sp = document.createElement('span'), v = document.createElement('b'); sp.textContent = a; v.textContent = fillT(b); v.dir = 'auto'; d.append(sp, v); row.appendChild(d); }
+  station.textContent = `${num2(P.idx)} · ${fillT(T.n)}`;
+}
+function focusBox(box) {
+  const c = box.getCenter(new V3()), size = box.getSize(new V3()).length();
+  const d = clamp(size / 2 / tvHalf() * 1.05, 12, 400);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  flyTo({ target: c, pos: c.clone().add(dir.multiplyScalar(d)) });
+  userMoved = true; autoSpin = false;
+}
+function focusPart(id) {
+  scene.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  for (const m of parts[id].meshes) if (m.geometry && !fluids.includes(m)) box.expandByObject(m);
+  if (!box.isEmpty()) focusBox(box);
+}
+
+const btn = a => document.querySelector(`[data-act="${a}"]`);
+document.getElementById('controls').addEventListener('click', e => {
+  const a = e.target.closest('button')?.dataset.act; if (!a) return;
+  if (a === 'explode') { st.explodeT = st.explodeT ? 0 : 1; btn('explode').classList.toggle('on', !!st.explodeT); if (!userMoved) flyTo(defaultView()); }
+  if (a === 'stage') { st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
+  if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; btn('section').classList.toggle('on', !!st.sectionT); }
+  if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); }
+  if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
+  if (a === 'reset') {
+    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; paused = false; select(null);
+    for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
+    userMoved = false; autoSpin = true; flyTo(defaultView());
+  }
+  setControlLabels();
+});
+const hint = document.getElementById('hint');
+let hintGone = false;
+function fadeHint() { if (!hintGone) { hintGone = true; setTimeout(() => hint.style.opacity = 0, 4000); } }
+
+// picking
+const ray = new THREE.Raycaster(), mouse = new V2(), tip = document.getElementById('tip'), pivotDot = document.getElementById('pivot');
+let mouseDirty = false, mx = 0, my = 0;
+function pick() {
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(pickables, false);
+  for (const h of hits) {
+    const m = h.object, mat = Array.isArray(m.material) ? m.material[0] : m.material;
+    if (mat.clippingPlanes && clipPlane.distanceToPoint(h.point) < 0) continue;
+    if (m.userData.maskFn) { const lp = m.worldToLocal(h.point.clone()); if (!m.userData.maskFn(Math.atan2(lp.x, lp.z), lp.y)) continue; }
+    let v = true; m.traverseAncestors(a => { if (!a.visible) v = false; }); if (!v) continue;
+    return h;
+  }
+  return null;
+}
+let lastTap = { t: 0, x: 0, y: 0 };
+function clickAt(e) {
+  const now = performance.now();
+  // a second tap in the same spot flies there (double-tap on touch; mice also get dblclick below)
+  if (e.pointerType !== 'mouse' && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) { flyToPoint(e.clientX, e.clientY); lastTap.t = 0; return; }
+  lastTap = { t: now, x: e.clientX, y: e.clientY };
+  mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  const h = pick();
+  if (h) select(h.object.userData.part, false); else if (selected) select(null);
+}
+function flyToPoint(x, y) {
+  const P = worldAt(x, y); if (!P) return;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const d = clamp(camera.position.distanceTo(P) * 0.45, 9, 30);
+  userInteracted(); flyTo({ target: P, pos: P.clone().add(dir.multiplyScalar(d)) });
+}
+
+// ---------------------------------------------------------------- pointer, wheel and keyboard input
+const ptrs = new Map();
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  userInteracted();
+  navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0;
+  if (ptrs.size === 1) {
+    const pan = e.button === 2 || e.button === 1 || e.shiftKey;
+    gesture = { mode: pan ? 'pan' : 'orbit', t: performance.now(), moved: 0 };
+    navPivot.copy((!pan && worldAt(e.clientX, e.clientY)) || controls.target);
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()];
+    gesture = { mode: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, moved: 99 };
+  }
+});
+canvas.addEventListener('pointermove', e => {
+  mx = e.clientX; my = e.clientY;
+  mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  if (e.pointerType === 'mouse' && !gesture) mouseDirty = true;
+  const p = ptrs.get(e.pointerId); if (!p || !gesture) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (gesture.mode === 'orbit' && ptrs.size === 1) {
+    const k = e.pointerType === 'mouse' ? 0.0052 : 0.0068;
+    orbitCam(-dx * k, dy * k, navPivot); navVel.yaw = -dx * k; navVel.pitch = dy * k;
+    gesture.moved += Math.abs(dx) + Math.abs(dy);
+  } else if (gesture.mode === 'pan' && ptrs.size === 1) {
+    panCam(dx, dy); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
+  } else if (gesture.mode === 'pinch' && ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    panCam(cx - gesture.mx, cy - gesture.my);
+    if (d > 10 && gesture.d > 10) zoomCam(gesture.d / d, worldAt(cx, cy) || controls.target);
+    gesture.d = d; gesture.mx = cx; gesture.my = cy;
+  }
+});
+function endPtr(e) {
+  if (!ptrs.delete(e.pointerId)) return;
+  if (gesture && gesture.mode !== 'pinch' && gesture.moved < 6 && performance.now() - gesture.t < 450) { navVel.yaw = navVel.pitch = 0; clickAt(e); }
+  if (ptrs.size === 0) gesture = null;
+  else if (ptrs.size === 1) { gesture = { mode: 'orbit', t: 0, moved: 99 }; navPivot.copy(controls.target); }
+  lastInteract = performance.now();
+}
+canvas.addEventListener('pointerup', endPtr);
+canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('pointerleave', () => { hovered = null; tip.style.opacity = 0; });
+canvas.addEventListener('wheel', e => {
+  e.preventDefault(); userInteracted();
+  zoomPt.copy(worldAt(e.clientX, e.clientY) || controls.target);   // off the vehicle, zoom toward the view center
+  const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+  zoomPending = clamp(zoomPending + clamp(dy, -240, 240) * 0.0017, -1.6, 1.6);
+}, { passive: false });
+canvas.addEventListener('dblclick', e => flyToPoint(e.clientX, e.clientY));
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (selected) select(null); else if (EMBED) closeEmbed(); }
+  const k = { ArrowLeft: [0.07, 0], ArrowRight: [-0.07, 0], ArrowUp: [0, 0.05], ArrowDown: [0, -0.05] }[e.key];
+  if (k) { e.preventDefault(); userInteracted(); navVel.yaw = k[0] * 0.5; navVel.pitch = k[1] * 0.5; navPivot.copy(controls.target); }
+  if (e.key === '+' || e.key === '=') { userInteracted(); zoomPt.copy(controls.target); zoomPending -= 0.4; }
+  if (e.key === '-' || e.key === '_') { userInteracted(); zoomPt.copy(controls.target); zoomPending += 0.4; }
+  if (e.key === 'f' || e.key === 'F') { userInteracted(); flyTo(defaultView()); }
+});
+
+// ---------------------------------------------------------------- loop
+const clock = new THREE.Clock();
+const ENV_Q = new THREE.Quaternion();
+let t = 0, frameNo = 0, perfT = 0, perfN = 0, curPR = PR, lastHover = 0;
+function setPR(p) { curPR = p; renderer.setPixelRatio(p); composer.setPixelRatio(p); composer.setSize(innerWidth, innerHeight); }
+const hl = new THREE.Color(0xff7a2e);
+const vTmp = new V3();
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05), adt = paused ? 0 : dt;
+  t += adt; timeU.value = t; frameNo++;
+
+  const k = r => 1 - Math.exp(-dt * r);
+  st.explode += (st.explodeT - st.explode) * k(2.4);
+  st.section += (st.sectionT - st.section) * k(2.6);
+  st.fire += (st.fireT - st.fire) * k(1.6);
+  st.sep += (st.sepT - st.sep) * k(1.8);
+
+  const sepOff = SEP * sstep(clamp(st.sep));
+  for (const g of groups) { const p = sstep(clamp(st.explode * 1.25 - g.userData.order / 11 * 0.25)); g.position.y = g.userData.dy * p + (g.userData.ship ? sepOff : 0); }
+  const rp = sstep(clamp(st.explode * 1.4 - 0.4));
+  for (const rg of radialGroups) rg.position.x = rg.userData.radial * rp;
+  layout();
+  spin.updateMatrixWorld(true);
+
+  // section plane (model-local)
+  clipLocal.constant = 14 * (1 - sstep(clamp(st.section)));
+  clipPlane.copy(clipLocal).applyMatrix4(root.matrixWorld);
+  const showFluid = st.section > 0.02;
+  for (const f of fluids) { f.visible = showFluid; f.material.emissiveIntensity = 0.5 + 0.12 * Math.sin(t * 2 + f.id) + st.fire * 0.25; }
+
+  // engines
+  let bSum = 0, sSum = 0;
+  const shipGate = sstep(clamp(Math.max(st.explode, st.sep) * 2 - 1));
+  for (const en of engines) {
+    // ship engines sit on top of the booster when stacked, so they only light once the stages are apart
+    const gate = en.stage === 'b-raptors' ? 1 : shipGate;
+    const i = sstep(clamp((st.fire * 1.5 - en.delay) / 0.35)) * gate;
+    const flick = 0.9 + 0.1 * Math.sin(t * 57 + en.x * 3.1 + en.z * 1.7);
+    en.plume.visible = false;
+    en.core.material.uniforms.uI.value = i * (en.stage === 'b-raptors' ? 0.02 : 0.05) * flick;
+    en.glow.material.uniforms.uI.value = i;
+    en.core.visible = en.glow.visible = i > 0.002;
+    if (en.flame) { en.flame.material.uniforms.uI.value = i * flick; en.flame.visible = i > 0.002; }
+    if (en.stage === 'b-raptors') bSum += i; else sSum += i;
+  }
+  const flick = 0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17.3);
+  clusterPlume.material.uniforms.uI.value = (bSum / 33) * (0.95 + 0.05 * flick);
+  clusterPlume.visible = bSum > 0.05;
+  bFire.intensity = (bSum / 33) * 900 * flick;
+  sFire.intensity = (sSum / 6) * 450 * flick;
+
+  // airflow streaks
+  const fk = sstep(clamp(st.fire));
+  airLines.visible = fk > 0.01;
+  if (airLines.visible) {
+    for (let i = 0; i < AIR_N; i++) {
+      air.y[i] -= air.s[i] * adt;
+      if (air.y[i] < -30) spawnAir(i, false);
+      const y = air.y[i], r = hullR(Math.min(y, NOSE_TOP)) + air.o[i], ca = Math.cos(air.a[i]), sa = Math.sin(air.a[i]);
+      const x = sa * r, z = ca * r, j = i * 6;
+      airPos[j] = x; airPos[j + 1] = y; airPos[j + 2] = z;
+      airPos[j + 3] = x; airPos[j + 4] = y + air.l[i]; airPos[j + 5] = z;
+      const fade = 0.11 * clamp((175 - y) / 20) * clamp((y + 30) / 15) * fk * (0.25 + 0.75 * clamp(1 - air.o[i] / 7));
+      airCol[j] = 0.55 * fade; airCol[j + 1] = 0.7 * fade; airCol[j + 2] = 1.0 * fade;
+      airCol[j + 3] = airCol[j + 4] = airCol[j + 5] = 0;
+    }
+    airGeo.attributes.position.needsUpdate = true; airGeo.attributes.color.needsUpdate = true;
+  }
+
+  // propellant particles
+  propPts.visible = fk > 0.01;
+  if (propPts.visible) {
+    for (const f of flows) {
+      let L = 0; f.len.length = 0;
+      f.pts.forEach(([g, x, y, z], i) => { f.cur[i].set(x, y + g.position.y, z); if (i) L += f.cur[i].distanceTo(f.cur[i - 1]); f.len.push(L); });
+      f.total = L;
+    }
+    for (let p = 0; p < PN; p++) {
+      const f = flows[pF[p]];
+      pU[p] = (pU[p] + adt * 9 / f.total) % 1;
+      const d = pU[p] * f.total;
+      let s = 1; while (s < f.len.length - 1 && f.len[s] < d) s++;
+      const a = f.cur[s - 1], b = f.cur[s], seg = f.len[s] - f.len[s - 1], u = seg > 0 ? (d - f.len[s - 1]) / seg : 0;
+      pPos[p * 3] = lerp(a.x, b.x, u) + pJ[p * 3]; pPos[p * 3 + 1] = lerp(a.y, b.y, u) + pJ[p * 3 + 1]; pPos[p * 3 + 2] = lerp(a.z, b.z, u) + pJ[p * 3 + 2];
+      const fade = fk * clamp(pU[p] * 8) * clamp((1 - pU[p]) * 8);
+      pCol[p * 3] = f.color[0] * fade; pCol[p * 3 + 1] = f.color[1] * fade; pCol[p * 3 + 2] = f.color[2] * fade;
+    }
+    propGeo.attributes.position.needsUpdate = true; propGeo.attributes.color.needsUpdate = true;
+  }
+
+  // highlight
+  const pulse = 0.16 + 0.1 * Math.sin(performance.now() / 260);
+  for (const id in parts) {
+    const kk = id === selected ? pulse : id === hovered ? 0.035 : 0;
+    for (const m of parts[id].mats) {
+      if (FLUID_KINDS.has(Object.keys(parts[id].cache).find(q => parts[id].cache[q] === m))) continue;
+      if (kk > 0) { m.emissive.copy(hl); m.emissiveIntensity = kk; } else if (m.emissiveIntensity !== 0) { m.emissive.setHex(0); m.emissiveIntensity = 0; }
+    }
+  }
+
+  // camera: fly-to animation, inertia, smooth zoom, idle turntable
+  if (camAnim) {
+    const kc = k(3.4);
+    controls.target.lerp(camAnim.target, kc); camera.position.lerp(camAnim.pos, kc);
+    if (camera.position.distanceTo(camAnim.pos) < 0.05 && controls.target.distanceTo(camAnim.target) < 0.05) camAnim = null;
+  } else if (!gesture) {
+    const decay = Math.pow(0.9, dt * 60);
+    if (Math.abs(navVel.yaw) + Math.abs(navVel.pitch) > 1e-4) { orbitCam(navVel.yaw, navVel.pitch, navPivot); navVel.yaw *= decay; navVel.pitch *= decay; }
+    if (Math.abs(navVel.px) + Math.abs(navVel.py) > 0.05) { panCam(navVel.px, navVel.py); navVel.px *= decay; navVel.py *= decay; }
+    if (autoSpin && !paused) orbitCam(adt * 0.045, 0, controls.target);
+  }
+  if (Math.abs(zoomPending) > 1e-4) { const step = zoomPending * k(12); zoomPending -= step; zoomCam(Math.exp(step), zoomPt); }
+  controls.update();
+  camera.updateMatrixWorld();
+  // lighting rig rides with the viewer: key from just above-left of the camera, fill from the right, and the
+  // studio reflections turned so their softboxes always sit behind you
+  {
+    const dist = camera.position.distanceTo(controls.target);
+    const up = new V3().setFromMatrixColumn(camera.matrixWorld, 1), right = new V3().setFromMatrixColumn(camera.matrixWorld, 0);
+    headlight.position.copy(camera.position).addScaledVector(up, dist * 0.35).addScaledVector(right, -dist * 0.25);
+    headFill.position.copy(camera.position).addScaledVector(right, dist * 0.6).addScaledVector(up, -dist * 0.15);
+    headlight.target.position.copy(controls.target); headlight.target.updateMatrixWorld();
+    headFill.target.position.copy(controls.target); headFill.target.updateMatrixWorld();
+    scene.environmentRotation.setFromQuaternion(ENV_Q.copy(camera.quaternion).invert());
+  }
+
+  // shadows only need re-rendering while parts are moving or being cut
+  const moving = Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
+  if (moving || frameNo < 4) renderer.shadowMap.needsUpdate = true;
+  // bloom is only there for the fire, so skip both full-screen passes when nothing is burning
+  bloom.enabled = clampPass.enabled = st.fire > 0.01;
+
+  // adaptive resolution: drop the pixel ratio when frames run long, raise it again when there's headroom
+  perfT += dt; perfN++;
+  if (perfT > 1.2) {
+    const avg = perfT / perfN; perfT = perfN = 0;
+    if (avg > 0.023 && curPR > 1) setPR(Math.max(1, curPR - 0.25));
+    else if (avg < 0.0135 && curPR < PR) setPR(Math.min(PR, curPR + 0.25));
+  }
+
+  // pivot marker while orbiting around a grabbed point
+  if (gesture && gesture.mode === 'orbit' && gesture.moved > 3) {
+    vTmp.copy(navPivot).project(camera);
+    pivotDot.style.transform = `translate(${(vTmp.x * 0.5 + 0.5) * innerWidth}px, ${(-vTmp.y * 0.5 + 0.5) * innerHeight}px)`;
+    pivotDot.style.opacity = 1;
+  } else pivotDot.style.opacity = 0;
+
+  // flames need the camera in their own space; draw back faces when the camera is inside a plume
+  for (const f of flames) {
+    if (!f.visible) continue;
+    f.updateMatrixWorld();
+    const c = f.material.uniforms.uCam.value.copy(camera.position); f.worldToLocal(c);
+    const { RB, L } = f.userData.bound;
+    const inside = c.x * c.x + c.z * c.z < RB * RB && c.y < 0 && c.y > -L;
+    f.material.side = inside ? THREE.BackSide : THREE.FrontSide;
+  }
+
+  // hover
+  if (mouseDirty && performance.now() - lastHover > 70) {
+    mouseDirty = false; lastHover = performance.now();
+    const h = pick(), m = h && h.object;
+    hovered = m ? m.userData.part : null;
+    canvas.style.cursor = m ? 'pointer' : 'grab';
+    if (m && m.userData.label) { tip.textContent = trLabel(m.userData.label); tip.style.transform = `translate(${mx + 14}px, ${my + 14}px)`; tip.style.opacity = 1; }
+    else tip.style.opacity = 0;
+  }
+  if (gesture) { canvas.style.cursor = gesture.mode === 'pan' ? 'move' : 'grabbing'; tip.style.opacity = 0; }
+
+  composer.render();
+  // view cube follows the main camera's direction
+  cubeCam.position.copy(camera.position).sub(controls.target).normalize().multiplyScalar(6);
+  cubeCam.up.copy(camera.up); cubeCam.lookAt(0, 0, 0);
+  cubeR.render(cubeScene, cubeCam);
+  if (frameNo === 2) { const l = document.getElementById('loader'); l.style.opacity = 0; setTimeout(() => l.remove(), 800); }
+  requestAnimationFrame(tick);
+}
+
+function onResize() {
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h); composer.setSize(w, h); renderer.shadowMap.needsUpdate = true;
+  const v = h > w * 1.05;
+  if (v !== vertical) { vertical = v; applyOrientation(); layout(); if (!userMoved) { const dv = defaultView(); camera.position.copy(dv.pos); controls.target.copy(dv.target); } }
+  else if (!userMoved) flyTo(defaultView());
+}
+addEventListener('resize', onResize);
+window.__s = { camera, controls, st, select, spin, flyTo, parts, root, bloom, engines, flames, airLines, propPts, bFire, sFire, faceView, orbitCam, zoomCam, worldAt, look(y, off = [0, 0, 20]) { spin.updateMatrixWorld(true); const p = root.localToWorld(new V3(0, y, 0)); camAnim = null; userMoved = true; autoSpin = false; controls.target.copy(p); camera.position.copy(p).add(new V3(...off)); } };
+
+applyOrientation(); layout(); applyI18n();
+// debug hook for screenshots: #dbg={"fire":1,"section":1,"explode":1,"sep":1,"turn":0.4,"face":1,"look":[y,dx,dy,dz],"sel":"b-raptors"}
+if (location.hash.startsWith('#dbg=')) setTimeout(() => {
+  const d = JSON.parse(decodeURIComponent(location.hash.slice(5)));
+  if (d.fire) st.fire = st.fireT = 1;
+  if (d.section) st.section = st.sectionT = 1;
+  if (d.explode) st.explode = st.explodeT = 1;
+  if (d.sep) st.sep = st.sepT = 1;
+  paused = !d.run; autoSpin = false; userMoved = true; layout(); camera.updateMatrixWorld();
+  const dv = d.face !== undefined ? faceView(d.face) : defaultView(); camAnim = null; camera.position.copy(dv.pos); controls.target.copy(dv.target);
+  if (d.turn) orbitCam(d.turn, 0, controls.target);
+  if (d.sel) select(d.sel, !d.look);
+  if (d.look) setTimeout(() => window.__s.look(d.look[0], d.look.slice(1)), 50);
+  if (d.t) { t = d.t; timeU.value = t; }
+}, 300);
+{ const dv = defaultView(); camera.position.copy(dv.pos); controls.target.copy(dv.target); }
+controls.update();
+canvas.style.cursor = 'grab';
+tick();
+</script>
+</body>
+</html>

@@ -578,7 +578,8 @@
         #i18n-mission-status,
         #i18n-first-stage-booster,
         #i18n-recovery-zone,
-        #i18n-preflight-status {
+        #i18n-preflight-status,
+        #i18n-starship-sim {
             font-size: 0.7rem !important;
             letter-spacing: 0 !important;
         }
@@ -597,7 +598,8 @@
             #i18n-mission-status,
             #i18n-first-stage-booster,
             #i18n-recovery-zone,
-            #i18n-preflight-status {
+            #i18n-preflight-status,
+            #i18n-starship-sim {
                 font-size: 0.8rem !important;
             }
             #i18n-spacex-rockets-title {
@@ -5512,6 +5514,25 @@
         Object.assign(LAUNCH_LABEL_I18N.ar, { preflightStatus: "تحديثات ما قبل الإطلاق" });
         Object.assign(LAUNCH_LABEL_I18N.tr, { preflightStatus: "Fırlatma Öncesi Güncellemeler" });
 
+        // "Starship Simulation" button (mission modal tile + rocket modal button, Starship only) and
+        // the tile's one-line subtitle. Uses the same localized "Starship" as STARSHIP_I18N.
+        const STARSHIP_SIM_I18N = {
+            en: ["Starship Simulation", "Interactive 3D model"], he: ["סימולציית סטארשיפ", "מודל תלת-ממדי אינטראקטיבי"],
+            es: ["Simulación de Starship", "Modelo 3D interactivo"], fr: ["Simulation Starship", "Modèle 3D interactif"],
+            de: ["Starship-Simulation", "Interaktives 3D-Modell"], ru: ["Симуляция Старшипа", "Интерактивная 3D-модель"],
+            zh: ["星舰模拟", "交互式 3D 模型"], it: ["Simulazione Starship", "Modello 3D interattivo"],
+            cs: ["Simulace Starship", "Interaktivní 3D model"], sv: ["Starship-simulering", "Interaktiv 3D-modell"],
+            nl: ["Starship-simulatie", "Interactief 3D-model"], da: ["Starship-simulering", "Interaktiv 3D-model"],
+            pt: ["Simulação da Starship", "Modelo 3D interativo"], pl: ["Symulacja Starship", "Interaktywny model 3D"],
+            hi: ["स्टारशिप सिमुलेशन", "इंटरैक्टिव 3D मॉडल"], ar: ["محاكاة ستارشيب", "نموذج تفاعلي ثلاثي الأبعاد"],
+            tr: ["Starship Simülasyonu", "Etkileşimli 3B model"],
+        };
+        STARSHIP_SIM_I18N.iw = STARSHIP_SIM_I18N.he;
+        Object.keys(LAUNCH_LABEL_I18N).forEach(k => {
+            const v = STARSHIP_SIM_I18N[k] || STARSHIP_SIM_I18N.en;
+            Object.assign(LAUNCH_LABEL_I18N[k], { starshipSim: v[0], starshipSimSub: v[1] });
+        });
+
         // Launch Cadence chart modal — company/provider NAMES (SpaceX, ULA, Blue Origin,
         // Rocket Lab) are deliberately NOT in here and stay in English everywhere: they're
         // brand names, same convention as spacexXLink etc. above. "China" is a country, not
@@ -7361,6 +7382,9 @@
                     'i18n-first-stage-booster': dict.firstStageBooster,
                     'i18n-preflight-status': dict.preflightStatus,
                     'i18n-preflight-status-title': dict.preflightStatus,
+                    'i18n-starship-sim': dict.starshipSim,
+                    'i18n-starship-sim-sub': dict.starshipSimSub,
+                    'i18n-rocket-sim-btn': dict.starshipSim,
                     'i18n-vehicle-spec-dossier': dict.vehicleSpecDossier,
                     'i18n-spaceport-dossier': dict.spaceportDossier,
                     'i18n-orbit-dossier': dict.orbitDossier,
@@ -8821,6 +8845,62 @@
             if (!text || text.length <= maxLen) return text;
             return text.slice(0, maxLen - 1).trim() + '…';
         }
+        // Starship flights regroup the two info grids: row 1 = Vehicle Type, First Stage Booster,
+        // Mission Status, Starship Simulation; row 2 = Launch Site, Orbit Destination, Recovery Zone
+        // (+ Pre-Launch Updates). Every other mission keeps the original grouping. The tiles are
+        // moved (not cloned), so their ids/handlers and the label dispatcher keep working.
+        function applyStarshipTileLayout(category) {
+            const vGrid = document.getElementById('modal-vehicle-info-grid');
+            const bGrid = document.getElementById('modal-booster-info-grid');
+            const t = id => document.getElementById(id);
+            const vehicle = t('modal-vehicle-tile'), site = t('modal-site-click-target'), orbit = t('modal-orbit-click-target'),
+                status = t('modal-status-tile'), sim = t('modal-starship-sim-tile'), booster = t('modal-booster-tile'),
+                landing = t('modal-landing-click-target'), preflight = t('modal-preflight-status-tile');
+            if (!vGrid || !bGrid || !vehicle || !site || !orbit || !status || !sim || !booster || !landing || !preflight) return;
+            const isStarship = category === 'starship';
+            if (isStarship) {
+                vGrid.append(vehicle, booster, status, sim);
+                bGrid.append(site, orbit, landing, preflight);
+                sim.classList.remove('hidden');
+                const n = preflight.classList.contains('hidden') ? 3 : 4;
+                // 2 per row on phones (these labels are long), all in one row from md up
+                bGrid.classList.remove('grid-cols-2', 'grid-cols-3', 'md:grid-cols-3', 'md:grid-cols-4');
+                bGrid.classList.add('grid-cols-2', n === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3');
+            } else {
+                vGrid.append(vehicle, site, orbit, status, sim);
+                bGrid.append(booster, landing, preflight);
+                sim.classList.add('hidden');
+                bGrid.classList.remove('md:grid-cols-3', 'md:grid-cols-4');
+            }
+        }
+
+        // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
+        // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
+        // language/unit switches live. The iframe is unloaded on close so it stops rendering.
+        function openStarshipSim() {
+            const modal = document.getElementById('starship-sim-modal');
+            const frame = document.getElementById('starship-sim-frame');
+            if (!modal || !frame) return;
+            // show first, then load: the viewer frames the camera from its size at startup
+            modal.classList.remove('hidden');
+            modal.style.display = 'block';
+            if (!frame.src || frame.src === 'about:blank' || !frame.src.includes('starship-3d.html')) frame.src = 'starship-3d.html?embed=1';
+            lockBodyScroll();
+            frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) {} }, { once: true });
+        }
+        function closeStarshipSim() {
+            const modal = document.getElementById('starship-sim-modal');
+            const frame = document.getElementById('starship-sim-frame');
+            if (!modal || modal.classList.contains('hidden')) return;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            if (frame) frame.src = 'about:blank';
+            unlockBodyScroll();
+        }
+        window.addEventListener('message', e => {
+            if (e.origin === location.origin && e.data && e.data.type === 'starship-sim-close') closeStarshipSim();
+        });
+
         function renderModalUpdates(category, updates, currentLang) {
             const grid = document.getElementById('modal-booster-info-grid');
             const tile = document.getElementById('modal-preflight-status-tile');
@@ -8837,11 +8917,13 @@
                 grid.classList.add('grid-cols-2');
                 if (summaryEl) summaryEl.innerText = '';
                 list.innerHTML = '';
+                applyStarshipTileLayout(category);
                 return;
             }
             tile.classList.remove('hidden');
             grid.classList.remove('grid-cols-2');
             grid.classList.add('grid-cols-3');
+            applyStarshipTileLayout(category);
 
             const myGen = ++_modalUpdatesGen;
             // dateLocaleForLang, not the browser's raw navigator locale - matches every other
@@ -13334,7 +13416,7 @@
                 <div id="modal-vehicle-info-grid"
                     class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500 items-start">
                     <div class="cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
-                        role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)"
+                        id="modal-vehicle-tile" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)"
                         onclick="openRocketSpecs(window.currentActiveVehicleStr.toLowerCase().includes('starship')?'starship':(window.currentActiveVehicleStr.toLowerCase().includes('heavy')?'falcon_heavy':'falcon'))">
                         <div class="flex items-center gap-2">
                             <div id="i18n-vehicle-type"
@@ -13357,7 +13439,7 @@
                             class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight notranslate"></div>
                     </div>
                     <div class="cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
-                        role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openOrbitSpecs()">
+                        id="modal-orbit-click-target" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openOrbitSpecs()">
                         <div class="flex items-center gap-2">
                             <div id="i18n-orbit-destination"
                                 class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
@@ -13368,13 +13450,26 @@
                             class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 notranslate leading-tight"
                             dir="ltr" translate="no">LEO (Low Earth Orbit)</div>
                     </div>
-                    <div class="p-1">
+                    <div class="p-1" id="modal-status-tile">
                         <div id="i18n-mission-status"
                             class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                             translate="no" lang="en">MISSION STATUS</div>
                         <div id="modal-status"
                             class="text-xs sm:text-sm font-semibold mt-0.5 leading-tight notranslate lang-en-lock"
                             translate="no" lang="en"></div>
+                    </div>
+                    <!-- Starship flights only: opens the interactive 3D vehicle (#starship-sim-modal).
+                         applyStarshipTileLayout() shows it and regroups the tiles around it. -->
+                    <div class="hidden cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
+                        id="modal-starship-sim-tile" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openStarshipSim()">
+                        <div class="flex items-center gap-2">
+                            <div id="i18n-starship-sim"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                translate="no" lang="en">Starship Simulation</div>
+                            <i class="fa-solid fa-cube text-emerald-400/70 text-[10px] mt-1"></i>
+                        </div>
+                        <div id="i18n-starship-sim-sub" translate="no"
+                            class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight notranslate">Interactive 3D model</div>
                     </div>
                 </div>
 
@@ -13385,7 +13480,7 @@
                      every non-Starship mission instead of shrinking to leave a dead 3rd column. -->
                 <div id="modal-booster-info-grid"
                     class="grid grid-cols-2 gap-3 sm:gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/50 transition-colors duration-500">
-                    <div class="p-1">
+                    <div class="p-1" id="modal-booster-tile">
                         <div id="i18n-first-stage-booster"
                             class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
                             translate="no" lang="en">FIRST STAGE BOOSTER</div>
@@ -13598,6 +13693,12 @@
         </button>
     </div>
 
+    <!-- Starship 3D simulation (see openStarshipSim) - above every other modal, since it opens
+         from inside the mission modal and the rocket modal -->
+    <div id="starship-sim-modal" class="hidden fixed inset-0 z-[300] bg-[#05070b]">
+        <iframe id="starship-sim-frame" title="Starship 3D" class="block w-full h-full border-0"></iframe>
+    </div>
+
     <!-- Rocket Modal -->
     <div id="rocket-modal" onclick="if (event.target.id === 'rocket-modal') closeRocketModal()"
         class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
@@ -13616,9 +13717,15 @@
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div id="rocket-modal-name" translate="no"
                         class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight"></div>
-                    <div id="i18n-vehicle-spec-dossier"
-                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
-                        translate="no" lang="en">VEHICLE SPECIFICATION</div>
+                    <div class="flex items-center justify-between gap-3 mt-1">
+                        <div id="i18n-vehicle-spec-dossier"
+                            class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase notranslate"
+                            translate="no" lang="en">VEHICLE SPECIFICATION</div>
+                        <!-- Starship only (see openRocketSpecs) - same destination as the mission modal's tile -->
+                        <button id="rocket-modal-sim-btn" type="button" onclick="openStarshipSim()"
+                            class="hidden shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-400/70 text-emerald-400 text-[11px] sm:text-xs font-semibold uppercase tracking-wider md:hover:bg-emerald-400/15 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors notranslate"
+                            translate="no"><i class="fa-solid fa-cube text-[10px]"></i><span id="i18n-rocket-sim-btn" lang="en">Starship Simulation</span></button>
+                    </div>
                 </div>
             </div>
             <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
@@ -24517,6 +24624,8 @@ setTimeout(() => {
             imgEl.className = `absolute inset-0 w-full h-full object-cover ${data.alignmentClass}`;
 
             window.currentOpenRocketType = type;
+            const simBtn = document.getElementById('rocket-modal-sim-btn');
+            if (simBtn) { simBtn.classList.toggle('hidden', type !== 'starship'); simBtn.classList.toggle('inline-flex', type === 'starship'); }
             const specDict = getSpecDict(document.documentElement.lang);
             const fmt = (spec, noteKey) => {
                 const v = spec[window.currentUnitSystem];
@@ -26022,6 +26131,7 @@ if (heroNameEl) {
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
             const modalCloseOrder = [
+                ['starship-sim-modal', closeStarshipSim],
                 ['launch-cadence-modal', closeLaunchCadenceModal],
                 ['doc-video-modal', closeDocVideoModal],
                 ['starlink-gen-lightbox', closeStarlinkGenLightbox],
