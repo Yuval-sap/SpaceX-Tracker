@@ -137,7 +137,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=4"></script>
+<script src="starship-3d-i18n.js?v=5"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -528,7 +528,7 @@ const MAKERS = {
   rvacInner: () => new THREE.MeshStandardMaterial({ color: 0xeceae4, metalness: 0.02, roughness: 0.78, side: THREE.BackSide }),
   ribbed: () => { const m = ribTex.map.clone(), b = ribTex.bump.clone(); m.repeat.set(1, 1); b.repeat.set(1, 1); m.needsUpdate = b.needsUpdate = true;
     return new THREE.MeshStandardMaterial({ color: 0xb9bcc2, map: m, bumpMap: b, bumpScale: 1.6, metalness: 1, roughness: 0.42, side: THREE.BackSide }); },
-  finDark: () => new THREE.MeshStandardMaterial({ color: 0x3a3c40, metalness: 0.3, roughness: 0.45, side: THREE.DoubleSide }),
+  finDark: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42, side: THREE.DoubleSide }),   // same black satin as the Raptors
   sat: () => new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: 0.6, roughness: 0.45 }),
   mli: () => new THREE.MeshStandardMaterial({ color: 0xc9a25a, metalness: 1, roughness: 0.32 }),
   antenna: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: antennaTex, metalness: 0.1, roughness: 0.7 }),
@@ -549,9 +549,9 @@ const PART_INFO = [
   { id: 'hsr', n: 'Hot-stage truss', k: 'Interstage · 06', title: 'Integrated hot-stage truss', desc: 'Ship lights its engines while it is still attached to the booster. Block 3 replaces the old separate vented ring with an open truss of V-shaped struts built into the booster. The ship’s exhaust flows between the struts and hits the booster’s forward dome directly.', stats: [['DESIGN', 'V-truss'], ['JETTISON', 'None'], ['SINCE', 'Flight 12']] },
   { id: 's-raptors', n: 'Ship engines', k: 'Ship · 07', title: 'Ship Raptor engines', desc: 'Three sea-level Raptors in the center gimbal for steering and landing. Around them, three Raptor Vacuum engines with large fixed nozzle extensions provide the more efficient thrust needed in space.', stats: [['SEA-LEVEL', '3'], ['VACUUM', '3'], ['RVAC EXIT', '~2.3 m']] },
   { id: 's-tanks', n: 'Ship tanks', k: 'Ship · 08', title: 'Ship propellant tanks', desc: 'The ship carries its own oxygen and methane in two main tanks; on Block 3 the common and aft domes moved lower to hold more methane. Methane reaches the engines through downcomers that run through the oxygen tank: one shared by the three sea-level engines and a dedicated one for each Raptor Vacuum. Small header tanks keep landing propellant settled after the main tanks run low.', stats: [['MAIN TANKS', '2'], ['DOWNCOMERS', '4'], ['HEADERS', '2']] },
-  { id: 's-tiles', n: 'Heat shield', k: 'Ship · 09', title: 'Heat shield', desc: 'About 18,000 hexagonal ceramic tiles cover the windward side of the ship. They are pinned to the steel skin and protect it from reentry heat of up to about 1,400 °C. The hexagonal pattern stops hot plasma from flowing straight through the gaps.', stats: [['TILES', '~18,000'], ['SHAPE', 'Hexagonal'], ['PEAK', '~1,400 °C']] },
+  { id: 's-tiles', n: 'Heat shield', k: 'Ship · 09', title: 'Heat shield', desc: 'About 18,000 hexagonal ceramic tiles cover the belly of the ship, the side that faces into the airflow during reentry. They are pinned to the steel skin and protect it from reentry heat of up to about 1,400 °C. The hexagonal pattern stops hot plasma from flowing straight through the gaps.', stats: [['TILES', '~18,000'], ['SHAPE', 'Hexagonal'], ['PEAK', '~1,400 °C']] },
   { id: 's-flaps', n: 'Flaps', k: 'Ship · 10', title: 'Forward & aft flaps', desc: 'Four body flaps work like a skydiver’s arms. During the bellyflop descent they control the ship’s attitude, until it flips upright and lights its engines to land.', stats: [['COUNT', '4'], ['ACTUATION', 'Electric'], ['MODE', 'Bellyflop']] },
-  { id: 's-payload', n: 'Payload bay', k: 'Ship · 11', title: 'Payload bay & Pez slot', desc: 'On Starlink flights the satellites sit in a stack inside the payload bay. A long, narrow horizontal slot nicknamed the “Pez dispenser” opens on the leeward side, and the satellites slide out through it one at a time.', stats: [['DOOR', 'Mail slot'], ['PAYLOAD', '100+ t'], ['CARGO', 'Starlink']] },
+  { id: 's-payload', n: 'Payload bay', k: 'Ship · 11', title: 'Payload bay & Pez slot', desc: 'On Starlink flights the satellites sit in a stack inside the payload bay. A long, narrow horizontal slot nicknamed the “Pez dispenser” opens on the bare-steel side (the side without tiles), and the satellites slide out through it one at a time.', stats: [['DOOR', 'Mail slot'], ['PAYLOAD', '100+ t'], ['CARGO', 'Starlink']] },
   { id: 's-nose', n: 'Nose cone', k: 'Ship · 12', title: 'Nose cone & header tank', desc: 'The ogive nose houses the liquid-oxygen header tank and the forward flap actuators. Stainless steel keeps its strength both at cryogenic temperatures and in reentry heat.', stats: [['SHAPE', 'Ogive'], ['HOUSES', 'LOX header'], ['FLAPS', '2 forward']] },
 ];
 const parts = {};
@@ -560,8 +560,9 @@ PART_INFO.forEach((p, i) => { parts[p.id] = { ...p, idx: i, grp: p.id.startsWith
 function pmat(pid, kind) {
   const P = parts[pid];
   if (!P.cache[kind]) {
-    const m = MAKERS[kind]();
-    if (CLIP_KINDS.has(kind)) m.clippingPlanes = CLIPS;
+    const base = kind.split('@')[0], m = MAKERS[base]();
+    if (CLIP_KINDS.has(base)) m.clippingPlanes = CLIPS;
+    if (base !== kind) P.inner = true;
     P.cache[kind] = m; P.mats.push(m);
   }
   return P.cache[kind];
@@ -570,7 +571,7 @@ function pmat(pid, kind) {
 const pickables = [];
 const fluids = [];
 function add(parent, geo, pid, kind, label, opt = {}) {
-  const mat = Array.isArray(kind) ? kind.map(k => pmat(pid, k)) : pmat(pid, kind);
+  const sfx = opt.inner ? '@in' : '', mat = Array.isArray(kind) ? kind.map(k => pmat(pid, k + sfx)) : pmat(pid, kind + sfx);
   const m = new THREE.Mesh(geo, mat);
   const isFluid = !Array.isArray(kind) && FLUID_KINDS.has(kind);
   m.castShadow = !isFluid && opt.cast !== false;
@@ -945,10 +946,10 @@ const clusterPlume = makeFlame(bEng, B_AFT - 0.75 - 3.1, 4.3, 10, 70, 3.2, 42, 1
 // LOX tank
 const B_LOX0 = B_AFT + 3.2, B_CD = 41, B_TOP = 68.8;
 steelShell(bLox, 'b-lox', B_LOX0, B_CD, 'LOX tank');
-add(bLox, domeGeo(R - 0.03, 1.8, B_LOX0, -1), 'b-lox', 'steel', 'LOX aft dome');
+add(bLox, domeGeo(R - 0.03, 1.8, B_LOX0, -1), 'b-lox', 'steel', 'LOX aft dome', { inner: true });
 raceway(bLox, 'b-lox', B_LOX0, B_CD);
 fluid(bLox, 'b-lox', 'fluidLox', { y: B_LOX0, h: 1.8, dir: -1 }, 37.2);
-{ const g = cylG(0.6, 0.6, B_LOX0 - 1.7, B_CD - 1.7, 32, true); add(bLox, g, 'b-ch4', 'steelNC', 'Methane downcomer'); }
+{ const g = cylG(0.6, 0.6, B_LOX0 - 1.7, B_CD - 1.7, 32, true); add(bLox, g, 'b-ch4', 'steelNC', 'Methane downcomer', { inner: true }); }
 // chines: two long fairings along the lower booster
 for (const a of [Math.PI / 2, -Math.PI / 2]) {
   const sh = new THREE.Shape();
@@ -960,28 +961,56 @@ for (const a of [Math.PI / 2, -Math.PI / 2]) {
 }
 // CH4 tank (runs to the top of the booster; the forward dome sits inside the hot-stage truss)
 steelShell(bCh4, 'b-ch4', B_CD, B_TOP, 'Methane tank');
-add(bCh4, domeGeo(R - 0.03, 1.8, B_CD, -1), 'b-ch4', 'steel', 'Common dome');
-add(bCh4, domeGeo(R - 0.03, 1.8, B_TOP, 1), 'b-ch4', 'steel', 'Forward dome');
+add(bCh4, domeGeo(R - 0.03, 1.8, B_CD, -1), 'b-ch4', 'steel', 'Common dome', { inner: true });
+add(bCh4, domeGeo(R - 0.03, 1.8, B_TOP, 1), 'b-ch4', 'steel', 'Forward dome', { inner: true });
 raceway(bCh4, 'b-ch4', B_CD, B_TOP);
 fluid(bCh4, 'b-ch4', 'fluidCh4', { y: B_CD, h: 1.8, dir: -1 }, 65.5);
-// Block 3 grid fins: three, larger, dark, deep diamond cells with a scalloped edge, T layout
+// Block 3 grid fins: three, larger, dark grey. One plate ~1 m deep, cut through by a diamond lattice of heart-shaped
+// cells (the node at the top of each diamond is notched, which is what gives the hearts in close-up photos); the
+// octagonal outline follows whole cells, so the straight-cut sides are smooth and the others zigzag. T layout.
 function gridFinGeo() {
-  const h = 0.36, D = 1.05, t = 0.055, list = [], seen = new Set();
-  const inside = (u, v) => u > 0.55 && u < 4.9 && Math.abs(v) < 2.45 - Math.max(0, u - 3.6) * 0.55;
-  const wall = (x0, z0, x1, z1) => {
-    const k = [x0, z0, x1, z1].map(n => n.toFixed(2)).join(), k2 = [x1, z1, x0, z0].map(n => n.toFixed(2)).join();
-    if (seen.has(k) || seen.has(k2)) return; seen.add(k);
-    const len = Math.hypot(x1 - x0, z1 - z0), b = new THREE.BoxGeometry(len, D, t);
-    b.rotateY(-Math.atan2(z1 - z0, x1 - x0)); b.translate((x0 + x1) / 2, 0, (z0 + z1) / 2); list.push(b);
-  };
-  for (let i = -2; i < 16; i++) for (let j = -10; j < 10; j++) for (const off of [0, h]) {
-    const cx = i * 2 * h + off, cz = j * 2 * h + off;
-    if (!inside(cx, cz)) continue;
-    wall(cx - h, cz, cx, cz + h); wall(cx, cz + h, cx + h, cz); wall(cx + h, cz, cx, cz - h); wall(cx, cz - h, cx - h, cz);
+  const h = 0.3, D = 1.0, w = 0.05, a = h - w * Math.SQRT2;
+  const inside = (u, v) => u > 0.45 && u < 5.0 && Math.abs(v) < 2.5 && Math.abs(v) < 2.5 - (u - 3.9) && Math.abs(v) < 2.5 - (1.4 - u);
+  const cells = [];
+  for (let i = 0; i < 20; i++) for (let j = -10; j <= 10; j++) for (const off of [0, h]) {
+    const cu = i * 2 * h + off, cv = j * 2 * h + off;
+    if (inside(cu, cv)) cells.push([cu, cv]);
   }
-  const spine = new THREE.BoxGeometry(0.5, D + 0.1, 5.0); spine.translate(0.4, 0, 0); list.push(spine);
-  const pod = new THREE.BoxGeometry(0.7, 2.2, 1.8); pod.translate(0.05, -0.2, 0); list.push(pod);
-  return merge(list);
+  // outline = the diamond edges that belong to only one cell, chained into a loop
+  const key = (x, y) => `${Math.round(x * 1000)},${Math.round(y * 1000)}`, edges = new Map();
+  for (const [cu, cv] of cells) {
+    const q = [[cu, cv - h], [cu + h, cv], [cu, cv + h], [cu - h, cv]];
+    for (let k = 0; k < 4; k++) {
+      const A = q[k], B = q[(k + 1) % 4], ka = key(...A), kb = key(...B), e = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+      if (edges.has(e)) edges.delete(e); else edges.set(e, [A, B]);
+    }
+  }
+  const next = new Map(); for (const [A, B] of edges.values()) next.set(key(...A), B);
+  const first = edges.values().next().value[0], loop = [first];
+  for (let p = next.get(key(...first)); p && key(...p) !== key(...first) && loop.length < 5000; p = next.get(key(...p))) loop.push(p);
+  const shape = new THREE.Shape(loop.map(([x, y]) => new THREE.Vector2(x, y)));
+  if (THREE.ShapeUtils.isClockWise(shape.getPoints())) shape.curves.reverse();
+  // heart-shaped hole in each cell: tip at the lower diamond node, two lobes and a notch at the upper one
+  for (const [cu, cv] of cells) {
+    const hp = new THREE.Path();
+    hp.moveTo(cu, cv - a);
+    hp.lineTo(cu + a * 0.9, cv - a * 0.1);
+    hp.bezierCurveTo(cu + a * 1.02, cv + a * 0.12, cu + a * 0.62, cv + a * 0.7, cu + a * 0.3, cv + a * 0.62);
+    hp.quadraticCurveTo(cu + a * 0.08, cv + a * 0.52, cu, cv + a * 0.24);
+    hp.quadraticCurveTo(cu - a * 0.08, cv + a * 0.52, cu - a * 0.3, cv + a * 0.62);
+    hp.bezierCurveTo(cu - a * 0.62, cv + a * 0.7, cu - a * 1.02, cv + a * 0.12, cu - a * 0.9, cv - a * 0.1);
+    hp.lineTo(cu, cv - a);
+    shape.holes.push(hp);
+  }
+  const plate = new THREE.ExtrudeGeometry(shape, { depth: D, bevelEnabled: false, curveSegments: 4 });
+  plate.rotateX(Math.PI / 2); plate.translate(0, D / 2, 0);
+  const list = [plate];
+  // root: hinge shaft out of the body with the round actuator gear at its base
+  const shaft = new THREE.CylinderGeometry(0.24, 0.24, 0.75, 20); shaft.rotateZ(Math.PI / 2); shaft.translate(0.12, 0, 0); list.push(shaft);
+  const gear = new THREE.CylinderGeometry(0.62, 0.62, 0.16, 28); gear.rotateZ(Math.PI / 2); gear.translate(-0.12, 0, 0); list.push(gear);
+  const hub = new THREE.BoxGeometry(0.5, D, 1.3); hub.translate(0.55, 0, 0); list.push(hub);
+  const pod = new THREE.BoxGeometry(0.5, 2.2, 1.8); pod.translate(-0.2, -0.2, 0); list.push(pod);
+  return merge(list.map(g => { g.deleteAttribute('uv'); return g.index ? g.toNonIndexed() : g; }));
 }
 {
   const fg = gridFinGeo();
@@ -1029,30 +1058,30 @@ flushEngineBatches();
 steelShell(sAft, 's-tanks', S0, S0 + 5.2, 'Ship aft skirt');
 tileShell(sAft, S0, S0 + 5.2);
 {
-  const g = cylG(R - 0.1, 0.001, S0 + 4.45, S0 + 4.46, 96, false); add(sAft, g, 's-tanks', 'dark', 'Ship engine shield');
+  const g = cylG(R - 0.1, 0.001, S0 + 4.45, S0 + 4.46, 96, false); add(sAft, g, 's-tanks', 'dark', 'Ship engine shield', { inner: true });
   const rib = cylG(R - 0.06, R - 0.06, S0 + 0.05, S0 + 4.45, 192, true); scaleUV(rib, 1, 1);
   add(sAft, rib, 's-tanks', 'ribbed', 'Ship aft skirt');
   const lip = new THREE.TorusGeometry(R - 0.03, 0.06, 8, 128); lip.rotateX(Math.PI / 2); lip.translate(0, S0 + 0.03, 0);
   add(sAft, lip, 's-tanks', 'steel', 'Ship aft skirt');
-  add(sAft, cylG(1.7, 1.7, S0 + 4.6, S0 + 4.9, 48, false), 's-tanks', 'dark', 'Thrust structure');
+  add(sAft, cylG(1.7, 1.7, S0 + 4.6, S0 + 4.9, 48, false), 's-tanks', 'dark', 'Thrust structure', { inner: true });
 }
 // LOX tank
 steelShell(sLox, 's-tanks', S0 + 5.2, S0 + 19, 'Ship LOX tank');
 tileShell(sLox, S0 + 5.2, S0 + 19);
-add(sLox, domeGeo(R - 0.03, 1.5, S0 + 5.2, -1), 's-tanks', 'steel', 'LOX aft dome');
+add(sLox, domeGeo(R - 0.03, 1.5, S0 + 5.2, -1), 's-tanks', 'steel', 'LOX aft dome', { inner: true });
 fluid(sLox, 's-tanks', 'fluidLox', { y: S0 + 5.2, h: 1.5, dir: -1 }, S0 + 16.4);
-add(sLox, cylG(0.42, 0.42, S0 + 4.9, S0 + 17.6, 32, true), 's-tanks', 'steelNC', 'Methane downcomer · sea-level engines');
+add(sLox, cylG(0.42, 0.42, S0 + 4.9, S0 + 17.6, 32, true), 's-tanks', 'steelNC', 'Methane downcomer · sea-level engines', { inner: true });
 for (let i = 0; i < 3; i++) {
   const a = (i + 0.5) / 3 * TAU, x = Math.sin(a) * 2.55, z = Math.cos(a) * 2.55;
-  const m = add(sLox, cylG(0.26, 0.26, S0 + 5.0, S0 + 18.6, 20, true), 's-tanks', 'steelNC', `Methane downcomer · RVac ${i + 1}`);
+  const m = add(sLox, cylG(0.26, 0.26, S0 + 5.0, S0 + 18.6, 20, true), 's-tanks', 'steelNC', `Methane downcomer · RVac ${i + 1}`, { inner: true });
   m.position.set(x, 0, z);
 }
-{ const g = new THREE.SphereGeometry(1.0, 40, 20); g.translate(1.7, S0 + 16.8, 0); add(sLox, g, 's-tanks', 'steelNC', 'Methane header tank'); }
+{ const g = new THREE.SphereGeometry(1.0, 40, 20); g.translate(1.7, S0 + 16.8, 0); add(sLox, g, 's-tanks', 'steelNC', 'Methane header tank', { inner: true }); }
 // CH4 tank
 steelShell(sCh4, 's-tanks', S0 + 19, S0 + 28.4, 'Ship methane tank');
 tileShell(sCh4, S0 + 19, S0 + 28.4);
-add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 19, -1), 's-tanks', 'steel', 'Common dome');
-add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dome');
+add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 19, -1), 's-tanks', 'steel', 'Common dome', { inner: true });
+add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dome', { inner: true });
 fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
 let deployer = null;
 const SAT_N = Math.min(40, Math.max(1, parseInt(new URLSearchParams(location.search).get('n'), 10) || 26));   // satellites on board (mission's count when known)
@@ -1127,7 +1156,7 @@ let SLOT = null;
   };
   function makeSat(label) {
     const g = new THREE.Group();
-    for (const kind in satParts) add(g, satParts[kind], 's-payload', kind, label, { pick: kind === 'sat' || kind === 'solar' });
+    for (const kind in satParts) add(g, satParts[kind], 's-payload', kind, label, { pick: kind === 'sat' || kind === 'solar', inner: true });
     return g;
   }
   const RS = 1.2;                       // radial position of the stack's centre line
@@ -1154,8 +1183,8 @@ nosePts[nosePts.length - 1][0] = 0.001;
   const tg = shipUV(lathe(nosePts.map(([r, y]) => [r + 0.04, y + NOSE0]), 128));
   add(sNose, tg, 's-tiles', 'tile', 'Heat shield tiles · nose').userData.maskFn = tileAt;
   const ht = new THREE.SphereGeometry(1.35, 40, 20); ht.translate(0, NOSE0 + 3.2, 0);
-  add(sNose, ht, 's-nose', 'steelNC', 'LOX header tank');
-  add(sNose, cylG(0.17, 0.17, NOSE0 - 0.3, NOSE0 + 1.9, 16, true), 's-nose', 'steelNC', 'Header transfer tube');
+  add(sNose, ht, 's-nose', 'steelNC', 'LOX header tank', { inner: true });
+  add(sNose, cylG(0.17, 0.17, NOSE0 - 0.3, NOSE0 + 1.9, 16, true), 's-nose', 'steelNC', 'Header transfer tube', { inner: true });
 }
 // flaps
 function flapShape(s, cr, ct, drop) {
@@ -1540,8 +1569,13 @@ function buildPartsNav() {
     partsNav.appendChild(b);
   }
 }
+let autoSection = false;
 function select(id, focus) {
   selected = id;
+  const inner = !!(id && parts[id].inner);
+  if (inner && focus && !st.sectionT) { st.sectionT = 1; autoSection = true; }
+  else if (!inner && autoSection) { st.sectionT = 0; autoSection = false; }
+  btn('section').classList.toggle('on', !!st.sectionT);
   partsNav.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.part === id));
   if (!id) { card.classList.remove('show'); station.textContent = '—'; return; }
   renderCard();
@@ -1553,15 +1587,16 @@ function renderCard() {
   const P = parts[selected], T = partT(selected);
   document.getElementById('card-k').textContent = `${grpName(P.grp)} · ${num2(P.idx)}`;
   document.getElementById('card-t').textContent = fillT(T.t);
-  document.getElementById('card-d').textContent = fillT(T.d);
+  const iso = t => I.dir === 'rtl' ? t.replace(/[~≈]?−?\d[\d,.]*\s?°\s?[CFم]/g, m => '\u2066' + m + '\u2069') : t;
+  document.getElementById('card-d').textContent = iso(fillT(T.d));
   const row = document.getElementById('card-s'); row.innerHTML = '';
   for (const [a, b] of T.s) { const d = document.createElement('div'), sp = document.createElement('span'), v = document.createElement('b'), iv = document.createElement('bdi'); sp.textContent = a; iv.textContent = fillT(b); v.appendChild(iv); d.append(sp, v); row.appendChild(d); }
   station.textContent = `${num2(P.idx)} · ${fillT(T.n)}`;
 }
-function focusBox(box) {
+function focusBox(box, dirOverride) {
   const c = box.getCenter(new V3()), size = box.getSize(new V3()).length();
   const d = clamp(size / 2 / tvHalf() * 1.05, 12, 400);
-  const dir = camera.position.clone().sub(controls.target).normalize();
+  const dir = dirOverride || camera.position.clone().sub(controls.target).normalize();
   flyTo({ target: c, pos: c.clone().add(dir.multiplyScalar(d)) });
   userMoved = true; autoSpin = false;
 }
@@ -1569,7 +1604,14 @@ function focusPart(id) {
   scene.updateMatrixWorld(true);
   const box = new THREE.Box3();
   for (const m of parts[id].meshes) if (m.geometry && !fluids.includes(m)) box.expandByObject(m);
-  if (!box.isEmpty()) focusBox(box);
+  if (box.isEmpty()) return;
+  // cutaway: look in from the removed half (+z in model space), slightly off-axis so the depth reads
+  let dir = null;
+  if (parts[id].inner && st.sectionT) {
+    const q = root.getWorldQuaternion(new THREE.Quaternion());
+    dir = new V3(0.35, 0, 1).applyQuaternion(q).normalize();
+  }
+  focusBox(box, dir);
 }
 
 const btn = a => document.querySelector(`[data-act="${a}"]`);
@@ -1577,11 +1619,11 @@ document.getElementById('controls').addEventListener('click', e => {
   const a = e.target.closest('button')?.dataset.act; if (!a) return;
   if (a === 'explode') { st.explodeT = st.explodeT ? 0 : 1; btn('explode').classList.toggle('on', !!st.explodeT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'stage') { st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
-  if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; btn('section').classList.toggle('on', !!st.sectionT); }
+  if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; autoSection = false; btn('section').classList.toggle('on', !!st.sectionT); }
   if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'reset') {
-    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; paused = false; select(null);
+    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; paused = false; select(null);
     for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
     userMoved = false; autoSpin = true; flyTo(defaultView());
   }
@@ -1786,8 +1828,11 @@ function tick() {
   const pulse = 0.16 + 0.1 * Math.sin(performance.now() / 260);
   for (const id in parts) {
     const kk = id === selected ? pulse : id === hovered ? 0.035 : 0;
+    const innerOnly = parts[id].inner && st.sectionT && id === selected;
     for (const m of parts[id].mats) {
-      if (FLUID_KINDS.has(Object.keys(parts[id].cache).find(q => parts[id].cache[q] === m))) continue;
+      const key = Object.keys(parts[id].cache).find(q => parts[id].cache[q] === m);
+      if (FLUID_KINDS.has(key)) continue;
+      if (innerOnly && !key.endsWith('@in')) { if (m.emissiveIntensity !== 0) { m.emissive.setHex(0); m.emissiveIntensity = 0; } continue; }
       if (kk > 0) { m.emissive.copy(hl); m.emissiveIntensity = kk; } else if (m.emissiveIntensity !== 0) { m.emissive.setHex(0); m.emissiveIntensity = 0; }
     }
   }
@@ -1900,6 +1945,13 @@ if (location.hash.startsWith('#dbg=')) setTimeout(() => {
   if (d.turn) orbitCam(d.turn, 0, controls.target);
   if (d.sel) select(d.sel, !d.look);
   if (d.look) setTimeout(() => window.__s.look(d.look[0], d.look.slice(1)), 50);
+  // "frame":["b-fwd",x,y,z,dist,meshIndex]: aim at one mesh of a part from a model-space direction, no animation
+  if (d.frame) setTimeout(() => {
+    spin.updateMatrixWorld(true);
+    const [pid, x, y, z, dist, mi] = d.frame, m = parts[pid].meshes[mi || 0], c = new THREE.Box3().setFromObject(m).getCenter(new V3());
+    const dir = new V3(x, y, z).normalize().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+    camAnim = null; userMoved = true; autoSpin = false; controls.target.copy(c); camera.position.copy(c).add(dir.multiplyScalar(dist || 12));
+  }, 60);
   if (d.t) { t = d.t; timeU.value = t; }
 }, 300);
 { const dv = defaultView(); camera.position.copy(dv.pos); controls.target.copy(dv.target); }
