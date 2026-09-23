@@ -35,7 +35,7 @@
   #card h2{margin:8px 0 10px;font-size:19px;font-weight:600;letter-spacing:.005em}
   #card p{margin:0;font-size:12.5px;line-height:1.55;color:#c3c9d3}
   #card .row{display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
-  #card .row div{flex:1;min-width:0}
+  #card .row div{flex:1;min-width:0;text-align:start}
   #card .row span{display:block;font:500 10.5px/1.1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#aeb6c3;text-transform:uppercase}
   #card .row b{display:block;margin-top:6px;font:500 11.5px/1.2 'JetBrains Mono',monospace;color:var(--fg)}
   #card .x{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--mute);font-size:16px;cursor:pointer;transition:background-color .15s,color .15s}
@@ -71,7 +71,7 @@
   /* scripts without Latin letters: no Inter/JetBrains glyphs, and wide tracking breaks them apart */
   html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(.brand h1,.eyebrow,.sep,#stats span,#card .k,#card .row span,#hint){letter-spacing:.02em}
   html:is([lang=he],[lang=ar]) body{font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif}
-  html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(#stats span,#card .k,#card .row span,.sep,.eyebrow){font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif;font-size:12px;font-weight:500}
+  html:is([lang=he],[lang=ar],[lang=hi],[lang=zh],[lang=ru]) :is(#stats span,#card .k,#card .row span,#card .row b,.sep,.eyebrow){font-family:Heebo,'Noto Sans Arabic',system-ui,sans-serif;font-size:12px;font-weight:500}
   /* right-to-left languages: mirror the whole overlay */
   html[dir=rtl] .brand{left:auto;right:28px;text-align:right}
   html[dir=rtl] #parts{left:auto;right:28px;align-items:flex-end}
@@ -86,9 +86,18 @@
   #ss-close{display:none;position:absolute;top:18px;right:22px;width:38px;height:38px;border-radius:50%;border:2px solid #34d399;background:rgba(5,7,11,.55);color:#34d399;font-size:20px;line-height:1;cursor:pointer;pointer-events:auto;transition:background-color .15s,color .15s,border-color .15s;z-index:3}
   #ss-close:hover{background:rgba(52,211,153,.12);color:#6ee7b7;border-color:#6ee7b7}
   html.embed #ss-close{display:grid;place-items:center}
-  html.embed #stats{right:82px}
+  html.embed #stats{right:128px}
+  #theme-btn{position:absolute;top:18px;right:22px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--fg);font-size:17px;line-height:1;cursor:pointer;pointer-events:auto;display:grid;place-items:center;transition:background-color .15s,border-color .15s;z-index:3}
+  #theme-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3)}
+  html.day #theme-btn{background:rgba(255,255,255,.7);border-color:rgba(0,0,0,.14)}
+  html.day #theme-btn:hover{background:#fff}
+  html.embed #theme-btn{right:70px}
+  #stats{right:76px}
+  html[dir=rtl] #stats{right:auto;left:76px}
+  html[dir=rtl] #theme-btn{right:auto;left:22px}
+  html.embed[dir=rtl] #theme-btn{left:70px}
   html.embed[dir=rtl] #ss-close{right:auto;left:22px}
-  html.embed[dir=rtl] #stats{right:auto;left:82px}
+  html.embed[dir=rtl] #stats{right:auto;left:128px}
   @media (max-width:1100px) and (min-width:761px){
     #stats .opt{display:none}
     .brand h1{font-size:36px}
@@ -120,11 +129,15 @@
     html[dir=rtl] #nav{left:10px;right:auto;align-items:flex-start}
     html[dir=rtl] #card{left:12px}
     #ss-close{top:12px;right:10px;width:34px;height:34px}
-    html.embed #nav{top:56px}
+    #theme-btn{top:12px;right:10px;width:34px;height:34px;font-size:15px}
+    html.embed #theme-btn{right:52px}
+    html[dir=rtl] #theme-btn{left:10px}
+    html.embed[dir=rtl] #theme-btn{left:52px}
+    #nav{top:56px}
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=3"></script>
+<script src="starship-3d-i18n.js?v=4"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -149,6 +162,7 @@
     <div><span id="t-selected">Selected</span><b id="station">—</b></div>
   </div>
   <button id="ss-close" aria-label="Close">×</button>
+  <button id="theme-btn" aria-label="Day / night"></button>
   <aside id="card">
     <button class="x" aria-label="Close">×</button>
     <div class="k" id="card-k"></div>
@@ -226,7 +240,8 @@ function unitValues() {
   };
 }
 let UV = unitValues();
-function fillT(str) { return String(str).replace(/\{(\w+)\}/g, (m, k) => k === 'starlink' ? I.starlink : k === 'starship' ? I.starship : (UV[k] ?? m)); }
+const MISSION_SATS = parseInt(Q.get('n'), 10) > 0 ? parseInt(Q.get('n'), 10) : null;
+function fillT(str) { return String(str).replace(/\{(\w+)\}/g, (m, k) => k === 'starlink' ? I.starlink : k === 'starship' ? I.starship : k === 'cargo' ? (MISSION_SATS ? `${nf(MISSION_SATS)} × ${I.starlink} V3` : I.starlink) : (UV[k] ?? m)); }
 // hover labels are built from pieces: "Forward flap (left) · hinge fairing", "Grid fin 2", "Raptor 3 · outer ring 14"
 function trLabel(label) {
   return label.split(' · ').map(seg => {
@@ -267,6 +282,7 @@ function applyI18n() {
     if (f) bits.push(ft(U.mFlight, f));
     if (b) bits.push(`${U.booster} ${b}` + (bf ? ` (${ft(U.vFlight, bf)})` : ''));
     if (sh) bits.push(`Ship ${sh}` + (sf ? ` (${ft(U.vFlight, sf)})` : ''));
+    if (MISSION_SATS) bits.push(`${nf(MISSION_SATS)} × ${I.starlink} V3`);
     const el = $('t-mission'); el.hidden = !bits.length; el.textContent = bits.join(' · ');
   }
   placeParts();
@@ -289,8 +305,11 @@ function readDay() {
   return Q.get('theme') === 'day';
 }
 let DAY = null;
-function applyTheme() {
-  const d = readDay(); if (d === DAY) return; DAY = d;
+let manualTheme = false;           // set once the viewer uses the day/night button; until then follow the site
+function applyTheme(force) {
+  const d = force !== undefined ? force : (manualTheme ? DAY : readDay());
+  const btn = document.getElementById('theme-btn'); if (btn) btn.textContent = d ? '☾' : '☀';
+  if (d === DAY) return; DAY = d;
   document.documentElement.classList.toggle('day', d);
   if (typeof scene === 'undefined') return;
   scene.background.setHex(d ? 0xe8ecf2 : 0x05070b);
@@ -305,6 +324,7 @@ setInterval(() => {
   LANG = l; UNITS = u; I = SS_I18N[LANG]; UV = unitValues(); applyI18n();
 }, 500);
 document.getElementById('ss-close').addEventListener('click', closeEmbed);
+document.getElementById('theme-btn').addEventListener('click', () => { manualTheme = true; applyTheme(!DAY); });
 
 // ---------------------------------------------------------------- renderer
 const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
@@ -435,6 +455,12 @@ function makeTiles() {
   return { map: toTex(cc, true), rough: toTex(rc), bump: toTex(bc), w: tileW, h: tileW * H / W };
 }
 
+function makeAntenna() {       // phased-array tiles on the Earth-facing side
+  const c = mkCanvas(256, 256), g = c.getContext('2d');
+  g.fillStyle = '#9aa0a8'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const v = 205 + (i * 7 + j * 13) % 20; g.fillStyle = `rgb(${v},${v},${v + 3})`; g.fillRect(i * 32 + 2, j * 32 + 2, 28, 28); }
+  return toTex(c, true);
+}
 function makeSolar() {
   const c = mkCanvas(256, 256), g = c.getContext('2d');
   g.fillStyle = '#0a1830'; g.fillRect(0, 0, 256, 256);
@@ -475,6 +501,7 @@ function makeRibs(n) {
   return { map: toTex(c, true), bump: toTex(b) };
 }
 const ribTex = makeRibs(128);
+const antennaTex = makeAntenna();
 const steelTex = makeSteel(), tileTex = makeTiles(), solarTex = makeSolar(), dotTex = makeDot();
 
 // ---------------------------------------------------------------- parts, materials, clipping
@@ -502,7 +529,10 @@ const MAKERS = {
   ribbed: () => { const m = ribTex.map.clone(), b = ribTex.bump.clone(); m.repeat.set(1, 1); b.repeat.set(1, 1); m.needsUpdate = b.needsUpdate = true;
     return new THREE.MeshStandardMaterial({ color: 0xb9bcc2, map: m, bumpMap: b, bumpScale: 1.6, metalness: 1, roughness: 0.42, side: THREE.BackSide }); },
   finDark: () => new THREE.MeshStandardMaterial({ color: 0x3a3c40, metalness: 0.3, roughness: 0.45, side: THREE.DoubleSide }),
-  sat: () => new THREE.MeshStandardMaterial({ color: 0xb8bdc6, metalness: 0.75, roughness: 0.35 }),
+  sat: () => new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: 0.6, roughness: 0.45 }),
+  mli: () => new THREE.MeshStandardMaterial({ color: 0xc9a25a, metalness: 1, roughness: 0.32 }),
+  antenna: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: antennaTex, metalness: 0.1, roughness: 0.7 }),
+  satWhite: () => new THREE.MeshStandardMaterial({ color: 0xe9ebee, metalness: 0.2, roughness: 0.5 }),
   solar: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: solarTex, metalness: 0.35, roughness: 0.22 }),
   fluidLox: () => new THREE.MeshStandardMaterial({ color: 0x9fd8ff, emissive: 0x2a7fd0, emissiveIntensity: 0.55, transparent: true, opacity: 0.5, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
   fluidCh4: () => new THREE.MeshStandardMaterial({ color: 0xffc38a, emissive: 0xd2601a, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
@@ -720,7 +750,8 @@ function buildRaptor(vac) {
   else ringAt(1, 0.03);
   const glow = lathe(noz.map(([r, y]) => [r * 0.975, y]), 40);
   const proxy = new THREE.CylinderGeometry(0.45, rE, -yE, 12); proxy.translate(0, yE / 2, 0);
-  return { steel: merge(st), dark: merge(dk), nozzle, vacRing: vac ? merge(vr) : null, glow, proxy, rE, yE };
+  const nozzleInner = vac ? lathe(noz.map(([r, y]) => [r * 0.955 - 0.01, y]), 56) : null;
+  return { steel: merge(st), dark: merge(dk), nozzle, nozzleInner, vacRing: vac ? merge(vr) : null, glow, proxy, rE, yE };
 }
 const RSL = buildRaptor(false), RVAC = buildRaptor(true);
 
@@ -852,7 +883,7 @@ function placeEngine(group, pid, vac, x, y, z, label, delay) {
   e.updateMatrix();
   if (!engineBatches.has(group)) engineBatches.set(group, { pid, engineSteel: [], engineDark: [], nozzle: [], rvacOuter: [], rvacInner: [] });
   const batch = engineBatches.get(group);
-  const pieces = vac ? [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'rvacOuter'], [E.vacRing, 'rvacOuter'], [E.nozzle, 'rvacInner']]
+  const pieces = vac ? [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'rvacOuter'], [E.vacRing, 'rvacOuter'], [E.nozzleInner, 'rvacInner']]
     : [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'nozzle']];
   for (const [geo, kind] of pieces) batch[kind].push(geo.clone().applyMatrix4(e.matrix));
   const proxy = new THREE.Mesh(E.proxy, proxyMat); proxy.userData.part = pid; proxy.userData.label = label; e.add(proxy); pickables.push(proxy); parts[pid].meshes.push(proxy);
@@ -1023,6 +1054,19 @@ tileShell(sCh4, S0 + 19, S0 + 28.4);
 add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 19, -1), 's-tanks', 'steel', 'Common dome');
 add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dome');
 fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
+let deployer = null;
+const SAT_N = Math.min(40, Math.max(1, parseInt(new URLSearchParams(location.search).get('n'), 10) || 26));   // satellites on board (mission's count when known)
+// 0-1.5 s: waiting inside; 1.5-8 s: pushed out through the slot; 8-15 s: drifting away with a slow tumble; then hidden
+function placeLead(d, t) {
+  const T = t % 15, ease = x => x * x * (3 - 2 * x);
+  let r = d.RS, tumble = 0, vis = true;
+  if (T < 1.5) r = d.RS;
+  else if (T < 8) r = d.RS + (R + 3.4 - d.RS) * ease((T - 1.5) / 6.5);
+  else { const u = (T - 8) / 7; r = R + 3.4 + u * 16; tumble = u * 0.5; vis = u < 0.97; }
+  d.g.position.copy(dirA(d.DC, r)).setY(d.y + (T > 8 ? (T - 8) * 0.12 : 0));
+  d.g.rotation.set(0, d.DC - Math.PI / 2, tumble * 0.4); d.g.rotateX(tumble * 0.25);
+  d.g.visible = vis;
+}
 // payload bay with the Pez slot: a long, narrow horizontal "mail slot" with rounded corners on the leeward side
 let SLOT = null;
 {
@@ -1065,14 +1109,37 @@ let SLOT = null;
   });
   add(sPay, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 320, 0.07, 8, true), 's-payload', 'steel', 'Pez slot frame');
   const d0_ = d0;
-  // satellites stacked flat above the slot; the lowest one is sliding out
-  const satGeo = new THREE.BoxGeometry(5.0, 0.22, 3.0);
-  const sm = ['sat', 'sat', 'solar', 'sat', 'sat', 'sat'];
-  for (let i = 0; i < 26; i++) {
-    const m = add(sPay, satGeo, 's-payload', sm, `Starlink satellite ${i + 1}`);
-    // stack runs down from the slot; the first one is sliding out through it
-    m.position.copy(dirA(DC, i === 0 ? 3.6 : 1.0)).setY(i === 0 ? (d0_ + d1) / 2 : d0_ - 0.2 - i * 0.32); m.rotation.y = DC - Math.PI / 2;
+  // Starlink V3 in its stowed, deploy configuration: a flat ~6 x 3.2 m bus (published envelope ~7 x 3.5 m), the solar
+  // array folded flat on top, phased-array antenna panels underneath, gold MLI round the edges, a Hall thruster at the
+  // aft end and laser-link terminals. Local x = the long axis, pointing out through the slot.
+  const SL = 6.0, SW = 3.2;
+  const box = (sx, sy, sz, x, y, z) => { const g = new THREE.BoxGeometry(sx, sy, sz); g.translate(x, y, z); return g; };
+  const satParts = {
+    sat: merge([box(SL, 0.16, SW, 0, 0, 0), box(0.1, 0.1, 0.5, SL / 2 + 0.03, 0, 0)]),
+    mli: box(SL + 0.02, 0.11, SW + 0.02, 0, 0, 0),
+    antenna: merge([-1, 0, 1].map(k => { const g = box(1.8, 0.03, SW - 0.3, k * 1.95, -0.095, 0); scaleUV(g, 1, 1.5); return g; })),
+    solar: (() => { const a = box(SL - 1.0, 0.05, SW - 0.16, 0.45, 0.105, 0), b = box(SL - 1.1, 0.04, SW - 0.24, 0.45, 0.15, 0); scaleUV(a, 7, 4); scaleUV(b, 7, 4); return merge([a, b]); })(),
+    steelNC: merge([
+      ...[-1.6, -0.1, 1.4].map(x => { const g = new THREE.CylinderGeometry(0.025, 0.025, SW - 0.2, 8); g.rotateX(Math.PI / 2); g.translate(x + 0.45, 0.175, 0); return g; }),
+      box(0.24, 0.14, 0.24, -SL / 2 + 0.35, 0.14, SW / 2 - 0.3), box(0.24, 0.14, 0.24, -SL / 2 + 0.35, 0.14, -SW / 2 + 0.3)]),
+    engineDark: (() => { const g = new THREE.CylinderGeometry(0.14, 0.2, 0.22, 20); g.rotateZ(Math.PI / 2); g.translate(-SL / 2 - 0.1, 0, 0); return g; })(),
+    satWhite: merge([-1, 0, 1].map(k => { const g = new THREE.SphereGeometry(0.15, 16, 8, 0, TAU, 0, Math.PI / 2); g.rotateZ(Math.PI); g.translate(-SL / 2 + 0.8 + (k + 1) * 0.02, -0.11, k * 1.1); return g; })),
+  };
+  function makeSat(label) {
+    const g = new THREE.Group();
+    for (const kind in satParts) add(g, satParts[kind], 's-payload', kind, label, { pick: kind === 'sat' || kind === 'solar' });
+    return g;
   }
+  const RS = 1.2;                       // radial position of the stack's centre line
+  for (let i = 1; i < SAT_N; i++) {
+    const g = makeSat(`Starlink satellite ${i + 1}`); sPay.add(g);
+    g.position.copy(dirA(DC, RS)).setY(d0_ - 0.2 - i * 0.32); g.rotation.y = DC - Math.PI / 2;
+  }
+  // the lead satellite slides out through the slot, drifts off, and the next deploy starts again (see tick)
+  const lead = makeSat('Starlink satellite 1'); sPay.add(lead);
+  lead.rotation.y = DC - Math.PI / 2;
+  deployer = { g: lead, DC, RS, y: (d0_ + d1) / 2, t: 6.5 };
+  placeLead(deployer, 6.5);
   for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, d0 - y0 - 0.6, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y0) / 2 + 0.3); m.rotation.y = DC; }
 }
 // nose cone
@@ -1109,9 +1176,15 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
   eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
   add(inner, eg, 's-flaps', kind, label);
-  const hinge = new THREE.CylinderGeometry(0.4, 0.4, cr * 0.9, 24); hinge.translate(0.05, cr / 2, 0);
-  if (kind === 'tileSolid') scaleUV(hinge, 2.5 / tileTex.w, cr / tileTex.h);
-  add(inner, hinge, 's-flaps', kind, label + ' · hinge fairing');
+  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(0.4, 0.4, cr * 0.9, 24, 1, false, ts, Math.PI); g.translate(0.05, cr / 2, 0);
+    scaleUV(g, kd === 'tileSolid' ? 1.25 / tileTex.w : 0.1, kd === 'tileSolid' ? cr / tileTex.h : 0.2); add(inner, g, 's-flaps', kd, label + ' · hinge fairing'); };
+  if (kind === 'tileSolid') hingeHalf(0, 'tileSolid'), hingeHalf(Math.PI, 'tileSolid');
+  else {
+    // stainless flap: the hinge fairing is tiled on its windward (outer) half only, bare steel on the inner half
+    const sgn = Math.sin(a - WINDWARD) > 0 ? 1 : -1;
+    hingeHalf(sgn > 0 ? -Math.PI / 2 : Math.PI / 2, 'tileSolid');
+    hingeHalf(sgn > 0 ? Math.PI / 2 : -Math.PI / 2, kind);
+  }
   if (kind !== 'tileSolid') {
     // stainless flap: tiles only on its windward (outer) face; the face toward the steel side stays bare
     const sg = new THREE.ShapeGeometry(sh, 12); scaleUV(sg, 1 / tileTex.w, 1 / tileTex.h);
@@ -1482,7 +1555,7 @@ function renderCard() {
   document.getElementById('card-t').textContent = fillT(T.t);
   document.getElementById('card-d').textContent = fillT(T.d);
   const row = document.getElementById('card-s'); row.innerHTML = '';
-  for (const [a, b] of T.s) { const d = document.createElement('div'), sp = document.createElement('span'), v = document.createElement('b'); sp.textContent = a; v.textContent = fillT(b); v.dir = 'auto'; d.append(sp, v); row.appendChild(d); }
+  for (const [a, b] of T.s) { const d = document.createElement('div'), sp = document.createElement('span'), v = document.createElement('b'), iv = document.createElement('bdi'); sp.textContent = a; iv.textContent = fillT(b); v.appendChild(iv); d.append(sp, v); row.appendChild(d); }
   station.textContent = `${num2(P.idx)} · ${fillT(T.n)}`;
 }
 function focusBox(box) {
@@ -1718,6 +1791,8 @@ function tick() {
       if (kk > 0) { m.emissive.copy(hl); m.emissiveIntensity = kk; } else if (m.emissiveIntensity !== 0) { m.emissive.setHex(0); m.emissiveIntensity = 0; }
     }
   }
+
+  if (deployer && !paused) { deployer.t += adt; placeLead(deployer, deployer.t); }
 
   // camera: fly-to animation, inertia, smooth zoom, idle turntable
   if (camAnim) {

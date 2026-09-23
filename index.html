@@ -8877,7 +8877,7 @@
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
         // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
         // language/unit switches live. The iframe is unloaded on close so it stops rendering.
-        const STARSHIP_SIM_VERSION = '17';
+        const STARSHIP_SIM_VERSION = '21';
         function openStarshipSim() {
             const modal = document.getElementById('starship-sim-modal');
             const frame = document.getElementById('starship-sim-frame');
@@ -8889,7 +8889,7 @@
             const missionOpen = !document.getElementById('mission-modal').classList.contains('hidden');
             const sm = missionOpen ? window.currentActiveSimMission : null;
             const qs = new URLSearchParams({ embed: '1' });
-            if (sm) for (const k of ['f', 'b', 'bf', 's', 'sf']) if (sm[k]) qs.set(k, sm[k]);
+            if (sm) for (const k of ['f', 'b', 'bf', 's', 'sf', 'n']) if (sm[k]) qs.set(k, sm[k]);
             qs.set('v', STARSHIP_SIM_VERSION);   // bump on every sim change so browsers don't show a cached old copy
             frame.src = 'starship-3d.html?' + qs.toString();
             lockBodyScroll();
@@ -22587,6 +22587,8 @@ setTimeout(() => {
                     f: num((String(m.patchTagName || m.name || '').match(/flight\s*(\d+)/i) || [])[1]),   // the display name drops "(Starship Flight 14)"
                     b: num(m.boosterSerial), bf: m.boosterFlightNum || '',
                     s: num(m.shipSerial || m.shipLabel), sf: m.shipFlightNum || '',
+                    // satellites on board, from the mission description ("...will carry 26 Starlink V3 satellites...")
+                    n: num((String(m.description || '').match(/(\d+)\s+(?:next[- ]generation\s+)?(?:Starlink\s+)?(?:V\d\s+)?(?:Starlink\s+)?satellites/i) || [])[1]),
                 } : null;
             }
             window.currentActiveMissionDescription = m.description;
