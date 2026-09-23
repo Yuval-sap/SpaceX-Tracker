@@ -583,6 +583,7 @@ const dirA = (a, r = 1) => new V3(Math.sin(a) * r, 0, Math.cos(a) * r);
 const TA0 = WINDWARD - 1.658, TAL = 3.316;
 const RACEWAY = LEEWARD + 1.05;
 
+const ringY = k => (k + 0.5) * RING;   // centre of the k-th 1.83 m steel ring, so markings never straddle a weld
 function steelShell(group, pid, y0, y1, label, ts = 0, tl = TAU) {
   const g = cylG(R, R, y0, y1, 128, true, ts, tl);
   scaleUV(g, tl / TAU, (y1 - y0) / TEXM, ts / TAU, y0 / TEXM);
@@ -597,8 +598,6 @@ function tileAt(th, y) {
   const half = 1.62 + 0.42 * sstep(clamp((y - (NOSE0 - 7)) / 8.5));   // sweeps toward the forward flaps
   if (d < half) return true;
   if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
-  const dl = angDist(th, WINDWARD + Math.PI);                          // two dark access patches on the steel side
-  if (dl < 0.17 && ((rel > 13.2 && rel < 14.8) || (rel > 22.6 && rel < 24.4))) return true;
   return false;
 }
 let shieldTexCache = null;
@@ -1003,7 +1002,7 @@ fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
 // payload bay with the Pez slot: a long, narrow horizontal "mail slot" with rounded corners on the leeward side
 let SLOT = null;
 {
-  const y0 = S0 + 28.4, y1 = S0 + 39.9, d0 = S0 + 30.15, d1 = S0 + 31.15, DA = 1.5, DC = LEEWARD;
+  const y0 = S0 + 28.4, y1 = S0 + 39.9, d0 = ringY(60) - 0.95 + 0.35, d1 = ringY(60) + 0.35 + 0.05, DA = 1.5, DC = LEEWARD;
   const HALF_S = R * DA / 2, HALF_Y = (d1 - d0) / 2, YC = (d0 + d1) / 2, CR = 0.42;
   // signed distance-style test for a rounded rectangle in (arc length, height) around the slot center
   const inSlot = (th, y) => {
@@ -1048,9 +1047,10 @@ let SLOT = null;
   const sm = ['sat', 'sat', 'solar', 'sat', 'sat', 'sat'];
   for (let i = 0; i < 26; i++) {
     const m = add(sPay, satGeo, 's-payload', sm, `Starlink satellite ${i + 1}`);
-    m.position.copy(dirA(DC, i === 0 ? 3.6 : 1.0)).setY(d0_ + (i === 0 ? 0.5 : 1.0 + i * 0.32)); m.rotation.y = DC - Math.PI / 2;
+    // stack runs down from the slot; the first one is sliding out through it
+    m.position.copy(dirA(DC, i === 0 ? 3.6 : 1.0)).setY(i === 0 ? (d0_ + d1) / 2 : d0_ - 0.2 - i * 0.32); m.rotation.y = DC - Math.PI / 2;
   }
-  for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, y1 - d0 - 1.2, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y1 - 1.2) / 2 + 0.2); m.rotation.y = DC; }
+  for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, d0 - y0 - 0.6, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y0) / 2 + 0.3); m.rotation.y = DC; }
 }
 // nose cone
 const nosePts = [];
@@ -1096,6 +1096,60 @@ flap(sAft, FA2, S0 + 0.9, 9.8, 5.4, 3.9, 1.3, R + 0.05, 0, 'Aft flap (right)');
 // forward flaps sit high on the nose and sweep up to a point
 flap(sNose, FA1 + 0.3, NOSE0 + 1.6, 5.6, 2.4, 2.6, 2.8, noseR(1.6) + 0.02, 0.24, 'Forward flap (left)');
 flap(sNose, FA2 - 0.3, NOSE0 + 1.6, 5.6, 2.4, 2.6, 2.8, noseR(1.6) + 0.02, 0.24, 'Forward flap (right)');
+
+// ---------------------------------------------------------------- serial stencils
+// Flight vehicles carry no livery - just stencilled serials in SpaceX's own short form ("B21", "S41"),
+// the same plain block stencil as the numbers painted on the Raptor nozzles. Shown only when the sim is
+// opened from a specific mission (?b= / ?s=), since a generic vehicle has no serial.
+// follows the hull, including the start of the nose cone (radius from hullRadius at its top and bottom)
+const hullRadius = y => y > NOSE0 ? noseR(y - NOSE0) : R;
+function decal(group, pid, canvas, y, ang, w, h) {
+  const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso;
+  const rT = hullRadius(y + h / 2) + 0.03, rB = hullRadius(y - h / 2) + 0.03, arc = w / ((rT + rB) / 2);
+  const geo = new THREE.CylinderGeometry(rT, rB, h, 24, 1, true, ang - arc / 2, arc); geo.translate(0, y, 0);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, metalness: 0.3, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2 });
+  mat.clippingPlanes = CLIPS;
+  const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.userData.part = pid; group.add(m);
+  return m;
+}
+// SpaceX "X" logo, black, on the steel side below the Pez slot (Reuters photo of Ship 41/42)
+function logoCanvas() {
+  const c = mkCanvas(1024, 512), g = c.getContext('2d');
+  g.fillStyle = '#121418'; g.lineCap = 'butt';
+  // short stroke: top-left to bottom-right
+  g.beginPath(); g.moveTo(150, 120); g.lineTo(250, 120); g.lineTo(470, 400); g.lineTo(370, 400); g.closePath(); g.fill();
+  // lower-left arm of the long stroke
+  g.beginPath(); g.moveTo(150, 400); g.lineTo(250, 400); g.lineTo(330, 300); g.lineTo(285, 245); g.closePath(); g.fill();
+  // the swoosh: from the centre sweeping up and out to the right, thinning to a point
+  g.beginPath(); g.moveTo(300, 262); g.quadraticCurveTo(520, 90, 900, 70); g.quadraticCurveTo(560, 130, 352, 318); g.closePath(); g.fill();
+  return c;
+}
+// ship serial ("S41"), navy, running top-to-bottom, below the left end of the Pez slot (NSF photo of S42)
+function serialCanvas(text) {
+  const c = mkCanvas(256, 768), g = c.getContext('2d');
+  g.translate(128, 384); g.rotate(Math.PI / 2);
+  // as big as the canvas allows: the real marking fills most of a steel ring
+  let px = 300; const F = p => `700 ${p}px 'Arial Narrow', 'Roboto Condensed', Arial, sans-serif`;
+  g.font = F(px); while (g.measureText(text).width > 730 && px > 60) g.font = F(--px);
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#1d2c55';
+  g.fillText(text, 0, 10);
+  return c;
+}
+{
+  const q = new URLSearchParams(location.search), sh = parseInt(q.get('s'), 10), bo = parseInt(q.get('b'), 10);
+  // booster serial: same stencil style as the ship's, low on the oxygen tank facing the default camera
+  if (bo > 0) decal(bLox, 'b-lox', serialCanvas(`B${bo}`), ringY(6), WINDWARD - 0.35, 0.6, 1.8);
+  // logo on the start of the nose cone, above the Pez slot and just under the forward flaps, between two dark
+  // square panels (Reuters photo); serial in the ring directly under the slot's left end (NSF photo)
+  const LOGO_Y = NOSE0 + 2.3;
+  // the X itself sits in the left third of the logo canvas (the swoosh runs right), so shift the decal so the X is centred between the panels
+  decal(sNose, 's-nose', logoCanvas(), LOGO_Y, LEEWARD + (0.5 - 0.303) * 2.6 / hullRadius(LOGO_Y), 2.6, 1.3);
+  // the two dark square panels either side of the logo
+  const panel = mkCanvas(64, 64), pg = panel.getContext('2d');
+  pg.fillStyle = '#1b1d21'; pg.fillRect(4, 4, 56, 56); pg.strokeStyle = 'rgba(0,0,0,.6)'; pg.lineWidth = 3; pg.strokeRect(5, 5, 54, 54);
+  for (const da of [-0.5, 0.5]) decal(sNose, 's-nose', panel, LOGO_Y, LEEWARD + da, 0.8, 0.85);
+  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`), ringY(59), LEEWARD - 0.6, 0.6, 1.8);
+}
 
 // ---------------------------------------------------------------- stage, lights
 const floorGlow = (() => { const c = mkCanvas(256, 256), g = c.getContext('2d'), gr = g.createRadialGradient(100, 110, 0, 128, 128, 128);
