@@ -769,7 +769,7 @@ function tileAt(th, y) {
   const half = 1.62;                       // one straight line the whole length of the ship, up to the forward flaps (per photos)
   if (d < half) return true;
   if (d < TONGUE_D && y - NOSE0 > tileLoYr(d) && y - NOSE0 < tileHiYr(d)) return true;   // beside / under the forward flap                        // beside the forward flaps the tiles run right up to the flap
-  if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
+  if (y > NOSE0 + 7.3 + 0.7 * (Math.min(d, FLAP_D) / Math.PI)) return true;   // level all across the steel side              // the nose tip is tiled all the way round
   return false;
 }
 // Nose tile skin texture: u = angle round the nose, v = distance along its surface. Every row of tiles gets as many
@@ -843,7 +843,7 @@ bool tiled(float th, float y){                       // = tileAt() in the page s
   float yr = y - uNose0;                               // = tileLoYr / tileHiYr in the page script
   if (d < 1.958 && yr > -0.2 + (d - 1.62) * 4.118) return true;
   if (d >= 1.958 && d < 2.29 && yr > 1.19 + (d - 1.958) * 1.8 && yr < 3.48 - (d - 1.958) * 1.27) return true;
-  return y > uNose0 + 7.3 + 0.7 * (d / PI);
+  return y > uNose0 + 7.3 + 0.7 * (min(d, 1.958) / PI);
 }
 void main(){
   float s = vUv.y * uS, phi = vUv.x * TAU, r = rAt(s);
@@ -946,7 +946,7 @@ const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
 const blackLoYr = d => Math.max(S0 + 13.7 + 1.6 * clamp((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - NOSE0,
                                 d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
 const TIP_BAND_YR = 65 * RING - NOSE0;                 // from the weld under the tip's tiles up to them
-const bandTop = d => NOSE0 + 7.3 + 0.7 * (d / Math.PI); // = where tileAt tiles the tip all the way round
+const bandTop = d => NOSE0 + 7.3 + 0.7 * (Math.min(d, FLAP_D) / Math.PI); // = where tileAt tiles the tip all the way round
 const blackHiYr = d => d < 2.07 ? 3.92 : 3.92 - (d - 2.07) * 1.444;
 function edgeStrip(group, y0, y1) {
   // thin columns in angle; in each, black runs from blackLo to blackHi except where the tiles are (tileLoYr..tileHiYr),
@@ -986,7 +986,7 @@ function edgeStrip(group, y0, y1) {
   }
   if (!idx.length) return null;
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-  return add(group, g, 's-tiles', 'shieldBand', 'Heat shield edge band');
+  return add(group, g, 's-tiles', 'shieldBand', 'Heat shield edge band', { cast: false });   // its shadow on the steel beside it came out stair-stepped
 }
 function raceway(group, pid, y0, y1) {
   const g = new THREE.BoxGeometry(0.55, y1 - y0, 0.3);
@@ -1638,7 +1638,9 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
   eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
   add(inner, eg, 's-flaps', kind, label);
-  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, cr * 0.9, 24, 1, false, ts, Math.PI); g.translate(hingeR * 0.75, cr / 2, 0);
+  // forward flaps: the nose curves away from the straight hinge near the top, so it stops well short of the flap's top
+  const hLen = cr * (group === sNose ? 0.68 : 0.9), hMid = group === sNose ? cr * 0.38 : cr / 2;
+  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, hLen, 24, 1, false, ts, Math.PI); g.translate(hingeR * 0.9, hMid, 0);
     scaleUV(g, kd === 'tileSolid' ? 1.25 / tileTex.w : 0.1, kd === 'tileSolid' ? cr / tileTex.h : 0.2); add(inner, g, 's-flaps', kd, label + ' · hinge fairing'); };
   // the hinge the flap swings on: a slim cylinder along the flap's root, just proud of the flap's own thickness -
   // tiled on its windward half (like the flap's outer face), plain black on the half facing the steel side
@@ -1658,8 +1660,8 @@ const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
 // straight edge back up to the hull; sharp corners
 // like the forward flaps they are bare stainless on the side facing the steel half of the ship, tiled only on the
 // windward face (per photos of the ship on the pad)
-flap(sAft, FA1, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (left)', 'steelNC', 0.3, 0.2);
-flap(sAft, FA2, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (right)', 'steelNC', 0.3, 0.2);
+flap(sAft, FA1, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (left)', 'steelNC', 0.38, 0.2);
+flap(sAft, FA2, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (right)', 'steelNC', 0.38, 0.2);
 // forward flaps sit high on the nose and sweep up to a point
 // forward flaps: hinge line runs up the nose cone; the free tip hangs at the BOTTOM (aft) with a level lower edge
 // and a swept upper edge - root bottom sits just above the SpaceX logo
@@ -1667,8 +1669,8 @@ const FF_Y = NOSE0 + 3.55, FF_TILT = Math.atan((noseR(3.55) - noseR(9.15)) / 5.6
 // the flap body is tilted to follow the cone; drop its lower edge by the same slope (plus ~4°) so that edge ends up
 // square to the ship's axis, even angled slightly aft, as on the real ship
 const FF_DROP = -2.6 * (Math.tan(FF_TILT) + 0.07);
-flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC', 0.27);
-flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC', 0.27);
+flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC', 0.33);
+flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC', 0.33);
 
 // ---------------------------------------------------------------- serial stencils
 // Flight vehicles carry no livery - just stencilled serials in SpaceX's own short form ("B21", "S41"),
