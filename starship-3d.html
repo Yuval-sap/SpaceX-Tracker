@@ -1638,10 +1638,13 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
   eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
   add(inner, eg, 's-flaps', kind, label);
-  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, cr * 0.9, 24, 1, false, ts, Math.PI); g.translate(hingeR * 0.12, cr / 2, 0);
+  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, cr * 0.9, 24, 1, false, ts, Math.PI); g.translate(hingeR * 0.75, cr / 2, 0);
     scaleUV(g, kd === 'tileSolid' ? 1.25 / tileTex.w : 0.1, kd === 'tileSolid' ? cr / tileTex.h : 0.2); add(inner, g, 's-flaps', kd, label + ' · hinge fairing'); };
-  // the hinge the flap swings on: a slim fairing, black (tiled) all round, on the aft flaps as on the forward ones
-  hingeHalf(0, 'tileSolid'); hingeHalf(Math.PI, 'tileSolid');
+  // the hinge the flap swings on: a slim cylinder along the flap's root, just proud of the flap's own thickness -
+  // tiled on its windward half (like the flap's outer face), plain black on the half facing the steel side
+  const sgn = Math.sin(a - WINDWARD) > 0 ? 1 : -1;
+  hingeHalf(sgn > 0 ? -Math.PI / 2 : Math.PI / 2, 'tileSolid');
+  hingeHalf(sgn > 0 ? Math.PI / 2 : -Math.PI / 2, 'finDark');
   if (kind !== 'tileSolid') {
     // stainless flap: tiles only on its windward (outer) face; the face toward the steel side stays bare
     const sg = new THREE.ShapeGeometry(sh, 12); scaleUV(sg, 1 / tileTex.w, 1 / tileTex.h);
@@ -1655,8 +1658,8 @@ const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
 // straight edge back up to the hull; sharp corners
 // like the forward flaps they are bare stainless on the side facing the steel half of the ship, tiled only on the
 // windward face (per photos of the ship on the pad)
-flap(sAft, FA1, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (left)', 'steelNC', 0.2, 0.2);
-flap(sAft, FA2, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (right)', 'steelNC', 0.2, 0.2);
+flap(sAft, FA1, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (left)', 'steelNC', 0.3, 0.2);
+flap(sAft, FA2, S0 + 0.1, 13.6, 7.4, 3.9, 0, R + 0.05, 0, 'Aft flap (right)', 'steelNC', 0.3, 0.2);
 // forward flaps sit high on the nose and sweep up to a point
 // forward flaps: hinge line runs up the nose cone; the free tip hangs at the BOTTOM (aft) with a level lower edge
 // and a swept upper edge - root bottom sits just above the SpaceX logo
@@ -1664,8 +1667,8 @@ const FF_Y = NOSE0 + 3.55, FF_TILT = Math.atan((noseR(3.55) - noseR(9.15)) / 5.6
 // the flap body is tilted to follow the cone; drop its lower edge by the same slope (plus ~4°) so that edge ends up
 // square to the ship's axis, even angled slightly aft, as on the real ship
 const FF_DROP = -2.6 * (Math.tan(FF_TILT) + 0.07);
-flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC', 0.13);
-flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC', 0.13);
+flap(sNose, FA1 + 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (left)', 'steelNC', 0.27);
+flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT, 'Forward flap (right)', 'steelNC', 0.27);
 
 // ---------------------------------------------------------------- serial stencils
 // Flight vehicles carry no livery - just stencilled serials in SpaceX's own short form ("B21", "S41"),
