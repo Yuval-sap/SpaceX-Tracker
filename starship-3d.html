@@ -375,10 +375,12 @@ document.getElementById('theme-btn').addEventListener('click', () => { manualThe
 // picked, if any. Phones get the device's share sheet; on a desktop inside the site, the site's own share menu (the one
 // the launch cards use) opens next to this button; anywhere else the link is copied.
 function simShareData() {
-  const q = new URLSearchParams({ sim: '1' });
+  // sim.html: a small page with its own link-preview image of the sim, which sends people on into the sim on the site
+  const q = new URLSearchParams();
   for (const k of ['f', 'b', 'bf', 's', 'sf', 'n']) if (Q.get(k)) q.set(k, Q.get(k));
   if (selected && selected !== 'f9') q.set('part', selected);
-  const url = location.origin + location.pathname.replace(/[^/]*$/, '') + '?' + q.toString();
+  const qs = q.toString();
+  const url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sim.html' + (qs ? '?' + qs : '');
   const f = Q.get('f'), pi = selected && PART_INFO.find(p => p.id === selected);
   const title = 'SpaceX • Starship V3 3D';
   const text = `Explore SpaceX's Starship V3 in interactive 3D${f ? ` (Flight ${f})` : ''}${pi ? ` - ${pi.n}` : ''}!\n${url}`;
