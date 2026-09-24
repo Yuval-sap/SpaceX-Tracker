@@ -943,7 +943,7 @@ function tileShell(group, y0, y1) {
 // yr = height above the nose base): a straight strip from the top of the aft flap up to ~1 m above the nose base, then
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
 const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
-const blackLoYr = d => Math.max(S0 + 13.7 + 1.6 * clamp((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - NOSE0,
+const blackLoYr = d => Math.max(S0 + 13.7 - NOSE0,      // level, right down to the top of the aft flap
                                 d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
 // the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
 // v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
@@ -1658,7 +1658,11 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
   add(inner, eg, 's-flaps', kind, label);
   // forward flaps: the nose curves away from the straight hinge near the top, so it stops well short of the flap's top
-  const hLen = cr * (group === sNose ? 0.68 : 0.9), hMid = group === sNose ? cr * 0.38 : cr / 2;
+  // and on every flap it stays inside the flap's outline: the top edge slopes down away from the root, so the hinge's
+  // outer side (~2 hinge radii out) must end under it, or it pokes up above the flap
+  const xo = hingeR * 1.9, edgeTop = cr - (cr - (drop + ct)) * xo / span - 0.08, edgeBot = Math.max(0, drop * xo / span) + 0.08;
+  const h0 = Math.max(edgeBot, group === sNose ? cr * 0.04 : cr * 0.05), h1 = Math.min(edgeTop, group === sNose ? cr * 0.72 : cr * 0.95);
+  const hLen = h1 - h0, hMid = (h0 + h1) / 2;
   const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, hLen, 24, 1, false, ts, Math.PI); g.translate(hingeR * 0.9, hMid, 0);
     scaleUV(g, kd === 'tileSolid' ? 1.25 / tileTex.w : 0.1, kd === 'tileSolid' ? cr / tileTex.h : 0.2); add(inner, g, 's-flaps', kd, label + ' · hinge fairing'); };
   // the hinge the flap swings on: a slim cylinder along the flap's root, just proud of the flap's own thickness -
