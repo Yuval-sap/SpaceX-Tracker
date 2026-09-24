@@ -26,7 +26,7 @@
   .pill.on i{opacity:.7}
   .sep{font:500 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:var(--accent);margin:6px 0 1px 2px;text-transform:uppercase}
   #stats{position:absolute;right:28px;top:24px;display:flex;gap:24px;font-family:'JetBrains Mono',monospace}
-  #stats div{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+  #stats div{display:flex;flex-direction:column;gap:7px;align-items:center;text-align:center}
   #stats span{font-size:11px;letter-spacing:.12em;color:#aeb6c3;text-transform:uppercase}
   #stats b{font-weight:500;font-size:14px;color:var(--fg);white-space:nowrap}
   #card{position:absolute;right:28px;top:80px;width:310px;background:var(--panel);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px;pointer-events:auto;opacity:0;transform:translateY(-6px);visibility:hidden;transition:opacity .25s,transform .25s,visibility .25s}
@@ -87,7 +87,6 @@
   html[dir=rtl] .sep{margin-left:0;margin-right:2px}
   html[dir=rtl] .pill i{margin-right:0;margin-left:7px}
   html[dir=rtl] #stats{right:auto;left:28px}
-  html[dir=rtl] #stats div{align-items:flex-start}
   html[dir=rtl] #card{right:auto;left:28px}
   html[dir=rtl] #card .x{right:auto;left:10px}
   html[dir=rtl] #nav{right:auto;left:22px}
@@ -147,7 +146,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=9"></script>
+<script src="starship-3d-i18n.js?v=11"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -159,7 +158,7 @@
   <div class="brand">
     <div class="eyebrow" id="t-eyebrow">SpaceX · Vehicle study</div>
     <h1 id="t-title">STARSHIP V3</h1>
-    <div class="sub" id="t-sub">Super Heavy + Ship · Block 3</div>
+    <div class="sub" id="t-sub">Super Heavy + Ship</div>
     <div class="mission" id="t-mission" hidden></div>
   </div>
   <nav id="parts"></nav>
@@ -289,7 +288,10 @@ function applyI18n() {
   const U = I.ui;
   $('t-eyebrow').textContent = U.eyebrow;
   $('t-title').textContent = `${I.starship.toLocaleUpperCase(LANG)} V3`;   // same naming as the site's "Starship V3"
-  $('t-sub').textContent = `Super Heavy + ${I.shipName || 'Ship'} · Block 3`;
+  // RTL: the local ship name first (it opens the line, like the title above it) and every piece isolated, so
+  // the Latin "Super Heavy" can't pull the "+" out of reading order
+  const iso = t => '⁨' + t + '⁩';
+  $('t-sub').textContent = I.dir === 'rtl' ? `${iso(I.shipName || 'Ship')} + ${iso('Super Heavy')}` : `Super Heavy + ${I.shipName || 'Ship'}`;   // the generation is in the title (V3)
   // ?f=14&b=21&bf=1&s=41&sf=1 - flight number, booster/ship serials and how many flights each has flown
   {
     const n = k => { const v = parseInt(Q.get(k), 10); return v > 0 ? v : null; };
@@ -570,10 +572,10 @@ const PART_INFO = [
   { id: 'b-aft', n: 'Thrust section', k: 'Super Heavy · 02', title: 'Thrust section', desc: 'A steel plate carries the thrust of all 33 engines into the airframe. The plate tapers downward, so the engines protrude out the bottom. The pipes, power and data cables that used to sit behind the shielding now run around the outside in rings of lines and junction boxes.', stats: [['PLATE', 'Tapered'], ['SHIELDING', 'None'], ['LINES', 'External']] },
   { id: 'b-lox', n: 'LOX tank', k: 'Super Heavy · 03', title: 'Liquid oxygen tank & chines', desc: 'This is the largest tank in the stack. Liquid oxygen, densified below its −183 °C boiling point, sits directly above the engines. The walls are stainless-steel rings, each about 1.8 m tall, welded together. Two long chines run along its lower half.', stats: [['OXIDIZER', 'LOX'], ['TEMP', '< −183 °C'], ['SKIN', 'Stainless']] },
   { id: 'b-ch4', n: 'Methane tank', k: 'Super Heavy · 04', title: 'Methane tank & downcomer', desc: 'Liquid methane is stored above the oxygen tank, separated from it by a shared common dome. A wide pipe called the downcomer runs straight down through the middle of the oxygen tank and delivers the fuel to the engines.', stats: [['FUEL', 'Liquid CH₄'], ['TEMP', '< −162 °C'], ['DOME', 'Common']] },
-  { id: 'b-fwd', n: 'Grid fins', k: 'Super Heavy · 05', title: 'Grid fins', desc: 'Block 3 uses three grid fins instead of four. Each one is about 50% larger and sits lower, in a pod welded to the methane tank, in a T layout. The tower’s chopsticks catch the booster directly on these fins, so it needs no separate lift points.', stats: [['FINS', '3'], ['SIZE', '+50%'], ['RECOVERY', 'Tower catch']] },
-  { id: 'hsr', n: 'Hot-stage truss', k: 'Interstage · 06', title: 'Integrated hot-stage truss', desc: 'Ship lights its engines while it is still attached to the booster. Block 3 replaces the old separate vented ring with an open truss of V-shaped struts built into the booster. The ship’s exhaust flows between the struts and hits the booster’s forward dome directly.', stats: [['DESIGN', 'V-truss'], ['JETTISON', 'None'], ['SINCE', 'Flight 12']] },
+  { id: 'b-fwd', n: 'Grid fins', k: 'Super Heavy · 05', title: 'Grid fins', desc: 'V3 uses three grid fins instead of four. Each one is about 50% larger and sits lower, in a pod welded to the methane tank, in a T layout. The tower’s chopsticks catch the booster directly on these fins, so it needs no separate lift points.', stats: [['FINS', '3'], ['SIZE', '+50%'], ['RECOVERY', 'Tower catch']] },
+  { id: 'hsr', n: 'Hot-stage truss', k: 'Interstage · 06', title: 'Integrated hot-stage truss', desc: 'Ship lights its engines while it is still attached to the booster. V3 replaces the old separate vented ring with an open truss of V-shaped struts built into the booster. The ship’s exhaust flows between the struts and hits the booster’s forward dome directly.', stats: [['DESIGN', 'V-truss'], ['JETTISON', 'None'], ['SINCE', 'Flight 12']] },
   { id: 's-raptors', n: 'Ship engines', k: 'Ship · 07', title: 'Ship Raptor engines', desc: 'Three sea-level Raptors in the center gimbal for steering and landing. Around them, three Raptor Vacuum engines with large fixed nozzle extensions provide the more efficient thrust needed in space.', stats: [['SEA-LEVEL', '3'], ['VACUUM', '3'], ['RVAC EXIT', '~2.3 m']] },
-  { id: 's-tanks', n: 'Ship tanks', k: 'Ship · 08', title: 'Ship propellant tanks', desc: 'The ship carries its own oxygen and methane in two main tanks; on Block 3 the common and aft domes moved lower to hold more methane. Methane reaches the engines through downcomers that run through the oxygen tank: one shared by the three sea-level engines and a dedicated one for each Raptor Vacuum. Small header tanks keep landing propellant settled after the main tanks run low.', stats: [['MAIN TANKS', '2'], ['DOWNCOMERS', '4'], ['HEADERS', '2']] },
+  { id: 's-tanks', n: 'Ship tanks', k: 'Ship · 08', title: 'Ship propellant tanks', desc: 'The ship carries its own oxygen and methane in two main tanks; on V3 the common and aft domes moved lower to hold more methane. Methane reaches the engines through downcomers that run through the oxygen tank: one shared by the three sea-level engines and a dedicated one for each Raptor Vacuum. Small header tanks keep landing propellant settled after the main tanks run low.', stats: [['MAIN TANKS', '2'], ['DOWNCOMERS', '4'], ['HEADERS', '2']] },
   { id: 's-tiles', n: 'Heat shield', k: 'Ship · 09', title: 'Heat shield', desc: 'About 18,000 hexagonal ceramic tiles cover the belly of the ship, the side that faces into the airflow during reentry. They are pinned to the steel skin and protect it from reentry heat of up to about 1,400 °C. The hexagonal pattern stops hot plasma from flowing straight through the gaps.', stats: [['TILES', '~18,000'], ['SHAPE', 'Hexagonal'], ['PEAK', '~1,400 °C']] },
   { id: 's-flaps', n: 'Flaps', k: 'Ship · 10', title: 'Forward & aft flaps', desc: 'Four body flaps work like a skydiver’s arms. During the bellyflop descent they control the ship’s attitude, until it flips upright and lights its engines to land.', stats: [['COUNT', '4'], ['ACTUATION', 'Electric'], ['MODE', 'Bellyflop']] },
   { id: 's-payload', n: 'Payload bay', k: 'Ship · 11', title: 'Payload bay & Pez slot', desc: 'On Starlink flights the satellites sit in a stack inside the payload bay. A long, narrow horizontal slot nicknamed the “Pez dispenser” opens on the bare-steel side (the side without tiles), and the satellites slide out through it one at a time.', stats: [['DOOR', 'Mail slot'], ['PAYLOAD', '100+ t'], ['CARGO', 'Starlink']] },
