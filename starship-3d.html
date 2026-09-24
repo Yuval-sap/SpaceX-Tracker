@@ -767,11 +767,13 @@ const FLAP_D = 1.958, TONGUE_D = 2.29;
 // point a second diagonal runs back in, down to the flap. In the strip's width t (0 at the plain tile edge, 1 at its
 // outer edge) and height yF above the flap's top:
 const AFT_TOP = S0 + 13.7, AFT_PT = 0.35, AFT_H = 3.15;
+// where the lower diagonal lands: the aft flap's root, on its steel-side face (flap at 1.658 rad, ~0.22 m half thick)
+const AFT_END = (1.658 + 0.22 / R - 1.62) / (1.92 - 1.62);
 const aftCurveY = t => AFT_PT + (AFT_H - AFT_PT) * (1 - t);           // the upper diagonal (black above it)
 const aftTiled = (d, y) => {
   const t = (d - 1.62) / (1.92 - 1.62), yF = y - AFT_TOP;
   if (t <= 0 || t >= 1 || yF <= 0 || yF > AFT_H) return false;
-  return yF < aftCurveY(t) && (yF >= AFT_PT || t < 0.56 + 0.44 * yF / AFT_PT);
+  return yF < aftCurveY(t) && (yF >= AFT_PT || t < AFT_END + (1 - AFT_END) * yF / AFT_PT);
 };
 const tileLoYr = d => d < FLAP_D ? -0.2 + (d - 1.62) * 4.118 : 1.19 + (d - FLAP_D) * 1.8;
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
@@ -1013,7 +1015,7 @@ function edgeStrip(group, y0, y1) {
     for (const sg of [1, -1]) {
       let prev = null;
       for (let j = 0; j <= N; j++) {
-        const yF = AFT_PT * j / N, d = dOf(0.56 + 0.44 * yF / AFT_PT), y = Math.min(y1, Math.max(y0, AFT_TOP + yF));
+        const yF = AFT_PT * j / N, d = dOf(AFT_END + (1 - AFT_END) * yF / AFT_PT), y = Math.min(y1, Math.max(y0, AFT_TOP + yF));
         const row = [vert(d - 1.6 * W, y, sg), vert(d + 1.4 * W * (1 - j / N), y, sg)];   // over both sides of the ragged edge, tapering to nothing at the point
         if (prev) { if (sg > 0) idx.push(prev[0], row[0], prev[1], prev[1], row[0], row[1]); else idx.push(prev[0], prev[1], row[0], prev[1], row[1], row[0]); }
         prev = row;
