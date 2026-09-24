@@ -777,7 +777,7 @@ const aftTiled = (d, y) => {
 };
 // lower edge of the tiles by the forward flap: one straight diagonal from the tongue's lower outer corner (2.29 rad,
 // 1.79 m) down to the plain tile edge; the black section's outer edge below runs parallel to it (FWD_SLOPE m per rad)
-const FWD_SLOPE = 6.4;
+const FWD_SLOPE = 11;
 const tileLoYr = d => 1.79 - (2.29 - d) * FWD_SLOPE;
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
 function tileAt(th, y) {
@@ -858,8 +858,8 @@ bool tiled(float th, float y){                       // = tileAt() in the page s
   float d = abs(mod(th - uWind + PI, TAU) - PI);
   if (d < 1.62) return true;
   float yr = y - uNose0;                               // = tileLoYr / tileHiYr in the page script
-  if (d < 1.958 && yr > 1.79 - (2.29 - d) * 6.4) return true;
-  if (d >= 1.958 && d < 2.29 && yr > 1.79 - (2.29 - d) * 6.4 && yr < 3.48 - (d - 1.958) * 1.27) return true;
+  if (d < 1.958 && yr > 1.79 - (2.29 - d) * 11.0) return true;
+  if (d >= 1.958 && d < 2.29 && yr > 1.79 - (2.29 - d) * 11.0 && yr < 3.48 - (d - 1.958) * 1.27) return true;
   return y > uNose0 + 7.3 + 0.7 * (min(d, 1.958) / PI);
 }
 void main(){
@@ -1779,7 +1779,7 @@ function serialCanvas(text, upward = false) {
   pg.fillStyle = '#1b1d21'; pg.fillRect(4, 4, 56, 56); pg.strokeStyle = 'rgba(0,0,0,.6)'; pg.lineWidth = 3; pg.strokeRect(5, 5, 54, 54);
   for (const da of [-0.5, 0.5]) decal(sNose, 's-nose', panel, LOGO_Y, LEEWARD + da, 0.8, 0.85);
   // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
-  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.1, 0.6, 1.8);   // just outboard of the black strip
+  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 0.9, 0.6, 1.8);   // just outboard of the black section
   // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings
   const fTop = ringY(59) + 0.85, groupsFor = [[sAft, 's-tanks', S0 + 0.8, S0 + 5.2], [sLox, 's-tanks', S0 + 5.2, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
   for (const da of [-0.36, 0.36]) {
