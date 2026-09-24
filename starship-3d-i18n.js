@@ -11,7 +11,7 @@ SS_I18N.en = {
   ui: {
     booster: 'Booster', mFlight: 'Flight {n}', vFlight: 'flight {n}', satLine: '{n} {starlink} V3 satellites', roll: 'Spin on its axis', scale: "Scale",
     eyebrow: 'SpaceX · Vehicle study', height: 'Height', diameter: 'Diameter', raptors: 'Raptors', thrust: 'Thrust', liftoff: 'Liftoff mass', selected: 'Selected',
-    hint: 'Drag to orbit around any point · Scroll to zoom where you point · Right-drag to pan · Double-click to fly there · Cube for views',
+    hint: 'Drag to rotate · Scroll to zoom where you point · Right-drag to pan · Double-click to fly there · Cube for views',
     explode: 'Explode', assemble: 'Assemble', separate: 'Separate', stack: 'Stack', section: 'Section', flow: 'Ignition', pause: 'Pause', play: 'Play', reset: 'Reset',
     side: 'Side', top: 'Top', belly: 'Belly', engines: 'Engines', nose: 'Nose',
     interstage: 'Interstage', loading: 'Initializing', close: 'Close', zoomIn: 'Zoom in', zoomOut: 'Zoom out', fit: 'Fit whole vehicle', cube: 'View cube: click a face to look from that side',
@@ -41,7 +41,7 @@ SS_I18N.he = {
   ui: {
     booster: 'בוסטר', mFlight: 'טיסה {n}', vFlight: 'טיסה {n}', satLine: '{n} לווייני {starlink} V3', roll: 'סיבוב סביב הציר', scale: "השוואת גודל",
     eyebrow: 'SpaceX · מבנה הרקטה', height: 'גובה', diameter: 'קוטר', raptors: 'מנועי Raptor', thrust: 'דחף', liftoff: 'מסה בהמראה', selected: 'נבחר',
-    hint: 'גרירה לסיבוב סביב כל נקודה · גלילה לזום למקום שמצביעים עליו · גרירה ימנית להזזה · לחיצה כפולה לטיסה לנקודה · הקובייה למבטים',
+    hint: 'גרירה לסיבוב · גלילה לזום למקום שמצביעים עליו · גרירה ימנית להזזה · לחיצה כפולה לטיסה לנקודה · הקובייה למבטים',
     explode: 'פירוק', assemble: 'הרכבה', separate: 'הפרדת שלבים', stack: 'חיבור שלבים', section: 'חתך', flow: 'בעירה', pause: 'השהיה', play: 'המשך', reset: 'איפוס',
     side: 'צד', top: 'למעלה', belly: 'בטן', engines: 'מנועים', nose: 'חרטום',
     interstage: 'בין השלבים', loading: 'טוען', close: 'סגירה', zoomIn: 'התקרבות', zoomOut: 'התרחקות', fit: 'הצג את כל הרקטה', cube: 'קוביית מבטים: לחצו על פאה כדי להסתכל מהצד הזה',
@@ -83,7 +83,7 @@ SS_I18N.es = {
   ui: {
     booster: 'Booster', mFlight: 'Vuelo {n}', vFlight: 'vuelo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar sobre su eje', scale: "Escala",
     eyebrow: 'SpaceX · Estudio del vehículo', height: 'Altura', diameter: 'Diámetro', raptors: 'Raptors', thrust: 'Empuje', liftoff: 'Masa al despegue', selected: 'Seleccionado',
-    hint: 'Arrastra para orbitar alrededor de cualquier punto · Rueda para acercar donde apuntas · Clic derecho y arrastra para desplazar · Doble clic para volar allí · Cubo para vistas',
+    hint: 'Arrastra para girar · Rueda para acercar donde apuntas · Clic derecho y arrastra para desplazar · Doble clic para volar allí · Cubo para vistas',
     explode: 'Despiece', assemble: 'Ensamblar', separate: 'Separar', stack: 'Unir', section: 'Corte', flow: 'Encendido', pause: 'Pausa', play: 'Reanudar', reset: 'Restablecer',
     side: 'Lateral', top: 'Superior', belly: 'Vientre', engines: 'Motores', nose: 'Morro',
     interstage: 'Interetapa', loading: 'Iniciando', close: 'Cerrar', zoomIn: 'Acercar', zoomOut: 'Alejar', fit: 'Ver el vehículo completo', cube: 'Cubo de vistas: haz clic en una cara para mirar desde ese lado',
@@ -124,7 +124,7 @@ SS_I18N.fr = {
   ui: {
     booster: 'Booster', mFlight: 'Vol {n}', vFlight: 'vol {n}', satLine: '{n} satellites {starlink} V3', roll: 'Tourner sur son axe', scale: "Échelle",
     eyebrow: 'SpaceX · Étude du lanceur', height: 'Hauteur', diameter: 'Diamètre', raptors: 'Raptor', thrust: 'Poussée', liftoff: 'Masse au décollage', selected: 'Sélection',
-    hint: 'Glisser pour tourner autour de n\'importe quel point · Molette pour zoomer là où vous pointez · Clic droit + glisser pour déplacer · Double-clic pour s\'y rendre · Cube pour les vues',
+    hint: 'Glisser pour tourner · Molette pour zoomer là où vous pointez · Clic droit + glisser pour déplacer · Double-clic pour s\'y rendre · Cube pour les vues',
     explode: 'Vue éclatée', assemble: 'Assembler', separate: 'Séparer', stack: 'Réunir', section: 'Coupe', flow: 'Allumage', pause: 'Pause', play: 'Reprendre', reset: 'Réinitialiser',
     side: 'Côté', top: 'Dessus', belly: 'Ventre', engines: 'Moteurs', nose: 'Nez',
     interstage: 'Inter-étage', loading: 'Initialisation', close: 'Fermer', zoomIn: 'Zoom avant', zoomOut: 'Zoom arrière', fit: 'Voir tout le lanceur', cube: 'Cube de vues : cliquez sur une face pour regarder depuis ce côté',
@@ -165,7 +165,7 @@ SS_I18N.de = {
   ui: {
     booster: 'Booster', mFlight: 'Flug {n}', vFlight: 'Flug {n}', satLine: '{n} {starlink}-V3-Satelliten', roll: 'Um die eigene Achse drehen', scale: "Größenvergleich",
     eyebrow: 'SpaceX · Fahrzeugstudie', height: 'Höhe', diameter: 'Durchmesser', raptors: 'Raptoren', thrust: 'Schub', liftoff: 'Startmasse', selected: 'Auswahl',
-    hint: 'Ziehen, um um jeden Punkt zu kreisen · Scrollen zoomt dorthin, wo Sie zeigen · Rechtsziehen verschiebt · Doppelklick fliegt hin · Würfel für Ansichten',
+    hint: 'Ziehen zum Drehen · Scrollen zoomt dorthin, wo Sie zeigen · Rechtsziehen verschiebt · Doppelklick fliegt hin · Würfel für Ansichten',
     explode: 'Zerlegen', assemble: 'Zusammenbauen', separate: 'Trennen', stack: 'Verbinden', section: 'Schnitt', flow: 'Zündung', pause: 'Pause', play: 'Weiter', reset: 'Zurücksetzen',
     side: 'Seite', top: 'Oben', belly: 'Bauch', engines: 'Triebwerke', nose: 'Nase',
     interstage: 'Zwischenstufe', loading: 'Wird geladen', close: 'Schließen', zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', fit: 'Ganzes Fahrzeug zeigen', cube: 'Ansichtswürfel: auf eine Seite klicken, um von dort zu schauen',
@@ -206,7 +206,7 @@ SS_I18N.it = {
   ui: {
     booster: 'Booster', mFlight: 'Volo {n}', vFlight: 'volo {n}', satLine: '{n} satelliti {starlink} V3', roll: 'Ruota sul proprio asse', scale: "Scala",
     eyebrow: 'SpaceX · Studio del veicolo', height: 'Altezza', diameter: 'Diametro', raptors: 'Raptor', thrust: 'Spinta', liftoff: 'Massa al decollo', selected: 'Selezione',
-    hint: 'Trascina per ruotare attorno a qualsiasi punto · Rotella per zoomare dove punti · Trascina col tasto destro per spostare · Doppio clic per volare lì · Cubo per le viste',
+    hint: 'Trascina per ruotare · Rotella per zoomare dove punti · Trascina col tasto destro per spostare · Doppio clic per volare lì · Cubo per le viste',
     explode: 'Esploso', assemble: 'Assembla', separate: 'Separa', stack: 'Riunisci', section: 'Sezione', flow: 'Accensione', pause: 'Pausa', play: 'Riprendi', reset: 'Ripristina',
     side: 'Lato', top: 'Sopra', belly: 'Ventre', engines: 'Motori', nose: 'Muso',
     interstage: 'Interstadio', loading: 'Inizializzazione', close: 'Chiudi', zoomIn: 'Ingrandisci', zoomOut: 'Riduci', fit: 'Mostra tutto il veicolo', cube: 'Cubo delle viste: clicca una faccia per guardare da quel lato',
@@ -247,7 +247,7 @@ SS_I18N.pt = {
   ui: {
     booster: 'Booster', mFlight: 'Voo {n}', vFlight: 'voo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar no próprio eixo', scale: "Escala",
     eyebrow: 'SpaceX · Estudo do veículo', height: 'Altura', diameter: 'Diâmetro', raptors: 'Raptors', thrust: 'Empuxo', liftoff: 'Massa na decolagem', selected: 'Selecionado',
-    hint: 'Arraste para orbitar em torno de qualquer ponto · Role para dar zoom onde aponta · Arraste com o botão direito para mover · Duplo clique para voar até lá · Cubo para vistas',
+    hint: 'Arraste para girar · Role para dar zoom onde aponta · Arraste com o botão direito para mover · Duplo clique para voar até lá · Cubo para vistas',
     explode: 'Desmontar', assemble: 'Montar', separate: 'Separar', stack: 'Unir', section: 'Corte', flow: 'Queima', pause: 'Pausar', play: 'Retomar', reset: 'Redefinir',
     side: 'Lateral', top: 'Topo', belly: 'Ventre', engines: 'Motores', nose: 'Nariz',
     interstage: 'Interestágio', loading: 'Inicializando', close: 'Fechar', zoomIn: 'Aproximar', zoomOut: 'Afastar', fit: 'Ver o veículo inteiro', cube: 'Cubo de vistas: clique numa face para olhar daquele lado',
@@ -288,7 +288,7 @@ SS_I18N.nl = {
   ui: {
     booster: 'Booster', mFlight: 'Vlucht {n}', vFlight: 'vlucht {n}', satLine: '{n} {starlink} V3-satellieten', roll: 'Om de eigen as draaien', scale: "Schaal",
     eyebrow: 'SpaceX · Voertuigstudie', height: 'Hoogte', diameter: 'Diameter', raptors: 'Raptors', thrust: 'Stuwkracht', liftoff: 'Startmassa', selected: 'Geselecteerd',
-    hint: 'Sleep om rond elk punt te draaien · Scroll om in te zoomen waar je wijst · Rechts slepen om te verschuiven · Dubbelklik om erheen te vliegen · Kubus voor aanzichten',
+    hint: 'Sleep om te draaien · Scroll om in te zoomen waar je wijst · Rechts slepen om te verschuiven · Dubbelklik om erheen te vliegen · Kubus voor aanzichten',
     explode: 'Uiteenhalen', assemble: 'Samenvoegen', separate: 'Scheiden', stack: 'Koppelen', section: 'Doorsnede', flow: 'Ontsteking', pause: 'Pauze', play: 'Hervatten', reset: 'Herstellen',
     side: 'Zijkant', top: 'Boven', belly: 'Buik', engines: 'Motoren', nose: 'Neus',
     interstage: 'Tussentrap', loading: 'Initialiseren', close: 'Sluiten', zoomIn: 'Inzoomen', zoomOut: 'Uitzoomen', fit: 'Hele voertuig tonen', cube: 'Aanzichtkubus: klik op een vlak om vanaf die kant te kijken',
@@ -329,7 +329,7 @@ SS_I18N.sv = {
   ui: {
     booster: 'Booster', mFlight: 'Flygning {n}', vFlight: 'flygning {n}', satLine: '{n} {starlink} V3-satelliter', roll: 'Rotera kring sin axel', scale: "Skala",
     eyebrow: 'SpaceX · Farkoststudie', height: 'Höjd', diameter: 'Diameter', raptors: 'Raptor', thrust: 'Dragkraft', liftoff: 'Startmassa', selected: 'Vald',
-    hint: 'Dra för att kretsa runt valfri punkt · Scrolla för att zooma dit du pekar · Högerdra för att panorera · Dubbelklicka för att flyga dit · Kuben för vyer',
+    hint: 'Dra för att vrida · Scrolla för att zooma dit du pekar · Högerdra för att panorera · Dubbelklicka för att flyga dit · Kuben för vyer',
     explode: 'Sprängskiss', assemble: 'Montera', separate: 'Separera', stack: 'Koppla ihop', section: 'Snitt', flow: 'Tändning', pause: 'Paus', play: 'Fortsätt', reset: 'Återställ',
     side: 'Sida', top: 'Ovan', belly: 'Buk', engines: 'Motorer', nose: 'Nos',
     interstage: 'Mellansteg', loading: 'Startar', close: 'Stäng', zoomIn: 'Zooma in', zoomOut: 'Zooma ut', fit: 'Visa hela farkosten', cube: 'Vykub: klicka på en sida för att titta därifrån',
@@ -370,7 +370,7 @@ SS_I18N.da = {
   ui: {
     booster: 'Booster', mFlight: 'Flyvning {n}', vFlight: 'flyvning {n}', satLine: '{n} {starlink} V3-satellitter', roll: 'Drej om sin akse', scale: "Skala",
     eyebrow: 'SpaceX · Fartøjsstudie', height: 'Højde', diameter: 'Diameter', raptors: 'Raptor', thrust: 'Trykkraft', liftoff: 'Startmasse', selected: 'Valgt',
-    hint: 'Træk for at kredse om et hvilket som helst punkt · Rul for at zoome derhen, hvor du peger · Højretræk for at panorere · Dobbeltklik for at flyve derhen · Terningen for visninger',
+    hint: 'Træk for at dreje · Rul for at zoome derhen, hvor du peger · Højretræk for at panorere · Dobbeltklik for at flyve derhen · Terningen for visninger',
     explode: 'Adskil', assemble: 'Saml', separate: 'Separér', stack: 'Forbind', section: 'Snit', flow: 'Tænding', pause: 'Pause', play: 'Fortsæt', reset: 'Nulstil',
     side: 'Side', top: 'Oven', belly: 'Bug', engines: 'Motorer', nose: 'Næse',
     interstage: 'Mellemtrin', loading: 'Starter', close: 'Luk', zoomIn: 'Zoom ind', zoomOut: 'Zoom ud', fit: 'Vis hele fartøjet', cube: 'Visningsterning: klik på en side for at se derfra',
@@ -411,7 +411,7 @@ SS_I18N.cs = {
   ui: {
     booster: 'Booster', mFlight: 'Let {n}', vFlight: 'let {n}', satLine: '{n} družic {starlink} V3', roll: 'Otáčet kolem osy', scale: "Měřítko",
     eyebrow: 'SpaceX · Studie nosiče', height: 'Výška', diameter: 'Průměr', raptors: 'Raptory', thrust: 'Tah', liftoff: 'Startovní hmotnost', selected: 'Vybráno',
-    hint: 'Tažením obíhejte kolem libovolného bodu · Kolečkem přibližujte tam, kam ukazujete · Pravým tlačítkem posouvejte · Dvojklikem tam přeletíte · Kostka pro pohledy',
+    hint: 'Tažením otáčejte · Kolečkem přibližujte tam, kam ukazujete · Pravým tlačítkem posouvejte · Dvojklikem tam přeletíte · Kostka pro pohledy',
     explode: 'Rozložit', assemble: 'Složit', separate: 'Oddělit', stack: 'Spojit', section: 'Řez', flow: 'Zážeh', pause: 'Pauza', play: 'Pokračovat', reset: 'Obnovit',
     side: 'Bok', top: 'Shora', belly: 'Břicho', engines: 'Motory', nose: 'Špička',
     interstage: 'Mezistupeň', loading: 'Inicializace', close: 'Zavřít', zoomIn: 'Přiblížit', zoomOut: 'Oddálit', fit: 'Zobrazit celý nosič', cube: 'Kostka pohledů: klikněte na stěnu a podívejte se z té strany',
@@ -452,7 +452,7 @@ SS_I18N.pl = {
   ui: {
     booster: 'Booster', mFlight: 'Lot {n}', vFlight: 'lot {n}', satLine: '{n} satelitów {starlink} V3', roll: 'Obracaj wokół osi', scale: "Skala",
     eyebrow: 'SpaceX · Studium pojazdu', height: 'Wysokość', diameter: 'Średnica', raptors: 'Raptory', thrust: 'Ciąg', liftoff: 'Masa startowa', selected: 'Wybrano',
-    hint: 'Przeciągnij, by obracać wokół dowolnego punktu · Kółko przybliża tam, gdzie wskazujesz · Prawy przycisk przesuwa · Dwuklik, by tam polecieć · Kostka do widoków',
+    hint: 'Przeciągnij, by obracać · Kółko przybliża tam, gdzie wskazujesz · Prawy przycisk przesuwa · Dwuklik, by tam polecieć · Kostka do widoków',
     explode: 'Rozłóż', assemble: 'Złóż', separate: 'Rozdziel', stack: 'Połącz', section: 'Przekrój', flow: 'Zapłon', pause: 'Pauza', play: 'Wznów', reset: 'Resetuj',
     side: 'Bok', top: 'Góra', belly: 'Brzuch', engines: 'Silniki', nose: 'Dziób',
     interstage: 'Międzystopień', loading: 'Inicjalizacja', close: 'Zamknij', zoomIn: 'Przybliż', zoomOut: 'Oddal', fit: 'Pokaż cały pojazd', cube: 'Kostka widoków: kliknij ścianę, by spojrzeć z tej strony',
@@ -493,7 +493,7 @@ SS_I18N.ru = {
   ui: {
     booster: 'Бустер', mFlight: 'Полёт {n}', vFlight: 'полёт {n}', satLine: '{n} спутников {starlink} V3', roll: 'Вращать вокруг оси', scale: "Масштаб",
     eyebrow: 'SpaceX · Устройство ракеты', height: 'Высота', diameter: 'Диаметр', raptors: 'Raptor', thrust: 'Тяга', liftoff: 'Стартовая масса', selected: 'Выбрано',
-    hint: 'Тяните, чтобы вращать вокруг любой точки · Колёсико приближает туда, куда указываете · Правая кнопка — сдвиг · Двойной клик — перелёт к точке · Куб — виды',
+    hint: 'Тяните, чтобы вращать · Колёсико приближает туда, куда указываете · Правая кнопка — сдвиг · Двойной клик — перелёт к точке · Куб — виды',
     explode: 'Разобрать', assemble: 'Собрать', separate: 'Разделить', stack: 'Соединить', section: 'Разрез', flow: 'Запуск двигателей', pause: 'Пауза', play: 'Продолжить', reset: 'Сброс',
     side: 'Сбоку', top: 'Сверху', belly: 'Днище', engines: 'Двигатели', nose: 'Нос',
     interstage: 'Межступенчатый отсек', loading: 'Загрузка', close: 'Закрыть', zoomIn: 'Приблизить', zoomOut: 'Отдалить', fit: 'Показать всю ракету', cube: 'Куб видов: нажмите на грань, чтобы посмотреть с этой стороны',
@@ -534,7 +534,7 @@ SS_I18N.zh = {
   ui: {
     booster: '助推器', mFlight: '第 {n} 次飞行', vFlight: '第 {n} 次飞行', satLine: '{n} 颗{starlink} V3 卫星', roll: '绕自身轴旋转', scale: "尺寸对比",
     eyebrow: 'SpaceX · 箭体结构', height: '高度', diameter: '直径', raptors: '猛禽发动机', thrust: '推力', liftoff: '起飞质量', selected: '已选',
-    hint: '拖动可绕任意点旋转 · 滚轮向指针处缩放 · 右键拖动平移 · 双击飞到该处 · 立方体切换视角',
+    hint: '拖动旋转 · 滚轮向指针处缩放 · 右键拖动平移 · 双击飞到该处 · 立方体切换视角',
     explode: '分解', assemble: '组装', separate: '级间分离', stack: '合并', section: '剖面', flow: '点火', pause: '暂停', play: '继续', reset: '重置',
     side: '侧面', top: '顶部', belly: '腹部', engines: '发动机', nose: '头部',
     interstage: '级间段', loading: '正在加载', close: '关闭', zoomIn: '放大', zoomOut: '缩小', fit: '显示整枚火箭', cube: '视角立方体：点击一个面即可从该方向观看',
@@ -575,7 +575,7 @@ SS_I18N.tr = {
   ui: {
     booster: 'Booster', mFlight: 'Uçuş {n}', vFlight: '{n}. uçuş', satLine: '{n} {starlink} V3 uydusu', roll: 'Kendi ekseninde döndür', scale: "Ölçek",
     eyebrow: 'SpaceX · Araç incelemesi', height: 'Yükseklik', diameter: 'Çap', raptors: 'Raptor', thrust: 'İtki', liftoff: 'Kalkış kütlesi', selected: 'Seçili',
-    hint: 'Herhangi bir noktanın etrafında dönmek için sürükleyin · İşaret ettiğiniz yere yakınlaşmak için kaydırın · Sağ tıkla sürükleyerek kaydırın · Oraya uçmak için çift tıklayın · Görünümler için küp',
+    hint: 'Döndürmek için sürükleyin · İşaret ettiğiniz yere yakınlaşmak için kaydırın · Sağ tıkla sürükleyerek kaydırın · Oraya uçmak için çift tıklayın · Görünümler için küp',
     explode: 'Parçala', assemble: 'Birleştir', separate: 'Ayır', stack: 'Bağla', section: 'Kesit', flow: 'Ateşleme', pause: 'Duraklat', play: 'Devam', reset: 'Sıfırla',
     side: 'Yan', top: 'Üst', belly: 'Karın', engines: 'Motorlar', nose: 'Burun',
     interstage: 'Kademe arası', loading: 'Başlatılıyor', close: 'Kapat', zoomIn: 'Yakınlaştır', zoomOut: 'Uzaklaştır', fit: 'Tüm aracı göster', cube: 'Görünüm küpü: o taraftan bakmak için bir yüze tıklayın',
@@ -616,7 +616,7 @@ SS_I18N.hi = {
   ui: {
     booster: 'बूस्टर', mFlight: 'उड़ान {n}', vFlight: 'उड़ान {n}', satLine: '{n} {starlink} V3 उपग्रह', roll: 'अपनी धुरी पर घुमाएँ', scale: "आकार तुलना",
     eyebrow: 'SpaceX · यान अध्ययन', height: 'ऊँचाई', diameter: 'व्यास', raptors: 'Raptor इंजन', thrust: 'थ्रस्ट', liftoff: 'उड़ान के समय द्रव्यमान', selected: 'चयनित',
-    hint: 'किसी भी बिंदु के चारों ओर घुमाने के लिए खींचें · जहाँ इंगित करें वहाँ ज़ूम करने के लिए स्क्रॉल करें · खिसकाने के लिए राइट-ड्रैग करें · वहाँ जाने के लिए डबल-क्लिक करें · दृश्यों के लिए क्यूब',
+    hint: 'घुमाने के लिए खींचें · जहाँ इंगित करें वहाँ ज़ूम करने के लिए स्क्रॉल करें · खिसकाने के लिए राइट-ड्रैग करें · वहाँ जाने के लिए डबल-क्लिक करें · दृश्यों के लिए क्यूब',
     explode: 'अलग-अलग करें', assemble: 'जोड़ें', separate: 'चरण अलग करें', stack: 'चरण जोड़ें', section: 'काट', flow: 'प्रज्वलन', pause: 'रोकें', play: 'जारी रखें', reset: 'रीसेट',
     side: 'बगल', top: 'ऊपर', belly: 'पेट', engines: 'इंजन', nose: 'नोक',
     interstage: 'इंटरस्टेज', loading: 'लोड हो रहा है', close: 'बंद करें', zoomIn: 'ज़ूम इन', zoomOut: 'ज़ूम आउट', fit: 'पूरा यान दिखाएँ', cube: 'दृश्य क्यूब: उस ओर से देखने के लिए किसी सतह पर क्लिक करें',
@@ -657,7 +657,7 @@ SS_I18N.ar = {
   ui: {
     booster: 'المعزز', mFlight: 'الرحلة {n}', vFlight: 'الرحلة {n}', satLine: '{n} قمرًا من {starlink} V3', roll: 'تدوير حول محورها', scale: "مقارنة الحجم",
     eyebrow: 'SpaceX · دراسة المركبة', height: 'الارتفاع', diameter: 'القطر', raptors: 'محركات Raptor', thrust: 'الدفع', liftoff: 'كتلة الإقلاع', selected: 'المحدد',
-    hint: 'اسحب للدوران حول أي نقطة · مرّر للتكبير نحو ما تشير إليه · اسحب بالزر الأيمن للتحريك · انقر مرتين للانتقال إلى هناك · المكعب لتغيير الزاوية',
+    hint: 'اسحب للتدوير · مرّر للتكبير نحو ما تشير إليه · اسحب بالزر الأيمن للتحريك · انقر مرتين للانتقال إلى هناك · المكعب لتغيير الزاوية',
     explode: 'تفكيك', assemble: 'تجميع', separate: 'فصل المرحلتين', stack: 'وصل المرحلتين', section: 'مقطع', flow: 'إشعال', pause: 'إيقاف مؤقت', play: 'متابعة', reset: 'إعادة ضبط',
     side: 'جانب', top: 'أعلى', belly: 'البطن', engines: 'المحركات', nose: 'المقدمة',
     interstage: 'بين المرحلتين', loading: 'جارٍ التحميل', close: 'إغلاق', zoomIn: 'تكبير', zoomOut: 'تصغير', fit: 'عرض المركبة كاملة', cube: 'مكعب الزوايا: انقر على وجه للنظر من تلك الجهة',

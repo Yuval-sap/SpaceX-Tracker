@@ -149,7 +149,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=13"></script>
+<script src="starship-3d-i18n.js?v=14"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -1916,11 +1916,12 @@ let rolling = false;          // ⟳ button: the whole stack turns slowly about 
 const navPivot = new V3(), zoomPt = new V3();
 let zoomPending = 0, camAnim = null, gesture = null;
 const tvHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-function orbitCam(yaw, pitch, pv) {
+function orbitCam(yaw, pitch, pv, lim = 1.53) {
   pv = pv.clone();                                          // callers often pass controls.target itself
   const dir = camera.position.clone().sub(controls.target).normalize();
   const el = Math.asin(clamp(dir.y, -1, 1));
-  pitch = clamp(el + pitch, -1.53, 1.53) - el;               // stop just short of straight up/down
+  const L = Math.max(lim, Math.abs(el));                    // a view already past the limit (cube, engines) can only come back
+  pitch = clamp(el + pitch, -L, L) - el;                     // stop short of straight up/down
   const axis = new V3().crossVectors(dir, Y); if (axis.lengthSq() < 1e-8) axis.set(1, 0, 0); axis.normalize();
   const q = new THREE.Quaternion().setFromAxisAngle(Y, yaw).multiply(new THREE.Quaternion().setFromAxisAngle(axis, pitch));
   camera.position.sub(pv).applyQuaternion(q).add(pv);
@@ -1937,6 +1938,9 @@ function zoomCam(f, P) {
   const d = camera.position.distanceTo(P);
   if (f < 1 && d * f < 1.6) f = Math.min(1, 1.6 / d);        // never dive through the surface you're zooming to
   if (d * f > 900) f = 900 / d;
+  // mouse wheel over empty space zooms toward the view centre, which can sit just off the hull: stop well short of it
+  // instead of ending up a couple of metres from an empty point with nothing on the screen
+  if (navMouse && zoomFree && f < 1 && d * f < 18) f = Math.min(1, 18 / d);
   // never let a zoom carry the camera through the hull: when the zoom point isn't on the surface (a pinch or wheel
   // over empty sky zooms toward the orbit target, which sits inside the vehicle) the camera used to end up inside the
   // ship, where every later zoom latched onto the tank domes and dragged the view down the stack
@@ -1952,12 +1956,35 @@ function zoomCam(f, P) {
   camera.position.sub(P).multiplyScalar(f).add(P);
   controls.target.sub(P).multiplyScalar(f).add(P);
 }
+// mouse navigation: the view centre is held on the vehicle - anywhere along its length and within a few metres of
+// its hull - so panning and zooming can't lose it off the screen; the camera moves with the centre, keeping its angle
+const MOUSE_PITCH = 1.05;                                   // tilt limit for the mouse, about 60 degrees
+let navMouse = false, zoomFree = false;     // zoomFree: the wheel went over empty space (zooms toward the view centre)
+function clampView() {
+  if (camAnim) return;
+  const t = controls.target, c = new V3();
+  if (scaleMode) c.copy(t).clamp(new V3(-14, 0, -10), new V3(HUMX + 2, extents(0, 0).L, 10));
+  else {
+    const x = extents(st.explodeT, st.sepT);
+    root.updateMatrixWorld(true);
+    const a = new V3(0, x.mn - (vertical && st.fireT ? FLAME_ROOM : 0), 0).applyMatrix4(root.matrixWorld);
+    const b = new V3(0, x.top, 0).applyMatrix4(root.matrixWorld), ab = b.clone().sub(a);
+    const u = clamp(t.clone().sub(a).dot(ab) / ab.lengthSq(), 0, 1), onAxis = a.addScaledVector(ab, u);
+    // sideways only (never past the nose or the engines), and no further out than just beyond the hull
+    const off = t.clone().sub(onAxis), abN = ab.clone().normalize(), rad = R + st.explodeT * 10;
+    off.addScaledVector(abN, -off.dot(abN));
+    if (off.length() > rad) off.setLength(rad);
+    c.copy(onAxis).add(off);
+  }
+  const d = c.sub(t); if (d.lengthSq() < 1e-8) return;
+  t.add(d); camera.position.add(d);
+}
 function worldAt(x, y) {                                       // the point on the vehicle under the pointer (or null)
   mouse.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
   const h = pick(); return h ? h.point.clone() : null;
 }
 function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
-function flyTo(v) { scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
+function flyTo(v) { navMouse = false; scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
 const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
 function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
 const FLAME_ROOM = 44;           // metres of plume to keep in frame below the booster when upright
@@ -2214,7 +2241,11 @@ canvas.addEventListener('pointerdown', e => {
   if (ptrs.size === 1) {
     const pan = e.button === 2 || e.button === 1 || e.shiftKey;
     gesture = { mode: pan ? 'pan' : 'orbit', t: performance.now(), moved: 0 };
-    navPivot.copy((!pan && worldAt(e.clientX, e.clientY)) || controls.target);
+    navMouse = e.pointerType === 'mouse';
+    // mouse: turn about the view centre, which is kept on the vehicle, so it spins in place instead of swinging
+    // off the screen around whatever point was grabbed (touch keeps turning about the touched point)
+    if (navMouse) { clampView(); navPivot.copy(controls.target); }
+    else navPivot.copy((!pan && worldAt(e.clientX, e.clientY)) || controls.target);
   } else if (ptrs.size === 2) {
     const [a, b] = [...ptrs.values()];
     gesture = { mode: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, moved: 99 };
@@ -2230,10 +2261,10 @@ canvas.addEventListener('pointermove', e => {
     const k = e.pointerType === 'mouse' ? 0.0052 : 0.0068;
     // the vehicle follows the pointer: drag up/right and the part you're looking at swings up/right
     const sg = e.pointerType === 'mouse' ? 1 : -1;             // on touch the drag runs the other way round
-    orbitCam(sg * dx * k, -sg * dy * k, navPivot); navVel.yaw = sg * dx * k; navVel.pitch = -sg * dy * k;
+    orbitCam(sg * dx * k, -sg * dy * k, navPivot, navMouse ? MOUSE_PITCH : 1.53); navVel.yaw = sg * dx * k; navVel.pitch = -sg * dy * k;
     gesture.moved += Math.abs(dx) + Math.abs(dy);
   } else if (gesture.mode === 'pan' && ptrs.size === 1) {
-    panCam(dx, dy); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
+    panCam(dx, dy); if (navMouse) clampView(); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
   } else if (gesture.mode === 'pinch' && ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
     panCam(cx - gesture.mx, cy - gesture.my);
@@ -2254,8 +2285,9 @@ canvas.addEventListener('pointerleave', () => { overCanvas = false; hovered = nu
 // the pointer over a button / panel is not over the scene: drop any hover left over from before
 addEventListener('pointermove', e => { if (e.target !== canvas) { overCanvas = false; if (hovered) { hovered = null; tip.style.opacity = 0; } } }, { passive: true });
 canvas.addEventListener('wheel', e => {
-  e.preventDefault(); userInteracted();
-  zoomPt.copy(worldAt(e.clientX, e.clientY) || controls.target);   // off the vehicle, zoom toward the view center
+  e.preventDefault(); userInteracted(); navMouse = true;
+  const hitP = worldAt(e.clientX, e.clientY); zoomFree = !hitP;
+  zoomPt.copy(hitP || controls.target);   // off the vehicle, zoom toward the view center
   const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
   zoomPending = clamp(zoomPending + clamp(dy, -240, 240) * 0.0017, -1.6, 1.6);
 }, { passive: false });
@@ -2390,12 +2422,13 @@ function tick() {
     const tol = Math.max(0.05, 0.004 * camAnim.pos.distanceTo(camAnim.target));
     if (camera.position.distanceTo(camAnim.pos) < tol && controls.target.distanceTo(camAnim.target) < tol) { camera.position.copy(camAnim.pos); controls.target.copy(camAnim.target); camAnim = null; mouseDirty = true; }
   } else if (!gesture) {
-    const decay = Math.pow(0.9, dt * 60);
-    if (Math.abs(navVel.yaw) + Math.abs(navVel.pitch) > 1e-4) { orbitCam(navVel.yaw, navVel.pitch, navPivot); navVel.yaw *= decay; navVel.pitch *= decay; }
+    const decay = Math.pow(navMouse ? 0.55 : 0.9, dt * 60);
+    if (Math.abs(navVel.yaw) + Math.abs(navVel.pitch) > 1e-4) { orbitCam(navVel.yaw, navVel.pitch, navPivot, navMouse ? MOUSE_PITCH : 1.53); navVel.yaw *= decay; navVel.pitch *= decay; }
     if (Math.abs(navVel.px) + Math.abs(navVel.py) > 0.05) { panCam(navVel.px, navVel.py); navVel.px *= decay; navVel.py *= decay; }
     if (autoSpin && !paused) orbitCam(adt * 0.045, 0, controls.target);
   }
   if (Math.abs(zoomPending) > 1e-4) { const step = zoomPending * k(12); zoomPending -= step; zoomCam(Math.exp(step), zoomPt); }
+  if (navMouse && (gesture || Math.abs(zoomPending) > 1e-4 || Math.abs(navVel.px) + Math.abs(navVel.py) > 0.05)) clampView();
   controls.update();
   // near plane scaled with the viewing distance: a fixed 0.5 m near plane left too little depth precision from the default
   // distance (~300 m), and thin layers like the forward flaps' tiles over their steel flickered through (phones worst)
