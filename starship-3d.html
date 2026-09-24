@@ -2006,8 +2006,9 @@ function zoomCam(f, P) {
 }
 // mouse navigation: the view centre is held on the vehicle - anywhere along its length and within a few metres of
 // its hull - so panning and zooming can't lose it off the screen; the camera moves with the centre, keeping its angle
-const MOUSE_PITCH = 1.05;                                   // tilt limit for the mouse, about 60 degrees
+const MOUSE_PITCH = 1.53;                                   // tilt limit for the mouse: just short of straight up/down (~88 degrees)
 let navMouse = false, zoomFree = false;     // zoomFree: the wheel went over empty space (zooms toward the view centre)
+let navHeld = false;                        // the user is steering (mouse or touch): keep the view centre on the vehicle
 function clampView() {
   if (camAnim) return;
   const t = controls.target, c = new V3();
@@ -2032,7 +2033,7 @@ function worldAt(x, y) {                                       // the point on t
   const h = pick(); return h ? h.point.clone() : null;
 }
 function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
-function flyTo(v) { navMouse = false; scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
+function flyTo(v) { navMouse = navHeld = false; scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
 const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
 function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
 const FLAME_ROOM = 44;           // metres of plume to keep in frame below the booster when upright
@@ -2289,7 +2290,7 @@ canvas.addEventListener('pointerdown', e => {
   if (ptrs.size === 1) {
     const pan = e.button === 2 || e.button === 1 || e.shiftKey;
     gesture = { mode: pan ? 'pan' : 'orbit', t: performance.now(), moved: 0 };
-    navMouse = e.pointerType === 'mouse';
+    navMouse = e.pointerType === 'mouse'; navHeld = true;
     // mouse: turn about the view centre, which is kept on the vehicle, so it spins in place instead of swinging
     // off the screen around whatever point was grabbed (touch keeps turning about the touched point)
     if (navMouse) { clampView(); navPivot.copy(controls.target); }
@@ -2312,11 +2313,12 @@ canvas.addEventListener('pointermove', e => {
     orbitCam(sg * dx * k, -sg * dy * k, navPivot, navMouse ? MOUSE_PITCH : 1.53); navVel.yaw = sg * dx * k; navVel.pitch = -sg * dy * k;
     gesture.moved += Math.abs(dx) + Math.abs(dy);
   } else if (gesture.mode === 'pan' && ptrs.size === 1) {
-    panCam(dx, dy); if (navMouse) clampView(); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
+    panCam(dx, dy); clampView(); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
   } else if (gesture.mode === 'pinch' && ptrs.size === 2) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
     panCam(cx - gesture.mx, cy - gesture.my);
     if (d > 10 && gesture.d > 10) zoomCam(gesture.d / d, worldAt(cx, cy) || controls.target);
+    clampView();                                                // phones too: two fingers can't drag the vehicle off the screen
     gesture.d = d; gesture.mx = cx; gesture.my = cy;
   }
 });
@@ -2333,7 +2335,7 @@ canvas.addEventListener('pointerleave', () => { overCanvas = false; hovered = nu
 // the pointer over a button / panel is not over the scene: drop any hover left over from before
 addEventListener('pointermove', e => { if (e.target !== canvas) { overCanvas = false; if (hovered) { hovered = null; tip.style.opacity = 0; } } }, { passive: true });
 canvas.addEventListener('wheel', e => {
-  e.preventDefault(); userInteracted(); navMouse = true;
+  e.preventDefault(); userInteracted(); navMouse = navHeld = true;
   const hitP = worldAt(e.clientX, e.clientY); zoomFree = !hitP;
   zoomPt.copy(hitP || controls.target);   // off the vehicle, zoom toward the view center
   const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
@@ -2476,7 +2478,7 @@ function tick() {
     if (autoSpin && !paused) orbitCam(adt * 0.045, 0, controls.target);
   }
   if (Math.abs(zoomPending) > 1e-4) { const step = zoomPending * k(12); zoomPending -= step; zoomCam(Math.exp(step), zoomPt); }
-  if (navMouse && (gesture || Math.abs(zoomPending) > 1e-4 || Math.abs(navVel.px) + Math.abs(navVel.py) > 0.05)) clampView();
+  if (navHeld && (gesture || Math.abs(zoomPending) > 1e-4 || Math.abs(navVel.px) + Math.abs(navVel.py) > 0.05 || Math.abs(navVel.yaw) + Math.abs(navVel.pitch) > 1e-4)) clampView();
   controls.update();
   // near plane scaled with the viewing distance: a fixed 0.5 m near plane left too little depth precision from the default
   // distance (~300 m), and thin layers like the forward flaps' tiles over their steel flickered through (phones worst)
