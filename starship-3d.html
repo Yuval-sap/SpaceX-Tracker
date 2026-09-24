@@ -1840,7 +1840,7 @@ function worldAt(x, y) {                                       // the point on t
   mouse.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
   const h = pick(); return h ? h.point.clone() : null;
 }
-function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
+function userInteracted() { refocus = null; autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
 function flyTo(v) { scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
 const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
 function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
@@ -1955,18 +1955,23 @@ function buildPartsNav() {
     partsNav.appendChild(b);
   }
 }
-let autoSection = false;
+let autoSection = false, autoSep = false, refocus = null;
+const ENGINE_PARTS = new Set(['b-raptors', 's-raptors']);
 function select(id, focus) {
   selected = id;
   const inner = !!(id && parts[id].inner);
   if (inner && focus && !st.sectionT) { st.sectionT = 1; autoSection = true; }
   else if (!inner && autoSection) { st.sectionT = 0; autoSection = false; }
   btn('section').classList.toggle('on', !!st.sectionT);
+  // the ship's engines sit inside the hot-stage truss while stacked: picking them from the list separates the stages
+  if (id === 's-raptors' && focus && !st.sepT && !scaleMode) { st.sepT = 1; autoSep = true; }
+  else if (id !== 's-raptors' && autoSep) { st.sepT = 0; autoSep = false; }
+  btn('stage').classList.toggle('on', !!st.sepT); setControlLabels();
   partsNav.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.part === id));
   if (!id) { card.classList.remove('show'); station.textContent = '—'; return; }
   renderCard();
   card.classList.add('show');
-  if (focus) focusPart(id);
+  if (focus) { focusPart(id); refocus = id; }   // framed again once any separation / explode move has finished
 }
 function renderCard() {
   if (!selected) return;
@@ -1991,6 +1996,9 @@ function focusPart(id) {
   const box = new THREE.Box3();
   for (const m of parts[id].meshes) if (m.geometry && !fluids.includes(m)) box.expandByObject(m);
   if (box.isEmpty()) return;
+  const { A, U, S } = vehicleBasis();
+  // engines: look up at the bells from below and to the side, not at the skirt from the side
+  if (ENGINE_PARTS.has(id)) { focusBox(box, A.clone().multiplyScalar(-1).addScaledVector(U, 0.55).addScaledVector(S, 0.5).normalize()); return; }
   // cutaway: look in from the removed half (+z in model space), slightly off-axis so the depth reads
   let dir = null;
   if (parts[id].inner && st.sectionT) {
@@ -2004,14 +2012,14 @@ const btn = a => document.querySelector(`[data-act="${a}"]`);
 document.getElementById('controls').addEventListener('click', e => {
   const a = e.target.closest('button')?.dataset.act; if (!a) return;
   if (a === 'explode') { st.explodeT = st.explodeT ? 0 : 1; btn('explode').classList.toggle('on', !!st.explodeT); if (!userMoved) flyTo(defaultView()); }
-  if (a === 'stage') { st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
+  if (a === 'stage') { autoSep = false; st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; autoSection = false; btn('section').classList.toggle('on', !!st.sectionT); }
   if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'scale') setScale(!scaleMode);
   if (a === 'reset') {
     if (scaleMode) setScale(false);
-    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; paused = false; select(null);
+    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; autoSep = false; paused = false; select(null);
     rolling = false; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
     for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
     userMoved = false; autoSpin = true; flyTo(defaultView());
@@ -2267,6 +2275,7 @@ function tick() {
 
   if (rolling) { root.rotation.y = (root.rotation.y + dt * 0.35) % TAU; syncCube(); }
   updateScale();
+  if (refocus && !gesture && Math.abs(st.sep - st.sepT) + Math.abs(st.explode - st.explodeT) < 0.002) { const id = refocus; refocus = null; if (selected === id) focusPart(id); }
   // shadows only need re-rendering while parts are moving, being cut or turning
   const moving = rolling || scaleShadow-- > 0 || Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
   if (moving || frameNo < 4) renderer.shadowMap.needsUpdate = true;
