@@ -7,7 +7,7 @@
 <title>Starship Vehicle Study</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Heebo:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Heebo:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&family=Stardos+Stencil:wght@700&display=swap" rel="stylesheet">
 <style>
   :root{--accent:#eea774;--fg:#e9ecf1;--mute:#7b8392;--line:rgba(255,255,255,.1);--panel:rgba(12,14,19,.74)}
   html,body{margin:0;height:100%;background:#05070b;color:var(--fg);font-family:Inter,system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
@@ -977,22 +977,28 @@ function buildRaptor(vac) {
   const proxy = new THREE.CylinderGeometry(0.45, rE, -yE, 12); proxy.translate(0, yE / 2, 0);
   const nozzleInner = vac ? lathe(noz.map(([r, y]) => [r * 0.955 - 0.01, y]), 56) : null;
   // the engine's number: a patch of the bell surface just under the top ring, where the real stencils sit
-  const numPts = noz.filter(([, y]) => y <= yT + (yE - yT) * 0.17 && y >= yT + (yE - yT) * 0.47).map(([r, y]) => [r + 0.006, y]);
+  const numPts = noz.filter(([, y]) => y <= yT + (yE - yT) * 0.15 && y >= yT + (yE - yT) * 0.42).map(([r, y]) => [r + 0.006, y]);
   return { steel: merge(st), dark: merge(dk), nozzle, nozzleInner, vacRing: vac ? merge(vr) : null, glow, proxy, rE, yE, numPts };
 }
-// white engine numbers: one atlas of 2-3 digit numbers, drawn slanted like the stencils on real Raptor bells
-const NUM_CELLS = 8;
+// white engine numbers: one atlas, in a bold stencil face (the digits broken by the template's bridges) like the
+// numbers painted on real Raptor bells. Drawn once with a fallback, then again as soon as the web font has loaded.
+const NUM_CELLS = 8, NUM_FONT = "'Stardos Stencil', 'Stencil', 'Arial Black', sans-serif";
 let engineNumTex = null;
 function engineNumAtlas(nums) {
   const C = 128, c = mkCanvas(C * NUM_CELLS, C * NUM_CELLS), g = c.getContext('2d');
-  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  nums.forEach((n, i) => {
-    const cx = (i % NUM_CELLS) * C + C / 2, cy = Math.floor(i / NUM_CELLS) * C + C / 2;
-    g.save(); g.translate(cx, cy); g.transform(1, 0, -0.24, 1, 0, 0);
-    g.font = `900 ${String(n).length > 2 ? 54 : 66}px 'Arial Black', 'Arial Rounded MT Bold', 'Segoe UI Black', Arial, sans-serif`;
-    g.fillText(String(n), 0, 4); g.restore();
-  });
+  const draw = () => {
+    g.clearRect(0, 0, c.width, c.height);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    nums.forEach((n, i) => {
+      const cx = (i % NUM_CELLS) * C + C / 2, cy = Math.floor(i / NUM_CELLS) * C + C / 2;
+      let px = 84; g.font = `700 ${px}px ${NUM_FONT}`;
+      while (g.measureText(String(n)).width > C * 0.9 && px > 30) g.font = `700 ${--px}px ${NUM_FONT}`;
+      g.fillText(String(n), cx, cy + 4);
+    });
+  };
+  draw();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
+  if (document.fonts && document.fonts.load) document.fonts.load(`700 84px 'Stardos Stencil'`).then(() => { draw(); t.needsUpdate = true; }).catch(() => {});
   return t;
 }
 // numbers per stage: fixed for a given booster / ship (seeded by its serial), otherwise just random
@@ -1137,7 +1143,7 @@ function placeEngine(group, pid, vac, x, y, z, label, delay, numIndex = null) {
   for (const [geo, kind] of pieces) batch[kind].push(geo.clone().applyMatrix4(e.matrix));
   // sea-level engines: the engine's number, on a different side of the bell from one engine to the next
   if (!vac && numIndex != null) {
-    const arc = 0.66, ph = ((numIndex * 2.399963 + 0.7) % TAU), ng = lathe(E.numPts, 10, ph - arc / 2, arc), uv = ng.attributes.uv;   // a different side on each engine
+    const arc = 1.05, ph = ((numIndex * 2.399963 + 0.7) % TAU), ng = lathe(E.numPts, 10, ph - arc / 2, arc), uv = ng.attributes.uv;   // a different side on each engine
     const c = numIndex % (NUM_CELLS * NUM_CELLS), u0 = (c % NUM_CELLS) / NUM_CELLS, v0 = 1 - (Math.floor(c / NUM_CELLS) + 1) / NUM_CELLS;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) / NUM_CELLS, v0 + uv.getY(i) / NUM_CELLS);
     batch.engineNum.push(ng.applyMatrix4(e.matrix));
