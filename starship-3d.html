@@ -945,7 +945,18 @@ function tileShell(group, y0, y1) {
 const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
 const blackLoYr = d => Math.max(S0 + 13.7 + 1.6 * clamp((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - NOSE0,
                                 d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
-const TIP_BAND_YR = 65 * RING - NOSE0;                 // from the weld under the tip's tiles up to them
+// the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
+// v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
+// of the profile - take the highest one still under the tip's tile edge
+const tipWeldYr = () => {
+  const n = nosePts.length - 1, edge = 7.3 + 0.7 * FLAP_D / Math.PI; let best = 0;
+  for (let k = Math.ceil(NOSE0 / RING); k * RING < NOSE0 + 12; k++) {
+    const f = (k * RING - NOSE0) / 12 * n, j = Math.floor(f), t = f - j;
+    const x = nosePts[j][1] + (nosePts[Math.min(j + 1, n)][1] - nosePts[j][1]) * t;
+    if (x < edge - 0.3) best = x;
+  }
+  return best;
+};
 const bandTop = d => NOSE0 + 7.3 + 0.7 * (Math.min(d, FLAP_D) / Math.PI); // = where tileAt tiles the tip all the way round
 const blackHiYr = d => d < 2.07 ? 3.92 : 3.92 - (d - 2.07) * 1.444;
 function edgeStrip(group, y0, y1) {
@@ -963,26 +974,34 @@ function edgeStrip(group, y0, y1) {
       prev = row;
     }
   };
-  for (const sg of [1, -1]) for (let d = BAND_D0; d < BAND_D1 - 1e-6; d += DD) {
-    // the first column starts a hair under the tiles: one straight black edge instead of the tile mask's pixel steps
-    const e = [d === BAND_D0 ? BAND_D0 - 0.012 : d - 0.003, Math.min(BAND_D1, d + DD + 0.003)], dm = d + DD / 2;   // columns overlap a hair: no hairline cracks
-    const cl = v => Math.min(y1, Math.max(y0, v));
-    // past the tile tongue's outer edge (2.29) the whole column is black - no tiles to leave room for
+  // column edges: an even grid plus every angle where the outline jumps (strip -> frame, flap line, tongue edge), so no
+  // column straddles a jump; each column's limits are evaluated just inside its own edges (a column evaluated across a
+  // jump came out as a slanted wedge - the steps and slivers along the strip)
+  const cuts = new Set([BAND_STRIP, FLAP_D, 2.07, TONGUE_D, BAND_D1]);
+  for (let d = BAND_D0; d < BAND_D1 - 1e-6; d += DD) cuts.add(Math.round(d * 1e4) / 1e4);
+  const xs = [...cuts].filter(x => x >= BAND_D0 && x <= BAND_D1).sort((p, q) => p - q);
+  const cl = v => Math.min(y1, Math.max(y0, v));
+  for (const sg of [1, -1]) for (let i = 0; i < xs.length - 1; i++) {
+    const a0 = xs[i], a1 = xs[i + 1], dm = (a0 + a1) / 2, ein = [a0 + 1e-5, a1 - 1e-5];
+    // drawn a hair wider than the column (and the first one well under the tile edge) so neighbours overlap
+    const e = [i === 0 ? BAND_D0 - 0.012 : a0 - 0.001, a1 + 0.001];
     const pieces = dm >= TONGUE_D ? [[x => blackLoYr(x), x => blackHiYr(x)]] : [[x => blackLoYr(x), x => Math.min(blackHiYr(x), tileLoYr(x))]];
     if (dm >= FLAP_D && dm < TONGUE_D) pieces.push([x => Math.max(blackLoYr(x), tileHiYr(x)), x => blackHiYr(x)]);
     for (const [fLo, fHi] of pieces) {
       if (fHi(dm) <= fLo(dm)) continue;
-      const lo = e.map(x => cl(NOSE0 + fLo(x))), hi = e.map(x => cl(NOSE0 + Math.max(fLo(x), fHi(x))));
+      const lo = ein.map(x => cl(NOSE0 + fLo(x))), hi = ein.map(x => cl(NOSE0 + Math.max(fLo(x), fHi(x))));
       if (hi[0] - lo[0] < 1e-3 && hi[1] - lo[1] < 1e-3) continue;
       quadCol(e, lo, hi, sg);
     }
   }
   // and the last steel ring under the tiled tip, all the way across the steel side between the two forward flaps
+  if (y1 > NOSE0) {                                     // (only the nose's section has it; the hull's are built before the nose)
   for (let d = FLAP_D; d < Math.PI - 1e-6; d += 0.02) {
     const e = [d, Math.min(Math.PI, d + 0.02)];
-    const lo = e.map(() => Math.min(y1, Math.max(y0, NOSE0 + TIP_BAND_YR))), hi = e.map(x => Math.min(y1, Math.max(y0, bandTop(x) + 0.05)));
+    const wy = tipWeldYr(), lo = e.map(() => Math.min(y1, Math.max(y0, NOSE0 + wy))), hi = e.map(x => Math.min(y1, Math.max(y0, bandTop(x))));   // weld to tile edge exactly
     if (hi[0] - lo[0] < 1e-3 && hi[1] - lo[1] < 1e-3) continue;
     for (const sg of [1, -1]) quadCol(e, lo, hi, sg);
+  }
   }
   if (!idx.length) return null;
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
