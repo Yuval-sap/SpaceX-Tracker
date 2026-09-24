@@ -2206,7 +2206,10 @@ function focusPart(id) {
   posing = true; st.sep = st.sepT; st.explode = st.explodeT; applyPose();
   scene.updateMatrixWorld(true);
   const box = new THREE.Box3();
-  for (const m of parts[id].meshes) if (m.geometry && !fluids.includes(m)) box.expandByObject(m);
+  // the payload bay's satellites don't count: the one being deployed (or already drifted off, hidden, ~20 m out)
+  // used to stretch the box and throw the camera ~110 m back; the bay itself already contains the stack
+  const isSat = m => /^Starlink satellite/.test((m.userData && (m.userData.label || m.userData.name)) || '');
+  for (const m of parts[id].meshes) if (m.geometry && !fluids.includes(m) && !isSat(m)) box.expandByObject(m);
   [st.sep, st.explode] = keep; applyPose(); spin.position.y = keep[2]; spin.updateMatrixWorld(true); posing = false;
   if (box.isEmpty()) return;
   const { A, U, S } = vehicleBasis();
