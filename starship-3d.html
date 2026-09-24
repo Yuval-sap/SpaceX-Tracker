@@ -759,10 +759,13 @@ function steelShell(group, pid, y0, y1, label, ts = 0, tl = TAU) {
 // decided per hexagon, so the edge of the shield runs along whole tiles, like the real ship, instead of a cut line.
 const SHIP_H = NOSE_TOP - S0;
 const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+// forward flap zone: from ~1.4 m below the flap root up, the tiles reach the flap's hinge line (1.958 rad off windward)
+const FLAP_ZONE = NOSE0 + 3.55 - 1.4, FLAP_D = 1.958;
 function tileAt(th, y) {
   const d = angDist(th, WINDWARD), rel = y - S0;
   const half = 1.62;                       // one straight line the whole length of the ship, up to the forward flaps (per photos)
   if (d < half) return true;
+  if (y > FLAP_ZONE && d < FLAP_D) return true;                        // beside the forward flaps the tiles run right up to the flap
   if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
   return false;
 }
@@ -834,6 +837,7 @@ float hAt(float s){                                   // height above the nose b
 bool tiled(float th, float y){                       // = tileAt() in the page script
   float d = abs(mod(th - uWind + PI, TAU) - PI);
   if (d < 1.62) return true;
+  if (y > uNose0 + 2.15 && d < 1.958) return true;  // = FLAP_ZONE / FLAP_D
   return y > uNose0 + 7.3 + 0.7 * (d / PI);
 }
 void main(){
@@ -937,7 +941,9 @@ const BAND_W = 0.45;                     // radians beyond the tile edge (~2 m o
 const bandBottom = u => S0 + 13.7 + 1.6 * u;          // u: 0 at the tile edge, 1 at the band's outer edge
 const bandTop = d => NOSE0 + 7.3 + 0.7 * (d / Math.PI);   // where the nose is tiled all the way round (= tileAt)
 // around the forward flap's hinge the black steps out into a box (starting ~1.4 m below the flap root)
-const bandW = y => BAND_W + 0.26 * sstep(clamp((y - (NOSE0 + 3.55 - 1.4)) / 0.2));
+const flapK = y => sstep(clamp((y - (NOSE0 + 3.55 - 1.4 + 0.15)) / 0.2));   // a touch above where the tiles widen, so they overlap
+const bandIn = y => 1.62 + (1.958 + 0.06 - 1.62) * flapK(y);          // tiles reach the flap there (tileAt)
+const bandOut = y => 1.62 + BAND_W + 0.26 * flapK(y);                 // and the black steps out beyond it
 function edgeStrip(group, y0, y1) {
   if (y1 <= bandBottom(0) || y0 >= bandTop(1.62 + BAND_W)) return null;     // this section has none of it
   const NA = 10, NY = Math.max(2, Math.ceil((y1 - y0) / 0.1) + 1), pos = [], idx = [];   // fine rows: the step round the flap stays square
@@ -947,7 +953,7 @@ function edgeStrip(group, y0, y1) {
       const u = i / NA, dMax = 1.62 + (BAND_W + 0.26) * u;
       const lo = Math.min(y1, Math.max(y0, bandBottom(u))), hi = Math.max(lo, Math.min(y1, bandTop(dMax)));
       for (let j = 0; j < NY; j++) {
-        const y = lo + (hi - lo) * j / (NY - 1), r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.045, a = WINDWARD + sg * (1.62 + bandW(y) * u);
+        const y = lo + (hi - lo) * j / (NY - 1), r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.045, a = WINDWARD + sg * (bandIn(y) + (bandOut(y) - bandIn(y)) * u);
         pos.push(Math.sin(a) * r, y, Math.cos(a) * r);
       }
     }
