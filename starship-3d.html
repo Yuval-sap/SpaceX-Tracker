@@ -1848,9 +1848,23 @@ function scaleView() {
   const top = Math.max(stats ? stats.bottom + 44 : 110, innerWidth < 1000 && brand ? brand.bottom + 34 : 0);   // room for the top label
   const bottom = innerHeight - Math.min(ctrl ? ctrl.top : innerHeight, hint && hint.height ? hint.top : innerHeight,
     plist && plist.top > innerHeight * 0.6 ? plist.top : innerHeight) + 14;     // phones: the parts strip sits above the controls
-  const band = Math.max(0.4, (innerHeight - top - bottom) / innerHeight), mid = (top - bottom) / innerHeight;
-  const d = Math.max((H / 2) * 1.04 / (tv * band), ((HUMX + 2 + 14) / 2) * 1.2 / (tv * asp));
-  const target = new V3((-14 + HUMX + 2) / 2, H * 0.5 + mid * 2 * d * tv, 0);
+  let band = Math.max(0.4, (innerHeight - top - bottom) / innerHeight), mid = (top - bottom) / innerHeight;
+  // phones: the view cube + zoom buttons sit on the right over the lower part of the scene, so the rockets and the
+  // person are fitted into the width left of them (with room for the Starship label on the far left). In LTR the parts
+  // column also takes the upper left, so there the scene goes under the column and stands just above the zoom buttons.
+  let wBand = 1, xMid = 0, x0 = -14, x1 = HUMX + 2;
+  const nav = innerWidth <= 760 ? r('#nav') : null;
+  if (nav && nav.width) {
+    const W = innerWidth, Rt = Math.min(W - 6, nav.left - 6);
+    wBand = Math.max(0.4, (Rt - 6) / W); xMid = ((6 + Rt) / 2 - W / 2) / W; x0 = -19; x1 = HUMX + 7;
+    const zRow = document.querySelector('#nav .navbtns').getBoundingClientRect();
+    if (I.dir !== 'rtl' && plist && plist.width && zRow.height) {
+      const t2 = plist.bottom + 44, b2 = zRow.top - 18;
+      band = Math.max(0.2, (b2 - t2) / innerHeight); mid = (t2 - (innerHeight - b2)) / innerHeight / 2;   // (mid is used x2 below)
+    }
+  }
+  const d = Math.max((H / 2) * 1.04 / (tv * band), ((x1 - x0) / 2) * (nav ? 1.05 : 1.2) / (tv * asp * wBand));
+  const target = new V3((x0 + x1) / 2 - xMid * 2 * d * tv * asp, H * 0.5 + mid * 2 * d * tv, 0);
   return { target, pos: target.clone().add(new V3(0.16, 0.03, 1).normalize().multiplyScalar(d)) };
 }
 function setScale(on) {
