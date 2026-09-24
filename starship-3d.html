@@ -759,13 +759,13 @@ function steelShell(group, pid, y0, y1, label, ts = 0, tl = TAU) {
 // decided per hexagon, so the edge of the shield runs along whole tiles, like the real ship, instead of a cut line.
 const SHIP_H = NOSE_TOP - S0;
 const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
-// forward flap zone: from ~1.4 m below the flap root up, the tiles reach the flap's hinge line (1.958 rad off windward)
-const FLAP_ZONE = NOSE0 + 3.55 - 1.4, FLAP_D = 1.958;
+// above the black section's slanted top (edgeStrip) the tiles reach the forward flap's hinge line (1.958 rad off windward)
+const FLAP_D = 1.958, flapZone = d => NOSE0 - 0.2 + 1.4 * (d - 1.62) / 0.34;
 function tileAt(th, y) {
   const d = angDist(th, WINDWARD), rel = y - S0;
   const half = 1.62;                       // one straight line the whole length of the ship, up to the forward flaps (per photos)
   if (d < half) return true;
-  if (y > FLAP_ZONE && d < FLAP_D) return true;                        // beside the forward flaps the tiles run right up to the flap
+  if (d < FLAP_D && y > flapZone(d)) return true;                        // beside the forward flaps the tiles run right up to the flap
   if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
   return false;
 }
@@ -837,7 +837,7 @@ float hAt(float s){                                   // height above the nose b
 bool tiled(float th, float y){                       // = tileAt() in the page script
   float d = abs(mod(th - uWind + PI, TAU) - PI);
   if (d < 1.62) return true;
-  if (y > uNose0 + 2.15 && d < 1.958) return true;  // = FLAP_ZONE / FLAP_D
+  if (d < 1.958 && y > uNose0 - 0.2 + 1.4 * (d - 1.62) / 0.34) return true;  // = FLAP_D / flapZone()
   return y > uNose0 + 7.3 + 0.7 * (d / PI);
 }
 void main(){
@@ -934,34 +934,34 @@ function tileShell(group, y0, y1) {
   const m = add(group, shipUV(cylG(R + 0.04, R + 0.04, y0, y1, 128, true)), 's-tiles', 'tile', 'Heat shield tiles');
   m.userData.maskFn = tileAt; edgeStrip(group, y0, y1); return m;
 }
-// The wide smooth black band beside the heat shield on each side (per photos of the ship on the pad): ~2 m wide, from
-// the edge of the tiles to just short of the ship's serial. It starts at the top of the aft flap with a slanted end,
-// runs straight up past the forward flap - whose hinge sits inside it - and joins the fully tiled tip of the nose.
-const BAND_W = 0.45;                     // radians beyond the tile edge (~2 m on the barrel)
-const bandBottom = u => S0 + 13.7 + 1.6 * u;          // u: 0 at the tile edge, 1 at the band's outer edge
-const bandTop = d => NOSE0 + 7.3 + 0.7 * (d / Math.PI);   // where the nose is tiled all the way round (= tileAt)
-// around the forward flap's hinge the black steps out into a box (starting ~1.4 m below the flap root)
-const flapK = y => sstep(clamp((y - (NOSE0 + 3.55 - 1.4 + 0.15)) / 0.2));   // a touch above where the tiles widen, so they overlap
-const bandIn = y => 1.62 + (1.958 + 0.06 - 1.62) * flapK(y);          // tiles reach the flap there (tileAt)
-const bandOut = y => 1.62 + BAND_W + 0.26 * flapK(y);                 // and the black steps out beyond it
+// The smooth black section beside the heat shield on each side (traced from photos of the ship on the pad), in angle
+// off windward d and height above the nose base yr: a narrow strip (~1.5 m) from the top of the aft flap up past the
+// serial, then stepping out twice into a wide panel whose slanted top ends ~2 m below the forward flap. Above that line
+// the tiles run out to the flap (tileAt).
+const BAND_D0 = 1.62, BAND_D1 = 1.96, BAND_MID = 1.86, BAND_NARROW = 1.76;   // outer edge of the wide panel = the flap's hinge line
+const bandOut = yr => yr > -1.0 ? BAND_D1 : yr > -2.4 ? BAND_MID : BAND_NARROW;
+const bandTopYr = d => -0.2 + 1.4 * clamp((d - BAND_D0) / (BAND_D1 - BAND_D0));
+const bandBottomY = d => S0 + 13.7 + 1.6 * clamp((d - BAND_D0) / (BAND_NARROW - BAND_D0));
 function edgeStrip(group, y0, y1) {
-  if (y1 <= bandBottom(0) || y0 >= bandTop(1.62 + BAND_W)) return null;     // this section has none of it
-  const NA = 10, NY = Math.max(2, Math.ceil((y1 - y0) / 0.1) + 1), pos = [], idx = [];   // fine rows: the step round the flap stays square
-  for (const sg of [1, -1]) {
-    const base = pos.length / 3;
-    for (let i = 0; i <= NA; i++) {
-      const u = i / NA, dMax = 1.62 + (BAND_W + 0.26) * u;
-      const lo = Math.min(y1, Math.max(y0, bandBottom(u))), hi = Math.max(lo, Math.min(y1, bandTop(dMax)));
-      for (let j = 0; j < NY; j++) {
-        const y = lo + (hi - lo) * j / (NY - 1), r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.045, a = WINDWARD + sg * (bandIn(y) + (bandOut(y) - bandIn(y)) * u);
-        pos.push(Math.sin(a) * r, y, Math.cos(a) * r);
-      }
-    }
-    for (let i = 0; i < NA; i++) for (let j = 0; j < NY - 1; j++) {
-      const p0 = base + i * NY + j, p1 = p0 + NY;
-      if (sg > 0) idx.push(p0, p0 + 1, p1, p1, p0 + 1, p1 + 1); else idx.push(p0, p1, p0 + 1, p1, p1 + 1, p0 + 1);
+  // thin columns in angle; each runs from its own bottom to its own top (both taken at the column's two edges, so the
+  // slanted ends stay straight), and starts higher where the outline steps in (bandOut)
+  const DD = 0.02, pos = [], idx = [];
+  const vert = (d, y, sg) => { const r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.045, a = WINDWARD + sg * d; pos.push(Math.sin(a) * r, y, Math.cos(a) * r); return pos.length / 3 - 1; };
+  const floorYr = d => d < BAND_NARROW ? -1e9 : d < BAND_MID ? -2.4 : -1.0;
+  for (const sg of [1, -1]) for (let d = BAND_D0; d < BAND_D1 - 1e-6; d += DD) {
+    const e = [d, d + DD], dm = d + DD / 2;
+    const lo = e.map(x => Math.max(y0, bandBottomY(x), NOSE0 + floorYr(dm)));
+    const hi = e.map(x => Math.min(y1, NOSE0 + bandTopYr(x) + 0.08));   // a touch under the tiles above it
+    if (hi[0] <= lo[0] && hi[1] <= lo[1]) continue;
+    const n = Math.max(1, Math.ceil(Math.max(hi[0] - lo[0], hi[1] - lo[1]) / 0.5));
+    let prev = null;
+    for (let j = 0; j <= n; j++) {
+      const t = j / n, row = e.map((x, k) => vert(x, lo[k] + Math.max(0, hi[k] - lo[k]) * t, sg));
+      if (prev) { if (sg > 0) idx.push(prev[0], row[0], prev[1], prev[1], row[0], row[1]); else idx.push(prev[0], prev[1], row[0], prev[1], row[1], row[0]); }
+      prev = row;
     }
   }
+  if (!idx.length) return null;
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
   return add(group, g, 's-tiles', 'shieldBand', 'Heat shield edge band');
 }
@@ -1697,7 +1697,7 @@ function serialCanvas(text, upward = false) {
   pg.fillStyle = '#1b1d21'; pg.fillRect(4, 4, 56, 56); pg.strokeStyle = 'rgba(0,0,0,.6)'; pg.lineWidth = 3; pg.strokeRect(5, 5, 54, 54);
   for (const da of [-0.5, 0.5]) decal(sNose, 's-nose', panel, LOGO_Y, LEEWARD + da, 0.8, 0.85);
   // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
-  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.05, 0.6, 1.8);
+  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.25, 0.6, 1.8);   // just outboard of the narrow black strip, under the wide panel (photo of S39)
   // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings
   const fTop = ringY(59) + 0.85, groupsFor = [[sAft, 's-tanks', S0 + 0.8, S0 + 5.2], [sLox, 's-tanks', S0 + 5.2, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
   for (const da of [-0.36, 0.36]) {
