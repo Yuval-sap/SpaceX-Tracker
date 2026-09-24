@@ -628,6 +628,7 @@ const MAKERS = {
   ribbed: () => { const m = ribTex.map.clone(), b = ribTex.bump.clone(); m.repeat.set(1, 1); b.repeat.set(1, 1); m.needsUpdate = b.needsUpdate = true;
     return new THREE.MeshStandardMaterial({ color: 0xb9bcc2, map: m, bumpMap: b, bumpScale: 1.6, metalness: 1, roughness: 0.42, side: THREE.BackSide }); },
   finDark: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42, side: THREE.DoubleSide }),   // same black satin as the Raptors
+  shieldBand: () => new THREE.MeshStandardMaterial({ color: 0x16171a, metalness: 0.1, roughness: 0.62, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }),   // matte black beside the tiles
   sat: () => new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: 0.6, roughness: 0.45 }),
   mli: () => new THREE.MeshStandardMaterial({ color: 0xc9a25a, metalness: 1, roughness: 0.32 }),
   antenna: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: antennaTex, metalness: 0.1, roughness: 0.7 }),
@@ -636,7 +637,7 @@ const MAKERS = {
   fluidLox: () => new THREE.MeshStandardMaterial({ color: 0x9fd8ff, emissive: 0x2a7fd0, emissiveIntensity: 0.55, transparent: true, opacity: 0.5, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
   fluidCh4: () => new THREE.MeshStandardMaterial({ color: 0xffc38a, emissive: 0xd2601a, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, roughness: 0.15, metalness: 0, depthWrite: false, side: THREE.DoubleSide }),
 };
-const CLIP_KINDS = new Set(['noseTile', 'ribbed', 'steelSlot', 'darkSlot', 'steel', 'steelMatte', 'dark', 'finDark', 'tile', 'tileSolid', 'fluidLox', 'fluidCh4']);
+const CLIP_KINDS = new Set(['shieldBand', 'noseTile', 'ribbed', 'steelSlot', 'darkSlot', 'steel', 'steelMatte', 'dark', 'finDark', 'tile', 'tileSolid', 'fluidLox', 'fluidCh4']);
 const FLUID_KINDS = new Set(['fluidLox', 'fluidCh4']);
 
 const PART_INFO = [
@@ -929,24 +930,34 @@ function tileShell(group, y0, y1) {
   const m = add(group, shipUV(cylG(R + 0.04, R + 0.04, y0, y1, 128, true)), 's-tiles', 'tile', 'Heat shield tiles');
   m.userData.maskFn = tileAt; edgeStrip(group, y0, y1); return m;
 }
-// the smooth black strip that runs along both edges of the heat shield, between the last tiles and the bare steel
-// (per photos of the ship on the pad): a thin band standing just proud of the hull, following its radius up the nose
-const EDGE_W = 0.16;                     // radians, ~0.7 m on the barrel
+// The wide smooth black band beside the heat shield on each side (per photos of the ship on the pad): ~2 m wide, from
+// the edge of the tiles to just short of the ship's serial. It starts at the top of the aft flap with a slanted end,
+// runs straight up past the forward flap - whose hinge sits inside it - and joins the fully tiled tip of the nose.
+const BAND_W = 0.45;                     // radians beyond the tile edge (~2 m on the barrel)
+const bandBottom = u => S0 + 13.7 + 1.6 * u;          // u: 0 at the tile edge, 1 at the band's outer edge
+const bandTop = d => NOSE0 + 7.3 + 0.7 * (d / Math.PI);   // where the nose is tiled all the way round (= tileAt)
+// around the forward flap's hinge the black steps out into a box (starting ~1.4 m below the flap root)
+const bandW = y => BAND_W + 0.26 * sstep(clamp((y - (NOSE0 + 3.55 - 1.4)) / 0.2));
 function edgeStrip(group, y0, y1) {
-  const NY = Math.max(2, Math.ceil((y1 - y0) / 0.5) + 1), NA = 4, pos = [], idx = [];
+  if (y1 <= bandBottom(0) || y0 >= bandTop(1.62 + BAND_W)) return null;     // this section has none of it
+  const NA = 10, NY = Math.max(2, Math.ceil((y1 - y0) / 0.1) + 1), pos = [], idx = [];   // fine rows: the step round the flap stays square
   for (const sg of [1, -1]) {
     const base = pos.length / 3;
-    for (let j = 0; j < NY; j++) {
-      const y = y0 + (y1 - y0) * j / (NY - 1), r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.05;
-      for (let i = 0; i <= NA; i++) { const a = WINDWARD + sg * (1.62 + EDGE_W * i / NA); pos.push(Math.sin(a) * r, y, Math.cos(a) * r); }
+    for (let i = 0; i <= NA; i++) {
+      const u = i / NA, dMax = 1.62 + (BAND_W + 0.26) * u;
+      const lo = Math.min(y1, Math.max(y0, bandBottom(u))), hi = Math.max(lo, Math.min(y1, bandTop(dMax)));
+      for (let j = 0; j < NY; j++) {
+        const y = lo + (hi - lo) * j / (NY - 1), r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.045, a = WINDWARD + sg * (1.62 + bandW(y) * u);
+        pos.push(Math.sin(a) * r, y, Math.cos(a) * r);
+      }
     }
-    for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NA; i++) {
-      const a = base + j * (NA + 1) + i, b = a + NA + 1;
-      if (sg > 0) idx.push(a, b, a + 1, a + 1, b, b + 1); else idx.push(a, a + 1, b, a + 1, b + 1, b);
+    for (let i = 0; i < NA; i++) for (let j = 0; j < NY - 1; j++) {
+      const p0 = base + i * NY + j, p1 = p0 + NY;
+      if (sg > 0) idx.push(p0, p0 + 1, p1, p1, p0 + 1, p1 + 1); else idx.push(p0, p1, p0 + 1, p1, p1 + 1, p0 + 1);
     }
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-  return add(group, g, 's-tiles', 'finDark', 'Heat shield edge');
+  return add(group, g, 's-tiles', 'shieldBand', 'Heat shield edge band');
 }
 function raceway(group, pid, y0, y1) {
   const g = new THREE.BoxGeometry(0.55, y1 - y0, 0.3);
