@@ -9,7 +9,7 @@ SS_I18N.en = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Flight {n}', vFlight: 'flight {n}', satLine: '{n} {starlink} V3 satellites', roll: 'Spin on its axis',
+    booster: 'Booster', mFlight: 'Flight {n}', vFlight: 'flight {n}', satLine: '{n} {starlink} V3 satellites', roll: 'Spin on its axis', scale: "Scale",
     eyebrow: 'SpaceX · Vehicle study', height: 'Height', diameter: 'Diameter', raptors: 'Raptors', thrust: 'Thrust', liftoff: 'Liftoff mass', selected: 'Selected',
     hint: 'Drag to orbit around any point · Scroll to zoom where you point · Right-drag to pan · Double-click to fly there · Cube for views',
     explode: 'Explode', assemble: 'Assemble', separate: 'Separate', stack: 'Stack', section: 'Section', flow: 'Ignition', pause: 'Pause', play: 'Play', reset: 'Reset',
@@ -17,6 +17,7 @@ SS_I18N.en = {
     interstage: 'Interstage', loading: 'Initializing', close: 'Close', zoomIn: 'Zoom in', zoomOut: 'Zoom out', fit: 'Fit whole vehicle', cube: 'View cube: click a face to look from that side',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "SpaceX's reusable workhorse. Nine Merlin 1D engines power the first stage, which flies back and lands on a drone ship or landing zone using titanium grid fins and four carbon-fiber landing legs; a single Merlin Vacuum engine drives the second stage. It is the only commercial rocket certified to fly astronauts to the ISS aboard Crew Dragon, and it launches most of the {starlink} constellation.", s: [["Height", '{f9Height}'], ["Thrust (sea level)", '{f9Thrust}'], ["Payload to LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor engines', t: 'Raptor 3 engines', d: 'Thirty-three Raptor 3 engines burn liquid methane and liquid oxygen. Raptor 3 builds most of its plumbing into the engine body, so the heavy engine shielding was deleted and the engines hang fully exposed beneath the booster. The 13 inner engines gimbal to steer.', s: [['Count', '33'], ['Cycle', 'Full-flow'], ['Thrust', '{raptorThrust} each']] },
     'b-aft': { n: 'Thrust section', t: 'Thrust section', d: 'A steel plate carries the thrust of all 33 engines into the airframe. The plate tapers downward, so the engines protrude out the bottom. The pipes, power and data cables that used to sit behind the shielding now run around the outside in rings of lines and junction boxes.', s: [['Plate', 'Tapered'], ['Shielding', 'None'], ['Lines', 'External']] },
     'b-lox': { n: 'LOX tank', t: 'Liquid oxygen tank & chines', d: 'This is the largest tank in the stack. Liquid oxygen, densified below its −183 °C boiling point, sits directly above the engines. The walls are stainless-steel rings, each about 1.8 m tall, welded together. Two long chines run along its lower half.', s: [['Oxidizer', 'LOX'], ['Temp', '{loxTemp}'], ['Skin', 'Stainless']] },
@@ -31,14 +32,14 @@ SS_I18N.en = {
     's-nose': { n: 'Nose cone', t: 'Nose cone & header tank', d: 'The ogive nose houses the liquid-oxygen header tank and the forward flap actuators. Stainless steel keeps its strength both at cryogenic temperatures and in reentry heat.', s: [['Shape', 'Ogive'], ['Houses', 'LOX header'], ['Flaps', '2 forward']] },
   },
   // hover labels are built from these pieces ("Grid fin 2", "Forward flap (left) · hinge fairing")
-  lb: { 'Docking port': 'Docking port',},
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Person", 'Docking port': 'Docking port',},
 };
 
 SS_I18N.he = {
   shipName: 'סטארשיפ', dir: 'rtl', starship: 'סטארשיפ', starlink: 'סטארלינק',
   units: { m: "מ'", ft: 'רגל', t: 'טון', lb: 'ליברות', kN: 'קילוניוטון', lbf: 'lbf' },
   ui: {
-    booster: 'בוסטר', mFlight: 'טיסה {n}', vFlight: 'טיסה {n}', satLine: '{n} לווייני {starlink} V3', roll: 'סיבוב סביב הציר',
+    booster: 'בוסטר', mFlight: 'טיסה {n}', vFlight: 'טיסה {n}', satLine: '{n} לווייני {starlink} V3', roll: 'סיבוב סביב הציר', scale: "השוואת גודל",
     eyebrow: 'SpaceX · מבנה הרקטה', height: 'גובה', diameter: 'קוטר', raptors: 'מנועי Raptor', thrust: 'דחף', liftoff: 'מסה בהמראה', selected: 'נבחר',
     hint: 'גרירה לסיבוב סביב כל נקודה · גלילה לזום למקום שמצביעים עליו · גרירה ימנית להזזה · לחיצה כפולה לטיסה לנקודה · הקובייה למבטים',
     explode: 'פירוק', assemble: 'הרכבה', separate: 'הפרדת שלבים', stack: 'חיבור שלבים', section: 'חתך', flow: 'בעירה', pause: 'השהיה', play: 'המשך', reset: 'איפוס',
@@ -46,6 +47,7 @@ SS_I18N.he = {
     interstage: 'בין השלבים', loading: 'טוען', close: 'סגירה', zoomIn: 'התקרבות', zoomOut: 'התרחקות', fit: 'הצג את כל הרקטה', cube: 'קוביית מבטים: לחצו על פאה כדי להסתכל מהצד הזה',
   },
   parts: {
+    'f9': { n: "פלקון 9", t: "פלקון 9 Block 5", d: "סוס העבודה הרב-פעמי של SpaceX. תשעה מנועי Merlin 1D מניעים את השלב הראשון, שחוזר ונוחת על ספינת נחיתה או באזור נחיתה בעזרת כנפי גריד מטיטניום וארבע רגלי נחיתה מסיבי פחמן; מנוע Merlin Vacuum יחיד מניע את השלב השני. זו הרקטה המסחרית היחידה שמאושרת להטיס אסטרונאוטים לתחנת החלל הבינלאומית בחללית Crew Dragon, והיא משגרת את רוב לווייני {starlink}.", s: [["גובה", '{f9Height}'], ["דחף (פני הים)", '{f9Thrust}'], ["מטען למסלול נמוך", '{f9Payload}']] },
     'b-raptors': { n: 'מנועי Raptor', t: 'מנועי Raptor 3', d: '33 מנועי Raptor 3 שורפים מתאן נוזלי וחמצן נוזלי. ב-Raptor 3 רוב הצנרת משולבת בתוך גוף המנוע, ולכן בוטל מגן המנועים הכבד והמנועים חשופים לגמרי בתחתית הבוסטר. 13 המנועים הפנימיים מוטים על גימבל כדי לכוון את הרקטה.', s: [['כמות', '33'], ['מחזור בעירה', 'זרימה מלאה'], ['דחף', '{raptorThrust} לכל מנוע']] },
     'b-aft': { n: 'אזור הדחף', t: 'אזור הדחף', d: 'לוח פלדה מעביר את הדחף של כל 33 המנועים אל גוף הרקטה. הלוח מתחדד כלפי מטה, ולכן המנועים בולטים מתחת לבוסטר. הצינורות וכבלי החשמל והתקשורת, שבעבר הוסתרו מאחורי מגן המנועים, עוברים עכשיו מבחוץ, בטבעות של צנרת וקופסאות חיבור.', s: [['לוח', 'מחודד'], ['מגן מנועים', 'אין'], ['צנרת', 'חיצונית']] },
     'b-lox': { n: 'מכל החמצן', t: 'מכל החמצן הנוזלי ומדפי ה-Chine', d: 'זהו המכל הגדול ביותר ברקטה. החמצן הנוזלי מקורר אל מתחת לנקודת הרתיחה שלו (‎−183 °C) כדי לדחוס אותו, והוא יושב ישירות מעל המנועים. הדפנות בנויות מטבעות נירוסטה בגובה של כ-1.8 מ׳ כל אחת, מרותכות זו לזו. לאורך החצי התחתון של המכל עוברים שני מדפים אווירודינמיים ארוכים (Chines).', s: [['מחמצן', 'חמצן נוזלי'], ['טמפרטורה', '{loxTemp}'], ['דופן', 'נירוסטה']] },
@@ -59,7 +61,7 @@ SS_I18N.he = {
     's-payload': { n: 'תא המטען', t: 'תא המטען ופתח ה-Pez', d: 'בטיסות {starlink} הלוויינים מוערמים זה על זה בתוך תא המטען. פתח אופקי ארוך וצר, שזכה לכינוי "מתקן ה-Pez", נפתח בצד הנירוסטה (הצד ללא אריחים), והלוויינים מחליקים דרכו החוצה אחד אחרי השני.', s: [['פתח', 'חריץ אופקי'], ['מטען', '{payload}'], ['לוויינים', '{cargo}']] },
     's-nose': { n: 'חרטום', t: 'החרטום ומכל העזר', d: 'החרטום המחודד מכיל את מכל העזר של החמצן הנוזלי ואת המפעילים החשמליים של הכנפיים הקדמיות. הנירוסטה שומרת על החוזק שלה גם בקור קריוגני וגם בחום של החזרה לאטמוספרה.', s: [['צורה', 'מחודדת (אוג\'יב)'], ['מכיל', 'מכל עזר לחמצן'], ['כנפיים', '2 קדמיות']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "פלקון 9", 'Person': "אדם",
     'Docking port': 'פתח עגינה',
     'Raptor 3': 'Raptor 3', 'center ring': 'טבעת מרכזית', 'middle ring': 'טבעת אמצעית', 'outer ring': 'טבעת חיצונית', 'Raptor': 'Raptor', 'sea-level': 'פני הים', 'Raptor Vacuum': 'Raptor Vacuum',
     'Thrust section': 'אזור הדחף', 'Thrust plate': 'לוח הדחף', 'Engine skirt': 'חצאית המנועים', 'access cutout': 'פתח גישה', 'External lines & junction boxes': 'צנרת חיצונית וקופסאות חיבור', 'Aft ring': 'טבעת תחתונה',
@@ -79,7 +81,7 @@ SS_I18N.es = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'pies', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Vuelo {n}', vFlight: 'vuelo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar sobre su eje',
+    booster: 'Booster', mFlight: 'Vuelo {n}', vFlight: 'vuelo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar sobre su eje', scale: "Escala",
     eyebrow: 'SpaceX · Estudio del vehículo', height: 'Altura', diameter: 'Diámetro', raptors: 'Raptors', thrust: 'Empuje', liftoff: 'Masa al despegue', selected: 'Seleccionado',
     hint: 'Arrastra para orbitar alrededor de cualquier punto · Rueda para acercar donde apuntas · Clic derecho y arrastra para desplazar · Doble clic para volar allí · Cubo para vistas',
     explode: 'Despiece', assemble: 'Ensamblar', separate: 'Separar', stack: 'Unir', section: 'Corte', flow: 'Encendido', pause: 'Pausa', play: 'Reanudar', reset: 'Restablecer',
@@ -87,6 +89,7 @@ SS_I18N.es = {
     interstage: 'Interetapa', loading: 'Iniciando', close: 'Cerrar', zoomIn: 'Acercar', zoomOut: 'Alejar', fit: 'Ver el vehículo completo', cube: 'Cubo de vistas: haz clic en una cara para mirar desde ese lado',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "El caballo de batalla reutilizable de SpaceX. Nueve motores Merlin 1D impulsan la primera etapa, que regresa y aterriza en un dron marino o en una zona de aterrizaje con aletas de rejilla de titanio y cuatro patas de fibra de carbono; un único motor Merlin Vacuum impulsa la segunda etapa. Es el único cohete comercial certificado para llevar astronautas a la ISS a bordo de Crew Dragon, y lanza la mayor parte de la constelación {starlink}.", s: [["Altura", '{f9Height}'], ["Empuje (nivel del mar)", '{f9Thrust}'], ["Carga a LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Motores Raptor', t: 'Motores Raptor 3', d: 'Treinta y tres motores Raptor 3 queman metano líquido y oxígeno líquido. Raptor 3 integra casi toda su tubería en el cuerpo del motor, por lo que se eliminó el pesado blindaje y los motores cuelgan totalmente expuestos bajo el propulsor. Los 13 motores interiores se orientan (gimbal) para dirigir el vehículo.', s: [['Cantidad', '33'], ['Ciclo', 'Flujo completo'], ['Empuje', '{raptorThrust} cada uno']] },
     'b-aft': { n: 'Sección de empuje', t: 'Sección de empuje', d: 'Una placa de acero transmite el empuje de los 33 motores a la estructura. La placa se estrecha hacia abajo, así que los motores sobresalen por la base. Las tuberías y los cables de energía y datos, que antes quedaban tras el blindaje, ahora rodean el exterior en anillos de conductos y cajas de conexión.', s: [['Placa', 'Cónica'], ['Blindaje', 'Ninguno'], ['Conductos', 'Externos']] },
     'b-lox': { n: 'Tanque de LOX', t: 'Tanque de oxígeno líquido y chines', d: 'Es el tanque más grande de todo el conjunto. El oxígeno líquido, densificado por debajo de su punto de ebullición de −183 °C, está justo encima de los motores. Las paredes son anillos de acero inoxidable de unos 1,8 m de alto soldados entre sí. Dos largos chines recorren su mitad inferior.', s: [['Oxidante', 'LOX'], ['Temp.', '{loxTemp}'], ['Casco', 'Inoxidable']] },
@@ -100,7 +103,7 @@ SS_I18N.es = {
     's-payload': { n: 'Bahía de carga', t: 'Bahía de carga y ranura Pez', d: 'En los vuelos de {starlink} los satélites van apilados dentro de la bahía de carga. Una ranura horizontal larga y estrecha, apodada "dispensador Pez", se abre en el lado de acero sin losetas y los satélites salen por ella uno a uno.', s: [['Puerta', 'Ranura'], ['Carga útil', '{payload}'], ['Carga', '{cargo}']] },
     's-nose': { n: 'Cono de morro', t: 'Cono de morro y tanque de cabecera', d: 'El morro ojival aloja el tanque de cabecera de oxígeno líquido y los actuadores de los flaps delanteros. El acero inoxidable conserva su resistencia tanto a temperaturas criogénicas como con el calor de la reentrada.', s: [['Forma', 'Ojival'], ['Contiene', 'Cabecera de LOX'], ['Flaps', '2 delanteros']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Persona",
     'Docking port': 'Puerto de acoplamiento',
     'center ring': 'anillo central', 'middle ring': 'anillo intermedio', 'outer ring': 'anillo exterior', 'sea-level': 'nivel del mar',
     'Thrust section': 'Sección de empuje', 'Thrust plate': 'Placa de empuje', 'Engine skirt': 'Faldón de motores', 'access cutout': 'abertura de acceso', 'External lines & junction boxes': 'Conductos externos y cajas de conexión', 'Aft ring': 'Anillo inferior',
@@ -119,7 +122,7 @@ SS_I18N.fr = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'pieds', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Vol {n}', vFlight: 'vol {n}', satLine: '{n} satellites {starlink} V3', roll: 'Tourner sur son axe',
+    booster: 'Booster', mFlight: 'Vol {n}', vFlight: 'vol {n}', satLine: '{n} satellites {starlink} V3', roll: 'Tourner sur son axe', scale: "Échelle",
     eyebrow: 'SpaceX · Étude du lanceur', height: 'Hauteur', diameter: 'Diamètre', raptors: 'Raptor', thrust: 'Poussée', liftoff: 'Masse au décollage', selected: 'Sélection',
     hint: 'Glisser pour tourner autour de n\'importe quel point · Molette pour zoomer là où vous pointez · Clic droit + glisser pour déplacer · Double-clic pour s\'y rendre · Cube pour les vues',
     explode: 'Vue éclatée', assemble: 'Assembler', separate: 'Séparer', stack: 'Réunir', section: 'Coupe', flow: 'Allumage', pause: 'Pause', play: 'Reprendre', reset: 'Réinitialiser',
@@ -127,6 +130,7 @@ SS_I18N.fr = {
     interstage: 'Inter-étage', loading: 'Initialisation', close: 'Fermer', zoomIn: 'Zoom avant', zoomOut: 'Zoom arrière', fit: 'Voir tout le lanceur', cube: 'Cube de vues : cliquez sur une face pour regarder depuis ce côté',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "Le cheval de trait réutilisable de SpaceX. Neuf moteurs Merlin 1D propulsent le premier étage, qui revient se poser sur une barge autonome ou une zone d'atterrissage grâce à des ailerons en grille en titane et quatre jambes en fibre de carbone ; un seul moteur Merlin Vacuum propulse le second étage. C'est la seule fusée commerciale certifiée pour emmener des astronautes vers l'ISS à bord de Crew Dragon, et elle lance l'essentiel de la constellation {starlink}.", s: [["Hauteur", '{f9Height}'], ["Poussée (niveau de la mer)", '{f9Thrust}'], ["Charge en LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Moteurs Raptor', t: 'Moteurs Raptor 3', d: 'Trente-trois moteurs Raptor 3 brûlent du méthane et de l\'oxygène liquides. Le Raptor 3 intègre l\'essentiel de sa tuyauterie dans le corps du moteur : le lourd blindage a donc été supprimé et les moteurs pendent entièrement à nu sous le propulseur. Les 13 moteurs intérieurs pivotent (gimbal) pour diriger le lanceur.', s: [['Nombre', '33'], ['Cycle', 'Flux intégral'], ['Poussée', '{raptorThrust} chacun']] },
     'b-aft': { n: 'Section de poussée', t: 'Section de poussée', d: 'Une plaque d\'acier transmet la poussée des 33 moteurs à la structure. Elle s\'affine vers le bas, si bien que les moteurs dépassent par le dessous. Les tuyaux et les câbles d\'alimentation et de données, autrefois derrière le blindage, font désormais le tour à l\'extérieur en anneaux de conduites et de boîtiers de jonction.', s: [['Plaque', 'Conique'], ['Blindage', 'Aucun'], ['Conduites', 'Externes']] },
     'b-lox': { n: 'Réservoir LOX', t: 'Réservoir d\'oxygène liquide et chines', d: 'C\'est le plus grand réservoir de l\'ensemble. L\'oxygène liquide, densifié sous son point d\'ébullition de −183 °C, se trouve juste au-dessus des moteurs. Les parois sont des anneaux d\'acier inoxydable d\'environ 1,8 m de haut soudés entre eux. Deux longs chines courent le long de sa moitié inférieure.', s: [['Oxydant', 'LOX'], ['Temp.', '{loxTemp}'], ['Paroi', 'Inox']] },
@@ -140,7 +144,7 @@ SS_I18N.fr = {
     's-payload': { n: 'Soute', t: 'Soute et fente « Pez »', d: 'Lors des vols {starlink}, les satellites sont empilés dans la soute. Une longue fente horizontale étroite, surnommée « distributeur Pez », s\'ouvre sur la face en acier nu, sans tuiles, et les satellites en sortent un par un.', s: [['Porte', 'Fente'], ['Charge utile', '{payload}'], ['Cargaison', '{cargo}']] },
     's-nose': { n: 'Nez', t: 'Nez et réservoir de tête', d: 'Le nez ogival abrite le réservoir de tête d\'oxygène liquide et les actionneurs des volets avant. L\'acier inoxydable garde sa résistance aussi bien aux températures cryogéniques que dans la chaleur de rentrée.', s: [['Forme', 'Ogive'], ['Abrite', 'Tête LOX'], ['Volets', '2 avant']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Personne",
     'Docking port': "Port d'amarrage",
     'center ring': 'anneau central', 'middle ring': 'anneau médian', 'outer ring': 'anneau extérieur', 'sea-level': 'niveau de la mer',
     'Thrust section': 'Section de poussée', 'Thrust plate': 'Plaque de poussée', 'Engine skirt': 'Jupe moteurs', 'access cutout': 'trappe d\'accès', 'External lines & junction boxes': 'Conduites externes et boîtiers de jonction', 'Aft ring': 'Anneau arrière',
@@ -159,7 +163,7 @@ SS_I18N.de = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Flug {n}', vFlight: 'Flug {n}', satLine: '{n} {starlink}-V3-Satelliten', roll: 'Um die eigene Achse drehen',
+    booster: 'Booster', mFlight: 'Flug {n}', vFlight: 'Flug {n}', satLine: '{n} {starlink}-V3-Satelliten', roll: 'Um die eigene Achse drehen', scale: "Größenvergleich",
     eyebrow: 'SpaceX · Fahrzeugstudie', height: 'Höhe', diameter: 'Durchmesser', raptors: 'Raptoren', thrust: 'Schub', liftoff: 'Startmasse', selected: 'Auswahl',
     hint: 'Ziehen, um um jeden Punkt zu kreisen · Scrollen zoomt dorthin, wo Sie zeigen · Rechtsziehen verschiebt · Doppelklick fliegt hin · Würfel für Ansichten',
     explode: 'Zerlegen', assemble: 'Zusammenbauen', separate: 'Trennen', stack: 'Verbinden', section: 'Schnitt', flow: 'Zündung', pause: 'Pause', play: 'Weiter', reset: 'Zurücksetzen',
@@ -167,6 +171,7 @@ SS_I18N.de = {
     interstage: 'Zwischenstufe', loading: 'Wird geladen', close: 'Schließen', zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', fit: 'Ganzes Fahrzeug zeigen', cube: 'Ansichtswürfel: auf eine Seite klicken, um von dort zu schauen',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "Das wiederverwendbare Arbeitspferd von SpaceX. Neun Merlin-1D-Triebwerke treiben die erste Stufe an, die mit Titan-Gitterflossen und vier Landebeinen aus Kohlefaser auf einem Drohnenschiff oder einer Landezone zurückkehrt; ein einzelnes Merlin-Vacuum-Triebwerk treibt die zweite Stufe an. Sie ist die einzige kommerzielle Rakete, die für Astronautenflüge zur ISS mit Crew Dragon zertifiziert ist, und startet den Großteil der {starlink}-Konstellation.", s: [["Höhe", '{f9Height}'], ["Schub (Meereshöhe)", '{f9Thrust}'], ["Nutzlast in LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor-Triebwerke', t: 'Raptor-3-Triebwerke', d: 'Dreiunddreißig Raptor-3-Triebwerke verbrennen flüssiges Methan und flüssigen Sauerstoff. Beim Raptor 3 steckt der Großteil der Leitungen im Triebwerkskörper selbst, deshalb fiel die schwere Triebwerksabschirmung weg und die Triebwerke hängen völlig frei unter dem Booster. Die 13 inneren Triebwerke sind schwenkbar (Gimbal) und lenken.', s: [['Anzahl', '33'], ['Zyklus', 'Full-Flow'], ['Schub', 'je {raptorThrust}']] },
     'b-aft': { n: 'Schubsektion', t: 'Schubsektion', d: 'Eine Stahlplatte leitet den Schub aller 33 Triebwerke in die Struktur. Die Platte verjüngt sich nach unten, sodass die Triebwerke unten herausragen. Leitungen sowie Strom- und Datenkabel, früher hinter der Abschirmung, laufen jetzt außen in Ringen aus Leitungen und Verteilerkästen herum.', s: [['Platte', 'Verjüngt'], ['Abschirmung', 'Keine'], ['Leitungen', 'Außen']] },
     'b-lox': { n: 'LOX-Tank', t: 'Flüssigsauerstofftank und Chines', d: 'Das ist der größte Tank des ganzen Stapels. Der flüssige Sauerstoff, unter seinen Siedepunkt von −183 °C unterkühlt und dadurch verdichtet, sitzt direkt über den Triebwerken. Die Wände sind Edelstahlringe von je etwa 1,8 m Höhe, miteinander verschweißt. Zwei lange Chines verlaufen entlang seiner unteren Hälfte.', s: [['Oxidator', 'LOX'], ['Temp.', '{loxTemp}'], ['Hülle', 'Edelstahl']] },
@@ -180,7 +185,7 @@ SS_I18N.de = {
     's-payload': { n: 'Nutzlastbucht', t: 'Nutzlastbucht und Pez-Schlitz', d: 'Bei {starlink}-Flügen liegen die Satelliten gestapelt in der Nutzlastbucht. Ein langer, schmaler waagerechter Schlitz, „Pez-Spender“ genannt, öffnet sich auf der blanken Stahlseite ohne Kacheln, und die Satelliten gleiten einer nach dem anderen hinaus.', s: [['Tür', 'Briefschlitz'], ['Nutzlast', '{payload}'], ['Fracht', '{cargo}']] },
     's-nose': { n: 'Nasenkegel', t: 'Nasenkegel und Header-Tank', d: 'Die Ogivalnase enthält den Header-Tank für flüssigen Sauerstoff und die Aktuatoren der vorderen Klappen. Edelstahl behält seine Festigkeit sowohl bei kryogenen Temperaturen als auch in der Hitze des Wiedereintritts.', s: [['Form', 'Ogive'], ['Enthält', 'LOX-Header'], ['Klappen', '2 vorne']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Mensch",
     'Docking port': 'Andockport',
     'center ring': 'Mittelring', 'middle ring': 'mittlerer Ring', 'outer ring': 'Außenring', 'sea-level': 'Meereshöhe',
     'Thrust section': 'Schubsektion', 'Thrust plate': 'Schubplatte', 'Engine skirt': 'Triebwerksschürze', 'access cutout': 'Zugangsöffnung', 'External lines & junction boxes': 'Außenleitungen und Verteilerkästen', 'Aft ring': 'Heckring',
@@ -199,7 +204,7 @@ SS_I18N.it = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'piedi', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Volo {n}', vFlight: 'volo {n}', satLine: '{n} satelliti {starlink} V3', roll: 'Ruota sul proprio asse',
+    booster: 'Booster', mFlight: 'Volo {n}', vFlight: 'volo {n}', satLine: '{n} satelliti {starlink} V3', roll: 'Ruota sul proprio asse', scale: "Scala",
     eyebrow: 'SpaceX · Studio del veicolo', height: 'Altezza', diameter: 'Diametro', raptors: 'Raptor', thrust: 'Spinta', liftoff: 'Massa al decollo', selected: 'Selezione',
     hint: 'Trascina per ruotare attorno a qualsiasi punto · Rotella per zoomare dove punti · Trascina col tasto destro per spostare · Doppio clic per volare lì · Cubo per le viste',
     explode: 'Esploso', assemble: 'Assembla', separate: 'Separa', stack: 'Riunisci', section: 'Sezione', flow: 'Accensione', pause: 'Pausa', play: 'Riprendi', reset: 'Ripristina',
@@ -207,6 +212,7 @@ SS_I18N.it = {
     interstage: 'Interstadio', loading: 'Inizializzazione', close: 'Chiudi', zoomIn: 'Ingrandisci', zoomOut: 'Riduci', fit: 'Mostra tutto il veicolo', cube: 'Cubo delle viste: clicca una faccia per guardare da quel lato',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "Il cavallo da lavoro riutilizzabile di SpaceX. Nove motori Merlin 1D spingono il primo stadio, che rientra e atterra su una nave drone o in una zona di atterraggio grazie ad alette a griglia in titanio e quattro gambe in fibra di carbonio; un solo motore Merlin Vacuum spinge il secondo stadio. È l'unico razzo commerciale certificato per portare astronauti alla ISS a bordo di Crew Dragon e lancia la maggior parte della costellazione {starlink}.", s: [["Altezza", '{f9Height}'], ["Spinta (livello del mare)", '{f9Thrust}'], ["Carico in LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Motori Raptor', t: 'Motori Raptor 3', d: 'Trentatré motori Raptor 3 bruciano metano liquido e ossigeno liquido. Il Raptor 3 integra quasi tutte le tubazioni nel corpo del motore, quindi la pesante schermatura è stata eliminata e i motori pendono completamente esposti sotto il booster. I 13 motori interni si orientano (gimbal) per guidare il razzo.', s: [['Numero', '33'], ['Ciclo', 'Flusso completo'], ['Spinta', '{raptorThrust} ciascuno']] },
     'b-aft': { n: 'Sezione di spinta', t: 'Sezione di spinta', d: 'Una piastra d\'acciaio trasmette la spinta di tutti i 33 motori alla struttura. La piastra si restringe verso il basso, così i motori sporgono dal fondo. Tubi e cavi di alimentazione e dati, un tempo dietro la schermatura, ora corrono all\'esterno in anelli di condotti e scatole di giunzione.', s: [['Piastra', 'Rastremata'], ['Schermatura', 'Nessuna'], ['Condotti', 'Esterni']] },
     'b-lox': { n: 'Serbatoio LOX', t: 'Serbatoio di ossigeno liquido e chine', d: 'È il serbatoio più grande di tutto il razzo. L\'ossigeno liquido, densificato sotto il suo punto di ebollizione di −183 °C, si trova proprio sopra i motori. Le pareti sono anelli d\'acciaio inox alti circa 1,8 m, saldati tra loro. Due lunghe chine corrono lungo la sua metà inferiore.', s: [['Ossidante', 'LOX'], ['Temp.', '{loxTemp}'], ['Parete', 'Inox']] },
@@ -220,7 +226,7 @@ SS_I18N.it = {
     's-payload': { n: 'Vano di carico', t: 'Vano di carico e fessura Pez', d: 'Nei voli {starlink} i satelliti sono impilati nel vano di carico. Una lunga e stretta fessura orizzontale, soprannominata "distributore Pez", si apre sul lato in acciaio nudo, senza piastrelle, e i satelliti scivolano fuori uno alla volta.', s: [['Portello', 'Fessura'], ['Carico utile', '{payload}'], ['Carico', '{cargo}']] },
     's-nose': { n: 'Ogiva', t: 'Ogiva e serbatoio di testa', d: 'Il muso ogivale ospita il serbatoio di testa dell\'ossigeno liquido e gli attuatori dei flap anteriori. L\'acciaio inox mantiene la sua resistenza sia alle temperature criogeniche sia nel calore del rientro.', s: [['Forma', 'Ogiva'], ['Contiene', 'Testa LOX'], ['Flap', '2 anteriori']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Persona",
     'Docking port': 'Porta di attracco',
     'center ring': 'anello centrale', 'middle ring': 'anello intermedio', 'outer ring': 'anello esterno', 'sea-level': 'livello del mare',
     'Thrust section': 'Sezione di spinta', 'Thrust plate': 'Piastra di spinta', 'Engine skirt': 'Gonna motori', 'access cutout': 'apertura d\'accesso', 'External lines & junction boxes': 'Condotti esterni e scatole di giunzione', 'Aft ring': 'Anello posteriore',
@@ -239,7 +245,7 @@ SS_I18N.pt = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'pés', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Voo {n}', vFlight: 'voo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar no próprio eixo',
+    booster: 'Booster', mFlight: 'Voo {n}', vFlight: 'voo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar no próprio eixo', scale: "Escala",
     eyebrow: 'SpaceX · Estudo do veículo', height: 'Altura', diameter: 'Diâmetro', raptors: 'Raptors', thrust: 'Empuxo', liftoff: 'Massa na decolagem', selected: 'Selecionado',
     hint: 'Arraste para orbitar em torno de qualquer ponto · Role para dar zoom onde aponta · Arraste com o botão direito para mover · Duplo clique para voar até lá · Cubo para vistas',
     explode: 'Desmontar', assemble: 'Montar', separate: 'Separar', stack: 'Unir', section: 'Corte', flow: 'Queima', pause: 'Pausar', play: 'Retomar', reset: 'Redefinir',
@@ -247,6 +253,7 @@ SS_I18N.pt = {
     interstage: 'Interestágio', loading: 'Inicializando', close: 'Fechar', zoomIn: 'Aproximar', zoomOut: 'Afastar', fit: 'Ver o veículo inteiro', cube: 'Cubo de vistas: clique numa face para olhar daquele lado',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "O burro de carga reutilizável da SpaceX. Nove motores Merlin 1D impulsionam o primeiro estágio, que volta e pousa num navio-drone ou numa zona de pouso usando aletas de grade de titânio e quatro pernas de fibra de carbono; um único motor Merlin Vacuum impulsiona o segundo estágio. É o único foguete comercial certificado para levar astronautas à ISS a bordo da Crew Dragon e lança a maior parte da constelação {starlink}.", s: [["Altura", '{f9Height}'], ["Empuxo (nível do mar)", '{f9Thrust}'], ["Carga em LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Motores Raptor', t: 'Motores Raptor 3', d: 'Trinta e três motores Raptor 3 queimam metano líquido e oxigênio líquido. O Raptor 3 integra quase toda a tubulação no corpo do motor, por isso a pesada blindagem foi eliminada e os motores ficam totalmente expostos sob o propulsor. Os 13 motores internos se orientam (gimbal) para dirigir o veículo.', s: [['Quantidade', '33'], ['Ciclo', 'Fluxo total'], ['Empuxo', '{raptorThrust} cada']] },
     'b-aft': { n: 'Seção de empuxo', t: 'Seção de empuxo', d: 'Uma placa de aço transmite o empuxo dos 33 motores à estrutura. A placa se estreita para baixo, de modo que os motores se projetam pela base. Tubos e cabos de energia e dados, que antes ficavam atrás da blindagem, agora contornam o exterior em anéis de linhas e caixas de junção.', s: [['Placa', 'Cônica'], ['Blindagem', 'Nenhuma'], ['Linhas', 'Externas']] },
     'b-lox': { n: 'Tanque de LOX', t: 'Tanque de oxigênio líquido e chines', d: 'Este é o maior tanque de todo o conjunto. O oxigênio líquido, densificado abaixo do seu ponto de ebulição de −183 °C, fica logo acima dos motores. As paredes são anéis de aço inoxidável com cerca de 1,8 m de altura, soldados entre si. Dois longos chines percorrem sua metade inferior.', s: [['Oxidante', 'LOX'], ['Temp.', '{loxTemp}'], ['Casco', 'Inox']] },
@@ -260,7 +267,7 @@ SS_I18N.pt = {
     's-payload': { n: 'Compartimento de carga', t: 'Compartimento de carga e fenda Pez', d: 'Nos voos {starlink} os satélites ficam empilhados no compartimento de carga. Uma fenda horizontal longa e estreita, apelidada de "dispensador Pez", abre no lado de aço sem placas, e os satélites deslizam por ela um de cada vez.', s: [['Porta', 'Fenda'], ['Carga útil', '{payload}'], ['Carga', '{cargo}']] },
     's-nose': { n: 'Cone do nariz', t: 'Cone do nariz e tanque de cabeçalho', d: 'O nariz ogival abriga o tanque de cabeçalho de oxigênio líquido e os atuadores dos flaps dianteiros. O aço inoxidável mantém sua resistência tanto em temperaturas criogênicas quanto no calor da reentrada.', s: [['Forma', 'Ogiva'], ['Abriga', 'Cabeçalho LOX'], ['Flaps', '2 dianteiros']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Pessoa",
     'Docking port': 'Porta de acoplamento',
     'center ring': 'anel central', 'middle ring': 'anel intermediário', 'outer ring': 'anel externo', 'sea-level': 'nível do mar',
     'Thrust section': 'Seção de empuxo', 'Thrust plate': 'Placa de empuxo', 'Engine skirt': 'Saia dos motores', 'access cutout': 'abertura de acesso', 'External lines & junction boxes': 'Linhas externas e caixas de junção', 'Aft ring': 'Anel traseiro',
@@ -279,7 +286,7 @@ SS_I18N.nl = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Vlucht {n}', vFlight: 'vlucht {n}', satLine: '{n} {starlink} V3-satellieten', roll: 'Om de eigen as draaien',
+    booster: 'Booster', mFlight: 'Vlucht {n}', vFlight: 'vlucht {n}', satLine: '{n} {starlink} V3-satellieten', roll: 'Om de eigen as draaien', scale: "Schaal",
     eyebrow: 'SpaceX · Voertuigstudie', height: 'Hoogte', diameter: 'Diameter', raptors: 'Raptors', thrust: 'Stuwkracht', liftoff: 'Startmassa', selected: 'Geselecteerd',
     hint: 'Sleep om rond elk punt te draaien · Scroll om in te zoomen waar je wijst · Rechts slepen om te verschuiven · Dubbelklik om erheen te vliegen · Kubus voor aanzichten',
     explode: 'Uiteenhalen', assemble: 'Samenvoegen', separate: 'Scheiden', stack: 'Koppelen', section: 'Doorsnede', flow: 'Ontsteking', pause: 'Pauze', play: 'Hervatten', reset: 'Herstellen',
@@ -287,6 +294,7 @@ SS_I18N.nl = {
     interstage: 'Tussentrap', loading: 'Initialiseren', close: 'Sluiten', zoomIn: 'Inzoomen', zoomOut: 'Uitzoomen', fit: 'Hele voertuig tonen', cube: 'Aanzichtkubus: klik op een vlak om vanaf die kant te kijken',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "Het herbruikbare werkpaard van SpaceX. Negen Merlin 1D-motoren stuwen de eerste trap, die terugkeert en landt op een droneschip of landingszone met titanium roostervinnen en vier landingspoten van koolstofvezel; één Merlin Vacuum-motor stuwt de tweede trap. Het is de enige commerciële raket die gecertificeerd is om astronauten met Crew Dragon naar het ISS te brengen, en lanceert het grootste deel van de {starlink}-constellatie.", s: [["Hoogte", '{f9Height}'], ["Stuwkracht (zeeniveau)", '{f9Thrust}'], ["Lading naar LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor-motoren', t: 'Raptor 3-motoren', d: 'Drieëndertig Raptor 3-motoren verbranden vloeibaar methaan en vloeibare zuurstof. Bij de Raptor 3 zit het meeste leidingwerk in de motor zelf, daarom verviel de zware motorafscherming en hangen de motoren volledig bloot onder de booster. De 13 binnenste motoren kunnen zwenken (gimbal) om te sturen.', s: [['Aantal', '33'], ['Cyclus', 'Full-flow'], ['Stuwkracht', '{raptorThrust} per stuk']] },
     'b-aft': { n: 'Stuwkrachtsectie', t: 'Stuwkrachtsectie', d: 'Een stalen plaat leidt de stuwkracht van alle 33 motoren naar de constructie. De plaat loopt naar beneden taps toe, waardoor de motoren onderaan uitsteken. Leidingen en stroom- en datakabels, vroeger achter de afscherming, lopen nu aan de buitenkant rond in ringen van leidingen en verdeeldozen.', s: [['Plaat', 'Taps'], ['Afscherming', 'Geen'], ['Leidingen', 'Extern']] },
     'b-lox': { n: 'LOX-tank', t: 'Tank voor vloeibare zuurstof en chines', d: 'Dit is de grootste tank van de hele stapel. De vloeibare zuurstof, verdicht tot onder het kookpunt van −183 °C, zit direct boven de motoren. De wanden bestaan uit roestvrijstalen ringen van elk ongeveer 1,8 m hoog, aan elkaar gelast. Over de onderste helft lopen twee lange chines.', s: [['Oxidator', 'LOX'], ['Temp.', '{loxTemp}'], ['Wand', 'RVS']] },
@@ -300,7 +308,7 @@ SS_I18N.nl = {
     's-payload': { n: 'Laadruim', t: 'Laadruim en Pez-sleuf', d: 'Op {starlink}-vluchten liggen de satellieten gestapeld in het laadruim. Een lange, smalle horizontale sleuf, de "Pez-dispenser" genoemd, gaat open aan de kale stalen kant zonder tegels en de satellieten schuiven er één voor één uit.', s: [['Deur', 'Brievenbussleuf'], ['Nuttige last', '{payload}'], ['Vracht', '{cargo}']] },
     's-nose': { n: 'Neuskegel', t: 'Neuskegel en headertank', d: 'De ogiefneus bevat de headertank voor vloeibare zuurstof en de actuatoren van de voorste flaps. Roestvrij staal behoudt zijn sterkte zowel bij cryogene temperaturen als in de hitte van de terugkeer.', s: [['Vorm', 'Ogief'], ['Bevat', 'LOX-header'], ['Flaps', '2 voor']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Mens",
     'Docking port': 'Koppelpoort',
     'center ring': 'middenring', 'middle ring': 'tussenring', 'outer ring': 'buitenring', 'sea-level': 'zeeniveau',
     'Thrust section': 'Stuwkrachtsectie', 'Thrust plate': 'Stuwkrachtplaat', 'Engine skirt': 'Motorrok', 'access cutout': 'toegangsopening', 'External lines & junction boxes': 'Externe leidingen en verdeeldozen', 'Aft ring': 'Achterring',
@@ -319,7 +327,7 @@ SS_I18N.sv = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'fot', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Flygning {n}', vFlight: 'flygning {n}', satLine: '{n} {starlink} V3-satelliter', roll: 'Rotera kring sin axel',
+    booster: 'Booster', mFlight: 'Flygning {n}', vFlight: 'flygning {n}', satLine: '{n} {starlink} V3-satelliter', roll: 'Rotera kring sin axel', scale: "Skala",
     eyebrow: 'SpaceX · Farkoststudie', height: 'Höjd', diameter: 'Diameter', raptors: 'Raptor', thrust: 'Dragkraft', liftoff: 'Startmassa', selected: 'Vald',
     hint: 'Dra för att kretsa runt valfri punkt · Scrolla för att zooma dit du pekar · Högerdra för att panorera · Dubbelklicka för att flyga dit · Kuben för vyer',
     explode: 'Sprängskiss', assemble: 'Montera', separate: 'Separera', stack: 'Koppla ihop', section: 'Snitt', flow: 'Tändning', pause: 'Paus', play: 'Fortsätt', reset: 'Återställ',
@@ -327,6 +335,7 @@ SS_I18N.sv = {
     interstage: 'Mellansteg', loading: 'Startar', close: 'Stäng', zoomIn: 'Zooma in', zoomOut: 'Zooma ut', fit: 'Visa hela farkosten', cube: 'Vykub: klicka på en sida för att titta därifrån',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "SpaceX återanvändbara arbetshäst. Nio Merlin 1D-motorer driver första steget, som flyger tillbaka och landar på ett drönarfartyg eller en landningszon med gallerfenor av titan och fyra landningsben av kolfiber; en enda Merlin Vacuum-motor driver andra steget. Den är den enda kommersiella raketen som är certifierad att flyga astronauter till ISS med Crew Dragon, och den skjuter upp större delen av {starlink}-konstellationen.", s: [["Höjd", '{f9Height}'], ["Dragkraft (havsnivå)", '{f9Thrust}'], ["Last till LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor-motorer', t: 'Raptor 3-motorer', d: 'Trettiotre Raptor 3-motorer bränner flytande metan och flytande syre. Raptor 3 har det mesta av rörsystemet inbyggt i själva motorn, så den tunga motorskärmningen togs bort och motorerna hänger helt fritt under boostern. De 13 inre motorerna kan vinklas (gimbal) för att styra.', s: [['Antal', '33'], ['Cykel', 'Full-flow'], ['Dragkraft', '{raptorThrust} var']] },
     'b-aft': { n: 'Dragkraftsektion', t: 'Dragkraftsektion', d: 'En stålplatta för över dragkraften från alla 33 motorer till strukturen. Plattan smalnar av nedåt, så motorerna sticker ut under. Rör samt ström- och datakablar, som förr satt bakom skärmningen, löper nu runt utsidan i ringar av ledningar och kopplingsdosor.', s: [['Platta', 'Avsmalnande'], ['Skärmning', 'Ingen'], ['Ledningar', 'Utvändiga']] },
     'b-lox': { n: 'LOX-tank', t: 'Tank för flytande syre och chines', d: 'Det här är den största tanken i hela stacken. Det flytande syret, förtätat under kokpunkten −183 °C, sitter direkt ovanför motorerna. Väggarna är ringar av rostfritt stål, cirka 1,8 m höga, som svetsats ihop. Två långa chines löper längs dess nedre halva.', s: [['Oxidator', 'LOX'], ['Temp.', '{loxTemp}'], ['Skal', 'Rostfritt']] },
@@ -340,7 +349,7 @@ SS_I18N.sv = {
     's-payload': { n: 'Lastutrymme', t: 'Lastutrymme och Pez-springa', d: 'På {starlink}-flygningar ligger satelliterna staplade i lastutrymmet. En lång, smal vågrät springa, kallad "Pez-automaten", öppnas på den blanka stålsidan utan plattor och satelliterna glider ut en i taget.', s: [['Lucka', 'Brevinkast'], ['Nyttolast', '{payload}'], ['Last', '{cargo}']] },
     's-nose': { n: 'Noskon', t: 'Noskon och headertank', d: 'Den ogivformade nosen rymmer headertanken för flytande syre och de främre klaffarnas manöverdon. Rostfritt stål behåller sin hållfasthet både vid kryogena temperaturer och i återinträdets hetta.', s: [['Form', 'Ogiv'], ['Rymmer', 'LOX-header'], ['Klaffar', '2 främre']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Människa",
     'Docking port': 'Dockningsport',
     'center ring': 'mittring', 'middle ring': 'mellanring', 'outer ring': 'ytterring', 'sea-level': 'havsnivå',
     'Thrust section': 'Dragkraftsektion', 'Thrust plate': 'Dragkraftplatta', 'Engine skirt': 'Motorkjol', 'access cutout': 'åtkomstöppning', 'External lines & junction boxes': 'Utvändiga ledningar och kopplingsdosor', 'Aft ring': 'Aktre ring',
@@ -359,7 +368,7 @@ SS_I18N.da = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'fod', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Flyvning {n}', vFlight: 'flyvning {n}', satLine: '{n} {starlink} V3-satellitter', roll: 'Drej om sin akse',
+    booster: 'Booster', mFlight: 'Flyvning {n}', vFlight: 'flyvning {n}', satLine: '{n} {starlink} V3-satellitter', roll: 'Drej om sin akse', scale: "Skala",
     eyebrow: 'SpaceX · Fartøjsstudie', height: 'Højde', diameter: 'Diameter', raptors: 'Raptor', thrust: 'Trykkraft', liftoff: 'Startmasse', selected: 'Valgt',
     hint: 'Træk for at kredse om et hvilket som helst punkt · Rul for at zoome derhen, hvor du peger · Højretræk for at panorere · Dobbeltklik for at flyve derhen · Terningen for visninger',
     explode: 'Adskil', assemble: 'Saml', separate: 'Separér', stack: 'Forbind', section: 'Snit', flow: 'Tænding', pause: 'Pause', play: 'Fortsæt', reset: 'Nulstil',
@@ -367,6 +376,7 @@ SS_I18N.da = {
     interstage: 'Mellemtrin', loading: 'Starter', close: 'Luk', zoomIn: 'Zoom ind', zoomOut: 'Zoom ud', fit: 'Vis hele fartøjet', cube: 'Visningsterning: klik på en side for at se derfra',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "SpaceX’ genanvendelige arbejdshest. Ni Merlin 1D-motorer driver første trin, der flyver tilbage og lander på et droneskib eller en landingszone med gitterfinner af titanium og fire landingsben af kulfiber; en enkelt Merlin Vacuum-motor driver andet trin. Den er den eneste kommercielle raket, der er certificeret til at flyve astronauter til ISS med Crew Dragon, og den opsender størstedelen af {starlink}-konstellationen.", s: [["Højde", '{f9Height}'], ["Trykkraft (havniveau)", '{f9Thrust}'], ["Last til LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor-motorer', t: 'Raptor 3-motorer', d: 'Treogtredive Raptor 3-motorer brænder flydende metan og flydende ilt. Raptor 3 har det meste af rørføringen bygget ind i selve motoren, så den tunge motorafskærmning blev fjernet, og motorerne hænger helt frit under boosteren. De 13 inderste motorer kan vinkles (gimbal) for at styre.', s: [['Antal', '33'], ['Cyklus', 'Full-flow'], ['Trykkraft', '{raptorThrust} hver']] },
     'b-aft': { n: 'Trykkraftsektion', t: 'Trykkraftsektion', d: 'En stålplade fører trykkraften fra alle 33 motorer ind i strukturen. Pladen bliver smallere nedad, så motorerne stikker ud i bunden. Rør samt strøm- og datakabler, som før sad bag afskærmningen, løber nu udenpå i ringe af ledninger og samledåser.', s: [['Plade', 'Tilspidset'], ['Afskærmning', 'Ingen'], ['Ledninger', 'Udvendige']] },
     'b-lox': { n: 'LOX-tank', t: 'Tank til flydende ilt og chines', d: 'Dette er den største tank i hele stakken. Den flydende ilt, fortættet under sit kogepunkt på −183 °C, sidder lige over motorerne. Væggene er ringe af rustfrit stål, hver cirka 1,8 m høj, svejset sammen. To lange chines løber langs dens nederste halvdel.', s: [['Oxidator', 'LOX'], ['Temp.', '{loxTemp}'], ['Skal', 'Rustfrit']] },
@@ -380,7 +390,7 @@ SS_I18N.da = {
     's-payload': { n: 'Lastrum', t: 'Lastrum og Pez-sprække', d: 'På {starlink}-flyvninger ligger satellitterne stablet i lastrummet. En lang, smal vandret sprække, kaldet "Pez-automaten", åbner sig på den blanke stålside uden fliser, og satellitterne glider ud én ad gangen.', s: [['Luge', 'Brevsprække'], ['Nyttelast', '{payload}'], ['Last', '{cargo}']] },
     's-nose': { n: 'Næsekegle', t: 'Næsekegle og headertank', d: 'Den ogivale næse rummer headertanken til flydende ilt og aktuatorerne til de forreste klapper. Rustfrit stål bevarer sin styrke både ved kryogene temperaturer og i varmen ved genindtræden.', s: [['Form', 'Ogiv'], ['Rummer', 'LOX-header'], ['Klapper', '2 forreste']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Menneske",
     'Docking port': 'Dokningsport',
     'center ring': 'midterring', 'middle ring': 'mellemring', 'outer ring': 'yderring', 'sea-level': 'havniveau',
     'Thrust section': 'Trykkraftsektion', 'Thrust plate': 'Trykkraftplade', 'Engine skirt': 'Motorskørt', 'access cutout': 'adgangsåbning', 'External lines & junction boxes': 'Udvendige ledninger og samledåser', 'Aft ring': 'Agterring',
@@ -399,7 +409,7 @@ SS_I18N.cs = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Let {n}', vFlight: 'let {n}', satLine: '{n} družic {starlink} V3', roll: 'Otáčet kolem osy',
+    booster: 'Booster', mFlight: 'Let {n}', vFlight: 'let {n}', satLine: '{n} družic {starlink} V3', roll: 'Otáčet kolem osy', scale: "Měřítko",
     eyebrow: 'SpaceX · Studie nosiče', height: 'Výška', diameter: 'Průměr', raptors: 'Raptory', thrust: 'Tah', liftoff: 'Startovní hmotnost', selected: 'Vybráno',
     hint: 'Tažením obíhejte kolem libovolného bodu · Kolečkem přibližujte tam, kam ukazujete · Pravým tlačítkem posouvejte · Dvojklikem tam přeletíte · Kostka pro pohledy',
     explode: 'Rozložit', assemble: 'Složit', separate: 'Oddělit', stack: 'Spojit', section: 'Řez', flow: 'Zážeh', pause: 'Pauza', play: 'Pokračovat', reset: 'Obnovit',
@@ -407,6 +417,7 @@ SS_I18N.cs = {
     interstage: 'Mezistupeň', loading: 'Inicializace', close: 'Zavřít', zoomIn: 'Přiblížit', zoomOut: 'Oddálit', fit: 'Zobrazit celý nosič', cube: 'Kostka pohledů: klikněte na stěnu a podívejte se z té strany',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "Opakovaně použitelný tahoun SpaceX. Devět motorů Merlin 1D pohání první stupeň, který se vrací a přistává na autonomní lodi nebo přistávací ploše pomocí titanových mřížkových kormidel a čtyř přistávacích noh z uhlíkových vláken; jediný motor Merlin Vacuum pohání druhý stupeň. Je to jediná komerční raketa certifikovaná k letům astronautů na ISS v lodi Crew Dragon a vynáší většinu konstelace {starlink}.", s: [["Výška", '{f9Height}'], ["Tah (u hladiny moře)", '{f9Thrust}'], ["Náklad na LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Motory Raptor', t: 'Motory Raptor 3', d: 'Třicet tři motorů Raptor 3 spaluje kapalný metan a kapalný kyslík. Raptor 3 má většinu potrubí zabudovanou přímo v těle motoru, proto bylo těžké stínění motorů zrušeno a motory visí pod boosterem zcela odkryté. Vnitřních 13 motorů se natáčí (gimbal) a řídí let.', s: [['Počet', '33'], ['Cyklus', 'Full-flow'], ['Tah', '{raptorThrust} každý']] },
     'b-aft': { n: 'Tahová sekce', t: 'Tahová sekce', d: 'Ocelová deska přenáší tah všech 33 motorů do konstrukce. Deska se směrem dolů zužuje, takže motory vyčnívají ze spodku. Potrubí a napájecí a datové kabely, které dřív byly za stíněním, teď vedou po vnější straně v prstencích vedení a rozvodných skříní.', s: [['Deska', 'Zúžená'], ['Stínění', 'Žádné'], ['Vedení', 'Vnější']] },
     'b-lox': { n: 'Nádrž LOX', t: 'Nádrž kapalného kyslíku a chines', d: 'Je to největší nádrž celé sestavy. Kapalný kyslík, zhuštěný pod bod varu −183 °C, je přímo nad motory. Stěny tvoří prstence z nerezové oceli vysoké asi 1,8 m, svařené k sobě. Podél spodní poloviny vedou dva dlouhé chines.', s: [['Okysličovadlo', 'LOX'], ['Teplota', '{loxTemp}'], ['Plášť', 'Nerez']] },
@@ -420,7 +431,7 @@ SS_I18N.cs = {
     's-payload': { n: 'Nákladový prostor', t: 'Nákladový prostor a štěrbina Pez', d: 'Při letech {starlink} jsou družice naskládané v nákladovém prostoru. Dlouhá úzká vodorovná štěrbina, přezdívaná „dávkovač Pez“, se otevírá na straně z holé oceli bez dlaždic a družice jí vyklouzávají jedna po druhé.', s: [['Dvířka', 'Štěrbina'], ['Užitečné zatížení', '{payload}'], ['Náklad', '{cargo}']] },
     's-nose': { n: 'Špička', t: 'Špička a pomocná nádrž', d: 'Ogivální špička ukrývá pomocnou nádrž kapalného kyslíku a pohony předních klapek. Nerezová ocel si zachovává pevnost jak při kryogenních teplotách, tak v žáru návratu do atmosféry.', s: [['Tvar', 'Ogiva'], ['Obsahuje', 'Pomocná LOX'], ['Klapky', '2 přední']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Člověk",
     'Docking port': 'Dokovací port',
     'center ring': 'středový prstenec', 'middle ring': 'prostřední prstenec', 'outer ring': 'vnější prstenec', 'sea-level': 'hladina moře',
     'Thrust section': 'Tahová sekce', 'Thrust plate': 'Tahová deska', 'Engine skirt': 'Sukně motorů', 'access cutout': 'přístupový otvor', 'External lines & junction boxes': 'Vnější vedení a rozvodné skříně', 'Aft ring': 'Zadní prstenec',
@@ -439,7 +450,7 @@ SS_I18N.pl = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Lot {n}', vFlight: 'lot {n}', satLine: '{n} satelitów {starlink} V3', roll: 'Obracaj wokół osi',
+    booster: 'Booster', mFlight: 'Lot {n}', vFlight: 'lot {n}', satLine: '{n} satelitów {starlink} V3', roll: 'Obracaj wokół osi', scale: "Skala",
     eyebrow: 'SpaceX · Studium pojazdu', height: 'Wysokość', diameter: 'Średnica', raptors: 'Raptory', thrust: 'Ciąg', liftoff: 'Masa startowa', selected: 'Wybrano',
     hint: 'Przeciągnij, by obracać wokół dowolnego punktu · Kółko przybliża tam, gdzie wskazujesz · Prawy przycisk przesuwa · Dwuklik, by tam polecieć · Kostka do widoków',
     explode: 'Rozłóż', assemble: 'Złóż', separate: 'Rozdziel', stack: 'Połącz', section: 'Przekrój', flow: 'Zapłon', pause: 'Pauza', play: 'Wznów', reset: 'Resetuj',
@@ -447,6 +458,7 @@ SS_I18N.pl = {
     interstage: 'Międzystopień', loading: 'Inicjalizacja', close: 'Zamknij', zoomIn: 'Przybliż', zoomOut: 'Oddal', fit: 'Pokaż cały pojazd', cube: 'Kostka widoków: kliknij ścianę, by spojrzeć z tej strony',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "Wielokrotnego użytku koń pociągowy SpaceX. Dziewięć silników Merlin 1D napędza pierwszy stopień, który wraca i ląduje na barce-dronie lub lądowisku dzięki tytanowym sterom kratowym i czterem nogom z włókna węglowego; pojedynczy silnik Merlin Vacuum napędza drugi stopień. To jedyna komercyjna rakieta certyfikowana do lotów astronautów na ISS w kapsule Crew Dragon i wynosi większość konstelacji {starlink}.", s: [["Wysokość", '{f9Height}'], ["Ciąg (poziom morza)", '{f9Thrust}'], ["Ładunek na LEO", '{f9Payload}']] },
     'b-raptors': { n: 'Silniki Raptor', t: 'Silniki Raptor 3', d: 'Trzydzieści trzy silniki Raptor 3 spalają ciekły metan i ciekły tlen. Raptor 3 ma większość przewodów wbudowaną w korpus silnika, dlatego ciężką osłonę silników usunięto, a silniki wiszą pod boosterem całkowicie odsłonięte. 13 wewnętrznych silników wychyla się (gimbal), by sterować lotem.', s: [['Liczba', '33'], ['Cykl', 'Full-flow'], ['Ciąg', '{raptorThrust} każdy']] },
     'b-aft': { n: 'Sekcja ciągu', t: 'Sekcja ciągu', d: 'Stalowa płyta przenosi ciąg wszystkich 33 silników na konstrukcję. Płyta zwęża się ku dołowi, więc silniki wystają od spodu. Rury oraz kable zasilające i danych, dawniej schowane za osłoną, biegną teraz na zewnątrz w pierścieniach przewodów i skrzynek przyłączeniowych.', s: [['Płyta', 'Zwężana'], ['Osłona', 'Brak'], ['Przewody', 'Zewnętrzne']] },
     'b-lox': { n: 'Zbiornik LOX', t: 'Zbiornik ciekłego tlenu i chines', d: 'To największy zbiornik w całym zestawie. Ciekły tlen, zagęszczony poniżej swojej temperatury wrzenia −183 °C, znajduje się tuż nad silnikami. Ściany to pierścienie ze stali nierdzewnej o wysokości ok. 1,8 m, zespawane ze sobą. Wzdłuż jego dolnej połowy biegną dwa długie chines.', s: [['Utleniacz', 'LOX'], ['Temp.', '{loxTemp}'], ['Poszycie', 'Nierdzewne']] },
@@ -460,7 +472,7 @@ SS_I18N.pl = {
     's-payload': { n: 'Ładownia', t: 'Ładownia i szczelina Pez', d: 'W lotach {starlink} satelity leżą ułożone w stos w ładowni. Długa, wąska pozioma szczelina, nazywana „dozownikiem Pez”, otwiera się po stronie z gołej stali, bez płytek, a satelity wysuwają się przez nią jeden po drugim.', s: [['Właz', 'Szczelina'], ['Ładunek', '{payload}'], ['Ładunek typowy', '{cargo}']] },
     's-nose': { n: 'Stożek dziobowy', t: 'Stożek dziobowy i zbiornik pomocniczy', d: 'Ostrołukowy dziób mieści zbiornik pomocniczy ciekłego tlenu i siłowniki przednich klap. Stal nierdzewna zachowuje wytrzymałość zarówno w temperaturach kriogenicznych, jak i w żarze powrotu w atmosferę.', s: [['Kształt', 'Ostrołuk'], ['Mieści', 'Pomocniczy LOX'], ['Klapy', '2 przednie']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "Człowiek",
     'Docking port': 'Port dokujący',
     'center ring': 'pierścień środkowy', 'middle ring': 'pierścień pośredni', 'outer ring': 'pierścień zewnętrzny', 'sea-level': 'poziom morza',
     'Thrust section': 'Sekcja ciągu', 'Thrust plate': 'Płyta ciągu', 'Engine skirt': 'Osłona silników', 'access cutout': 'otwór dostępowy', 'External lines & junction boxes': 'Przewody zewnętrzne i skrzynki przyłączeniowe', 'Aft ring': 'Pierścień tylny',
@@ -479,7 +491,7 @@ SS_I18N.ru = {
   shipName: 'Старшип', dir: 'ltr', starship: 'Старшип', starlink: 'Старлинк',
   units: { m: 'м', ft: 'фут', t: 'т', lb: 'фунт', kN: 'кН', lbf: 'lbf' },
   ui: {
-    booster: 'Бустер', mFlight: 'Полёт {n}', vFlight: 'полёт {n}', satLine: '{n} спутников {starlink} V3', roll: 'Вращать вокруг оси',
+    booster: 'Бустер', mFlight: 'Полёт {n}', vFlight: 'полёт {n}', satLine: '{n} спутников {starlink} V3', roll: 'Вращать вокруг оси', scale: "Масштаб",
     eyebrow: 'SpaceX · Устройство ракеты', height: 'Высота', diameter: 'Диаметр', raptors: 'Raptor', thrust: 'Тяга', liftoff: 'Стартовая масса', selected: 'Выбрано',
     hint: 'Тяните, чтобы вращать вокруг любой точки · Колёсико приближает туда, куда указываете · Правая кнопка — сдвиг · Двойной клик — перелёт к точке · Куб — виды',
     explode: 'Разобрать', assemble: 'Собрать', separate: 'Разделить', stack: 'Соединить', section: 'Разрез', flow: 'Запуск двигателей', pause: 'Пауза', play: 'Продолжить', reset: 'Сброс',
@@ -487,6 +499,7 @@ SS_I18N.ru = {
     interstage: 'Межступенчатый отсек', loading: 'Загрузка', close: 'Закрыть', zoomIn: 'Приблизить', zoomOut: 'Отдалить', fit: 'Показать всю ракету', cube: 'Куб видов: нажмите на грань, чтобы посмотреть с этой стороны',
   },
   parts: {
+    'f9': { n: "Фалкон 9", t: "Фалкон 9 Block 5", d: "Многоразовая «рабочая лошадка» SpaceX. Девять двигателей Merlin 1D работают на первой ступени, которая возвращается и садится на плавучую платформу или посадочную площадку с помощью титановых решётчатых рулей и четырёх посадочных опор из углеволокна; один двигатель Merlin Vacuum работает на второй ступени. Это единственная коммерческая ракета, сертифицированная для полётов астронавтов на МКС на корабле Crew Dragon, и она выводит большую часть группировки {starlink}.", s: [["Высота", '{f9Height}'], ["Тяга (у земли)", '{f9Thrust}'], ["Нагрузка на НОО", '{f9Payload}']] },
     'b-raptors': { n: 'Двигатели Raptor', t: 'Двигатели Raptor 3', d: 'Тридцать три двигателя Raptor 3 сжигают жидкий метан и жидкий кислород. У Raptor 3 большая часть трубопроводов встроена в корпус двигателя, поэтому тяжёлую защиту двигателей убрали, и они висят под ускорителем полностью открытыми. 13 внутренних двигателей отклоняются (карданный подвес) для управления.', s: [['Количество', '33'], ['Цикл', 'Полнопоточный'], ['Тяга', '{raptorThrust} каждый']] },
     'b-aft': { n: 'Силовой отсек', t: 'Силовой отсек', d: 'Стальная плита передаёт тягу всех 33 двигателей на корпус. Плита сужается книзу, поэтому двигатели выступают снизу. Трубы, силовые кабели и кабели данных, раньше скрытые за защитой, теперь идут снаружи кольцами магистралей и распределительных коробок.', s: [['Плита', 'Сужающаяся'], ['Защита', 'Нет'], ['Магистрали', 'Внешние']] },
     'b-lox': { n: 'Бак LOX', t: 'Бак жидкого кислорода и chines', d: 'Это самый большой бак во всей связке. Жидкий кислород, переохлаждённый ниже точки кипения −183 °C, находится прямо над двигателями. Стенки — кольца из нержавеющей стали высотой около 1,8 м, сваренные между собой. Вдоль его нижней половины идут два длинных chines.', s: [['Окислитель', 'LOX'], ['Темп.', '{loxTemp}'], ['Обшивка', 'Нержавейка']] },
@@ -500,7 +513,7 @@ SS_I18N.ru = {
     's-payload': { n: 'Грузовой отсек', t: 'Грузовой отсек и щель Pez', d: 'В полётах {starlink} спутники уложены стопкой в грузовом отсеке. Длинная узкая горизонтальная щель, прозванная «дозатором Pez», открывается на стальной стороне без плиток, и спутники выскальзывают через неё по одному.', s: [['Люк', 'Щель'], ['Полезная нагрузка', '{payload}'], ['Груз', '{cargo}']] },
     's-nose': { n: 'Носовой обтекатель', t: 'Носовой обтекатель и расходный бак', d: 'Оживальный нос вмещает расходный бак жидкого кислорода и приводы передних закрылков. Нержавеющая сталь сохраняет прочность и при криогенных температурах, и при нагреве во время входа в атмосферу.', s: [['Форма', 'Оживал'], ['Внутри', 'Расходный бак LOX'], ['Закрылки', '2 передних']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Фалкон 9", 'Person': "Человек",
     'Docking port': 'Стыковочный порт',
     'center ring': 'центральное кольцо', 'middle ring': 'среднее кольцо', 'outer ring': 'внешнее кольцо', 'sea-level': 'морской',
     'Thrust section': 'Силовой отсек', 'Thrust plate': 'Силовая плита', 'Engine skirt': 'Юбка двигателей', 'access cutout': 'люк доступа', 'External lines & junction boxes': 'Внешние магистрали и распределительные коробки', 'Aft ring': 'Хвостовое кольцо',
@@ -519,7 +532,7 @@ SS_I18N.zh = {
   shipName: '星舰', dir: 'ltr', starship: '星舰', starlink: '星链',
   units: { m: '米', ft: '英尺', t: '吨', lb: '磅', kN: '千牛', lbf: 'lbf' },
   ui: {
-    booster: '助推器', mFlight: '第 {n} 次飞行', vFlight: '第 {n} 次飞行', satLine: '{n} 颗{starlink} V3 卫星', roll: '绕自身轴旋转',
+    booster: '助推器', mFlight: '第 {n} 次飞行', vFlight: '第 {n} 次飞行', satLine: '{n} 颗{starlink} V3 卫星', roll: '绕自身轴旋转', scale: "尺寸对比",
     eyebrow: 'SpaceX · 箭体结构', height: '高度', diameter: '直径', raptors: '猛禽发动机', thrust: '推力', liftoff: '起飞质量', selected: '已选',
     hint: '拖动可绕任意点旋转 · 滚轮向指针处缩放 · 右键拖动平移 · 双击飞到该处 · 立方体切换视角',
     explode: '分解', assemble: '组装', separate: '级间分离', stack: '合并', section: '剖面', flow: '点火', pause: '暂停', play: '继续', reset: '重置',
@@ -527,6 +540,7 @@ SS_I18N.zh = {
     interstage: '级间段', loading: '正在加载', close: '关闭', zoomIn: '放大', zoomOut: '缩小', fit: '显示整枚火箭', cube: '视角立方体：点击一个面即可从该方向观看',
   },
   parts: {
+    'f9': { n: "猎鹰9号", t: "猎鹰9号 Block 5", d: "SpaceX 的可复用主力火箭。九台 Merlin 1D 发动机推动第一级，第一级借助钛合金栅格翼和四条碳纤维着陆腿返回并降落在无人船或着陆区；第二级由一台 Merlin Vacuum 发动机推动。它是唯一获准搭乘 Crew Dragon 将宇航员送往国际空间站的商业火箭，也发射了{starlink}星座的大部分卫星。", s: [["高度", '{f9Height}'], ["推力（海平面）", '{f9Thrust}'], ["近地轨道运载能力", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor 发动机', t: 'Raptor 3 发动机', d: '三十三台 Raptor 3 发动机燃烧液态甲烷和液氧。Raptor 3 把大部分管路集成进发动机本体，因此取消了沉重的发动机防护罩，发动机完全裸露地悬挂在助推器下方。内侧的 13 台发动机可摆动（常平架）以控制方向。', s: [['数量', '33'], ['循环', '全流量'], ['推力', '每台 {raptorThrust}']] },
     'b-aft': { n: '推力段', t: '推力段', d: '一块钢板把全部 33 台发动机的推力传递到箭体上。钢板向下收窄，所以发动机从底部突出。以前藏在防护罩后面的管道、电源和数据线缆，现在以一圈圈管线和接线盒的形式绕在外侧。', s: [['底板', '锥形'], ['防护罩', '无'], ['管线', '外置']] },
     'b-lox': { n: '液氧贮箱', t: '液氧贮箱与边条', d: '这是整枚火箭中最大的贮箱。液氧被过冷到低于其 −183 °C 的沸点，位于发动机正上方。箱壁由高约 1.8 米的不锈钢环焊接而成。其下半部沿两侧各有一条长边条（chines）。', s: [['氧化剂', '液氧'], ['温度', '{loxTemp}'], ['壳体', '不锈钢']] },
@@ -540,7 +554,7 @@ SS_I18N.zh = {
     's-payload': { n: '载荷舱', t: '载荷舱与 Pez 槽口', d: '在{starlink}任务中，卫星叠放在载荷舱内。在没有隔热瓦的不锈钢一侧有一条细长的水平槽口，被称为“Pez 糖果盒”，卫星从这里一颗接一颗滑出。', s: [['舱门', '槽口'], ['有效载荷', '{payload}'], ['货物', '{cargo}']] },
     's-nose': { n: '头锥', t: '头锥与集液箱', d: '尖拱形头部内装有液氧集液箱和前襟翼作动器。不锈钢在低温和再入高温下都能保持强度。', s: [['形状', '尖拱形'], ['内含', '液氧集液箱'], ['襟翼', '前部 2 片']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "猎鹰9号", 'Person': "人",
     'Docking port': '对接口',
     'center ring': '中心环', 'middle ring': '中间环', 'outer ring': '外环', 'sea-level': '海平面型',
     'Thrust section': '推力段', 'Thrust plate': '推力板', 'Engine skirt': '发动机裙', 'access cutout': '检修口', 'External lines & junction boxes': '外置管线与接线盒', 'Aft ring': '尾部环',
@@ -559,7 +573,7 @@ SS_I18N.tr = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'Booster', mFlight: 'Uçuş {n}', vFlight: '{n}. uçuş', satLine: '{n} {starlink} V3 uydusu', roll: 'Kendi ekseninde döndür',
+    booster: 'Booster', mFlight: 'Uçuş {n}', vFlight: '{n}. uçuş', satLine: '{n} {starlink} V3 uydusu', roll: 'Kendi ekseninde döndür', scale: "Ölçek",
     eyebrow: 'SpaceX · Araç incelemesi', height: 'Yükseklik', diameter: 'Çap', raptors: 'Raptor', thrust: 'İtki', liftoff: 'Kalkış kütlesi', selected: 'Seçili',
     hint: 'Herhangi bir noktanın etrafında dönmek için sürükleyin · İşaret ettiğiniz yere yakınlaşmak için kaydırın · Sağ tıkla sürükleyerek kaydırın · Oraya uçmak için çift tıklayın · Görünümler için küp',
     explode: 'Parçala', assemble: 'Birleştir', separate: 'Ayır', stack: 'Bağla', section: 'Kesit', flow: 'Ateşleme', pause: 'Duraklat', play: 'Devam', reset: 'Sıfırla',
@@ -567,6 +581,7 @@ SS_I18N.tr = {
     interstage: 'Kademe arası', loading: 'Başlatılıyor', close: 'Kapat', zoomIn: 'Yakınlaştır', zoomOut: 'Uzaklaştır', fit: 'Tüm aracı göster', cube: 'Görünüm küpü: o taraftan bakmak için bir yüze tıklayın',
   },
   parts: {
+    'f9': { n: "Falcon 9", t: "Falcon 9 Block 5", d: "SpaceX'in yeniden kullanılabilir iş atı. Dokuz Merlin 1D motoru, titanyum ızgara kanatçıklar ve dört karbon fiber iniş ayağıyla geri dönüp bir insansız gemiye ya da iniş alanına konan ilk kademeyi iter; tek bir Merlin Vacuum motoru ikinci kademeyi iter. Crew Dragon ile ISS'e astronot taşımak için sertifikalı tek ticari rokettir ve {starlink} takımyıldızının büyük kısmını fırlatır.", s: [["Yükseklik", '{f9Height}'], ["İtki (deniz seviyesi)", '{f9Thrust}'], ["LEO'ya yük", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor motorları', t: 'Raptor 3 motorları', d: 'Otuz üç Raptor 3 motoru sıvı metan ve sıvı oksijen yakar. Raptor 3 borularının çoğunu motor gövdesinin içine yerleştirir; bu yüzden ağır motor kalkanı kaldırıldı ve motorlar iticinin altında tamamen açıkta asılı durur. İçteki 13 motor yön vermek için yalpalanır (gimbal).', s: [['Sayı', '33'], ['Çevrim', 'Tam akışlı'], ['İtki', 'Her biri {raptorThrust}']] },
     'b-aft': { n: 'İtki bölümü', t: 'İtki bölümü', d: 'Bir çelik plaka 33 motorun tamamının itkisini gövdeye aktarır. Plaka aşağıya doğru daralır, böylece motorlar alttan dışarı çıkar. Eskiden kalkanın arkasında duran borular ile güç ve veri kabloları artık dışarıda, hat ve bağlantı kutularından oluşan halkalar hâlinde dolaşır.', s: [['Plaka', 'Konik'], ['Kalkan', 'Yok'], ['Hatlar', 'Harici']] },
     'b-lox': { n: 'LOX tankı', t: 'Sıvı oksijen tankı ve chines', d: 'Bu, tüm roketteki en büyük tanktır. −183 °C kaynama noktasının altına kadar yoğunlaştırılmış sıvı oksijen doğrudan motorların üstünde durur. Duvarlar, her biri yaklaşık 1,8 m yüksekliğinde birbirine kaynaklanmış paslanmaz çelik halkalardır. Alt yarısı boyunca iki uzun chine uzanır.', s: [['Oksitleyici', 'LOX'], ['Sıcaklık', '{loxTemp}'], ['Kabuk', 'Paslanmaz']] },
@@ -580,7 +595,7 @@ SS_I18N.tr = {
     's-payload': { n: 'Yük bölmesi', t: 'Yük bölmesi ve Pez yarığı', d: '{starlink} uçuşlarında uydular yük bölmesinde üst üste istiflenir. "Pez makinesi" diye anılan uzun, dar ve yatay bir yarık karosuz çelik tarafta açılır ve uydular teker teker buradan kayarak çıkar.', s: [['Kapak', 'Mektup yarığı'], ['Faydalı yük', '{payload}'], ['Kargo', '{cargo}']] },
     's-nose': { n: 'Burun konisi', t: 'Burun konisi ve başlık tankı', d: 'Ogival burun, sıvı oksijen başlık tankını ve ön flapların eyleyicilerini barındırır. Paslanmaz çelik, hem kriyojenik sıcaklıklarda hem de atmosfere giriş ısısında dayanımını korur.', s: [['Şekil', 'Ogival'], ['İçerir', 'LOX başlık tankı'], ['Flap', '2 ön']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "Falcon 9", 'Person': "İnsan",
     'Docking port': 'Kenetlenme portu',
     'center ring': 'merkez halka', 'middle ring': 'orta halka', 'outer ring': 'dış halka', 'sea-level': 'deniz seviyesi',
     'Thrust section': 'İtki bölümü', 'Thrust plate': 'İtki plakası', 'Engine skirt': 'Motor eteği', 'access cutout': 'erişim açıklığı', 'External lines & junction boxes': 'Harici hatlar ve bağlantı kutuları', 'Aft ring': 'Arka halka',
@@ -599,7 +614,7 @@ SS_I18N.hi = {
   shipName: 'स्टारशिप', dir: 'ltr', starship: 'स्टारशिप', starlink: 'स्टारलिंक',
   units: { m: 'मी', ft: 'फीट', t: 'टन', lb: 'पाउंड', kN: 'kN', lbf: 'lbf' },
   ui: {
-    booster: 'बूस्टर', mFlight: 'उड़ान {n}', vFlight: 'उड़ान {n}', satLine: '{n} {starlink} V3 उपग्रह', roll: 'अपनी धुरी पर घुमाएँ',
+    booster: 'बूस्टर', mFlight: 'उड़ान {n}', vFlight: 'उड़ान {n}', satLine: '{n} {starlink} V3 उपग्रह', roll: 'अपनी धुरी पर घुमाएँ', scale: "आकार तुलना",
     eyebrow: 'SpaceX · यान अध्ययन', height: 'ऊँचाई', diameter: 'व्यास', raptors: 'Raptor इंजन', thrust: 'थ्रस्ट', liftoff: 'उड़ान के समय द्रव्यमान', selected: 'चयनित',
     hint: 'किसी भी बिंदु के चारों ओर घुमाने के लिए खींचें · जहाँ इंगित करें वहाँ ज़ूम करने के लिए स्क्रॉल करें · खिसकाने के लिए राइट-ड्रैग करें · वहाँ जाने के लिए डबल-क्लिक करें · दृश्यों के लिए क्यूब',
     explode: 'अलग-अलग करें', assemble: 'जोड़ें', separate: 'चरण अलग करें', stack: 'चरण जोड़ें', section: 'काट', flow: 'प्रज्वलन', pause: 'रोकें', play: 'जारी रखें', reset: 'रीसेट',
@@ -607,6 +622,7 @@ SS_I18N.hi = {
     interstage: 'इंटरस्टेज', loading: 'लोड हो रहा है', close: 'बंद करें', zoomIn: 'ज़ूम इन', zoomOut: 'ज़ूम आउट', fit: 'पूरा यान दिखाएँ', cube: 'दृश्य क्यूब: उस ओर से देखने के लिए किसी सतह पर क्लिक करें',
   },
   parts: {
+    'f9': { n: "फाल्कन 9", t: "फाल्कन 9 Block 5", d: "SpaceX का पुन: प्रयोज्य वर्कहॉर्स रॉकेट। नौ Merlin 1D इंजन पहले चरण को चलाते हैं, जो टाइटेनियम ग्रिड फ़िन और कार्बन फ़ाइबर के चार लैंडिंग पैरों की मदद से लौटकर ड्रोन शिप या लैंडिंग ज़ोन पर उतरता है; एक Merlin Vacuum इंजन दूसरे चरण को चलाता है। यह Crew Dragon में अंतरिक्ष यात्रियों को ISS तक ले जाने के लिए प्रमाणित एकमात्र वाणिज्यिक रॉकेट है, और {starlink} समूह के अधिकांश उपग्रह यही लॉन्च करता है।", s: [["ऊँचाई", '{f9Height}'], ["थ्रस्ट (समुद्र-तल)", '{f9Thrust}'], ["LEO तक पेलोड", '{f9Payload}']] },
     'b-raptors': { n: 'Raptor इंजन', t: 'Raptor 3 इंजन', d: 'तैंतीस Raptor 3 इंजन तरल मीथेन और तरल ऑक्सीजन जलाते हैं। Raptor 3 में ज़्यादातर पाइपलाइन इंजन के ढाँचे के अंदर ही बनी है, इसलिए भारी इंजन-कवच हटा दिया गया और इंजन बूस्टर के नीचे पूरी तरह खुले लटकते हैं। अंदर के 13 इंजन दिशा बदलने के लिए घूमते (जिम्बल) हैं।', s: [['संख्या', '33'], ['चक्र', 'फुल-फ्लो'], ['थ्रस्ट', 'प्रत्येक {raptorThrust}']] },
     'b-aft': { n: 'थ्रस्ट सेक्शन', t: 'थ्रस्ट सेक्शन', d: 'एक स्टील प्लेट सभी 33 इंजनों का थ्रस्ट ढाँचे तक पहुँचाती है। प्लेट नीचे की ओर पतली होती जाती है, इसलिए इंजन तली से बाहर निकले रहते हैं। पाइप और बिजली व डेटा केबल, जो पहले कवच के पीछे थे, अब बाहर की ओर लाइनों और जंक्शन बॉक्स के छल्लों में घूमते हैं।', s: [['प्लेट', 'पतली होती'], ['कवच', 'नहीं'], ['लाइनें', 'बाहरी']] },
     'b-lox': { n: 'LOX टैंक', t: 'तरल ऑक्सीजन टैंक और चाइन्स', d: 'यह पूरे रॉकेट का सबसे बड़ा टैंक है। तरल ऑक्सीजन, जिसे −183 °C के क्वथनांक से नीचे तक ठंडा करके घना किया जाता है, सीधे इंजनों के ऊपर रहती है। दीवारें लगभग 1.8 मी ऊँचे स्टेनलेस-स्टील के छल्लों से बनी हैं, जो आपस में वेल्ड किए गए हैं। इसके निचले आधे हिस्से पर दो लंबे चाइन्स चलते हैं।', s: [['ऑक्सीकारक', 'LOX'], ['तापमान', '{loxTemp}'], ['आवरण', 'स्टेनलेस']] },
@@ -620,7 +636,7 @@ SS_I18N.hi = {
     's-payload': { n: 'पेलोड बे', t: 'पेलोड बे और Pez स्लॉट', d: '{starlink} उड़ानों में उपग्रह पेलोड बे के अंदर एक के ऊपर एक रखे होते हैं। "Pez डिस्पेंसर" कहलाने वाला एक लंबा, संकरा क्षैतिज स्लॉट बिना टाइलों वाली स्टील की ओर खुलता है, और उपग्रह एक-एक करके उससे बाहर फिसलते हैं।', s: [['द्वार', 'पत्र-स्लॉट'], ['पेलोड', '{payload}'], ['माल', '{cargo}']] },
     's-nose': { n: 'नोज़ कोन', t: 'नोज़ कोन और हेडर टैंक', d: 'ओजाइव आकार की नोक में तरल-ऑक्सीजन हेडर टैंक और आगे के फ़्लैप के एक्चुएटर हैं। स्टेनलेस स्टील अत्यधिक ठंडे तापमान और वायुमंडल-प्रवेश की गर्मी, दोनों में अपनी मज़बूती बनाए रखता है।', s: [['आकार', 'ओजाइव'], ['अंदर', 'LOX हेडर'], ['फ़्लैप', '2 आगे']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "फाल्कन 9", 'Person': "मनुष्य",
     'Docking port': 'डॉकिंग पोर्ट',
     'center ring': 'मध्य रिंग', 'middle ring': 'बीच की रिंग', 'outer ring': 'बाहरी रिंग', 'sea-level': 'समुद्र-तल',
     'Thrust section': 'थ्रस्ट सेक्शन', 'Thrust plate': 'थ्रस्ट प्लेट', 'Engine skirt': 'इंजन स्कर्ट', 'access cutout': 'पहुँच छिद्र', 'External lines & junction boxes': 'बाहरी लाइनें और जंक्शन बॉक्स', 'Aft ring': 'पिछली रिंग',
@@ -639,7 +655,7 @@ SS_I18N.ar = {
   shipName: 'ستارشيب', dir: 'rtl', starship: 'ستارشيب', starlink: 'ستارلينك',
   units: { m: 'م', ft: 'قدم', t: 'طن', lb: 'رطل', kN: 'كيلونيوتن', lbf: 'lbf' },
   ui: {
-    booster: 'المعزز', mFlight: 'الرحلة {n}', vFlight: 'الرحلة {n}', satLine: '{n} قمرًا من {starlink} V3', roll: 'تدوير حول محورها',
+    booster: 'المعزز', mFlight: 'الرحلة {n}', vFlight: 'الرحلة {n}', satLine: '{n} قمرًا من {starlink} V3', roll: 'تدوير حول محورها', scale: "مقارنة الحجم",
     eyebrow: 'SpaceX · دراسة المركبة', height: 'الارتفاع', diameter: 'القطر', raptors: 'محركات Raptor', thrust: 'الدفع', liftoff: 'كتلة الإقلاع', selected: 'المحدد',
     hint: 'اسحب للدوران حول أي نقطة · مرّر للتكبير نحو ما تشير إليه · اسحب بالزر الأيمن للتحريك · انقر مرتين للانتقال إلى هناك · المكعب لتغيير الزاوية',
     explode: 'تفكيك', assemble: 'تجميع', separate: 'فصل المرحلتين', stack: 'وصل المرحلتين', section: 'مقطع', flow: 'إشعال', pause: 'إيقاف مؤقت', play: 'متابعة', reset: 'إعادة ضبط',
@@ -647,6 +663,7 @@ SS_I18N.ar = {
     interstage: 'بين المرحلتين', loading: 'جارٍ التحميل', close: 'إغلاق', zoomIn: 'تكبير', zoomOut: 'تصغير', fit: 'عرض المركبة كاملة', cube: 'مكعب الزوايا: انقر على وجه للنظر من تلك الجهة',
   },
   parts: {
+    'f9': { n: "فالكون 9", t: "فالكون 9 Block 5", d: "الصاروخ العامل القابل لإعادة الاستخدام لدى SpaceX. تدفع تسعة محركات Merlin 1D المرحلة الأولى التي تعود وتهبط على سفينة مسيّرة أو منطقة هبوط بفضل زعانف شبكية من التيتانيوم وأربع أرجل هبوط من ألياف الكربون، ويدفع محرك Merlin Vacuum واحد المرحلة الثانية. إنه الصاروخ التجاري الوحيد المعتمد لنقل رواد الفضاء إلى محطة الفضاء الدولية على متن Crew Dragon، ويطلق معظم أقمار كوكبة {starlink}.", s: [["الارتفاع", '{f9Height}'], ["الدفع (عند مستوى البحر)", '{f9Thrust}'], ["الحمولة إلى المدار المنخفض", '{f9Payload}']] },
     'b-raptors': { n: 'محركات Raptor', t: 'محركات Raptor 3', d: 'ثلاثة وثلاثون محرك Raptor 3 تحرق الميثان السائل والأكسجين السائل. يدمج Raptor 3 معظم أنابيبه داخل جسم المحرك نفسه، لذلك أُلغي درع المحركات الثقيل وأصبحت المحركات معلّقة ومكشوفة تمامًا أسفل المعزز. تتحرك المحركات الداخلية الثلاثة عشر على محاور (جيمبال) لتوجيه المركبة.', s: [['العدد', '33'], ['الدورة', 'تدفق كامل'], ['الدفع', '{raptorThrust} لكل محرك']] },
     'b-aft': { n: 'قسم الدفع', t: 'قسم الدفع', d: 'تنقل لوحة فولاذية دفع المحركات الثلاثة والثلاثين كلها إلى هيكل الصاروخ. تضيق اللوحة نحو الأسفل، لذلك تبرز المحركات من القاع. الأنابيب وكابلات الطاقة والبيانات، التي كانت خلف الدرع سابقًا، تمتد الآن من الخارج في حلقات من الخطوط وصناديق التوصيل.', s: [['اللوحة', 'مستدقة'], ['الدرع', 'لا يوجد'], ['الخطوط', 'خارجية']] },
     'b-lox': { n: 'خزان الأكسجين', t: 'خزان الأكسجين السائل والحواف (chines)', d: 'هذا أكبر خزان في الصاروخ كله. يقع الأكسجين السائل، المُكثّف إلى ما دون نقطة غليانه البالغة −183 °م، فوق المحركات مباشرة. الجدران حلقات من الفولاذ المقاوم للصدأ بارتفاع نحو 1.8 م لكل منها، ملحومة معًا. يمتد على طول نصفه السفلي شريطان طويلان (chines).', s: [['المؤكسد', 'LOX'], ['درجة الحرارة', '{loxTemp}'], ['الغلاف', 'فولاذ مقاوم للصدأ']] },
@@ -660,7 +677,7 @@ SS_I18N.ar = {
     's-payload': { n: 'حجرة الحمولة', t: 'حجرة الحمولة وفتحة Pez', d: 'في رحلات {starlink} تُكدَّس الأقمار الصناعية داخل حجرة الحمولة. تنفتح فتحة أفقية طويلة وضيقة، تُلقّب "موزّع Pez"، في الجانب الفولاذي الخالي من البلاط، وتنزلق الأقمار منها واحدًا تلو الآخر.', s: [['الباب', 'فتحة بريد'], ['الحمولة', '{payload}'], ['الشحنة', '{cargo}']] },
     's-nose': { n: 'المخروط الأمامي', t: 'المخروط الأمامي والخزان الرأسي', d: 'تضم المقدمة المقوّسة الخزان الرأسي للأكسجين السائل ومشغلات الأجنحة الأمامية. يحتفظ الفولاذ المقاوم للصدأ بمتانته في درجات الحرارة المنخفضة جدًا وفي حرارة العودة إلى الغلاف الجوي على حد سواء.', s: [['الشكل', 'مقوّس'], ['يضم', 'خزان LOX رأسي'], ['الأجنحة', '2 أمامية']] },
   },
-  lb: {
+  lb: { 'Falcon 9': "فالكون 9", 'Person': "إنسان",
     'Docking port': 'منفذ الالتحام',
     'center ring': 'الحلقة المركزية', 'middle ring': 'الحلقة الوسطى', 'outer ring': 'الحلقة الخارجية', 'sea-level': 'مستوى البحر',
     'Thrust section': 'قسم الدفع', 'Thrust plate': 'لوحة الدفع', 'Engine skirt': 'تنورة المحركات', 'access cutout': 'فتحة وصول', 'External lines & junction boxes': 'خطوط خارجية وصناديق توصيل', 'Aft ring': 'الحلقة الخلفية',

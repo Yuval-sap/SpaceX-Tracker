@@ -52,6 +52,13 @@
   #nav .navbtns button.on,#nav .navbtns button.on:hover{color:#fff;background:var(--accent);border-color:var(--accent)}
   #pivot{position:absolute;left:0;top:0;width:12px;height:12px;margin:-7px 0 0 -7px;border:1.5px solid var(--accent);border-radius:50%;box-shadow:0 0 0 4px rgba(238,167,116,.16);opacity:0;transition:opacity .15s;pointer-events:none}
   #hint{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--mute);white-space:normal;text-align:center;line-height:1.6;width:max-content;max-width:min(1100px,calc(100vw - 520px));transition:opacity .8s;text-transform:uppercase}
+  #scale-lbls{position:absolute;inset:0;pointer-events:none}
+  #scale-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+  #scale-svg .sh{stroke:rgba(0,0,0,.45);stroke-width:3;stroke-linecap:round}
+  #scale-svg .ln{stroke:#eef2f8;stroke-width:1.25;stroke-linecap:round}
+  html.day #scale-svg .sh{stroke:rgba(255,255,255,.7)}
+  html.day #scale-svg .ln{stroke:#18202c}
+  .scale-lbl{position:absolute;left:0;top:0;padding:4px 9px;font:600 13px/1.15 'JetBrains Mono',monospace;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:7px;white-space:nowrap;opacity:0;visibility:hidden}
   #tip{position:absolute;left:0;top:0;padding:6px 9px;font:500 11px/1 Inter,sans-serif;color:#fff;background:rgba(10,12,16,.86);border:1px solid var(--line);border-radius:7px;pointer-events:none;opacity:0;transition:opacity .12s;white-space:nowrap}
   #loader{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:#05070b;transition:opacity .7s;font:500 11px 'JetBrains Mono',monospace;letter-spacing:.24em;color:var(--mute);text-transform:uppercase}
   #vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
@@ -139,7 +146,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=8"></script>
+<script src="starship-3d-i18n.js?v=9"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -179,6 +186,7 @@
     <button class="pill" data-act="section">Section</button>
     <button class="pill" data-act="flow">Ignition</button>
     <button class="pill" data-act="pause">Pause</button>
+    <button class="pill" data-act="scale">Scale</button>
     <button class="pill" data-act="reset">Reset</button>
   </div>
   <div id="nav">
@@ -195,6 +203,8 @@
   </div>
   <div id="pivot"></div>
   <div id="tip"></div>
+  <svg id="scale-svg"></svg>
+  <div id="scale-lbls"></div>
 </div>
 <div id="loader">INITIALIZING</div>
 <script>
@@ -236,9 +246,11 @@ function unitValues() {
   const u = I.units, imp = UNITS === 'imperial';
   return imp ? {
     height: `${nf(408)} ${u.ft}`, diameter: `${nf(29.5, 1)} ${u.ft}`, thrust: `~${nf(20400000)} ${u.lbf}`, liftoff: `~${nf(11700000)} ${u.lb}`,
+    f9Height: `${nf(229)} ${u.ft}`, f9Thrust: `${nf(1710000)} ${u.lbf}`, f9Payload: `${nf(50265)} ${u.lb}`, humanH: `${nf(5.9, 1)} ${u.ft}`,
     raptorThrust: `~${nf(617000)} ${u.lbf}`, rvacExit: `~${nf(7.5, 1)} ${u.ft}`, loxTemp: `< −${nf(297)} °F`, ch4Temp: `< −${nf(260)} °F`, tilePeak: `~${nf(2550)} °F`, payload: `${nf(220000)}+ ${u.lb}`,
   } : {
     height: `${nf(124.4, 1)} ${u.m}`, diameter: `${nf(9)} ${u.m}`, thrust: `~${nf(90600)} ${u.kN}`, liftoff: `~${nf(5300)} ${u.t}`,
+    f9Height: `${nf(70)} ${u.m}`, f9Thrust: `${nf(7607)} ${u.kN}`, f9Payload: `${nf(22.8, 1)} ${u.t}`, humanH: `${nf(1.8, 1)} ${u.m}`,
     raptorThrust: `~${nf(2750)} ${u.kN}`, rvacExit: `~${nf(2.3, 1)} ${u.m}`, loxTemp: `< −${nf(183)} °C`, ch4Temp: `< −${nf(162)} °C`, tilePeak: `~${nf(1400)} °C`, payload: `${nf(100)}+ ${u.t}`,
   };
 }
@@ -261,7 +273,7 @@ function setControlLabels() {
   if (!b('explode')) return;
   b('explode').textContent = st.explodeT ? I.ui.assemble : I.ui.explode;
   b('stage').textContent = st.sepT ? I.ui.stack : I.ui.separate;
-  b('section').textContent = I.ui.section; b('flow').textContent = I.ui.flow; b('reset').textContent = I.ui.reset;
+  b('section').textContent = I.ui.section; b('flow').textContent = I.ui.flow; b('reset').textContent = I.ui.reset; b('scale').textContent = I.ui.scale;
   b('pause').textContent = paused ? I.ui.play : I.ui.pause;
 }
 // the parts list starts just under the title block, which grows by a line when a mission is shown
@@ -1576,7 +1588,7 @@ const Y = new V3(0, 1, 0), IDQ = new THREE.Quaternion();
 // height of the vehicle's center so its lowest point clears the stage
 function liftFor(q, L) {
   const ax = Y.clone().applyQuaternion(pivot.quaternion).applyQuaternion(q);
-  return Math.abs(ax.y) * L / 2 + VEH_R * Math.sqrt(Math.max(0, 1 - ax.y * ax.y)) + 1.2;
+  return Math.abs(ax.y) * L / 2 + VEH_R * Math.sqrt(Math.max(0, 1 - ax.y * ax.y)) + (scaleMode ? 0 : 1.2);
 }
 let firstLayout = true;
 function layout() {
@@ -1591,10 +1603,204 @@ function layout() {
   firstLayout = false;
 }
 function applyOrientation() {
-  const s = vertical ? 34 : 92;
+  const s = scaleMode ? 52 : vertical ? 34 : 92;
   floor.scale.setScalar(s); ringLine.scale.setScalar(s);
   key.angle = vertical ? 0.36 : 0.56;
   syncCube();
+}
+
+// ---------------------------------------------------------------- star field (Ignition)
+// Stars stream past along the stack's axis while it fires, as if it were climbing through them. They live in the
+// orientation frame (pivot), so they follow the upright / lying layout but not the roll.
+const STAR_N = isMobile ? 700 : 1400;
+const starPos = new Float32Array(STAR_N * 6), starCol = new Float32Array(STAR_N * 6), starV = new Float32Array(STAR_N * 4);
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3));
+const stars = new THREE.LineSegments(starGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+stars.frustumCulled = false; stars.visible = false; pivot.add(stars);
+function spawnStar(i, anywhere) {
+  const a = Math.random() * TAU, r = 70 + Math.pow(Math.random(), 0.7) * 520;
+  starV[i * 4] = Math.sin(a) * r; starV[i * 4 + 1] = anywhere ? -420 + Math.random() * 900 : 480 + Math.random() * 60;
+  starV[i * 4 + 2] = Math.cos(a) * r; starV[i * 4 + 3] = 0.35 + Math.random() * 0.65;           // brightness
+}
+for (let i = 0; i < STAR_N; i++) spawnStar(i, true);
+function updateStars(dt, fk) {
+  stars.visible = fk > 0.01 && !scaleMode;
+  if (!stars.visible) return;
+  const v = 140 * fk;                                              // m/s past the vehicle
+  for (let i = 0; i < STAR_N; i++) {
+    starV[i * 4 + 1] -= v * dt;
+    if (starV[i * 4 + 1] < -440) spawnStar(i, false);
+    const x = starV[i * 4], y = starV[i * 4 + 1], z = starV[i * 4 + 2], b = starV[i * 4 + 3] * fk * (DAY ? 0.35 : 1), j = i * 6;
+    const len = 0.6 + v * 0.02 * (1.4 - starV[i * 4 + 3]);           // short streaks, longer for the dim (fast-looking) ones
+    starPos[j] = x; starPos[j + 1] = y; starPos[j + 2] = z; starPos[j + 3] = x; starPos[j + 4] = y + len; starPos[j + 5] = z;
+    starCol[j] = starCol[j + 1] = starCol[j + 2] = b; starCol[j + 3] = starCol[j + 4] = starCol[j + 5] = b * 0.15;
+  }
+  starGeo.attributes.position.needsUpdate = true; starGeo.attributes.color.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- scale comparison
+// "Scale" puts the stack upright on the floor with a Falcon 9 Block 5 and a 1.8 m person beside it, each with a
+// height line. The lines go away as soon as the view is zoomed / moved or the pointer is over any of the objects;
+// the fit button brings the comparison view (and the lines) back.
+let scaleMode = false, scaleMoved = false, scaleShadow = 0;
+const F9X = 27, HUMX = 37;
+const scaleG = new THREE.Group(); scaleG.visible = false; scene.add(scaleG);
+const scaleMeshes = [];
+parts.f9 = { id: 'f9', idx: 0, grp: 'f9', mats: [], cache: {}, meshes: [] };
+parts.human = { id: 'human', idx: 0, grp: 'human', mats: [], cache: {}, meshes: [] };
+function scaleMesh(parent, geo, mat, pid, label) {
+  const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true;
+  m.userData.part = pid; m.userData.label = label; parent.add(m);
+  parts[pid].meshes.push(m); if (!parts[pid].mats.includes(mat)) parts[pid].mats.push(mat);
+  scaleMeshes.push(m); return m;
+}
+{
+  // ---- Falcon 9 Block 5 (70 m): 3.66 m core, 5.2 m fairing; first stage 41.2 m incl. the black interstage
+  const R9 = 1.83, f9 = new THREE.Group(); f9.position.x = F9X; scaleG.add(f9);
+  const paint = (() => {                   // white paint: faint streaks and the odd panel line
+    const c = mkCanvas(512, 2048), g = c.getContext('2d'), rnd = rng(31);
+    g.fillStyle = '#eceef1'; g.fillRect(0, 0, 512, 2048);
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(120,125,135,${0.015 + rnd() * 0.03})`; g.fillRect(rnd() * 512, rnd() * 2048, 1 + rnd() * 3, 40 + rnd() * 300); }
+    for (let i = 1; i < 8; i++) { g.fillStyle = 'rgba(90,95,105,0.22)'; g.fillRect(0, i * 256, 512, 2); }
+    return toTex(c, true);
+  })();
+  const white = new THREE.MeshStandardMaterial({ color: 0xffffff, map: paint, roughness: 0.46, metalness: 0.05 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.62, metalness: 0.15 });
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x1b1d21, roughness: 0.55, metalness: 0.2 });
+  const bell = new THREE.MeshStandardMaterial({ color: 0x2e3034, roughness: 0.38, metalness: 0.7, side: THREE.DoubleSide });
+  const gridTex = (() => { const c = mkCanvas(256, 256), g = c.getContext('2d'); g.fillStyle = '#1a1c20'; g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = '#6b7079'; g.lineWidth = 5; for (let i = 0; i <= 256; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i - 256, 256); g.stroke(); g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 256, 256); g.stroke(); }
+    return toTex(c, true); })();
+  const gridMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: gridTex, roughness: 0.4, metalness: 0.6 });
+  const L9 = 'Falcon 9';
+  const cyl = (r0, r1, y0, y1, mat, seg = 64) => { const g = new THREE.CylinderGeometry(r1, r0, y1 - y0, seg); g.translate(0, (y0 + y1) / 2, 0); return scaleMesh(f9, g, mat, 'f9', L9); };
+  // nine Merlin 1D bells under the octaweb heat shield
+  const bellG = lathe((() => { const pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push([0.3 + 0.17 * Math.pow(t, 0.7), 1.35 - 1.3 * t]); } return pts; })(), 32);
+  for (const [bx, bz] of [[0, 0], ...Array.from({ length: 8 }, (_, i) => [Math.sin(i / 8 * TAU) * 1.2, Math.cos(i / 8 * TAU) * 1.2])]) {
+    const g = bellG.clone(); g.translate(bx, 0, bz); scaleMesh(f9, g, bell, 'f9', L9);
+  }
+  cyl(R9 - 0.02, R9 - 0.02, 1.35, 1.65, black);                        // octaweb heat shield
+  cyl(R9, R9, 1.65, 34.0, white, 96);                                     // first stage tanks
+  cyl(R9 + 0.005, R9 + 0.005, 34.0, 41.2, black, 96);                     // interstage
+  cyl(R9 + 0.012, R9 + 0.012, 40.95, 41.2, white, 96);                    // interstage lip
+  cyl(R9, R9, 41.2, 56.6, white, 96);                                     // second stage
+  cyl(R9, 2.6, 56.6, 57.5, white, 96);                                    // payload adapter / fairing boat-tail
+  cyl(2.6, 2.6, 57.5, 63.4, white, 96);                                   // fairing barrel
+  {                                                                       // fairing ogive with a blunted tip
+    const pts = []; for (let i = 0; i <= 40; i++) { const t = i / 40; pts.push([Math.max(0.001, 2.6 * Math.sqrt(1 - t * t * 0.985) * (1 - 0.1 * t)), 63.4 + 6.6 * Math.sin(t * Math.PI / 2)]); }
+    pts[pts.length - 1][0] = 0.001; scaleMesh(f9, lathe(pts, 96), white, 'f9', L9);
+  }
+  const seam = new THREE.BoxGeometry(0.035, 12.4, 0.04); seam.translate(0, 63.7, 0);
+  const sm = scaleMesh(f9, seam, black, 'f9', L9); sm.position.set(Math.sin(1.1) * 2.61, 0, Math.cos(1.1) * 2.61); sm.rotation.y = 1.1;
+  for (const y of [57.5, 34.0]) { const ring = new THREE.TorusGeometry(y > 50 ? 2.605 : R9 + 0.01, 0.02, 6, 96); ring.rotateX(Math.PI / 2); ring.translate(0, y, 0); scaleMesh(f9, ring, black, 'f9', L9); }
+  // four folded carbon-fibre landing legs and four titanium grid fins, stowed flat
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + i * Math.PI / 2, hold = new THREE.Group(); hold.rotation.y = a; f9.add(hold);
+    const leg = new THREE.BoxGeometry(0.95, 8.9, 0.26); leg.translate(0, 1.2 + 8.9 / 2, R9 + 0.13); scaleMesh(hold, leg, legMat, 'f9', L9);
+    const spine = new THREE.BoxGeometry(0.22, 8.5, 0.08); spine.translate(0, 1.4 + 8.5 / 2, R9 + 0.29); scaleMesh(hold, spine, black, 'f9', L9);
+    const foot = new THREE.BoxGeometry(1.1, 0.35, 0.42); foot.translate(0, 1.25, R9 + 0.2); scaleMesh(hold, foot, legMat, 'f9', L9);
+    const fin = new THREE.BoxGeometry(1.35, 1.6, 0.12); fin.translate(0, 39.9, R9 + 0.16); scaleMesh(hold, fin, gridMat, 'f9', L9);
+    const act = new THREE.BoxGeometry(0.5, 0.35, 0.3); act.translate(0, 40.85, R9 + 0.12); scaleMesh(hold, act, black, 'f9', L9);
+  }
+  // SpaceX X logo + wordmark on the fairing, just below where the ogive starts, facing the comparison view
+  {
+    const c = mkCanvas(1024, 640), g = c.getContext('2d');
+    g.drawImage(logoCanvas(), 512 - 310 * 800 / 1024, 0, 800, 400);   // the X itself (x 150-470 in logoCanvas) centred over the wordmark
+    g.fillStyle = '#121418'; g.font = '700 118px "Arial", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if ('letterSpacing' in g) g.letterSpacing = '26px';
+    g.fillText('SPACEX', 512, 520, 900);
+    const wA = 3.1 / 2.6, geo = new THREE.CylinderGeometry(2.612, 2.612, 1.95, 24, 1, true, -wA / 2, wA); geo.translate(0, 62.2, 0);
+    const mat = new THREE.MeshStandardMaterial({ map: toTex(c, true), transparent: true, roughness: 0.5, depthWrite: false });
+    const m = scaleMesh(f9, geo, mat, 'f9', L9); m.castShadow = false; m.renderOrder = 1;
+  }
+  // vertical SPACEX wordmark on the first stage, reading upward
+  {
+    const c = mkCanvas(256, 2048), g = c.getContext('2d');
+    g.translate(128, 1024); g.rotate(-Math.PI / 2); g.fillStyle = '#101216';
+    g.font = '900 150px "Arial Black", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('SPACEX', 0, 8, 1900);
+    const w = 1.5, geo = new THREE.CylinderGeometry(R9 + 0.01, R9 + 0.01, 12, 16, 1, true, -w / R9 / 2, w / R9); geo.translate(0, 19, 0);
+    const mat = new THREE.MeshStandardMaterial({ map: toTex(c, true), transparent: true, roughness: 0.5, depthWrite: false });
+    const m = scaleMesh(f9, geo, mat, 'f9', L9); m.castShadow = false; m.renderOrder = 1;
+  }
+  // ---- a 1.8 m person standing on the floor, facing the viewer
+  const hum = new THREE.Group(); hum.position.x = HUMX; scaleG.add(hum);
+  const cloth = new THREE.MeshStandardMaterial({ color: 0x33415a, roughness: 0.8 }), skin = new THREE.MeshStandardMaterial({ color: 0xc99477, roughness: 0.7 });
+  const shoe = new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6 });
+  const cap = (r, l, x, y, z, mat, rz = 0) => { const g = new THREE.CapsuleGeometry(r, l, 6, 12); g.rotateZ(rz); g.translate(x, y, z); return scaleMesh(hum, g, mat, 'human', 'Person'); };
+  for (const sx of [-0.1, 0.1]) {
+    cap(0.068, 0.72, sx, 0.46, 0, cloth);                                   // legs
+    const f = new THREE.BoxGeometry(0.1, 0.07, 0.26); f.translate(sx, 0.035, 0.04); scaleMesh(hum, f, shoe, 'human', 'Person');
+    cap(0.05, 0.5, sx * 2.1, 1.13, 0, cloth, sx * 0.35);                    // arms, hanging from the shoulders
+    const hand = new THREE.SphereGeometry(0.05, 12, 8); hand.translate(sx * 2.25, 0.83, 0.01); scaleMesh(hum, hand, skin, 'human', 'Person');
+  }
+  { const t = new THREE.CapsuleGeometry(0.15, 0.42, 6, 16); t.scale(1.25, 1, 0.72); t.translate(0, 1.2, 0); scaleMesh(hum, t, cloth, 'human', 'Person'); }
+  cap(0.07, 0.3, 0, 1.43, 0, cloth, Math.PI / 2);                         // shoulders
+  cap(0.085, 0.16, 0, 0.92, 0, cloth, Math.PI / 2);                       // hips
+  { const n = new THREE.CylinderGeometry(0.05, 0.055, 0.08, 12); n.translate(0, 1.56, 0); scaleMesh(hum, n, skin, 'human', 'Person'); }
+  { const h = new THREE.SphereGeometry(0.105, 20, 14); h.scale(0.9, 1.05, 1); h.translate(0, 1.69, 0); scaleMesh(hum, h, skin, 'human', 'Person'); }
+}
+// height lines: floor to top beside each object, drawn as an SVG overlay (projected every frame) with labels
+const SCALE_ITEMS = [
+  { x: -12.5, h: () => extents(0, 0).L, tick: 1.4, val: () => UV.height },
+  { x: F9X - 6.5, h: () => 70, tick: 1.1, val: () => UV.f9Height },
+  { x: HUMX + 3.2, h: () => 1.8, tick: 0.35, val: () => UV.humanH },
+];
+const scaleSvg = document.getElementById('scale-svg'), SVGNS = 'http://www.w3.org/2000/svg';
+for (const it of SCALE_ITEMS) {
+  it.g = document.createElementNS(SVGNS, 'g'); it.g.style.visibility = 'hidden'; scaleSvg.appendChild(it.g);
+  it.segs = [];
+  for (const cls of ['sh', 'ln']) for (let k = 0; k < 3; k++) { const l = document.createElementNS(SVGNS, 'line'); l.setAttribute('class', cls); it.g.appendChild(l); it.segs.push(l); }
+  it.el = document.createElement('div'); it.el.className = 'scale-lbl'; document.getElementById('scale-lbls').appendChild(it.el);
+}
+function scaleView() {
+  const tv = tvHalf(), asp = camera.aspect, H = extents(0, 0).L;
+  // fit between the stats row / labels at the top and the control bar at the bottom
+  // (measured from the page: the title block can sit over the left-hand label on narrower screens)
+  const r = el => { const e = document.querySelector(el); return e ? e.getBoundingClientRect() : null; };
+  const brand = r('.brand'), ctrl = r('#controls'), hint = r('#hint'), plist = r('#parts');
+  const stats = r('#stats');
+  const top = Math.max(stats ? stats.bottom + 44 : 110, innerWidth < 1000 && brand ? brand.bottom + 34 : 0);   // room for the top label
+  const bottom = innerHeight - Math.min(ctrl ? ctrl.top : innerHeight, hint && hint.height ? hint.top : innerHeight,
+    plist && plist.top > innerHeight * 0.6 ? plist.top : innerHeight) + 14;     // phones: the parts strip sits above the controls
+  const band = Math.max(0.4, (innerHeight - top - bottom) / innerHeight), mid = (top - bottom) / innerHeight;
+  const d = Math.max((H / 2) * 1.04 / (tv * band), ((HUMX + 2 + 14) / 2) * 1.2 / (tv * asp));
+  const target = new V3((-14 + HUMX + 2) / 2, H * 0.5 + mid * 2 * d * tv, 0);
+  return { target, pos: target.clone().add(new V3(0.16, 0.03, 1).normalize().multiplyScalar(d)) };
+}
+function setScale(on) {
+  scaleMode = on; scaleMoved = false; scaleShadow = 6; hovered = null; tip.style.opacity = 0;
+  document.querySelector('[data-act="scale"]').classList.toggle('on', on);
+  if (on) {
+    st.explodeT = st.sepT = st.sectionT = 0; autoSection = false;
+    for (const k of ['explode', 'stage', 'section']) document.querySelector(`[data-act="${k}"]`).classList.remove('on');
+    vertical = true; autoSpin = false;
+    for (const m of scaleMeshes) if (!pickables.includes(m)) pickables.push(m);
+  } else {
+    vertical = innerHeight > innerWidth * 1.05;
+    for (const m of scaleMeshes) { const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); }
+    if (selected === 'f9') select(null);
+  }
+  scaleG.visible = on;
+  applyOrientation(); layout();
+  flyTo(on ? scaleView() : defaultView()); scaleMoved = false;
+  setControlLabels();
+}
+function updateScale() {
+  const show = scaleMode && !scaleMoved && !camAnim && !hovered && !st.explodeT && !st.sepT;
+  for (const it of SCALE_ITEMS) {
+    it.el.style.opacity = show ? 1 : 0; it.el.style.visibility = show ? 'visible' : 'hidden';
+    it.g.style.visibility = show ? 'visible' : 'hidden';
+    if (!show) continue;
+    it.el.textContent = it.val();
+    const sp = v => { const q = v.project(camera); return [(q.x * 0.5 + 0.5) * innerWidth, (-q.y * 0.5 + 0.5) * innerHeight]; };
+    const [x0, y0] = sp(new V3(it.x, 0, 0)), [x1, y1] = sp(new V3(it.x, it.h(), 0)), tk = clamp(Math.abs(y0 - y1) * 0.25, 2.5, 7);
+    const lines = [[x0, y0, x1, y1], [x0 - tk, y0, x0 + tk, y0], [x1 - tk, y1, x1 + tk, y1]];
+    it.segs.forEach((l, k) => { const [a, b, c, d] = lines[k % 3]; l.setAttribute('x1', a); l.setAttribute('y1', b); l.setAttribute('x2', c); l.setAttribute('y2', d); });
+    it.el.style.transform = `translate(${x1}px, ${y1}px) translate(-50%, calc(-100% - 8px))`;
+  }
 }
 
 // ---------------------------------------------------------------- camera navigation
@@ -1634,8 +1840,8 @@ function worldAt(x, y) {                                       // the point on t
   mouse.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
   const h = pick(); return h ? h.point.clone() : null;
 }
-function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); }
-function flyTo(v) { camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
+function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
+function flyTo(v) { scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
 const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
 function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
 const FLAME_ROOM = 44;           // metres of plume to keep in frame below the booster when upright
@@ -1725,7 +1931,7 @@ document.querySelector('#nav .navbtns').addEventListener('click', e => {
   const z = e.target.closest('button')?.dataset.z; if (!z) return;
   if (z === 'roll') { rolling = !rolling; e.target.closest('button').classList.toggle('on', rolling); return; }
   userInteracted();
-  if (z === 'fit') { flyTo(defaultView()); return; }
+  if (z === 'fit') { if (scaleMode) { flyTo(scaleView()); scaleMoved = false; } else flyTo(defaultView()); return; }
   zoomPt.copy(controls.target); zoomPending += z === 'in' ? -0.55 : 0.55;
 });
 
@@ -1733,7 +1939,7 @@ document.querySelector('#nav .navbtns').addEventListener('click', e => {
 const partsNav = document.getElementById('parts');
 const card = document.getElementById('card'), station = document.getElementById('station');
 card.querySelector('.x').addEventListener('click', () => select(null));
-const grpName = g => g === 'sh' ? 'Super Heavy' : g === 'inter' ? I.ui.interstage : (I.shipName || 'Ship');
+const grpName = g => g === 'sh' ? 'Super Heavy' : g === 'inter' ? I.ui.interstage : g === 'f9' ? 'SpaceX' : (I.shipName || 'Ship');
 const partT = id => I.parts[id];
 const num2 = i => String(i + 1).padStart(2, '0');
 function buildPartsNav() {
@@ -1765,13 +1971,13 @@ function select(id, focus) {
 function renderCard() {
   if (!selected) return;
   const P = parts[selected], T = partT(selected);
-  document.getElementById('card-k').textContent = `${grpName(P.grp)} · ${num2(P.idx)}`;
+  document.getElementById('card-k').textContent = P.grp === 'f9' ? 'SpaceX · Falcon 9' : `${grpName(P.grp)} · ${num2(P.idx)}`;
   document.getElementById('card-t').textContent = fillT(T.t);
   const iso = t => I.dir === 'rtl' ? t.replace(/[~≈]?−?\d[\d,.]*\s?°\s?[CFم]/g, m => '\u2066' + m + '\u2069') : t;
   document.getElementById('card-d').textContent = iso(fillT(T.d));
   const row = document.getElementById('card-s'); row.innerHTML = '';
   for (const [a, b] of T.s) { const d = document.createElement('div'), sp = document.createElement('span'), v = document.createElement('b'), iv = document.createElement('bdi'); sp.textContent = a; iv.textContent = fillT(b); v.appendChild(iv); d.append(sp, v); row.appendChild(d); }
-  station.textContent = `${num2(P.idx)} · ${fillT(T.n)}`;
+  station.textContent = P.grp === 'f9' ? fillT(T.n) : `${num2(P.idx)} · ${fillT(T.n)}`;
 }
 function focusBox(box, dirOverride) {
   const c = box.getCenter(new V3()), size = box.getSize(new V3()).length();
@@ -1802,7 +2008,9 @@ document.getElementById('controls').addEventListener('click', e => {
   if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; autoSection = false; btn('section').classList.toggle('on', !!st.sectionT); }
   if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
+  if (a === 'scale') setScale(!scaleMode);
   if (a === 'reset') {
+    if (scaleMode) setScale(false);
     st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; paused = false; select(null);
     rolling = false; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
     for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
@@ -1816,7 +2024,7 @@ function fadeHint() { if (!hintGone) { hintGone = true; setTimeout(() => hint.st
 
 // picking
 const ray = new THREE.Raycaster(), mouse = new V2(), tip = document.getElementById('tip'), pivotDot = document.getElementById('pivot');
-let mouseDirty = false, mx = 0, my = 0;
+let mouseDirty = false, mx = 0, my = 0, overCanvas = false;
 function pick() {
   ray.setFromCamera(mouse, camera);
   const hits = ray.intersectObjects(pickables, false);
@@ -1839,7 +2047,7 @@ function clickAt(e) {
   const h = pick();
   // click selects (highlight + info card); clicking the same part again or anywhere else clears it. A quick second
   // click is a double-click (fly there), not a toggle, so it keeps the selection
-  const pid = h && h.object.userData.part;
+  const pid = h && h.object.userData.part !== 'human' ? h.object.userData.part : null;
   if (pid && pid !== selected) { select(pid, false); lastSelectT = now; }
   else if (selected && !(pid === selected && now - lastSelectT < 350)) select(null);
 }
@@ -1868,7 +2076,7 @@ canvas.addEventListener('pointerdown', e => {
   }
 });
 canvas.addEventListener('pointermove', e => {
-  mx = e.clientX; my = e.clientY;
+  mx = e.clientX; my = e.clientY; overCanvas = true;
   mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   if (e.pointerType === 'mouse' && !gesture) mouseDirty = true;
   const p = ptrs.get(e.pointerId); if (!p || !gesture) return;
@@ -1896,7 +2104,9 @@ function endPtr(e) {
 }
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('pointerleave', () => { hovered = null; tip.style.opacity = 0; });
+canvas.addEventListener('pointerleave', () => { overCanvas = false; hovered = null; tip.style.opacity = 0; });
+// the pointer over a button / panel is not over the scene: drop any hover left over from before
+addEventListener('pointermove', e => { if (e.target !== canvas) { overCanvas = false; if (hovered) { hovered = null; tip.style.opacity = 0; } } }, { passive: true });
 canvas.addEventListener('wheel', e => {
   e.preventDefault(); userInteracted();
   zoomPt.copy(worldAt(e.clientX, e.clientY) || controls.target);   // off the vehicle, zoom toward the view center
@@ -1970,9 +2180,11 @@ function tick() {
   // airflow streaks
   const fk = sstep(clamp(st.fire));
   // upright, the plume would be cut off by the stage floor - fade the floor out while firing
-  const floorK = vertical ? 1 - fk : 1;
+  const floorK = scaleMode ? 1 : 1 - fk;          // firing: the stage goes, it's flying now
   floorMat.opacity = floorK; ringLine.material.opacity = 0.6 * floorK; floor.visible = ringLine.visible = floorK > 0.01;
-  airLines.visible = false;   // the airflow streaks read as stray white lines across the fire; the plume alone reads better
+  // airflow streaks while firing - only ahead of and beside the stack: they fade out above the booster's engines (and
+  // around the ship's engines when the stages are apart), so they never cross the exhaust
+  airLines.visible = fk > 0.01 && !scaleMode && st.explode < 0.02;
   if (airLines.visible) {
     for (let i = 0; i < AIR_N; i++) {
       air.y[i] -= air.s[i] * adt;
@@ -1981,12 +2193,15 @@ function tick() {
       const x = sa * r, z = ca * r, j = i * 6;
       airPos[j] = x; airPos[j + 1] = y; airPos[j + 2] = z;
       airPos[j + 3] = x; airPos[j + 4] = y + air.l[i]; airPos[j + 5] = z;
-      const fade = 0.11 * clamp((175 - y) / 20) * clamp((y + 30) / 15) * fk * (0.25 + 0.75 * clamp(1 - air.o[i] / 7));
+      const shipAft = S0 + sepOff, gap = st.sep > 0.02 ? 1 - clamp((y - (shipAft - 34)) / 4) * clamp((shipAft + 6 - y) / 4) : 1;
+      const fade = 0.11 * clamp((175 - y) / 20) * clamp((y - 9) / 10) * gap * fk * (0.25 + 0.75 * clamp(1 - air.o[i] / 7));
       airCol[j] = 0.55 * fade; airCol[j + 1] = 0.7 * fade; airCol[j + 2] = 1.0 * fade;
       airCol[j + 3] = airCol[j + 4] = airCol[j + 5] = 0;
     }
     airGeo.attributes.position.needsUpdate = true; airGeo.attributes.color.needsUpdate = true;
   }
+
+  updateStars(adt, fk);
 
   // propellant particles
   propPts.visible = fk > 0.01;
@@ -2028,7 +2243,7 @@ function tick() {
   if (camAnim) {
     const kc = k(3.4);
     controls.target.lerp(camAnim.target, kc); camera.position.lerp(camAnim.pos, kc);
-    if (camera.position.distanceTo(camAnim.pos) < 0.05 && controls.target.distanceTo(camAnim.target) < 0.05) camAnim = null;
+    if (camera.position.distanceTo(camAnim.pos) < 0.05 && controls.target.distanceTo(camAnim.target) < 0.05) { camAnim = null; mouseDirty = true; }
   } else if (!gesture) {
     const decay = Math.pow(0.9, dt * 60);
     if (Math.abs(navVel.yaw) + Math.abs(navVel.pitch) > 1e-4) { orbitCam(navVel.yaw, navVel.pitch, navPivot); navVel.yaw *= decay; navVel.pitch *= decay; }
@@ -2051,8 +2266,9 @@ function tick() {
   }
 
   if (rolling) { root.rotation.y = (root.rotation.y + dt * 0.35) % TAU; syncCube(); }
+  updateScale();
   // shadows only need re-rendering while parts are moving, being cut or turning
-  const moving = rolling || Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
+  const moving = rolling || scaleShadow-- > 0 || Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
   if (moving || frameNo < 4) renderer.shadowMap.needsUpdate = true;
   // bloom is only there for the fire, so skip both full-screen passes when nothing is burning
   bloom.enabled = clampPass.enabled = st.fire > 0.01;
@@ -2083,6 +2299,7 @@ function tick() {
   }
 
   // hover
+  if (mouseDirty && !overCanvas) mouseDirty = false;          // pointer is over the UI, not the scene
   if (mouseDirty && performance.now() - lastHover > 70) {
     mouseDirty = false; lastHover = performance.now();
     const h = pick(), m = h && h.object;
@@ -2111,9 +2328,10 @@ function onResize() {
   const w = innerWidth, h = innerHeight;
   camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.setSize(w, h); composer.setSize(w, h); renderer.shadowMap.needsUpdate = true;
-  const v = h > w * 1.05;
+  const v = scaleMode || h > w * 1.05;
+  if (scaleMode && !scaleMoved) { const sv = scaleView(); camera.position.copy(sv.pos); controls.target.copy(sv.target); }
   if (v !== vertical) { vertical = v; applyOrientation(); layout(); if (!userMoved) { const dv = defaultView(); camera.position.copy(dv.pos); controls.target.copy(dv.target); } }
-  else if (!userMoved) flyTo(defaultView());
+  else if (!userMoved && !scaleMode) flyTo(defaultView());
 }
 addEventListener('resize', onResize);
 window.__s = { camera, controls, st, select, spin, flyTo, parts, root, bloom, engines, flames, airLines, propPts, bFire, sFire, faceView, orbitCam, zoomCam, worldAt, look(y, off = [0, 0, 20]) { spin.updateMatrixWorld(true); const p = root.localToWorld(new V3(0, y, 0)); camAnim = null; userMoved = true; autoSpin = false; controls.target.copy(p); camera.position.copy(p).add(new V3(...off)); } };
@@ -2130,16 +2348,18 @@ if (location.hash.startsWith('#dbg=')) setTimeout(() => {
   const dv = d.face !== undefined ? faceView(d.face) : defaultView(); camAnim = null; camera.position.copy(dv.pos); controls.target.copy(dv.target);
   if (d.turn) orbitCam(d.turn, 0, controls.target);
   if (d.roll) document.querySelector('#nav [data-z="roll"]').click();
+  if (d.scale) { setScale(true); camAnim = null; const sv = scaleView(); camera.position.copy(sv.pos); controls.target.copy(sv.target); }
   if (d.sel) select(d.sel, !d.look);
-  if (d.look) setTimeout(() => window.__s.look(d.look[0], d.look.slice(1)), 50);
+  if (d.look) setTimeout(() => { window.__s.look(d.look[0], d.look.slice(1)); scaleMoved = true; }, 50);
   // "frame":["b-fwd",x,y,z,dist,meshIndex]: aim at one mesh of a part from a model-space direction, no animation
   if (d.frame) setTimeout(() => {
     spin.updateMatrixWorld(true);
-    const [pid, x, y, z, dist, mi] = d.frame, m = parts[pid].meshes[mi || 0], c = new THREE.Box3().setFromObject(m).getCenter(new V3());
+    const [pid, x, y, z, dist, mi] = d.frame, m = parts[pid].meshes[mi < 0 ? parts[pid].meshes.length + mi : mi || 0], c = new THREE.Box3().setFromObject(m).getCenter(new V3());
     const dir = new V3(x, y, z).normalize().applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
-    camAnim = null; userMoved = true; autoSpin = false; controls.target.copy(c); camera.position.copy(c).add(dir.multiplyScalar(dist || 12));
+    camAnim = null; userMoved = true; autoSpin = false; scaleMoved = true; controls.target.copy(c); camera.position.copy(c).add(dir.multiplyScalar(dist || 12));
   }, 60);
   if (d.t) { t = d.t; timeU.value = t; }
+  if (d.zoom) setTimeout(() => { userInteracted(); zoomPt.copy(controls.target); zoomPending -= 0.4; }, d.zoom);
 }, 300);
 { const dv = defaultView(); camera.position.copy(dv.pos); controls.target.copy(dv.target); }
 controls.update();
