@@ -7414,6 +7414,11 @@
                     'i18n-filter-all': dict.filterAll,
                     'i18n-filter-dragon': dict.filterDragon,
                     'i18n-filter-favorites': dict.filterFavorites,
+                    // vehicle tabs: Falcon in Hebrew (as in the mission titles - localizeMissionName), Falcon
+                    // left as the proper noun elsewhere; Starlink through its own fixed per-language term
+                    'i18n-filter-falcon': (key === 'he' || key === 'iw') ? 'פלקון 9' : 'Falcon 9',
+                    'i18n-filter-falcon-heavy': (key === 'he' || key === 'iw') ? 'פלקון כבד' : 'Falcon Heavy',
+                    'i18n-filter-starlink': (() => { try { return STARLINK_I18N[key] || 'Starlink'; } catch (e) { return 'Starlink'; } })(),   // declared further down
                     'i18n-watch-launch': dict.watchLaunch || LAUNCH_LABEL_I18N.en.watchLaunch,
                     'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
                     'i18n-open-youtube-live': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
@@ -11002,13 +11007,17 @@
                         class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap flex items-center gap-1.5 text-amber-400 md:hover:text-amber-300"><i
                             class="fa-regular fa-star"></i> <span id="i18n-filter-favorites" class="notranslate" translate="no" lang="en">Watchlist</span></button>
                     <button onclick="filterByCategory('falcon')" id="filter-falcon"
-                        class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap">Falcon
-                        9</button>
+                        class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap"><span
+                            id="i18n-filter-falcon" class="notranslate" translate="no">Falcon 9</span></button>
+                    <button onclick="filterByCategory('falcon_heavy')" id="filter-falcon_heavy"
+                        class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap"><span
+                            id="i18n-filter-falcon-heavy" class="notranslate" translate="no">Falcon Heavy</span></button>
                     <button onclick="filterByCategory('starship')" id="filter-starship"
                         class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap"><span
                             class="starship-term notranslate" translate="no">Starship</span></button>
                     <button onclick="filterByCategory('starlink')" id="filter-starlink"
-                        class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap">Starlink</button>
+                        class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap"><span
+                            id="i18n-filter-starlink" class="notranslate" translate="no">Starlink</span></button>
                     <button onclick="filterByCategory('dragon')" id="filter-dragon"
                         class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-[14px] md:hover:bg-zinc-700 transition-all whitespace-nowrap notranslate"
                         translate="no" lang="en"><span id="i18n-filter-dragon">Dragon/Crew</span></button>
@@ -21899,7 +21908,7 @@ setTimeout(() => {
         // specifically treat "starship" + "starlink" as overlapping: a Starship-category mission
         // whose own name also mentions Starlink matches BOTH the Starship and the Starlink tab.
         function missionMatchesCategoryFilter(m, filter) {
-            if (filter === 'falcon') return m.category === 'falcon' || m.category === 'falcon_heavy';
+            // "Falcon 9" and "Falcon Heavy" are separate tabs (Falcon 9 used to include Falcon Heavy)
             if (filter === 'starlink' && m.category === 'starship' && /starlink/i.test(m.name || '')) return true;
             return m.category === filter;
         }
