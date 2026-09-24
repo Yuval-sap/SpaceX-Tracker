@@ -2151,6 +2151,7 @@ function setScale(on) {
   document.querySelector('[data-act="scale"]').classList.toggle('on', on);
   if (on) {
     st.explodeT = st.sepT = st.sectionT = 0; autoSection = false;
+    if (st.fireT) { st.fireT = 0; btn('flow').classList.remove('on'); fireTheme(false); }
     for (const k of ['explode', 'stage', 'section']) document.querySelector(`[data-act="${k}"]`).classList.remove('on');
     vertical = true; autoSpin = false;
     for (const m of scaleMeshes) if (!pickables.includes(m)) pickables.push(m);
@@ -2456,7 +2457,8 @@ document.getElementById('controls').addEventListener('click', e => {
   if (a === 'explode') { st.explodeT = st.explodeT ? 0 : 1; btn('explode').classList.toggle('on', !!st.explodeT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'stage') { autoSep = false; st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'section') { st.sectionT = st.sectionT && !autoSection ? 0 : 1; autoSection = false; sectionScope = null; btn('section').classList.toggle('on', !!st.sectionT); }
-  if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); fireTheme(!!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
+  // ignition and the scale comparison exclude each other: turning one on turns the other off
+  if (a === 'flow') { if (!st.fireT && scaleMode) setScale(false); st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); fireTheme(!!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'scale') setScale(!scaleMode);
   if (a === 'reset') {
