@@ -118,24 +118,26 @@
   }
   @media (max-height:620px) and (min-width:761px){ #hint{display:none} }
   @media (max-width:760px){
-    .brand{left:16px;top:16px}
+    .brand{left:16px;right:16px;top:16px;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px}
+    .brand .eyebrow{flex-basis:100%}
     .brand h1{font-size:28px}
-    .brand .sub{font-size:11.5px}
+    .brand .sub{font-size:11.5px;margin-top:0}
+    .brand .mission{flex-basis:100%;min-width:0;overflow:hidden;white-space:nowrap;font-size:11.5px;margin-top:8px}
     #stats{display:none}
     #parts{left:12px;gap:4px}
     #parts .pill{padding:4px 9px;font-size:10.5px}
     .sep{font-size:9.5px;margin:4px 0 0 2px}
     #controls{left:8px;right:8px;transform:none;bottom:max(12px,env(safe-area-inset-bottom));gap:5px;flex-wrap:wrap;justify-content:center}
     #controls .pill{padding:7px 10px;font-size:11px}
-    #nav{top:auto;right:10px;bottom:96px;gap:6px;align-items:flex-end}
+    #nav{top:auto;right:10px;bottom:96px;gap:6px;align-items:center}
     #cube{width:84px;height:84px}
     #nav .views{display:none}
     #nav .navbtns button{width:28px;height:28px;font-size:13px}
     #card{left:12px;right:12px;width:auto;top:auto;bottom:156px}
     #hint{display:none}
-    html[dir=rtl] .brand{right:16px}
+    html[dir=rtl] .brand{left:16px;right:16px}
     html[dir=rtl] #parts{left:auto;right:12px}
-    html[dir=rtl] #nav{left:10px;right:auto;align-items:flex-start}
+    html[dir=rtl] #nav{left:auto;right:10px}
     html[dir=rtl] #card{left:12px}
     #ss-close{top:12px;right:10px;width:34px;height:34px}
     #theme-btn{top:12px;right:10px;width:34px;height:34px;font-size:15px}
@@ -277,7 +279,15 @@ function setControlLabels() {
   b('pause').textContent = paused ? I.ui.play : I.ui.pause;
 }
 // the parts list starts just under the title block, which grows by a line when a mission is shown
+// phones: the mission line stays on one line, shrinking its type to the screen width if it has to
+function fitMission() {
+  const el = document.getElementById('t-mission'); if (!el) return;
+  el.style.fontSize = '';
+  if (innerWidth > 760 || el.hidden) return;
+  for (let px = 11.5; px >= 8.5 && el.scrollWidth > el.clientWidth + 1; px -= 0.25) el.style.fontSize = px + 'px';
+}
 function placeParts() {
+  fitMission();
   partsNav.style.top = Math.round(document.querySelector('.brand').getBoundingClientRect().bottom + (innerWidth <= 760 ? 14 : innerHeight < 720 ? 14 : 28)) + 'px';
 }
 addEventListener('resize', placeParts);
@@ -1852,6 +1862,18 @@ function zoomCam(f, P) {
   const d = camera.position.distanceTo(P);
   if (f < 1 && d * f < 1.6) f = Math.min(1, 1.6 / d);        // never dive through the surface you're zooming to
   if (d * f > 900) f = 900 / d;
+  // never let a zoom carry the camera through the hull: when the zoom point isn't on the surface (a pinch or wheel
+  // over empty sky zooms toward the orbit target, which sits inside the vehicle) the camera used to end up inside the
+  // ship, where every later zoom latched onto the tank domes and dragged the view down the stack
+  if (f < 1) {
+    const from = camera.position.clone(), to = from.clone().sub(P).multiplyScalar(f).add(P), step = to.clone().sub(from), len = step.length();
+    if (len > 1e-4) {
+      ray.set(from, step.divideScalar(len)); ray.far = len + 1.6;
+      const hit = ray.intersectObjects(pickables, false).find(h => { const m = h.object, mt = Array.isArray(m.material) ? m.material[0] : m.material; let v = true; m.traverseAncestors(a => { if (!a.visible) v = false; }); return v && !(mt.clippingPlanes && clipPlane.distanceToPoint(h.point) < 0); });
+      ray.far = Infinity;
+      if (hit) { const ok = Math.max(0, hit.distance - 1.6); if (ok < len) f = 1 - (1 - f) * ok / len; }
+    }
+  }
   camera.position.sub(P).multiplyScalar(f).add(P);
   controls.target.sub(P).multiplyScalar(f).add(P);
 }
