@@ -133,8 +133,9 @@
     #cube{width:84px;height:84px}
     #nav .views{display:none}
     #nav .navbtns button{width:28px;height:28px;font-size:13px}
-    #card{left:12px;right:12px;width:auto;top:auto;bottom:156px}
+    #card{left:12px;right:12px;width:auto;top:auto;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 84px);max-height:36vh;overflow-y:auto;padding:12px 14px}
     #hint{display:none}
+    html.card-open #nav{display:none}          /* the card takes that corner while it's open */
     html[dir=rtl] .brand{left:16px;right:16px}
     html[dir=rtl] #parts{left:auto;right:12px}
     html[dir=rtl] #nav{left:auto;right:10px}
@@ -148,7 +149,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=11"></script>
+<script src="starship-3d-i18n.js?v=12"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -1246,16 +1247,48 @@ add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dom
 fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
 let deployer = null;
 const SAT_N = Math.min(40, Math.max(1, parseInt(new URLSearchParams(location.search).get('n'), 10) || 26));   // satellites on board (mission's count when known)
-// 0-1.5 s: waiting inside; 1.5-8 s: pushed out through the slot; 8-15 s: drifting away with a slow tumble; then hidden
-function placeLead(d, t) {
-  const T = t % 15, ease = x => x * x * (3 - 2 * x);
-  let r = d.RS, tumble = 0, vis = true;
-  if (T < 1.5) r = d.RS;
-  else if (T < 8) r = d.RS + (R + 3.4 - d.RS) * ease((T - 1.5) / 6.5);
-  else { const u = (T - 8) / 7; r = R + 3.4 + u * 16; tumble = u * 0.5; vis = u < 0.97; }
-  d.g.position.copy(dirA(d.DC, r)).setY(d.y + (T > 8 ? (T - 8) * 0.12 : 0));
-  d.g.rotation.set(0, d.DC - Math.PI / 2, tumble * 0.4); d.g.rotateX(tumble * 0.25);
-  d.g.visible = vis;
+// Deploy cycle, as on the real ship: the satellites lie flat in one stack under the Pez slot. A carriage riding the two
+// dispenser rails goes down to the top satellite of the stack, clamps it, lifts it to the slot, and a pusher shoves it out
+// through the slot; outside it drifts away with a slow tumble. The carriage goes back down for the next one - lower each
+// time as the stack gets shorter - until the bay is empty, then everything resets and starts over.
+function buildDeploySchedule(d) {
+  const ev = [], ease = 0.5;
+  let t = 0.8, cy = d.YC;                               // carriage starts parked at the slot
+  for (let k = 0; k < d.N; k++) {
+    const yk = d.ys[k], down = 0.45 + (cy - yk) * 0.11, up = 0.45 + (d.YC - yk) * 0.11;
+    const e = { k, t0: t, descendEnd: t + down, grabEnd: t + down + 0.35, liftEnd: t + down + 0.35 + up };
+    e.pushEnd = e.liftEnd + 2.4;                        // pusher shoves it out until it is clear of the hull
+    e.release = e.pushEnd;
+    ev.push(e); t = e.pushEnd + 0.25; cy = d.YC;
+  }
+  d.ev = ev; d.total = t + 9 + 2.5;                     // let the last one drift off, then reset
+  void ease;
+}
+function placeDeploy(d, tt) {
+  const T = tt % d.total, sm = x => x * x * (3 - 2 * x), c01 = x => Math.min(1, Math.max(0, x));
+  const PUSH_R = R + 0.35, V_OUT = 2 * (PUSH_R - d.RS) / 2.4;   // speed when the pusher lets go (accelerating push)
+  let carY = d.YC, pushX = 0, clampK = -1;
+  for (const e of d.ev) {
+    const g = d.sats[e.k], yk = d.ys[e.k];
+    let r = d.RS, y = yk, tumble = 0, vis = true;
+    if (T < e.grabEnd) { /* waiting in the stack */ }
+    else if (T < e.liftEnd) { y = yk + (d.YC - yk) * sm(c01((T - e.grabEnd) / (e.liftEnd - e.grabEnd))); }
+    else if (T < e.release) { const u = c01((T - e.liftEnd) / (e.release - e.liftEnd)); y = d.YC; r = d.RS + (PUSH_R - d.RS) * u * u; }
+    else { const u = T - e.release; y = d.YC + u * 0.1; r = PUSH_R + V_OUT * u * 0.55 + u * 0.9; tumble = Math.min(1, u / 9) * 0.5; vis = u < 9; }
+    g.position.copy(dirA(d.DC, r)).setY(y);
+    g.rotation.set(0, d.DC - Math.PI / 2, tumble * 0.4); g.rotateX(tumble * 0.25);
+    g.visible = vis;
+    // the carriage for the satellite currently being handled
+    if (T >= e.t0 && T < e.release + 0.8) {
+      if (T < e.descendEnd) { const prevY = e.k ? d.YC : d.YC; carY = prevY + (yk - prevY) * sm(c01((T - e.t0) / (e.descendEnd - e.t0))); }
+      else if (T < e.liftEnd) { carY = y; clampK = e.k; }
+      else if (T < e.release) { carY = d.YC; clampK = e.k; pushX = r - d.RS; }
+      else { carY = d.YC; pushX = (PUSH_R - d.RS) * (1 - sm(c01((T - e.release) / 0.8))); }
+    }
+  }
+  d.car.position.copy(dirA(d.DC, d.RS)).setY(carY);
+  d.pusher.position.x = pushX;
+  d.clamps.forEach(m => { m.position.y = clampK >= 0 ? 0 : 0.12; });
 }
 // payload bay with the Pez slot: a long, narrow horizontal "mail slot" with rounded corners on the leeward side
 let SLOT = null;
@@ -1321,15 +1354,33 @@ let SLOT = null;
     return g;
   }
   const RS = 1.2;                       // radial position of the stack's centre line
-  for (let i = 1; i < SAT_N; i++) {
+  // every satellite of the mission, stacked from just under the slot down to above the methane tank's forward dome
+  const top = d0_ - 0.25, floorY = y0 + 1.5 + 0.35;             // YC: the slot's centre height (above)
+  const pitch = Math.min(0.32, (top - floorY) / Math.max(1, SAT_N - 1));
+  const sats = [], ys = [];
+  for (let i = 0; i < SAT_N; i++) {
     const g = makeSat(`Starlink satellite ${i + 1}`); sPay.add(g);
-    g.position.copy(dirA(DC, RS)).setY(d0_ - 0.2 - i * 0.32); g.rotation.y = DC - Math.PI / 2;
+    ys.push(top - i * pitch); sats.push(g);
+    g.position.copy(dirA(DC, RS)).setY(ys[i]); g.rotation.y = DC - Math.PI / 2;
   }
-  // the lead satellite slides out through the slot, drifts off, and the next deploy starts again (see tick)
-  const lead = makeSat('Starlink satellite 1'); sPay.add(lead);
-  lead.rotation.y = DC - Math.PI / 2;
-  deployer = { g: lead, DC, RS, y: (d0_ + d1) / 2, t: 6.5 };
-  placeLead(deployer, 6.5);
+  // the carriage: rides the two dispenser rails, two fork arms under the satellite with clamps on top, and a pusher
+  // plate behind it (local x points out through the slot, like the satellites)
+  const car = new THREE.Group(); car.rotation.y = DC - Math.PI / 2; sPay.add(car);
+  const cb = (sx, sy, sz, x, y, z, kind, parent = car) => { const m = add(parent, box(sx, sy, sz, x, y, z), 's-payload', kind, 'Dispenser carriage', { inner: true }); return m; };
+  const railX = -(RS + 1.2);
+  for (const z of [-1.7, 1.7]) {
+    cb(0.34, 0.55, 0.34, railX, -0.05, z, 'engineDark');                  // rail slider
+    cb(4.9, 0.1, 0.16, railX + 2.45, -0.24, z * 0.72, 'steelNC');         // fork arm under the satellite
+  }
+  cb(0.18, 0.14, 3.6, railX, -0.24, 0, 'steelNC');                        // cross beam between the sliders
+  const clamps = [-1, 1].map(sz => { const m = cb(0.5, 0.12, 0.22, 0.4, 0, sz * 1.25, 'engineDark'); return m; });
+  clamps.forEach(m => { m.geometry.translate(0, 0.2, 0); });
+  const pusher = new THREE.Group(); car.add(pusher);
+  cb(0.1, 0.42, 2.4, -3.12, 0, 0, 'steelNC', pusher);                     // pusher plate behind the satellite
+  cb(0.9, 0.08, 0.08, railX + 0.35, 0, 0, 'engineDark', pusher);          // its push rod
+  deployer = { sats, ys, YC, RS, DC, N: SAT_N, car, pusher, clamps, t: 0 };
+  buildDeploySchedule(deployer);
+  placeDeploy(deployer, 0);
   for (const z of [-1.7, 1.7]) { const g = new THREE.BoxGeometry(0.16, d0 - y0 - 0.6, 0.16); const m = add(sPay, g, 's-payload', 'engineDark', 'Dispenser rail'); m.position.copy(dirA(DC, -1.2)).add(dirA(DC + Math.PI / 2, z)).setY((d0_ + y0) / 2 + 0.3); m.rotation.y = DC; }
 }
 // nose cone
@@ -1424,7 +1475,7 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
     const sg = new THREE.ShapeGeometry(sh, 12); scaleUV(sg, 1 / tileTex.w, 1 / tileTex.h);
     const sign = Math.sin(a - WINDWARD) > 0 ? 1 : -1;
     const tm = add(inner, sg, 's-tiles', 'tileSolid', 'Heat shield tiles');
-    tm.position.z = sign * 0.235; if (sign < 0) tm.rotation.y = Math.PI, tm.scale.x = -1;
+    tm.position.z = sign * 0.27;           // clear of the flap's bevelled face (±0.22), or the steel shows through from afar if (sign < 0) tm.rotation.y = Math.PI, tm.scale.x = -1;
   }
 }
 const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
@@ -2009,6 +2060,7 @@ function select(id, focus) {
   else if (id !== 's-raptors' && autoSep) { st.sepT = 0; autoSep = false; }
   btn('stage').classList.toggle('on', !!st.sepT); setControlLabels();
   partsNav.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.part === id));
+  document.documentElement.classList.toggle('card-open', !!id);
   if (!id) { card.classList.remove('show'); station.textContent = '—'; return; }
   renderCard();
   card.classList.add('show');
@@ -2027,8 +2079,25 @@ function renderCard() {
 }
 function focusBox(box, dirOverride) {
   const c = box.getCenter(new V3()), size = box.getSize(new V3()).length();
-  const d = clamp(size / 2 / tvHalf() * 1.05, 12, 400);
   const dir = dirOverride || camera.position.clone().sub(controls.target).normalize();
+  const tv = tvHalf(), W = innerWidth, H = innerHeight;
+  // phones: the info card covers the lower part of the screen and the parts list one side, so the part is framed in
+  // the rectangle that is left (under the title, above the card, beside the list) instead of the screen centre
+  const cardR = W <= 760 && card.classList.contains('show') ? card.getBoundingClientRect() : null;
+  if (cardR) {
+    const brandB = document.querySelector('.brand').getBoundingClientRect().bottom, pr = partsNav.getBoundingClientRect();
+    const top = brandB + 8, bottom = cardR.top - 8, rtl = I.dir === 'rtl';
+    const left = rtl ? 6 : pr.right + 6, right = rtl ? pr.left - 6 : W - 6;
+    const hF = Math.max(80, bottom - top), wF = Math.max(80, right - left);
+    const d = clamp(Math.max(size / 2 / (tv * hF / H), size / 2 / (tv * camera.aspect * wF / W)) * 1.05, 8, 400);
+    const wpp = 2 * d * tv / H, v = dir.clone().negate();
+    const rgt = new V3().crossVectors(v, Y).normalize(), up = new V3().crossVectors(rgt, v).normalize();
+    const offX = (left + right) / 2 - W / 2, offY = (top + bottom) / 2 - H / 2;
+    const t = c.clone().addScaledVector(rgt, -offX * wpp).addScaledVector(up, offY * wpp);
+    flyTo({ target: t, pos: t.clone().add(dir.clone().multiplyScalar(d)) });
+    userMoved = true; autoSpin = false; return;
+  }
+  const d = clamp(size / 2 / tv * 1.05, 12, 400);
   flyTo({ target: c, pos: c.clone().add(dir.multiplyScalar(d)) });
   userMoved = true; autoSpin = false;
 }
@@ -2286,7 +2355,7 @@ function tick() {
     }
   }
 
-  if (deployer && !paused) { deployer.t += adt; placeLead(deployer, deployer.t); }
+  if (deployer && !paused) { deployer.t += adt; placeDeploy(deployer, deployer.t); }
 
   // camera: fly-to animation, inertia, smooth zoom, idle turntable
   if (camAnim) {
@@ -2304,6 +2373,9 @@ function tick() {
   }
   if (Math.abs(zoomPending) > 1e-4) { const step = zoomPending * k(12); zoomPending -= step; zoomCam(Math.exp(step), zoomPt); }
   controls.update();
+  // near plane scaled with the viewing distance: a fixed 0.5 m near plane left too little depth precision from the default
+  // distance (~300 m), and thin layers like the forward flaps' tiles over their steel flickered through (phones worst)
+  { const nr = clamp(camera.position.distanceTo(controls.target) * 0.012, 0.5, 6); if (Math.abs(nr - camera.near) > 0.05) { camera.near = nr; camera.updateProjectionMatrix(); } }
   camera.updateMatrixWorld();
   // lighting rig rides with the viewer: key from just above-left of the camera, fill from the right, and the
   // studio reflections turned so their softboxes always sit behind you
@@ -2411,6 +2483,7 @@ if (location.hash.startsWith('#dbg=')) setTimeout(() => {
     camAnim = null; userMoved = true; autoSpin = false; scaleMoved = true; controls.target.copy(c); camera.position.copy(c).add(dir.multiplyScalar(dist || 12));
   }, 60);
   if (d.t) { t = d.t; timeU.value = t; }
+  if (d.dep !== undefined && deployer) { deployer.t = d.dep; placeDeploy(deployer, d.dep); }
   if (d.zoom) setTimeout(() => { userInteracted(); zoomPt.copy(controls.target); zoomPending -= 0.4; }, d.zoom);
 }, 300);
 { const dv = defaultView(); camera.position.copy(dv.pos); controls.target.copy(dv.target); }
