@@ -8917,7 +8917,7 @@
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
         // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
         // language/unit switches live. The iframe is unloaded on close so it stops rendering.
-        const STARSHIP_SIM_VERSION = '38';
+        const STARSHIP_SIM_VERSION = '39';
         function openStarshipSim() {
             const modal = document.getElementById('starship-sim-modal');
             const frame = document.getElementById('starship-sim-frame');
@@ -8930,6 +8930,9 @@
             const sm = missionOpen ? window.currentActiveSimMission : null;
             const qs = new URLSearchParams({ embed: '1' });
             if (sm) for (const k of ['f', 'b', 'bf', 's', 'sf', 'n']) if (sm[k]) qs.set(k, sm[k]);
+            // opened from a shared link (the sim's own Share button): same flight details, plus the picked part
+            const dl = window.simDeepLink;
+            if (dl) for (const k of ['f', 'b', 'bf', 's', 'sf', 'n', 'part']) if (dl.get(k)) qs.set(k, dl.get(k));
             qs.set('v', STARSHIP_SIM_VERSION);   // bump on every sim change so browsers don't show a cached old copy
             frame.src = 'starship-3d.html?' + qs.toString();
             lockBodyScroll();
@@ -8943,10 +8946,44 @@
             modal.style.display = 'none';
             if (frame) frame.src = 'about:blank';
             unlockBodyScroll();
+            setDesktopShareMenuOpen(false);
+            // a shared link opens the sim once; after it's closed, a reload shouldn't bring it back
+            if (window.simDeepLink) {
+                window.simDeepLink = null;
+                try {
+                    const u = new URL(location.href);
+                    for (const k of ['sim', 'f', 'b', 'bf', 's', 'sf', 'n', 'part']) u.searchParams.delete(k);
+                    history.replaceState(history.state, '', u.pathname + (u.search || '') + u.hash);
+                } catch (e) { }
+            }
         }
         window.addEventListener('message', e => {
-            if (e.origin === location.origin && e.data && e.data.type === 'starship-sim-close') closeStarshipSim();
+            if (e.origin !== location.origin || !e.data) return;
+            if (e.data.type === 'starship-sim-close') closeStarshipSim();
+            // the sim's Share button (desktop): the launch cards' share menu, next to that button
+            if (e.data.type === 'starship-sim-share' && e.data.payload) {
+                const menu = document.getElementById('modal-desktop-share-menu');
+                if (!menu) return;
+                if (!menu.classList.contains('hidden') && desktopShareAnchor) { setDesktopShareMenuOpen(false); return; }
+                const fr = document.getElementById('starship-sim-frame').getBoundingClientRect(), r = e.data.rect;
+                desktopShareAnchor = { left: fr.left + r.left, right: fr.left + r.right, top: fr.top + r.top, bottom: fr.top + r.bottom };
+                desktopSharePayload = e.data.payload;
+                wireDesktopShareMenuLinks(desktopSharePayload);
+                const copyLabel = document.getElementById('desktop-share-copy-label');
+                if (copyLabel) delete copyLabel.dataset.copied;
+                menu.style.zIndex = '310';                     // above the sim (z-300)
+                setDesktopShareMenuOpen(true);
+            }
+            if (e.data.type === 'starship-sim-share-close' && desktopShareAnchor) setDesktopShareMenuOpen(false);
         });
+        // a shared link to the sim (?sim=1): open it as soon as the page is up
+        (function () {
+            const q = new URLSearchParams(location.search);
+            if (q.get('sim') !== '1') return;
+            window.simDeepLink = q;
+            const go = () => setTimeout(openStarshipSim, 300);
+            if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
+        })();
 
         function renderModalUpdates(category, updates, currentLang) {
             const grid = document.getElementById('modal-booster-info-grid');
@@ -23709,6 +23746,7 @@ setTimeout(() => {
         };
 
         let desktopSharePayload = null;
+        let desktopShareAnchor = null;      // set while the menu is open for the 3D sim's Share button (a screen rect)
         let desktopShareCopyResetTimer = null;
 
         function isDesktopShareMenu() {
@@ -23804,8 +23842,8 @@ setTimeout(() => {
         function positionDesktopShareMenu() {
             const menu = document.getElementById('modal-desktop-share-menu');
             const btn = document.getElementById('modal-share-btn');
-            if (!menu || !btn || menu.classList.contains('hidden')) return;
-            const rect = btn.getBoundingClientRect();
+            if (!menu || (!btn && !desktopShareAnchor) || menu.classList.contains('hidden')) return;
+            const rect = desktopShareAnchor || btn.getBoundingClientRect();
             const rtl = document.documentElement.getAttribute('dir') === 'rtl';
             const gap = 8;
             menu.style.top = `${Math.round(rect.bottom + gap)}px`;
@@ -23830,6 +23868,7 @@ setTimeout(() => {
             if (!menu) return;
             const shouldOpen = !!(open && isDesktopShareMenu());
             menu.classList.toggle('hidden', !shouldOpen);
+            if (!shouldOpen) { desktopShareAnchor = null; menu.style.zIndex = ''; }
             if (btn) btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
             if (shouldOpen) {
                 applyDesktopShareMenuLabels(document.documentElement.lang || 'en');
@@ -23842,6 +23881,7 @@ setTimeout(() => {
             if (!menu) return;
             const willOpen = menu.classList.contains('hidden');
             if (willOpen) {
+                desktopShareAnchor = null; menu.style.zIndex = '';
                 desktopSharePayload = buildDesktopSharePayload(m);
                 wireDesktopShareMenuLinks(desktopSharePayload);
                 const copyLabel = document.getElementById('desktop-share-copy-label');
