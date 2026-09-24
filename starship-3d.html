@@ -762,12 +762,24 @@ const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))
 // tiles beyond the plain edge (d > 1.62), in height above the nose base: up to the forward flap's hinge line they start
 // above a slanted line; past it, a tongue of tiles under the flap out to 2.29 rad (between tileLoYr and tileHiYr)
 const FLAP_D = 1.958, TONGUE_D = 2.29;
+// Down by the aft flap (per photos) the heat shield's edge stops running straight: it curves out across the black
+// strip and reaches the strip's outer edge ~0.35 m above the flap's top, and under that a diagonal edge runs back in to
+// the flap. In the strip's own width t (0 at the plain tile edge, 1 at the strip's outer edge), height yF above the
+// flap's top: tiles where yF < aftCurveY(t), and below 0.35 m only inside the diagonal.
+const AFT_TOP = S0 + 13.7, AFT_TIP = 0.85;
+const aftCurveY = t => t < AFT_TIP ? 0.35 + 2.8 * (1 - t / AFT_TIP) ** 2 : 0.35;
+const aftTiled = (d, y) => {
+  const t = (d - 1.62) / (1.92 - 1.62), yF = y - AFT_TOP;
+  if (t <= 0 || t >= 1 || yF <= 0 || yF > 3.15) return false;
+  return yF < aftCurveY(t) && (yF >= 0.35 || t < 0.56 + 0.29 * yF / 0.35);
+};
 const tileLoYr = d => d < FLAP_D ? -0.2 + (d - 1.62) * 4.118 : 1.19 + (d - FLAP_D) * 1.8;
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
 function tileAt(th, y) {
   const d = angDist(th, WINDWARD), rel = y - S0;
   const half = 1.62;                       // one straight line the whole length of the ship, up to the forward flaps (per photos)
   if (d < half) return true;
+  if (aftTiled(d, y)) return true;                                     // the curve down by the aft flap
   if (d < TONGUE_D && y - NOSE0 > tileLoYr(d) && y - NOSE0 < tileHiYr(d)) return true;   // beside / under the forward flap                        // beside the forward flaps the tiles run right up to the flap
   if (y > NOSE0 + 7.3 + 0.7 * (Math.min(d, FLAP_D) / Math.PI)) return true;   // level all across the steel side              // the nose tip is tiled all the way round
   return false;
@@ -943,7 +955,7 @@ function tileShell(group, y0, y1) {
 // yr = height above the nose base): a straight strip from the top of the aft flap up to ~1 m above the nose base, then
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
 const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
-const blackLoYr = d => Math.max(S0 + 13.7 + 0.35 * clamp((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - NOSE0,   // a shallow slant down to the aft flap's hinge top
+const blackLoYr = d => Math.max(AFT_TOP - NOSE0 + (d < BAND_STRIP ? aftCurveY((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - 0.06 : 0.35),   // a hair over the tiles' curve (aftTiled)
                                 d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
 // the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
 // v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
