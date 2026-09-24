@@ -1723,14 +1723,17 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   // aft flaps: the hood over the top of the hinge (per photos) - half a cylinder with a rounded top, its flat side
   // flush against the hull, standing on the flap's top edge right at the root; hollow and open underneath, tiled
   if (group === sAft) {
-    const HR = 0.55, HH = 1.5, prof = [];
+    const HR = 0.55, HH = 0.4, prof = [];          // total ~0.95 m, under half the earlier 2.05
     for (let i = 0; i <= 8; i++) prof.push([HR, HH * i / 8]);                                   // the half cylinder
     for (let i = 1; i <= 12; i++) { const q = i / 12 * Math.PI / 2; prof.push([HR * Math.cos(q), HH + HR * Math.sin(q)]); }   // rounded top
     prof[prof.length - 1][0] = 0.001;
     // lathe sweeps round +y; the half from -90 to +90 degrees about x is the half facing away from the hull (+x)
     const hg = lathe(prof, 24, 0, Math.PI), uv = hg.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.PI * HR / tileTex.w, uv.getY(i) * (HH + HR) / tileTex.h);
-    hg.translate(hullRadiusAt(y0 + cr) + 0.02, y0 + cr - 0.35, 0);   // flat side on the hull; foot just over the flap top
+    // leaning like the heat shield's diagonal cut right beside it (aftCurveY: 1.35 m across for 2.8 m up), top toward
+    // the windward side; turning about the radial axis keeps the flat side flush on the hull
+    hg.rotateX((Math.sin(a - WINDWARD) > 0 ? 1 : -1) * Math.atan2((1.92 - 1.62) * R, AFT_H - AFT_PT));
+    hg.translate(hullRadiusAt(y0 + cr) + 0.02, y0 + cr - 0.2, 0);   // flat side on the hull; foot just over the flap top
     const m = add(rg, hg, 's-flaps', 'tileSolid', label + ' · hinge hood'); m.material.side = THREE.DoubleSide;
   }
   if (kind !== 'tileSolid') {
