@@ -1718,6 +1718,23 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
       for (let k = 0; k < 3; k++) { let u = us[k]; if (mx - u > per / 2) u += per; U.setXY(t + k, u / tileTex.w, Math.asin(Math.max(-1, Math.min(1, P.getZ(t + k) / 0.22))) * 0.22 / tileTex.h); }
     }
   }
+  // stainless flaps: the windward face is tiled as part of the flap itself (a separate tile sheet floated off the face
+  // and the steel showed through the gap as a silver line), the face toward the steel side stays bare
+  if (kind !== 'tileSolid') {
+    const sgnW = Math.sin(a - WINDWARD) > 0 ? 1 : -1, g0 = eg.groups.find(g => g.materialIndex === 0);
+    const P = eg.attributes.position, U = eg.attributes.uv, keep = [], wind = [];
+    for (let t = g0.start; t < g0.start + g0.count; t += 3) (P.getZ(t) * sgnW > 0 ? wind : keep).push(t);
+    // regroup the caps (non-indexed): steel cap first, then the windward cap as a third material
+    const order = [...keep, ...wind], ids = [];
+    for (const t of order) ids.push(t, t + 1, t + 2);
+    for (let i = g0.start; i < g0.start + g0.count; i++) ids[i - g0.start] = ids[i - g0.start];
+    const pos = P.array.slice(), uv = U.array.slice(), nrm = eg.attributes.normal.array.slice();
+    ids.forEach((src, k) => { const d = g0.start + k; for (let c = 0; c < 3; c++) { P.array[d * 3 + c] = pos[src * 3 + c]; eg.attributes.normal.array[d * 3 + c] = nrm[src * 3 + c]; } U.array[d * 2] = uv[src * 2]; U.array[d * 2 + 1] = uv[src * 2 + 1]; });
+    for (let k = keep.length * 3; k < order.length * 3; k++) { const d = g0.start + k; U.setXY(d, P.getX(d) / tileTex.w, P.getY(d) / tileTex.h); }
+    P.needsUpdate = U.needsUpdate = eg.attributes.normal.needsUpdate = true;
+    const g1 = eg.groups.find(g => g.materialIndex === 1);
+    eg.clearGroups(); eg.addGroup(g0.start, keep.length * 3, 0); eg.addGroup(g0.start + keep.length * 3, wind.length * 3, 1); eg.addGroup(g1.start, g1.count, 1);
+  }
   add(inner, eg, 's-flaps', [kind, 'tileSolid'], label);
   // forward flaps: the nose curves away from the straight hinge near the top, so it stops well short of the flap's top
   // and on every flap it stays inside the flap's outline: the top edge slopes down away from the root, so the hinge's
@@ -1764,13 +1781,6 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
     hg.rotateX((Math.sin(a - WINDWARD) > 0 ? 1 : -1) * Math.atan2((1.92 - 1.62) * R, AFT_H - AFT_PT));
     hg.translate(hullRadiusAt(y0 + cr) + 0.02, y0 + cr - 0.2, 0);   // flat side on the hull; foot just over the flap top
     const m = add(rg, hg, 's-flaps', 'tileSolid', label + ' · hinge hood'); m.material.side = THREE.DoubleSide;
-  }
-  if (kind !== 'tileSolid') {
-    // stainless flap: tiles only on its windward (outer) face; the face toward the steel side stays bare
-    const sg = new THREE.ShapeGeometry(sh, 12); scaleUV(sg, 1 / tileTex.w, 1 / tileTex.h);
-    const sign = Math.sin(a - WINDWARD) > 0 ? 1 : -1;
-    const tm = add(inner, sg, 's-tiles', 'tileSolid', 'Heat shield tiles');
-    tm.position.z = sign * 0.27;           // clear of the flap's bevelled face (±0.22), or the steel shows through from afar if (sign < 0) tm.rotation.y = Math.PI, tm.scale.x = -1;
   }
 }
 const FA1 = WINDWARD + 1.658, FA2 = WINDWARD - 1.658;
