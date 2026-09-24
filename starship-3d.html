@@ -628,7 +628,7 @@ const MAKERS = {
   ribbed: () => { const m = ribTex.map.clone(), b = ribTex.bump.clone(); m.repeat.set(1, 1); b.repeat.set(1, 1); m.needsUpdate = b.needsUpdate = true;
     return new THREE.MeshStandardMaterial({ color: 0xb9bcc2, map: m, bumpMap: b, bumpScale: 1.6, metalness: 1, roughness: 0.42, side: THREE.BackSide }); },
   finDark: () => new THREE.MeshStandardMaterial({ color: 0x323438, metalness: 0.22, roughness: 0.42, side: THREE.DoubleSide }),   // same black satin as the Raptors
-  shieldBand: () => new THREE.MeshStandardMaterial({ color: 0x16171a, metalness: 0.1, roughness: 0.62, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }),   // matte black beside the tiles
+  shieldBand: () => new THREE.MeshStandardMaterial({ color: 0x16171a, metalness: 0.1, roughness: 0.62, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }),   // matte black beside the tiles
   sat: () => new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: 0.6, roughness: 0.45 }),
   mli: () => new THREE.MeshStandardMaterial({ color: 0xc9a25a, metalness: 1, roughness: 0.32 }),
   antenna: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: antennaTex, metalness: 0.1, roughness: 0.7 }),
@@ -952,9 +952,10 @@ function edgeStrip(group, y0, y1) {
   // thin columns in angle; in each, black runs from blackLo to blackHi except where the tiles are (tileLoYr..tileHiYr),
   // every limit taken at the column's own two edges so the slanted edges come out straight
   const DD = 0.01, pos = [], idx = [];
-  const vert = (d, y, sg) => { const r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.065, a = WINDWARD + sg * d; pos.push(Math.sin(a) * r, y, Math.cos(a) * r); return pos.length / 3 - 1; };
+  // flush with the tile skin (+0.04): raised any higher, its edge shows the hull under it from an angle
+  const vert = (d, y, sg) => { const r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.042, a = WINDWARD + sg * d; pos.push(Math.sin(a) * r, y, Math.cos(a) * r); return pos.length / 3 - 1; };
   const quadCol = (e, lo, hi, sg) => {
-    const n = Math.max(1, Math.ceil(Math.max(hi[0] - lo[0], hi[1] - lo[1]) / 0.5));
+    const n = Math.max(1, Math.ceil(Math.max(hi[0] - lo[0], hi[1] - lo[1]) / 0.25));
     let prev = null;
     for (let j = 0; j <= n; j++) {
       const t = j / n, row = e.map((x, k) => vert(x, lo[k] + (hi[k] - lo[k]) * t, sg));
@@ -963,7 +964,8 @@ function edgeStrip(group, y0, y1) {
     }
   };
   for (const sg of [1, -1]) for (let d = BAND_D0; d < BAND_D1 - 1e-6; d += DD) {
-    const e = [Math.max(BAND_D0, d - 0.003), Math.min(BAND_D1, d + DD + 0.003)], dm = d + DD / 2;   // columns overlap a hair: no hairline cracks
+    // the first column starts a hair under the tiles: one straight black edge instead of the tile mask's pixel steps
+    const e = [d === BAND_D0 ? BAND_D0 - 0.012 : d - 0.003, Math.min(BAND_D1, d + DD + 0.003)], dm = d + DD / 2;   // columns overlap a hair: no hairline cracks
     const cl = v => Math.min(y1, Math.max(y0, v));
     // past the tile tongue's outer edge (2.29) the whole column is black - no tiles to leave room for
     const pieces = dm >= TONGUE_D ? [[x => blackLoYr(x), x => blackHiYr(x)]] : [[x => blackLoYr(x), x => Math.min(blackHiYr(x), tileLoYr(x))]];
