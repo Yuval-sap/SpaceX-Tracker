@@ -943,7 +943,7 @@ function tileShell(group, y0, y1) {
 // yr = height above the nose base): a straight strip from the top of the aft flap up to ~1 m above the nose base, then
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
 const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
-const blackLoYr = d => Math.max(S0 + 13.7 - NOSE0,      // level, right down to the top of the aft flap
+const blackLoYr = d => Math.max(S0 + 13.7 + 0.35 * clamp((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - NOSE0,   // a shallow slant down to the aft flap's hinge top
                                 d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
 // the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
 // v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
