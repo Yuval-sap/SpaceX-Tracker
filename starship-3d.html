@@ -1702,6 +1702,14 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   const sgn = Math.sin(a - WINDWARD) > 0 ? 1 : -1;
   hingeHalf(sgn > 0 ? -Math.PI / 2 : Math.PI / 2, 'tileSolid');
   hingeHalf(sgn > 0 ? Math.PI / 2 : -Math.PI / 2, 'finDark');
+  // aft flaps: the tiled "hood" over the top of the flap's root (per photos) - a rounded fairing on the hull that
+  // covers the upper end of the hinge, sitting just above the flap's top edge
+  if (group === sAft) {
+    const hg = new THREE.SphereGeometry(1, 32, 20);                     // its inner half sits inside the hull
+    hg.scale(0.8, 1.7, 0.6); hg.translate(0.05, cr - 0.2, 0);
+    scaleUV(hg, 2 * Math.PI * 0.7 / tileTex.w, Math.PI * 1.7 / tileTex.h);   // hull-sized tiles
+    add(inner, hg, 's-flaps', 'tileSolid', label + ' · hinge hood');
+  }
   if (kind !== 'tileSolid') {
     // stainless flap: tiles only on its windward (outer) face; the face toward the steel side stays bare
     const sg = new THREE.ShapeGeometry(sh, 12); scaleUV(sg, 1 / tileTex.w, 1 / tileTex.h);
