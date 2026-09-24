@@ -1420,15 +1420,15 @@ function gridFinGeo() {
 // the ship's top ring above and, below, in a black bracket on the straight barrel just under the dome weld, with
 // two short prongs down the hull.
 {
-  const y0 = B_TOP, y1 = S0, N = 20, list = [], brackets = [];
+  const y0 = B_TOP, y1 = S0, N = 20, list = [], brackets = [], fittings = [];
   steelShell(hsrG, 'hsr', y1 - 0.3, y1, 'Hot-stage truss · top ring');
   const RR = 0.13, RT_ = 0.035;                         // tube and end-rod radius
   for (let i = 0; i < N; i++) {
-    const a = i / N * TAU, rB = R + 0.12, rT = R - 0.2;
+    const a = i / N * TAU, rB = R + 0.12, rT = R - 0.13;
     const bx = Math.sin(a) * rB, bz = Math.cos(a) * rB;
     for (const sg of [-1, 1]) {
       const at = a + sg * (TAU / N) / 2, tx = Math.sin(at) * rT, tz = Math.cos(at) * rT;
-      const p0 = new V3(bx, y0 - 0.05, bz), p1 = new V3(tx, y1 - 0.3, tz);   // tips into the bracket, on the barrel
+      const p0 = new V3(bx, y0 - 0.05, bz), p1 = new V3(tx, y1 - 0.14, tz);   // tips into the brackets: on the barrel below, on the top ring above
       const dir = p1.clone().sub(p0), len = dir.length();
       // rod - cone - tube - cone - rod
       const prof = [[0.001, 0], [RT_, 0], [RT_, 0.05], [RR, 0.17], [RR, 0.83], [RT_, 0.95], [RT_, 1], [0.001, 1]].map(([r, t]) => [r, -len / 2 + t * len]);
@@ -1444,10 +1444,15 @@ function gridFinGeo() {
     const lip = new THREE.BoxGeometry(0.3, 0.06, 0.24); lip.translate(0, y0 - 0.07, R + 0.1); parts.push(lip);
     for (const sx of [-0.07, 0.07]) { const pr = new THREE.BoxGeometry(0.055, 0.55, 0.06); pr.translate(sx, y0 - 0.77, R + 0.04); parts.push(pr); }
     for (const g of parts) { g.rotateY(a); brackets.push(g); }
+    // top node (half a step round): a fitting on the inside of the ship's top ring that the two strut tips go into
+    const at = a + (TAU / N) / 2, top = [];
+    const fb = new THREE.BoxGeometry(0.26, 0.26, 0.12); fb.translate(0, y1 - 0.15, R - 0.08); top.push(fb);
+    for (const g of top) { g.rotateY(at); fittings.push(g); }
   }
   const truss = merge(list); scaleUV(truss, 0.05, 0.05);
   add(hsrG, truss, 'hsr', 'steel', 'Hot-stage truss · V strut');
   add(hsrG, merge(brackets), 'hsr', 'shieldBand', 'Hot-stage truss · strut bracket');   // black, like the photos
+  add(hsrG, merge(fittings), 'hsr', 'engineDark', 'Hot-stage truss · strut bracket');   // inside the ring: no depth offset, or it shows through it
 }
 
 // ---------------------------------------------------------------- SHIP
