@@ -525,13 +525,14 @@ function makeTiles() {
   const n = 18, W = 1024, hw = W / n, H = Math.round(n * 1.5 * hw / Math.sqrt(3)), rowH = H / n, r = rowH / 1.5, rnd = rng(5);
   const cc = mkCanvas(W, H), rc = mkCanvas(W, H), bc = mkCanvas(W, H);
   const C = cc.getContext('2d'), Rg = rc.getContext('2d'), B = bc.getContext('2d');
-  C.fillStyle = 'rgb(16,16,18)'; C.fillRect(0, 0, W, H);
+  C.fillStyle = 'rgb(9,9,10)'; C.fillRect(0, 0, W, H);           // grout
   Rg.fillStyle = 'rgb(240,240,240)'; Rg.fillRect(0, 0, W, H);
   B.fillStyle = 'rgb(55,55,55)'; B.fillRect(0, 0, W, H);
   const hex = (ctx, cx, cy, rr) => { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3, x = cx + rr * Math.cos(a), y = cy + rr * Math.sin(a); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.fill(); };
   for (let row = 0; row < n; row++) for (let col = 0; col < n; col++) {
     const cx = col * hw + (row % 2 ? hw / 2 : 0), cy = row * rowH;
-    const v = 48 + rnd() * 14, tint = rnd() * 3, rv = 120 + rnd() * 40 | 0;
+    // near black (per photos); the variation between tiles and the sheen come from the light, not a grey base colour
+    const v = 24 + rnd() * 8, tint = rnd() * 2, rv = 95 + rnd() * 40 | 0;
     for (const dx of [-W, 0, W]) for (const dy of [-H, 0, H]) {
       const x = cx + dx, y = cy + dy;
       if (x < -hw || x > W + hw || y < -hw || y > H + hw) continue;
@@ -888,11 +889,11 @@ void main(){
   float aa = max(fwidth(e), 1e-5);
   float inTile = smoothstep(uGrout - aa, uGrout + aa, e), inTop = smoothstep(uBevel - aa, uBevel + aa, e);
   if (uMode == 0) {
-    float v = 48.0 + h1 * 14.0, tint = h2 * 3.0;
-    vec3 c = mix(vec3(16.0, 16.0, 18.0), vec3(v + tint, v, v - 1.0), inTile) / 255.0;
+    float v = 24.0 + h1 * 8.0, tint = h2 * 2.0;                    // = makeTiles
+    vec3 c = mix(vec3(9.0, 9.0, 10.0), vec3(v + tint, v, v - 1.0), inTile) / 255.0;
     gl_FragColor = vec4(pow(c, vec3(2.2)), 1.0);    // linear; the sRGB target encodes it
   } else {
-    float bump = mix(55.0, mix(150.0, 168.0, inTop), inTile), rough = mix(240.0, 120.0 + h3 * 40.0, inTile);
+    float bump = mix(55.0, mix(150.0, 168.0, inTop), inTile), rough = mix(240.0, 95.0 + h3 * 40.0, inTile);
     gl_FragColor = vec4(bump / 255.0, rough / 255.0, 0.0, 1.0);
   }
 }`,
