@@ -1599,8 +1599,18 @@ function layout() {
   const ny = liftFor(IDQ, x.L), dy = ny - spin.position.y;
   spin.position.y = ny;
   // keep the camera locked on the vehicle while it rises or sinks (vertical layout, explode)
-  if (!firstLayout && dy && !camAnim) { camera.position.y += dy; controls.target.y += dy; }
+  if (!firstLayout && dy && !camAnim && !posing) { camera.position.y += dy; controls.target.y += dy; }
   firstLayout = false;
+}
+// part positions for the current explode / separation amounts (also used to measure the final pose ahead of time)
+let posing = false;
+function applyPose() {
+  const sepOff = SEP * sstep(clamp(st.sep));
+  for (const g of groups) { const p = sstep(clamp(st.explode * 1.25 - g.userData.order / 11 * 0.25)); g.position.y = g.userData.dy * p + (g.userData.ship ? sepOff : 0); }
+  const rp = sstep(clamp(st.explode * 1.4 - 0.4));
+  for (const rg of radialGroups) rg.position.x = rg.userData.radial * rp;
+  layout();
+  spin.updateMatrixWorld(true);
 }
 function applyOrientation() {
   const s = scaleMode ? 52 : vertical ? 34 : 92;
@@ -1789,7 +1799,8 @@ function setScale(on) {
   setControlLabels();
 }
 function updateScale() {
-  const show = scaleMode && !scaleMoved && !camAnim && !hovered && !st.explodeT && !st.sepT;
+  const near = !camAnim || camera.position.distanceTo(camAnim.pos) < 0.06 * camAnim.pos.distanceTo(camAnim.target);
+  const show = scaleMode && !scaleMoved && near && !hovered && !st.explodeT && !st.sepT;
   for (const it of SCALE_ITEMS) {
     it.el.style.opacity = show ? 1 : 0; it.el.style.visibility = show ? 'visible' : 'hidden';
     it.g.style.visibility = show ? 'visible' : 'hidden';
@@ -1840,7 +1851,7 @@ function worldAt(x, y) {                                       // the point on t
   mouse.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
   const h = pick(); return h ? h.point.clone() : null;
 }
-function userInteracted() { refocus = null; autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
+function userInteracted() { autoSpin = false; camAnim = null; userMoved = true; lastInteract = performance.now(); fadeHint(); scaleMoved = true; }
 function flyTo(v) { scaleMoved = true; camAnim = { target: v.target.clone(), pos: v.pos.clone() }; navVel.yaw = navVel.pitch = navVel.px = navVel.py = 0; zoomPending = 0; }
 const defaultDir = () => (vertical ? new V3(0.5, 0.1, 1) : new V3(0.42, 0.3, 1)).normalize();
 function vehicleCenter() { return new V3(0, liftFor(IDQ, extents(st.explodeT, st.sepT).L), 0); }
@@ -1955,7 +1966,7 @@ function buildPartsNav() {
     partsNav.appendChild(b);
   }
 }
-let autoSection = false, autoSep = false, refocus = null;
+let autoSection = false, autoSep = false;
 const ENGINE_PARTS = new Set(['b-raptors', 's-raptors']);
 function select(id, focus) {
   selected = id;
@@ -1971,7 +1982,7 @@ function select(id, focus) {
   if (!id) { card.classList.remove('show'); station.textContent = '—'; return; }
   renderCard();
   card.classList.add('show');
-  if (focus) { focusPart(id); refocus = id; }   // framed again once any separation / explode move has finished
+  if (focus) focusPart(id);
 }
 function renderCard() {
   if (!selected) return;
@@ -1992,9 +2003,12 @@ function focusBox(box, dirOverride) {
   userMoved = true; autoSpin = false;
 }
 function focusPart(id) {
+  const keep = [st.sep, st.explode, spin.position.y];
+  posing = true; st.sep = st.sepT; st.explode = st.explodeT; applyPose();
   scene.updateMatrixWorld(true);
   const box = new THREE.Box3();
   for (const m of parts[id].meshes) if (m.geometry && !fluids.includes(m)) box.expandByObject(m);
+  [st.sep, st.explode] = keep; applyPose(); spin.position.y = keep[2]; spin.updateMatrixWorld(true); posing = false;
   if (box.isEmpty()) return;
   const { A, U, S } = vehicleBasis();
   // engines: look up at the bells from below and to the side, not at the skirt from the side
@@ -2149,11 +2163,7 @@ function tick() {
   st.sep += (st.sepT - st.sep) * k(1.8);
 
   const sepOff = SEP * sstep(clamp(st.sep));
-  for (const g of groups) { const p = sstep(clamp(st.explode * 1.25 - g.userData.order / 11 * 0.25)); g.position.y = g.userData.dy * p + (g.userData.ship ? sepOff : 0); }
-  const rp = sstep(clamp(st.explode * 1.4 - 0.4));
-  for (const rg of radialGroups) rg.position.x = rg.userData.radial * rp;
-  layout();
-  spin.updateMatrixWorld(true);
+  applyPose();
 
   // section plane (model-local)
   clipLocal.constant = 14 * (1 - sstep(clamp(st.section)));
@@ -2249,9 +2259,12 @@ function tick() {
 
   // camera: fly-to animation, inertia, smooth zoom, idle turntable
   if (camAnim) {
-    const kc = k(3.4);
+    const kc = k(4.2);
     controls.target.lerp(camAnim.target, kc); camera.position.lerp(camAnim.pos, kc);
-    if (camera.position.distanceTo(camAnim.pos) < 0.05 && controls.target.distanceTo(camAnim.target) < 0.05) { camAnim = null; mouseDirty = true; }
+    // done once the rest is imperceptible (relative to the viewing distance): the exponential tail used to
+    // keep the flight - and everything waiting for it, like the height lines - going for seconds
+    const tol = Math.max(0.05, 0.004 * camAnim.pos.distanceTo(camAnim.target));
+    if (camera.position.distanceTo(camAnim.pos) < tol && controls.target.distanceTo(camAnim.target) < tol) { camera.position.copy(camAnim.pos); controls.target.copy(camAnim.target); camAnim = null; mouseDirty = true; }
   } else if (!gesture) {
     const decay = Math.pow(0.9, dt * 60);
     if (Math.abs(navVel.yaw) + Math.abs(navVel.pitch) > 1e-4) { orbitCam(navVel.yaw, navVel.pitch, navPivot); navVel.yaw *= decay; navVel.pitch *= decay; }
@@ -2275,7 +2288,6 @@ function tick() {
 
   if (rolling) { root.rotation.y = (root.rotation.y + dt * 0.35) % TAU; syncCube(); }
   updateScale();
-  if (refocus && !gesture && Math.abs(st.sep - st.sepT) + Math.abs(st.explode - st.explodeT) < 0.002) { const id = refocus; refocus = null; if (selected === id) focusPart(id); }
   // shadows only need re-rendering while parts are moving, being cut or turning
   const moving = rolling || scaleShadow-- > 0 || Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
   if (moving || frameNo < 4) renderer.shadowMap.needsUpdate = true;
