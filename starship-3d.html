@@ -939,37 +939,26 @@ function nozzleProfile(yT, yE, rT, rE, n = 44) {
   return pts;                           // ascending y (exit first)
 }
 function buildRaptor(vac) {
-  // Raptor 3 (after close-up photos of a booster's engine section): a dark cylindrical can under the thrust puck, then a
-  // column of stepped flanges with bolt circles (pumps / preburner), the chamber, a curved line coming down one side into
-  // the top of the bell, and a long plain bell - wide at the exit - with a thin coolant-manifold band just under the throat
-  const yT = -1.72, rT = 0.14, yE = vac ? -4.3 : -3.1, rE = vac ? 1.15 : 0.6;
+  // Raptor 3: clean stacked head, two looping hot-gas ducts, black bell
+  const yT = -1.98, rT = 0.16, yE = vac ? -4.3 : -3.1, rE = vac ? 1.15 : 0.6;
   const st = [], dk = [];
-  const cyl = (r0, r1, y0, y1, list, x = 0, seg = 32, z = 0) => { const c = new THREE.CylinderGeometry(r1, r0, y1 - y0, seg); c.translate(x, (y0 + y1) / 2, z); list.push(c); };
-  const tor = (r, tb, y, list) => { const t = new THREE.TorusGeometry(r, tb, 8, 40); t.rotateX(Math.PI / 2); t.translate(0, y, 0); list.push(t); };
-  const bolts = (r, y, n, list, sz = 0.018) => { for (let i = 0; i < n; i++) { const a = i / n * TAU, bx = new THREE.BoxGeometry(sz, sz * 1.4, sz); bx.translate(Math.sin(a) * r, y, Math.cos(a) * r); list.push(bx); } };
-  // mount + can
-  cyl(0.3, 0.3, -0.06, 0, dk);                                  // gimbal mount
-  st.push(lathe([[0.001, -0.53], [0.2, -0.53], [0.26, -0.5], [0.28, -0.46], [0.28, -0.06], [0.001, -0.06]], 40));   // the can
-  cyl(0.285, 0.285, -0.1, -0.06, dk); cyl(0.285, 0.285, -0.36, -0.33, dk);     // bands round the can
-  for (const ang of [0.9, 2.5, 4.2]) { const bx = new THREE.BoxGeometry(0.1, 0.14, 0.05); bx.translate(0, -0.2, 0.3); bx.rotateY(ang); dk.push(bx); }   // small boxes on it
-  // flange column
-  cyl(0.13, 0.13, -0.62, -0.53, st);
-  cyl(0.2, 0.2, -0.66, -0.62, dk); bolts(0.185, -0.61, 14, dk);
-  st.push(lathe([[0.001, -0.8], [0.19, -0.8], [0.19, -0.74], [0.16, -0.66], [0.001, -0.66]], 36));
-  cyl(0.245, 0.245, -0.85, -0.8, dk); bolts(0.225, -0.79, 16, dk);
-  cyl(0.185, 0.2, -1.02, -0.85, st);
-  cyl(0.23, 0.23, -1.06, -1.02, dk); bolts(0.215, -1.01, 16, dk);
-  cyl(0.165, 0.18, -1.22, -1.06, st);
-  cyl(0.215, 0.215, -1.26, -1.22, dk); bolts(0.2, -1.21, 14, dk);
-  // chamber down to the throat
-  st.push(lathe([[rT, yT], [0.16, -1.66], [0.2, -1.56], [0.215, -1.44], [0.21, -1.3], [0.2, -1.26], [0.001, -1.26]], 40));
-  cyl(0.225, 0.225, -1.4, -1.36, dk); bolts(0.215, -1.35, 12, dk);
-  // side hardware: a pump body with its cap, a small valve box, and the curved line down into the bell's manifold
-  cyl(0.085, 0.085, -1.05, -0.72, st, 0.3, 20);
-  { const cp = new THREE.SphereGeometry(0.085, 16, 8, 0, TAU, Math.PI / 2, Math.PI / 2); cp.translate(0.3, -1.05, 0); st.push(cp); }
-  { const vb = new THREE.BoxGeometry(0.12, 0.1, 0.1); vb.translate(-0.26, -0.95, 0.05); dk.push(vb); }
-  dk.push(tube([[0.3, -1.05, 0], [0.38, -1.25, 0.05], [0.36, -1.52, 0.08], [0.24, -1.76, 0.06], [0.2, -1.8, 0.05]], 0.034, 32));
-  dk.push(tube([[-0.2, -0.9, 0.12], [-0.3, -1.15, 0.15], [-0.26, -1.45, 0.14], [-0.19, -1.76, 0.1]], 0.022, 24));
+  const cyl = (r0, r1, y0, y1, list, x = 0, seg = 32) => { const c = new THREE.CylinderGeometry(r1, r0, y1 - y0, seg); c.translate(x, (y0 + y1) / 2, 0); list.push(c); };
+  const tor = (r, tb, y, list) => { const t = new THREE.TorusGeometry(r, tb, 10, 40); t.rotateX(Math.PI / 2); t.translate(0, y, 0); list.push(t); };
+  cyl(0.3, 0.3, -0.3, 0, dk);                 // gimbal block
+  cyl(0.42, 0.42, -0.38, -0.3, dk);           // mounting flange
+  cyl(0.34, 0.36, -0.72, -0.38, st);          // turbopump housing
+  tor(0.37, 0.04, -0.5, dk); tor(0.37, 0.035, -0.64, dk);
+  cyl(0.27, 0.3, -1.02, -0.72, st);
+  cyl(0.35, 0.35, -1.12, -1.02, dk);          // collar
+  cyl(0.24, 0.27, -1.42, -1.12, st);
+  st.push(lathe([[0.16, -1.98], [0.2, -1.9], [0.28, -1.78], [0.31, -1.62], [0.31, -1.44], [0.001, -1.42]], 40));   // chamber
+  tor(0.33, 0.085, -1.47, dk);                // main manifold
+  const pump = (x, r, h, y) => { cyl(r, r, y - h / 2, y + h / 2, st, x, 24); const cap = new THREE.SphereGeometry(r, 20, 8, 0, TAU, Math.PI / 2, Math.PI / 2); cap.translate(x, y - h / 2, 0); st.push(cap); };
+  pump(0.44, 0.17, 0.46, -0.72); pump(-0.44, 0.15, 0.42, -0.74);
+  for (const sg of [1, -1]) {                 // the two big looping ducts
+    dk.push(tube([[0.44 * sg, -0.95, 0], [0.66 * sg, -1.12, 0.12 * sg], [0.62 * sg, -1.36, 0.26 * sg], [0.36 * sg, -1.5, 0.3 * sg]], 0.075, 32));
+    dk.push(tube([[0.2 * sg, -0.4, 0.3 * sg], [0.36 * sg, -0.62, 0.34 * sg], [0.3 * sg, -1.0, 0.3 * sg], [0.22 * sg, -1.3, 0.26 * sg]], 0.035, 24));
+  }
   const noz = nozzleProfile(yT, yE, rT, rE);
   const nozzle = lathe(noz, 56);
   const pos = nozzle.attributes.position, col = new Float32Array(pos.count * 3);
@@ -980,17 +969,15 @@ function buildRaptor(vac) {
   nozzle.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const nr = t => rT + (rE - rT) * (1 - Math.pow(1 - t, 2.2));
   const vr = [];
-  const ringAt = (t, tb, list = dk) => tor(nr(t) + 0.008, tb, yT + (yE - yT) * t, list);
-  // coolant manifold: a thin raised band just under the throat, and a second fine rib a little lower
-  { const t0 = 0.04, t1 = 0.1; cyl(nr(t1) + 0.03, nr(t0) + 0.03, yT + (yE - yT) * t1, yT + (yE - yT) * t0, dk, 0, 40); }
-  ringAt(0.22, 0.014);
+  const ringAt = (t, tb, list = dk) => tor(nr(t) + 0.015, tb, yT + (yE - yT) * t, list);
+  ringAt(0.1, 0.06);
   if (vac) { ringAt(0.5, 0.04, vr); ringAt(1, 0.06, vr); }
-  else ringAt(1, 0.018);
+  else ringAt(1, 0.03);
   const glow = lathe(noz.map(([r, y]) => [r * 0.975, y]), 40);
   const proxy = new THREE.CylinderGeometry(0.45, rE, -yE, 12); proxy.translate(0, yE / 2, 0);
   const nozzleInner = vac ? lathe(noz.map(([r, y]) => [r * 0.955 - 0.01, y]), 56) : null;
-  // the engine's number, stencilled in white on the outboard side of the bell (a patch of the bell surface itself)
-  const numPts = noz.filter(([, y]) => y <= yT + (yE - yT) * 0.3 && y >= yT + (yE - yT) * 0.56).map(([r, y]) => [r + 0.006, y]);
+  // the engine's number: a patch of the bell surface just under the top ring, where the real stencils sit
+  const numPts = noz.filter(([, y]) => y <= yT + (yE - yT) * 0.17 && y >= yT + (yE - yT) * 0.47).map(([r, y]) => [r + 0.006, y]);
   return { steel: merge(st), dark: merge(dk), nozzle, nozzleInner, vacRing: vac ? merge(vr) : null, glow, proxy, rE, yE, numPts };
 }
 // white engine numbers: one atlas of 2-3 digit numbers, drawn slanted like the stencils on real Raptor bells
@@ -1001,8 +988,8 @@ function engineNumAtlas(nums) {
   g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
   nums.forEach((n, i) => {
     const cx = (i % NUM_CELLS) * C + C / 2, cy = Math.floor(i / NUM_CELLS) * C + C / 2;
-    g.save(); g.translate(cx, cy); g.transform(1, 0, -0.2, 1, 0, 0);
-    g.font = `700 ${String(n).length > 2 ? 58 : 72}px 'Arial Narrow', 'Roboto Condensed', Arial, sans-serif`;
+    g.save(); g.translate(cx, cy); g.transform(1, 0, -0.24, 1, 0, 0);
+    g.font = `900 ${String(n).length > 2 ? 54 : 66}px 'Arial Black', 'Arial Rounded MT Bold', 'Segoe UI Black', Arial, sans-serif`;
     g.fillText(String(n), 0, 4); g.restore();
   });
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
@@ -1148,9 +1135,9 @@ function placeEngine(group, pid, vac, x, y, z, label, delay, numIndex = null) {
   const pieces = vac ? [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'rvacOuter'], [E.vacRing, 'rvacOuter'], [E.nozzleInner, 'rvacInner']]
     : [[E.steel, 'engineSteel'], [E.dark, 'engineDark'], [E.nozzle, 'nozzle']];
   for (const [geo, kind] of pieces) batch[kind].push(geo.clone().applyMatrix4(e.matrix));
-  // sea-level engines: the engine's number on the outboard side of the bell (the engine group is turned by +0.3)
+  // sea-level engines: the engine's number, on a different side of the bell from one engine to the next
   if (!vac && numIndex != null) {
-    const arc = 0.62, ng = lathe(E.numPts, 10, -0.3 - arc / 2, arc), uv = ng.attributes.uv;
+    const arc = 0.66, ph = ((numIndex * 2.399963 + 0.7) % TAU), ng = lathe(E.numPts, 10, ph - arc / 2, arc), uv = ng.attributes.uv;   // a different side on each engine
     const c = numIndex % (NUM_CELLS * NUM_CELLS), u0 = (c % NUM_CELLS) / NUM_CELLS, v0 = 1 - (Math.floor(c / NUM_CELLS) + 1) / NUM_CELLS;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) / NUM_CELLS, v0 + uv.getY(i) / NUM_CELLS);
     batch.engineNum.push(ng.applyMatrix4(e.matrix));
