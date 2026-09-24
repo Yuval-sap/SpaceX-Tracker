@@ -955,7 +955,7 @@ function tileShell(group, y0, y1) {
 // yr = height above the nose base): a straight strip from the top of the aft flap up to ~1 m above the nose base, then
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
 const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
-const blackLoYr = d => Math.max(AFT_TOP - NOSE0 + (d < BAND_STRIP ? aftCurveY((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - 0.06 : 0.35),   // a hair over the tiles' curve (aftTiled)
+const blackLoYr = d => Math.max(AFT_TOP - NOSE0 + (d < BAND_STRIP ? aftCurveY((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - 0.14 * (1 - (d - BAND_D0) / (BAND_STRIP - BAND_D0)) : 0.35),   // over the ragged tile edge, but not past the point' curve (aftTiled)
                                 d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
 // the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
 // v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
@@ -1004,6 +1004,20 @@ function edgeStrip(group, y0, y1) {
       const lo = ein.map(x => cl(NOSE0 + fLo(x))), hi = ein.map(x => cl(NOSE0 + Math.max(fLo(x), fHi(x))));
       if (hi[0] - lo[0] < 1e-3 && hi[1] - lo[1] < 1e-3) continue;
       quadCol(e, lo, hi, sg);
+    }
+  }
+  // the short diagonal edge of the tiles from the strip's point down to the aft flap: the cut hexagons along it read as
+  // a ragged staircase, so a thin trim runs exactly along the line and gives it one straight edge
+  if (y0 <= AFT_TOP + AFT_PT && y1 >= AFT_TOP) {
+    const dOf = t => 1.62 + (1.92 - 1.62) * t, W = 0.035 / R, N = 12;
+    for (const sg of [1, -1]) {
+      let prev = null;
+      for (let j = 0; j <= N; j++) {
+        const yF = AFT_PT * j / N, d = dOf(0.56 + 0.44 * yF / AFT_PT), y = Math.min(y1, Math.max(y0, AFT_TOP + yF));
+        const row = [vert(d - 1.6 * W, y, sg), vert(d + 1.4 * W * (1 - j / N), y, sg)];   // over both sides of the ragged edge, tapering to nothing at the point
+        if (prev) { if (sg > 0) idx.push(prev[0], row[0], prev[1], prev[1], row[0], row[1]); else idx.push(prev[0], prev[1], row[0], prev[1], row[1], row[0]); }
+        prev = row;
+      }
     }
   }
   // and the last steel ring under the tiled tip, all the way across the steel side between the two forward flaps
