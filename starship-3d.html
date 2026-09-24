@@ -149,7 +149,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=12"></script>
+<script src="starship-3d-i18n.js?v=13"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -240,7 +240,7 @@ const EMBED = !!Q.get('embed');
 function langKey(raw) { let k = String(raw || 'en').toLowerCase().split('-')[0]; if (k === 'iw') k = 'he'; return SS_I18N[k] ? k : 'en'; }
 function parentDoc() { try { return window.parent !== window ? window.parent.document : null; } catch (e) { return null; } }
 function readLang() { const pd = parentDoc(); return langKey((pd && pd.documentElement.lang) || Q.get('lang') || 'en'); }
-function readUnits() { try { if (window.parent !== window && window.parent.currentUnitSystem) return window.parent.currentUnitSystem; } catch (e) {} return Q.get('units') === 'imperial' ? 'imperial' : 'metric'; }
+function readUnits() { try { if (window.parent !== window && window.parent.currentUnitSystem) return window.parent.currentUnitSystem; } catch (e) {} const q = Q.get('units'); return q === 'imperial' || q === 'metric' ? q : readLang() === 'en' ? 'imperial' : 'metric'; }
 function closeEmbed() { try { window.parent.postMessage({ type: 'starship-sim-close' }, location.origin); } catch (e) {} }
 const NUM_LOCALE = { en: 'en-US', he: 'he-IL', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', ru: 'ru-RU', zh: 'zh-CN', it: 'it-IT', cs: 'cs-CZ', sv: 'sv-SE', nl: 'nl-NL', da: 'da-DK', pt: 'pt-BR', pl: 'pl-PL', hi: 'hi-IN', ar: 'ar-EG', tr: 'tr-TR' };
 let LANG = readLang(), UNITS = readUnits(), I = SS_I18N[LANG];
@@ -250,11 +250,11 @@ function unitValues() {
   return imp ? {
     height: `${nf(408)} ${u.ft}`, diameter: `${nf(29.5, 1)} ${u.ft}`, thrust: `~${nf(20400000)} ${u.lbf}`, liftoff: `~${nf(11700000)} ${u.lb}`,
     f9Height: `${nf(229)} ${u.ft}`, f9Thrust: `${nf(1710000)} ${u.lbf}`, f9Payload: `${nf(50265)} ${u.lb}`, humanH: `${nf(5.9, 1)} ${u.ft}`,
-    raptorThrust: `~${nf(617000)} ${u.lbf}`, rvacExit: `~${nf(7.5, 1)} ${u.ft}`, loxTemp: `< −${nf(297)} °F`, ch4Temp: `< −${nf(260)} °F`, tilePeak: `~${nf(2550)} °F`, payload: `${nf(220000)}+ ${u.lb}`,
+    raptorThrust: `~${nf(617000)} ${u.lbf}`, rvacExit: `~${nf(7.5, 1)} ${u.ft}`, loxTemp: `< −${nf(297)} °F`, ch4Temp: `< −${nf(260)} °F`, tilePeak: `~${nf(2550)} °F`, loxBoil: `−${nf(297)} °F`, ringH: `${nf(5.9, 1)} ${u.ft}`, reentryTemp: `${nf(2550)} °F`, payload: `${nf(220000)}+ ${u.lb}`,
   } : {
     height: `${nf(124.4, 1)} ${u.m}`, diameter: `${nf(9)} ${u.m}`, thrust: `~${nf(90600)} ${u.kN}`, liftoff: `~${nf(5300)} ${u.t}`,
     f9Height: `${nf(70)} ${u.m}`, f9Thrust: `${nf(7607)} ${u.kN}`, f9Payload: `${nf(22.8, 1)} ${u.t}`, humanH: `${nf(1.8, 1)} ${u.m}`,
-    raptorThrust: `~${nf(2750)} ${u.kN}`, rvacExit: `~${nf(2.3, 1)} ${u.m}`, loxTemp: `< −${nf(183)} °C`, ch4Temp: `< −${nf(162)} °C`, tilePeak: `~${nf(1400)} °C`, payload: `${nf(100)}+ ${u.t}`,
+    raptorThrust: `~${nf(2750)} ${u.kN}`, rvacExit: `~${nf(2.3, 1)} ${u.m}`, loxTemp: `< −${nf(183)} °C`, ch4Temp: `< −${nf(162)} °C`, tilePeak: `~${nf(1400)} °C`, loxBoil: `−${nf(183)} °C`, ringH: `${nf(1.8, 1)} ${u.m}`, reentryTemp: `${nf(1400)} °C`, payload: `${nf(100)}+ ${u.t}`,
   };
 }
 let UV = unitValues();
@@ -1251,25 +1251,27 @@ const SAT_N = Math.min(40, Math.max(1, parseInt(new URLSearchParams(location.sea
 // dispenser rails goes down to the top satellite of the stack, clamps it, lifts it to the slot, and a pusher shoves it out
 // through the slot; outside it drifts away with a slow tumble. The carriage goes back down for the next one - lower each
 // time as the stack gets shorter - until the bay is empty, then everything resets and starts over.
-// Timing of the push and the drift is the same as the single-satellite loop the site had before (6.5 s push, ~7 s drift);
-// the next satellite is fetched and lifted while the previous one drifts off, but it is only pushed out once that one
-// has disappeared.
-const PUSH_T = 6.5, DRIFT_T = 6.8;
+// Each satellite leaves in one continuous motion: it gathers speed from rest inside the bay (pushed), then keeps a
+// steady speed out through the slot and on away from the ship, no stop anywhere; about as long in total as the old
+// push + drift. The next satellite is fetched and lifted meanwhile, but only starts out once this one has disappeared.
+const SAT_ACC = 2.2, SAT_V = 1.8, MOVE_T = 13.3;
+const satR = (RS, w) => w < SAT_ACC ? RS + SAT_V * w * w / (2 * SAT_ACC) : RS + SAT_V * (SAT_ACC / 2 + w - SAT_ACC);
 function buildDeploySchedule(d) {
-  const ev = [];
+  const ev = [], PUSH_R = R + 0.35;
+  const tRel = SAT_ACC + (PUSH_R - d.RS - SAT_V * SAT_ACC / 2) / SAT_V;   // when it is past the pusher's reach
   let t = 0.8, gone = 0;                                // carriage starts parked at the slot
   for (let k = 0; k < d.N; k++) {
     const yk = d.ys[k], down = 0.45 + (d.YC - yk) * 0.11, up = down;
     const e = { k, t0: t, descendEnd: t + down, grabEnd: t + down + 0.35, liftEnd: t + down + 0.35 + up };
     e.pushStart = Math.max(e.liftEnd, gone);            // waits at the slot until the previous one is gone
-    e.release = e.pushStart + PUSH_T;
-    ev.push(e); t = e.release + 0.8; gone = e.release + DRIFT_T;
+    e.release = e.pushStart + tRel;
+    ev.push(e); t = e.release + 0.8; gone = e.pushStart + MOVE_T;
   }
   d.ev = ev; d.total = gone + 2.5;                      // let the last one drift off, then reset
 }
 function placeDeploy(d, tt) {
   const T = tt % d.total, sm = x => x * x * (3 - 2 * x), c01 = x => Math.min(1, Math.max(0, x));
-  const PUSH_R = R + 0.35, OUT = R + 3.4;
+  const PUSH_R = R + 0.35;
   let carY = d.YC, pushX = 0, clampK = -1;
   for (const e of d.ev) {
     const g = d.sats[e.k], yk = d.ys[e.k];
@@ -1277,8 +1279,12 @@ function placeDeploy(d, tt) {
     if (T < e.grabEnd) { /* waiting in the stack */ }
     else if (T < e.liftEnd) { y = yk + (d.YC - yk) * sm(c01((T - e.grabEnd) / (e.liftEnd - e.grabEnd))); }
     else if (T < e.pushStart) { y = d.YC; }
-    else if (T < e.release) { y = d.YC; r = d.RS + (OUT - d.RS) * sm(c01((T - e.pushStart) / PUSH_T)); }
-    else { const w = T - e.release, u = w / 7; y = d.YC + w * 0.12; r = OUT + u * 16; tumble = u * 0.5; vis = w < DRIFT_T; }
+    else {
+      // one smooth outward motion; once clear of the hull it also starts to rise and tumble, easing in
+      const w = T - e.pushStart, out = Math.max(0, satR(d.RS, w) - (R + 0.6));
+      r = satR(d.RS, w); const f = out * out / (out + 3);
+      y = d.YC + f * 0.06; tumble = Math.min(1, f / 18) * 0.5; vis = w < MOVE_T;
+    }
     g.position.copy(dirA(d.DC, r)).setY(y);
     g.rotation.set(0, d.DC - Math.PI / 2, tumble * 0.4); g.rotateX(tumble * 0.25);
     g.visible = vis;
