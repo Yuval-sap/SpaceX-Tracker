@@ -122,27 +122,27 @@
     .brand h1{font-size:28px}
     .brand .sub{font-size:11.5px}
     #stats{display:none}
-    #parts{top:auto;bottom:70px;left:0;right:0;flex-direction:row;overflow-x:auto;padding:4px 16px;scrollbar-width:none;align-items:center}
-    #parts::-webkit-scrollbar{display:none}
-    .sep{display:none}
-    #controls{bottom:max(16px,env(safe-area-inset-bottom));gap:4px}
-    #controls .pill{padding:8px 8px;font-size:10.5px}
-    #nav{top:12px;right:10px;bottom:auto;gap:6px;align-items:flex-end}
+    #parts{left:12px;gap:4px}
+    #parts .pill{padding:4px 9px;font-size:10.5px}
+    .sep{font-size:9.5px;margin:4px 0 0 2px}
+    #controls{left:8px;right:8px;transform:none;bottom:max(12px,env(safe-area-inset-bottom));gap:5px;flex-wrap:wrap;justify-content:center}
+    #controls .pill{padding:7px 10px;font-size:11px}
+    #nav{top:auto;right:10px;bottom:96px;gap:6px;align-items:flex-end}
     #cube{width:84px;height:84px}
     #nav .views{display:none}
     #nav .navbtns button{width:28px;height:28px;font-size:13px}
     #card{left:12px;right:12px;width:auto;top:auto;bottom:156px}
     #hint{display:none}
     html[dir=rtl] .brand{right:16px}
-    html[dir=rtl] #parts{left:0;right:0;flex-direction:row-reverse}
+    html[dir=rtl] #parts{left:auto;right:12px}
     html[dir=rtl] #nav{left:10px;right:auto;align-items:flex-start}
     html[dir=rtl] #card{left:12px}
     #ss-close{top:12px;right:10px;width:34px;height:34px}
     #theme-btn{top:12px;right:10px;width:34px;height:34px;font-size:15px}
     html.embed #theme-btn{right:52px}
-    html[dir=rtl] #theme-btn{left:10px}
-    html.embed[dir=rtl] #theme-btn{left:52px}
-    #nav{top:56px}
+    html[dir=rtl] #theme-btn{right:auto;left:10px}
+    html.embed[dir=rtl] #theme-btn{right:auto;left:52px}
+
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
@@ -278,8 +278,7 @@ function setControlLabels() {
 }
 // the parts list starts just under the title block, which grows by a line when a mission is shown
 function placeParts() {
-  if (innerWidth <= 760) { partsNav.style.top = ''; return; }
-  partsNav.style.top = Math.round(document.querySelector('.brand').getBoundingClientRect().bottom + (innerHeight < 720 ? 14 : 28)) + 'px';
+  partsNav.style.top = Math.round(document.querySelector('.brand').getBoundingClientRect().bottom + (innerWidth <= 760 ? 14 : innerHeight < 720 ? 14 : 28)) + 'px';
 }
 addEventListener('resize', placeParts);
 function applyI18n() {
@@ -728,25 +727,31 @@ function makeNoseTiles(prof, arc) {
     }
     rs.push(sv); rr.push(r); rx.push(x); rn.push(N); ro.push(off);
   }
-  const pad = a => { const o = new Array(NOSE_ROWS_MAX).fill(0); a.forEach((v, i) => { o[i] = v; }); return o; };
+  // rows in a float texture (x = row, y = 0: s, r, height, count; y = 1: phase): uniform arrays this size are more than
+  // phone GPUs accept, and the shader silently failed there (the nose came out black and glossy)
+  const rowData = new Float32Array(NOSE_ROWS_MAX * 2 * 4);
+  rs.forEach((v, i) => { rowData.set([v, rr[i], rx[i], rn[i]], i * 4); rowData.set([ro[i], 0, 0, 0], (NOSE_ROWS_MAX + i) * 4); });
+  const rowTex = new THREE.DataTexture(rowData, NOSE_ROWS_MAX, 2, THREE.RGBAFormat, THREE.FloatType); rowTex.needsUpdate = true;
   const grout = TWm / 2 * 0.046, bevel = TWm / 2 * 0.137;         // same proportions as the hull tiles (makeTiles)
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       uS: { value: S }, uP: { value: P }, uRows: { value: rs.length }, uMode: { value: 0 },
-      uRowS: { value: pad(rs) }, uRowR: { value: pad(rr) }, uRowX: { value: pad(rx) }, uRowN: { value: pad(rn) }, uRowOff: { value: pad(ro) },
+      uRowTex: { value: rowTex },
       uGrout: { value: grout }, uBevel: { value: bevel }, uNose0: { value: NOSE0 }, uWind: { value: WINDWARD },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: `
 #define ROWS ${NOSE_ROWS_MAX}
 uniform float uS, uP, uGrout, uBevel, uNose0, uWind; uniform int uRows, uMode;
-uniform float uRowS[ROWS], uRowR[ROWS], uRowX[ROWS], uRowN[ROWS], uRowOff[ROWS];
+uniform highp sampler2D uRowTex;
+vec4 rowA(int k){ return texelFetch(uRowTex, ivec2(k, 0), 0); }      // s, r, height, count
+float rowOff(int k){ return texelFetch(uRowTex, ivec2(k, 1), 0).x; }
 varying vec2 vUv;
 const float TAU = 6.28318530718, PI = 3.14159265359;
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float rAt(float s){
-  float f = (s - uRowS[0]) / uP; int k = int(clamp(floor(f), 0.0, float(uRows - 2)));
-  return mix(uRowR[k], uRowR[k + 1], clamp(f - float(k), 0.0, 1.0));
+  float f = (s - rowA(0).x) / uP; int k = int(clamp(floor(f), 0.0, float(uRows - 2)));
+  return mix(rowA(k).y, rowA(k + 1).y, clamp(f - float(k), 0.0, 1.0));
 }
 bool tiled(float th, float y){                       // = tileAt() in the page script
   float d = abs(mod(th - uWind + PI, TAU) - PI);
@@ -756,25 +761,25 @@ bool tiled(float th, float y){                       // = tileAt() in the page s
 }
 void main(){
   float s = vUv.y * uS, phi = vUv.x * TAU, r = rAt(s);
-  int kc = int(floor((s - uRowS[0]) / uP + 0.5));
+  int kc = int(floor((s - rowA(0).x) / uP + 0.5));
   vec2 cand[24]; int nc = 0;
   float best = 1e9; vec2 b1 = vec2(0.0); int bk = 0; float bi = 0.0;
   for (int dk = -2; dk <= 2; dk++) {
     int k = kc + dk; if (k < 0 || k >= uRows) continue;
-    float N = uRowN[k], off = uRowOff[k], rm = 0.5 * (r + uRowR[k]);
+    vec4 R4 = rowA(k); float N = R4.w, off = rowOff(k), rm = 0.5 * (r + R4.y);
     float i0 = floor(phi / TAU * N - off);
     for (int di = -1; di <= 2; di++) {
       float i = i0 + float(di);
       float dphi = (i + off) / N * TAU - phi; dphi -= TAU * floor(dphi / TAU + 0.5);
-      vec2 c = vec2(dphi * rm, uRowS[k] - s); float d = dot(c, c);
+      vec2 c = vec2(dphi * rm, R4.x - s); float d = dot(c, c);
       if (nc < 24) { cand[nc] = c; nc++; }
       if (d < best) { best = d; b1 = c; bk = k; bi = mod(i, N); }
     }
   }
   float e = 1e9;                                     // distance to the nearest cell edge (bisector)
   for (int j = 0; j < 24; j++) { if (j >= nc) break; vec2 dd = cand[j] - b1; float L = length(dd); if (L < 1e-5) continue; e = min(e, (dot(cand[j], cand[j]) - best) / (2.0 * L)); }
-  float th = (bi + uRowOff[bk]) / uRowN[bk] * TAU;
-  if (!tiled(th, uNose0 + uRowX[bk])) { gl_FragColor = uMode == 0 ? vec4(0.0) : vec4(55.0 / 255.0, 240.0 / 255.0, 0.0, 1.0); return; }
+  float th = (bi + rowOff(bk)) / rowA(bk).w * TAU;
+  if (!tiled(th, uNose0 + rowA(bk).z)) { gl_FragColor = uMode == 0 ? vec4(0.0) : vec4(55.0 / 255.0, 240.0 / 255.0, 0.0, 1.0); return; }
   vec2 id = vec2(float(bk), bi);
   float h1 = hash(id), h2 = hash(id + 7.1), h3 = hash(id + 13.7);
   float aa = max(fwidth(e), 1e-5);
@@ -799,7 +804,7 @@ void main(){
   mat.uniforms.uMode.value = 0; renderer.setRenderTarget(A); renderer.render(qScene, qCam);
   mat.uniforms.uMode.value = 1; renderer.setRenderTarget(B); renderer.render(qScene, qCam);
   renderer.setRenderTarget(prev);
-  mat.dispose();
+  mat.dispose(); rowTex.dispose();
   for (const t of [A.texture, B.texture]) t.anisotropy = maxAniso;
   return { map: A.texture, rb: B.texture };
 }
@@ -2109,7 +2114,8 @@ canvas.addEventListener('pointermove', e => {
   if (gesture.mode === 'orbit' && ptrs.size === 1) {
     const k = e.pointerType === 'mouse' ? 0.0052 : 0.0068;
     // the vehicle follows the pointer: drag up/right and the part you're looking at swings up/right
-    orbitCam(dx * k, -dy * k, navPivot); navVel.yaw = dx * k; navVel.pitch = -dy * k;
+    const sg = e.pointerType === 'mouse' ? 1 : -1;             // on touch the drag runs the other way round
+    orbitCam(sg * dx * k, -sg * dy * k, navPivot); navVel.yaw = sg * dx * k; navVel.pitch = -sg * dy * k;
     gesture.moved += Math.abs(dx) + Math.abs(dy);
   } else if (gesture.mode === 'pan' && ptrs.size === 1) {
     panCam(dx, dy); navVel.px = dx; navVel.py = dy; gesture.moved += Math.abs(dx) + Math.abs(dy);
