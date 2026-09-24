@@ -762,16 +762,16 @@ const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))
 // tiles beyond the plain edge (d > 1.62), in height above the nose base: up to the forward flap's hinge line they start
 // above a slanted line; past it, a tongue of tiles under the flap out to 2.29 rad (between tileLoYr and tileHiYr)
 const FLAP_D = 1.958, TONGUE_D = 2.29;
-// Down by the aft flap (per photos) the heat shield's edge stops running straight: it curves out across the black
-// strip and reaches the strip's outer edge ~0.35 m above the flap's top, and under that a diagonal edge runs back in to
-// the flap. In the strip's own width t (0 at the plain tile edge, 1 at the strip's outer edge), height yF above the
-// flap's top: tiles where yF < aftCurveY(t), and below 0.35 m only inside the diagonal.
-const AFT_TOP = S0 + 13.7, AFT_TIP = 0.85;
-const aftCurveY = t => t < AFT_TIP ? 0.35 + 2.8 * (1 - t / AFT_TIP) ** 2 : 0.35;
+// Down by the aft flap (per photos) the heat shield's edge stops running straight down: a straight diagonal cuts out
+// across the black strip and meets the strip's outer edge in a sharp point 0.35 m above the flap's top; from that same
+// point a second diagonal runs back in, down to the flap. In the strip's width t (0 at the plain tile edge, 1 at its
+// outer edge) and height yF above the flap's top:
+const AFT_TOP = S0 + 13.7, AFT_PT = 0.35, AFT_H = 3.15;
+const aftCurveY = t => AFT_PT + (AFT_H - AFT_PT) * (1 - t);           // the upper diagonal (black above it)
 const aftTiled = (d, y) => {
   const t = (d - 1.62) / (1.92 - 1.62), yF = y - AFT_TOP;
-  if (t <= 0 || t >= 1 || yF <= 0 || yF > 3.15) return false;
-  return yF < aftCurveY(t) && (yF >= 0.35 || t < 0.56 + 0.29 * yF / 0.35);
+  if (t <= 0 || t >= 1 || yF <= 0 || yF > AFT_H) return false;
+  return yF < aftCurveY(t) && (yF >= AFT_PT || t < 0.56 + 0.44 * yF / AFT_PT);
 };
 const tileLoYr = d => d < FLAP_D ? -0.2 + (d - 1.62) * 4.118 : 1.19 + (d - FLAP_D) * 1.8;
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
