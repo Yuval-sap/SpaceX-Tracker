@@ -7650,6 +7650,10 @@
             // collapses it to the standalone word "מעון" (hostel/dwelling). Anchored to a
             // whole token so longer words like "מעונות" are left alone.
             [/(^|[^\u0590-\u05FF])מעון(?=[^\u0590-\u05FF]|$)/g, '$1מעונן'],
+            // "Falcon Heavy" comes back from the translators still in English (while "Falcon 9"
+            // becomes "פלקון 9"), or as "פלקון הכבד"; the site's Hebrew text calls it "פלקון כבד"
+            [/Falcon\s+Heavy/gi, 'פלקון כבד'],
+            [/פלקון\s+הכבד/g, 'פלקון כבד'],
         ];
         // String-level form of the DOM pass below. Needed because by the time the text is in the
         // page, localizeStarshipTerm has wrapped every "Starship" in its own <span>, splitting a
@@ -9862,7 +9866,11 @@
                     // not the word-by-word "סטארלינק קבוצה" that both the Gemini names cache and
                     // the Google fallback produce - and on the instant pass (raw English in),
                     // "Group" was simply left in English next to the already-localized brand.
-                    .replace(/סטארלינק\s+(?:Group|קבוצה)\s+/gi, 'קבוצת סטארלינק ');
+                    .replace(/סטארלינק\s+(?:Group|קבוצה)\s+/gi, 'קבוצת סטארלינק ')
+                    // Falcon in Hebrew, like the site's own Hebrew text ("פלקון 9", "פלקון כבד"): the
+                    // translators render "Falcon 9" but leave "Falcon Heavy" in English (reported live)
+                    .replace(/Falcon\s+Heavy/gi, 'פלקון כבד')
+                    .replace(/Falcon\s+9/gi, 'פלקון 9');
             }
             return out;
         }
