@@ -927,7 +927,26 @@ function shipUV(g) {                     // u stays the geometry's own angle; v 
 }
 function tileShell(group, y0, y1) {
   const m = add(group, shipUV(cylG(R + 0.04, R + 0.04, y0, y1, 128, true)), 's-tiles', 'tile', 'Heat shield tiles');
-  m.userData.maskFn = tileAt; return m;
+  m.userData.maskFn = tileAt; edgeStrip(group, y0, y1); return m;
+}
+// the smooth black strip that runs along both edges of the heat shield, between the last tiles and the bare steel
+// (per photos of the ship on the pad): a thin band standing just proud of the hull, following its radius up the nose
+const EDGE_W = 0.16;                     // radians, ~0.7 m on the barrel
+function edgeStrip(group, y0, y1) {
+  const NY = Math.max(2, Math.ceil((y1 - y0) / 0.5) + 1), NA = 4, pos = [], idx = [];
+  for (const sg of [1, -1]) {
+    const base = pos.length / 3;
+    for (let j = 0; j < NY; j++) {
+      const y = y0 + (y1 - y0) * j / (NY - 1), r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.05;
+      for (let i = 0; i <= NA; i++) { const a = WINDWARD + sg * (1.62 + EDGE_W * i / NA); pos.push(Math.sin(a) * r, y, Math.cos(a) * r); }
+    }
+    for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NA; i++) {
+      const a = base + j * (NA + 1) + i, b = a + NA + 1;
+      if (sg > 0) idx.push(a, b, a + 1, a + 1, b, b + 1); else idx.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return add(group, g, 's-tiles', 'finDark', 'Heat shield edge');
 }
 function raceway(group, pid, y0, y1) {
   const g = new THREE.BoxGeometry(0.55, y1 - y0, 0.3);
@@ -1555,6 +1574,7 @@ function noseOffset(pts, d) {
   cap.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); cap.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   cap.setIndex(idx); cap.computeVertexNormals();
   add(sNose, cap, 's-tiles', 'tileSolid', 'Heat shield tiles · nose');
+  edgeStrip(sNose, NOSE0, NOSE0 + 7.3);        // up the nose to where it is tiled all the way round
   const ht = new THREE.SphereGeometry(1.35, 40, 20); ht.translate(0, NOSE0 + 3.2, 0);
   add(sNose, ht, 's-nose', 'steelNC', 'LOX header tank', { inner: true });
   add(sNose, cylG(0.17, 0.17, NOSE0 - 0.3, NOSE0 + 1.9, 16, true), 's-nose', 'steelNC', 'Header transfer tube', { inner: true });
