@@ -959,9 +959,9 @@ function tileShell(group, y0, y1) {
 // The smooth black section beside the heat shield on each side, traced on the sim itself (d = angle off windward,
 // yr = height above the nose base): a straight strip from the top of the aft flap up to ~1 m above the nose base, then
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
-const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
+const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.402;   // frame round the tile tongue: 0.112 rad outboard of it (30% under the earlier 0.16)
 const blackLoYr = d => Math.max(AFT_TOP - NOSE0 + (d < BAND_STRIP ? aftCurveY((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - 0.14 * (1 - (d - BAND_D0) / (BAND_STRIP - BAND_D0)) : 0.35),   // over the ragged tile edge, but not past the point' curve (aftTiled)
-                                d > BAND_STRIP ? 1.09 - (BAND_D1 - d) * FWD_SLOPE : -1e9);   // parallel to the tiles' diagonal (tileLoYr)
+                                d > BAND_STRIP ? 1.30 - (BAND_D1 - d) * FWD_SLOPE : -1e9);   // parallel to the tiles' diagonal (tileLoYr)
 // the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
 // v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
 // of the profile - take the highest one still under the tip's tile edge
@@ -975,7 +975,8 @@ const tipWeldYr = () => {
   return best;
 };
 const bandTop = d => NOSE0 + 7.3 + 0.7 * (Math.min(d, FLAP_D) / Math.PI); // = where tileAt tiles the tip all the way round
-const blackHiYr = d => d < 2.07 ? 3.92 : 3.92 - (d - 2.07) * 1.444;
+const blackHiYr0 = d => d < 2.07 ? 3.92 : 3.92 - (d - 2.07) * 1.444;
+const blackHiYr = d => d < FLAP_D ? blackHiYr0(d) : tileHiYr(d) + 0.7 * (blackHiYr0(d) - tileHiYr(d));   // frame 30% thinner over the tongue
 function edgeStrip(group, y0, y1) {
   // thin columns in angle; in each, black runs from blackLo to blackHi except where the tiles are (tileLoYr..tileHiYr),
   // every limit taken at the column's own two edges so the slanted edges come out straight
