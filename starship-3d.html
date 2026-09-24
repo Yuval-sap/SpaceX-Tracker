@@ -370,7 +370,14 @@ setInterval(() => {
   LANG = l; UNITS = u; I = SS_I18N[LANG]; UV = unitValues(); applyI18n();
 }, 500);
 document.getElementById('ss-close').addEventListener('click', closeEmbed);
-document.getElementById('theme-btn').addEventListener('click', () => { manualTheme = true; applyTheme(!DAY); });
+document.getElementById('theme-btn').addEventListener('click', () => { manualTheme = true; fireThemeSave = null; applyTheme(!DAY); });
+// Ignition runs at night (the stars and the flames barely show on the day background); turning it off goes back to
+// whatever day/night the viewer had before. Using the day/night button during ignition keeps that choice instead.
+let fireThemeSave = null;
+function fireTheme(on) {
+  if (on) { if (!fireThemeSave) fireThemeSave = { manual: manualTheme, day: DAY }; manualTheme = true; applyTheme(false); }
+  else if (fireThemeSave) { const sv = fireThemeSave; fireThemeSave = null; manualTheme = sv.manual; applyTheme(sv.manual ? sv.day : undefined); }
+}
 // Share: a link that opens the site straight into this viewer - with the flight it was opened from and the part that is
 // picked, if any. Phones get the device's share sheet; on a desktop inside the site, the site's own share menu (the one
 // the launch cards use) opens next to this button; anywhere else the link is copied.
@@ -590,7 +597,14 @@ const steelTex = makeSteel(), tileTex = makeTiles(), solarTex = makeSolar(), dot
 // ---------------------------------------------------------------- parts, materials, clipping
 const clipLocal = new THREE.Plane(new V3(0, 0, -1), 20);
 const clipPlane = new THREE.Plane();
-const CLIPS = [clipPlane];
+// A part picked from the list gets a cutaway of just its own stretch of the vehicle: the section plane only cuts
+// where it is also between these two planes (clipIntersection), i.e. along that part's length - every layer there
+// (the part's own shell, heat-shield tiles, fairings) opens, the rest of the vehicle stays whole. The Cutaway button
+// pushes both band planes out of the way, so it cuts the whole vehicle as before.
+const bandLo = new THREE.Plane(), bandHi = new THREE.Plane();
+const CLIPS = [clipPlane, bandLo, bandHi];
+const clippedAt = (mt, p) => !!(mt.clippingPlanes && mt.clippingPlanes.length) && mt.clippingPlanes.every(q => q.distanceToPoint(p) < 0);
+let sectionScope = null;             // part id whose stretch the auto cutaway opens (null: the whole vehicle)
 
 const MAKERS = {
   steel: () => new THREE.MeshStandardMaterial({ color: 0xffffff, map: steelTex.map, roughnessMap: steelTex.rough, bumpMap: steelTex.bump, bumpScale: 1.6, metalness: 1, roughness: 1, side: THREE.DoubleSide }),
@@ -645,7 +659,7 @@ function pmat(pid, kind) {
   const P = parts[pid];
   if (!P.cache[kind]) {
     const base = kind.split('@')[0], m = MAKERS[base]();
-    if (CLIP_KINDS.has(base)) m.clippingPlanes = CLIPS;
+    if (CLIP_KINDS.has(base)) { m.clippingPlanes = CLIPS; m.clipIntersection = true; }
     if (base !== kind) P.inner = true;
     P.cache[kind] = m; P.mats.push(m);
   }
@@ -1561,7 +1575,7 @@ function decal(group, pid, canvas, y, ang, w, h) {
   const rT = hullRadius(y + h / 2) + 0.03, rB = hullRadius(y - h / 2) + 0.03, arc = w / ((rT + rB) / 2);
   const geo = new THREE.CylinderGeometry(rT, rB, h, 24, 1, true, ang - arc / 2, arc); geo.translate(0, y, 0);
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, metalness: 0.3, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2 });
-  mat.clippingPlanes = CLIPS;
+  mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
   const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.userData.part = pid; group.add(m);
   return m;
 }
@@ -1765,7 +1779,7 @@ for (let i = 0; i < STAR_N; i++) spawnStar(i, true);
 function updateStars(dt, fk) {
   stars.visible = fk > 0.01 && !scaleMode;
   if (!stars.visible) return;
-  const v = 140 * fk;                                              // m/s past the vehicle
+  const v = 80 * fk;                                               // m/s past the vehicle (a calm drift, not a blur)
   for (let i = 0; i < STAR_N; i++) {
     starV[i * 4 + 1] -= v * dt;
     if (starV[i * 4 + 1] < -440) spawnStar(i, false);
@@ -1996,7 +2010,7 @@ function zoomCam(f, P) {
     const from = camera.position.clone(), to = from.clone().sub(P).multiplyScalar(f).add(P), step = to.clone().sub(from), len = step.length();
     if (len > 1e-4) {
       ray.set(from, step.divideScalar(len)); ray.far = len + 1.6;
-      const hit = ray.intersectObjects(pickables, false).find(h => { const m = h.object, mt = Array.isArray(m.material) ? m.material[0] : m.material; let v = true; m.traverseAncestors(a => { if (!a.visible) v = false; }); return v && !(mt.clippingPlanes && clipPlane.distanceToPoint(h.point) < 0); });
+      const hit = ray.intersectObjects(pickables, false).find(h => { const m = h.object, mt = Array.isArray(m.material) ? m.material[0] : m.material; let v = true; m.traverseAncestors(a => { if (!a.visible) v = false; }); return v && !clippedAt(mt, h.point); });
       ray.far = Infinity;
       if (hit) { const ok = Math.max(0, hit.distance - 1.6); if (ok < len) f = 1 - (1 - f) * ok / len; }
     }
@@ -2009,6 +2023,7 @@ function zoomCam(f, P) {
 const MOUSE_PITCH = 1.53;                                   // tilt limit for the mouse: just short of straight up/down (~88 degrees)
 let navMouse = false, zoomFree = false;     // zoomFree: the wheel went over empty space (zooms toward the view centre)
 let navHeld = false;                        // the user is steering (mouse or touch): keep the view centre on the vehicle
+const _m4a = new THREE.Matrix4(), _m4b = new THREE.Matrix4(), _b3 = new THREE.Box3(), _v3a = new V3();   // scratch for the per-frame cutaway band
 function clampView() {
   if (camAnim) return;
   const t = controls.target, c = new V3();
@@ -2152,9 +2167,9 @@ const ENGINE_PARTS = new Set(['b-raptors', 's-raptors']);
 function select(id, focus) {
   selected = id;
   const inner = !!(id && parts[id].inner);
-  if (inner && focus && !st.sectionT) { st.sectionT = 1; autoSection = true; }
+  if (inner && focus && (!st.sectionT || autoSection)) { st.sectionT = 1; autoSection = true; sectionScope = id; }
   else if (!inner && autoSection) { st.sectionT = 0; autoSection = false; }
-  btn('section').classList.toggle('on', !!st.sectionT);
+  btn('section').classList.toggle('on', !!st.sectionT && !autoSection);
   // the ship's engines sit inside the hot-stage truss while stacked: picking them from the list separates the stages
   if (id === 's-raptors' && focus && !st.sepT && !scaleMode) { st.sepT = 1; autoSep = true; }
   else if (id !== 's-raptors' && autoSep) { st.sepT = 0; autoSep = false; }
@@ -2229,13 +2244,13 @@ document.getElementById('controls').addEventListener('click', e => {
   const a = e.target.closest('button')?.dataset.act; if (!a) return;
   if (a === 'explode') { st.explodeT = st.explodeT ? 0 : 1; btn('explode').classList.toggle('on', !!st.explodeT); if (!userMoved) flyTo(defaultView()); }
   if (a === 'stage') { autoSep = false; st.sepT = st.sepT ? 0 : 1; btn('stage').classList.toggle('on', !!st.sepT); if (!userMoved) flyTo(defaultView()); }
-  if (a === 'section') { st.sectionT = st.sectionT ? 0 : 1; autoSection = false; btn('section').classList.toggle('on', !!st.sectionT); }
-  if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
+  if (a === 'section') { st.sectionT = st.sectionT && !autoSection ? 0 : 1; autoSection = false; sectionScope = null; btn('section').classList.toggle('on', !!st.sectionT); }
+  if (a === 'flow') { st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); fireTheme(!!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'scale') setScale(!scaleMode);
   if (a === 'reset') {
     if (scaleMode) setScale(false);
-    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; autoSep = false; paused = false; select(null);
+    st.explodeT = st.sectionT = st.fireT = st.sepT = 0; fireTheme(false); autoSection = false; autoSep = false; paused = false; select(null);
     rolling = false; rollPending = 0; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
     for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
     userMoved = false; autoSpin = true; flyTo(defaultView());
@@ -2254,7 +2269,7 @@ function pick() {
   const hits = ray.intersectObjects(pickables, false);
   for (const h of hits) {
     const m = h.object, mat = Array.isArray(m.material) ? m.material[0] : m.material;
-    if (mat.clippingPlanes && clipPlane.distanceToPoint(h.point) < 0) continue;
+    if (clippedAt(mat, h.point)) continue;
     if (m.userData.maskFn) { const lp = m.worldToLocal(h.point.clone()); if (!m.userData.maskFn(Math.atan2(lp.x, lp.z), lp.y)) continue; }
     let v = true; m.traverseAncestors(a => { if (!a.visible) v = false; }); if (!v) continue;
     return h;
@@ -2384,8 +2399,20 @@ function tick() {
   // section plane (model-local)
   clipLocal.constant = 14 * (1 - sstep(clamp(st.section)));
   clipPlane.copy(clipLocal).applyMatrix4(root.matrixWorld);
+  if (sectionScope && st.section > 1e-3) {
+    root.updateMatrixWorld(true);
+    const inv = _m4a.copy(root.matrixWorld).invert(); let y0 = Infinity, y1 = -Infinity;
+    for (const m of parts[sectionScope].meshes) {
+      if (!m.geometry || fluids.includes(m) || /^Starlink satellite/.test(m.userData.label || '')) continue;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      _b3.copy(m.geometry.boundingBox).applyMatrix4(_m4b.multiplyMatrices(inv, m.matrixWorld));
+      y0 = Math.min(y0, _b3.min.y); y1 = Math.max(y1, _b3.max.y);
+    }
+    bandLo.set(_v3a.set(0, -1, 0), y0 - 0.05).applyMatrix4(root.matrixWorld);
+    bandHi.set(_v3a.set(0, 1, 0), -(y1 + 0.05)).applyMatrix4(root.matrixWorld);
+  } else { bandLo.set(_v3a.set(0, -1, 0), -1e6); bandHi.set(_v3a.set(0, 1, 0), -1e6); }
   const showFluid = st.section > 0.02;
-  for (const f of fluids) { f.visible = showFluid; f.material.emissiveIntensity = 0.5 + 0.12 * Math.sin(t * 2 + f.id) + st.fire * 0.25; }
+  for (const f of fluids) { f.visible = showFluid && (!sectionScope || f.userData.part === sectionScope); f.material.emissiveIntensity = 0.5 + 0.12 * Math.sin(t * 2 + f.id) + st.fire * 0.25; }
 
   // engines
   let bSum = 0, sSum = 0;
