@@ -1962,7 +1962,7 @@ const controls = { target: new V3(), update() { camera.up.set(0, 1, 0); camera.l
 const navVel = { yaw: 0, pitch: 0, px: 0, py: 0 };
 let rolling = false;          // ⟳ button: the whole stack turns slowly about its own long axis
 const navPivot = new V3(), zoomPt = new V3();
-let zoomPending = 0, camAnim = null, gesture = null;
+let zoomPending = 0, rollPending = 0, camAnim = null, gesture = null;   // rollPending: side-wheel spin still to apply (radians)
 const tvHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
 function orbitCam(yaw, pitch, pv, lim = 1.53) {
   pv = pv.clone();                                          // callers often pass controls.target itself
@@ -2233,7 +2233,7 @@ document.getElementById('controls').addEventListener('click', e => {
   if (a === 'reset') {
     if (scaleMode) setScale(false);
     st.explodeT = st.sectionT = st.fireT = st.sepT = 0; autoSection = false; autoSep = false; paused = false; select(null);
-    rolling = false; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
+    rolling = false; rollPending = 0; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
     for (const k of ['explode', 'stage', 'section', 'flow', 'pause']) btn(k).classList.remove('on');
     userMoved = false; autoSpin = true; flyTo(defaultView());
   }
@@ -2335,7 +2335,14 @@ canvas.addEventListener('pointerleave', () => { overCanvas = false; hovered = nu
 // the pointer over a button / panel is not over the scene: drop any hover left over from before
 addEventListener('pointermove', e => { if (e.target !== canvas) { overCanvas = false; if (hovered) { hovered = null; tip.style.opacity = 0; } } }, { passive: true });
 canvas.addEventListener('wheel', e => {
-  e.preventDefault(); userInteracted(); navMouse = navHeld = true;
+  e.preventDefault();
+  // side wheel (horizontal scroll): spin the vehicle on its own axis where it stands, like the spin button
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+    const dx = e.deltaMode === 1 ? e.deltaX * 33 : e.deltaX;
+    rollPending = clamp(rollPending + clamp(dx, -240, 240) * 0.0026, -3, 3);
+    return;
+  }
+  userInteracted(); navMouse = navHeld = true;
   const hitP = worldAt(e.clientX, e.clientY); zoomFree = !hitP;
   zoomPt.copy(hitP || controls.target);   // off the vehicle, zoom toward the view center
   const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
@@ -2497,6 +2504,7 @@ function tick() {
   }
 
   if (rolling) { root.rotation.y = (root.rotation.y + dt * 0.35) % TAU; syncCube(); }
+  if (Math.abs(rollPending) > 1e-4) { const step = rollPending * k(12); rollPending -= step; root.rotation.y = (root.rotation.y + step) % TAU; syncCube(); }
   updateScale();
   // shadows only need re-rendering while parts are moving, being cut or turning
   const moving = rolling || scaleShadow-- > 0 || Math.abs(st.explode - st.explodeT) + Math.abs(st.sep - st.sepT) + Math.abs(st.section - st.sectionT) > 1e-3;
