@@ -1687,9 +1687,23 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   const rg = new THREE.Group(); rg.userData.radial = 2.3; holder.add(rg); radialGroups.push(rg);
   const inner = new THREE.Group(); inner.position.set(rootR, y0, 0); inner.rotation.z = tilt; rg.add(inner);
   const sh = flapShape(span, cr, ct, drop, corner);
-  const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.07, bevelSegments: 2, curveSegments: 12 });
-  eg.translate(0, 0, -0.15); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
-  add(inner, eg, 's-flaps', kind, label);
+  // the flap's edge all the way round is a full rounded edge wrapped in heat shield (per photos), not a square cut:
+  // a deep bevel of many segments makes the rim half-round; the extrusion's side group (the rim) gets the tiles
+  const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 8, curveSegments: 16 });
+  eg.translate(0, 0, -0.07); if (kind === 'tileSolid') scaleUV(eg, 1 / tileTex.w, 1 / tileTex.h); else scaleUV(eg, 0.12, 0.12);
+  { // rim tiles at hull size: u along the outline (x + y works for every edge direction), v across the thickness (z)
+    const g1 = eg.groups.find(g => g.materialIndex === 1), P = eg.attributes.position, U = eg.attributes.uv;
+    // u = distance along the flap's outline (continuous round the corners), v = arc length round the half-round rim
+    const op = sh.getSpacedPoints(400), cum = [0];         // evenly spaced along the whole outline
+    for (let k = 1; k < op.length; k++) cum.push(cum[k - 1] + op[k].distanceTo(op[k - 1]));
+    const uAt = (x, y) => { let bi = 0, bd = 1e9; for (let k = 0; k < op.length; k++) { const d = (op[k].x - x) ** 2 + (op[k].y - y) ** 2; if (d < bd) { bd = d; bi = k; } } return cum[bi]; };
+    const per = cum[cum.length - 1] + op[op.length - 1].distanceTo(op[0]);
+    for (let t = g1.start; t < g1.start + g1.count; t += 3) {
+      const us = [t, t + 1, t + 2].map(i => uAt(P.getX(i), P.getY(i))), mx = Math.max(...us);
+      for (let k = 0; k < 3; k++) { let u = us[k]; if (mx - u > per / 2) u += per; U.setXY(t + k, u / tileTex.w, Math.asin(Math.max(-1, Math.min(1, P.getZ(t + k) / 0.22))) * 0.22 / tileTex.h); }
+    }
+  }
+  add(inner, eg, 's-flaps', [kind, 'tileSolid'], label);
   // forward flaps: the nose curves away from the straight hinge near the top, so it stops well short of the flap's top
   // and on every flap it stays inside the flap's outline: the top edge slopes down away from the root, so the hinge's
   // outer side (~2 hinge radii out) must end under it, or it pokes up above the flap
