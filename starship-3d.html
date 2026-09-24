@@ -1696,7 +1696,11 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   const xo = hingeR * 1.9, edgeTop = cr - (cr - (drop + ct)) * xo / span - 0.08, edgeBot = Math.max(0, drop * xo / span) + 0.08;
   const h0 = Math.max(edgeBot, group === sNose ? cr * 0.04 : cr * 0.05), h1 = Math.min(edgeTop, group === sNose ? cr * 0.72 : cr * 0.95);
   const hLen = h1 - h0, hMid = (h0 + h1) / 2;
-  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, hLen, 24, 1, false, ts, Math.PI); g.translate(-(rootR - hullRadiusAt(y0)), hMid, 0);   // centred on the seam: half on the hull, half on the flap
+  // the seam at the hinge's middle, in the flap's own (tilted) frame: on the nose the hull curves away from the flap's
+  // straight root, so it's measured at that height, not at the flap's base (there the hinge ended up buried in the nose)
+  const ct_ = Math.cos(tilt), st_ = Math.sin(tilt);
+  const seamX = (hullRadiusAt(y0 + hMid * ct_) - rootR + hMid * st_) / ct_;
+  const hingeHalf = (ts, kd) => { const g = new THREE.CylinderGeometry(hingeR, hingeR, hLen, 24, 1, false, ts, Math.PI); g.translate(seamX, hMid, 0);   // centred on the seam: half on the hull, half on the flap
     scaleUV(g, kd === 'tileSolid' ? 1.25 / tileTex.w : 0.1, kd === 'tileSolid' ? cr / tileTex.h : 0.2); add(inner, g, 's-flaps', kd, label + ' · hinge fairing'); };
   // the hinge the flap swings on: a slim cylinder along the flap's root, just proud of the flap's own thickness -
   // tiled on its windward half (like the flap's outer face), plain black on the half facing the steel side
