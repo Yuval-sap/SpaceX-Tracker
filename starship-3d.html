@@ -775,7 +775,10 @@ const aftTiled = (d, y) => {
   if (t <= 0 || t >= 1 || yF <= 0 || yF > AFT_H) return false;
   return yF < aftCurveY(t) && (yF >= AFT_PT || t < AFT_END + (1 - AFT_END) * yF / AFT_PT);
 };
-const tileLoYr = d => d < FLAP_D ? -0.2 + (d - 1.62) * 4.118 : 1.19 + (d - FLAP_D) * 1.8;
+// lower edge of the tiles by the forward flap: one straight diagonal from the tongue's lower outer corner (2.29 rad,
+// 1.79 m) down to the plain tile edge; the black section's outer edge below runs parallel to it (FWD_SLOPE m per rad)
+const FWD_SLOPE = 6.4;
+const tileLoYr = d => 1.79 - (2.29 - d) * FWD_SLOPE;
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
 function tileAt(th, y) {
   const d = angDist(th, WINDWARD), rel = y - S0;
@@ -855,8 +858,8 @@ bool tiled(float th, float y){                       // = tileAt() in the page s
   float d = abs(mod(th - uWind + PI, TAU) - PI);
   if (d < 1.62) return true;
   float yr = y - uNose0;                               // = tileLoYr / tileHiYr in the page script
-  if (d < 1.958 && yr > -0.2 + (d - 1.62) * 4.118) return true;
-  if (d >= 1.958 && d < 2.29 && yr > 1.19 + (d - 1.958) * 1.8 && yr < 3.48 - (d - 1.958) * 1.27) return true;
+  if (d < 1.958 && yr > 1.79 - (2.29 - d) * 6.4) return true;
+  if (d >= 1.958 && d < 2.29 && yr > 1.79 - (2.29 - d) * 6.4 && yr < 3.48 - (d - 1.958) * 1.27) return true;
   return y > uNose0 + 7.3 + 0.7 * (min(d, 1.958) / PI);
 }
 void main(){
@@ -958,7 +961,7 @@ function tileShell(group, y0, y1) {
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
 const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
 const blackLoYr = d => Math.max(AFT_TOP - NOSE0 + (d < BAND_STRIP ? aftCurveY((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - 0.14 * (1 - (d - BAND_D0) / (BAND_STRIP - BAND_D0)) : 0.35),   // over the ragged tile edge, but not past the point' curve (aftTiled)
-                                d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
+                                d > BAND_STRIP ? 1.09 - (BAND_D1 - d) * FWD_SLOPE : -1e9);   // parallel to the tiles' diagonal (tileLoYr)
 // the weld under the tip's tiles, where it really shows: the nose's steel texture runs along the profile points (lathe
 // v = point index / count, texture height NOSE0 + 12 v), so every ring weld k*RING of the texture lands at a known point
 // of the profile - take the highest one still under the tip's tile edge
