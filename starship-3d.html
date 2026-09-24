@@ -761,14 +761,14 @@ const SHIP_H = NOSE_TOP - S0;
 const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 // tiles beyond the plain edge (d > 1.62), in height above the nose base: up to the forward flap's hinge line they start
 // above a slanted line; past it, a tongue of tiles under the flap out to 2.29 rad (between tileLoYr and tileHiYr)
-const FLAP_D = 1.958;
+const FLAP_D = 1.958, TONGUE_D = 2.29;
 const tileLoYr = d => d < FLAP_D ? -0.2 + (d - 1.62) * 4.118 : 1.19 + (d - FLAP_D) * 1.8;
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
 function tileAt(th, y) {
   const d = angDist(th, WINDWARD), rel = y - S0;
   const half = 1.62;                       // one straight line the whole length of the ship, up to the forward flaps (per photos)
   if (d < half) return true;
-  if (d < 2.29 && y - NOSE0 > tileLoYr(d) && y - NOSE0 < tileHiYr(d)) return true;   // beside / under the forward flap                        // beside the forward flaps the tiles run right up to the flap
+  if (d < TONGUE_D && y - NOSE0 > tileLoYr(d) && y - NOSE0 < tileHiYr(d)) return true;   // beside / under the forward flap                        // beside the forward flaps the tiles run right up to the flap
   if (y > NOSE0 + 7.3 + 0.7 * (d / Math.PI)) return true;              // the nose tip is tiled all the way round
   return false;
 }
@@ -952,7 +952,7 @@ function edgeStrip(group, y0, y1) {
   // thin columns in angle; in each, black runs from blackLo to blackHi except where the tiles are (tileLoYr..tileHiYr),
   // every limit taken at the column's own two edges so the slanted edges come out straight
   const DD = 0.01, pos = [], idx = [];
-  const vert = (d, y, sg) => { const r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.045, a = WINDWARD + sg * d; pos.push(Math.sin(a) * r, y, Math.cos(a) * r); return pos.length / 3 - 1; };
+  const vert = (d, y, sg) => { const r = (y > NOSE0 ? noseR(y - NOSE0) : R) + 0.065, a = WINDWARD + sg * d; pos.push(Math.sin(a) * r, y, Math.cos(a) * r); return pos.length / 3 - 1; };
   const quadCol = (e, lo, hi, sg) => {
     const n = Math.max(1, Math.ceil(Math.max(hi[0] - lo[0], hi[1] - lo[1]) / 0.5));
     let prev = null;
@@ -963,10 +963,11 @@ function edgeStrip(group, y0, y1) {
     }
   };
   for (const sg of [1, -1]) for (let d = BAND_D0; d < BAND_D1 - 1e-6; d += DD) {
-    const e = [d, Math.min(BAND_D1, d + DD)], dm = (e[0] + e[1]) / 2;
+    const e = [Math.max(BAND_D0, d - 0.003), Math.min(BAND_D1, d + DD + 0.003)], dm = d + DD / 2;   // columns overlap a hair: no hairline cracks
     const cl = v => Math.min(y1, Math.max(y0, v));
-    const pieces = [[x => blackLoYr(x), x => Math.min(blackHiYr(x), tileLoYr(x))]];
-    if (dm >= FLAP_D) pieces.push([x => Math.max(blackLoYr(x), tileHiYr(x)), x => blackHiYr(x)]);
+    // past the tile tongue's outer edge (2.29) the whole column is black - no tiles to leave room for
+    const pieces = dm >= TONGUE_D ? [[x => blackLoYr(x), x => blackHiYr(x)]] : [[x => blackLoYr(x), x => Math.min(blackHiYr(x), tileLoYr(x))]];
+    if (dm >= FLAP_D && dm < TONGUE_D) pieces.push([x => Math.max(blackLoYr(x), tileHiYr(x)), x => blackHiYr(x)]);
     for (const [fLo, fHi] of pieces) {
       if (fHi(dm) <= fLo(dm)) continue;
       const lo = e.map(x => cl(NOSE0 + fLo(x))), hi = e.map(x => cl(NOSE0 + Math.max(fLo(x), fHi(x))));
