@@ -942,9 +942,11 @@ function tileShell(group, y0, y1) {
 // The smooth black section beside the heat shield on each side, traced on the sim itself (d = angle off windward,
 // yr = height above the nose base): a straight strip from the top of the aft flap up to ~1 m above the nose base, then
 // a black frame round a tongue of tiles that reaches out from the heat shield under the forward flap (tileAt).
-const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.36;
+const BAND_D0 = 1.62, BAND_STRIP = 1.92, BAND_D1 = 2.45;
 const blackLoYr = d => Math.max(S0 + 13.7 + 1.6 * clamp((d - BAND_D0) / (BAND_STRIP - BAND_D0)) - NOSE0,
-                                d > BAND_STRIP ? 1.04 + (d - BAND_STRIP) * 1.451 : -1e9);
+                                d > BAND_STRIP ? 0.45 + (d - BAND_STRIP) * 1.451 : -1e9);   // reaches a little under the tile tongue
+const TIP_BAND_YR = 65 * RING - NOSE0;                 // from the weld under the tip's tiles up to them
+const bandTop = d => NOSE0 + 7.3 + 0.7 * (d / Math.PI); // = where tileAt tiles the tip all the way round
 const blackHiYr = d => d < 2.07 ? 3.92 : 3.92 - (d - 2.07) * 1.444;
 function edgeStrip(group, y0, y1) {
   // thin columns in angle; in each, black runs from blackLo to blackHi except where the tiles are (tileLoYr..tileHiYr),
@@ -971,6 +973,13 @@ function edgeStrip(group, y0, y1) {
       if (hi[0] - lo[0] < 1e-3 && hi[1] - lo[1] < 1e-3) continue;
       quadCol(e, lo, hi, sg);
     }
+  }
+  // and the last steel ring under the tiled tip, all the way across the steel side between the two forward flaps
+  for (let d = FLAP_D; d < Math.PI - 1e-6; d += 0.02) {
+    const e = [d, Math.min(Math.PI, d + 0.02)];
+    const lo = e.map(() => Math.min(y1, Math.max(y0, NOSE0 + TIP_BAND_YR))), hi = e.map(x => Math.min(y1, Math.max(y0, bandTop(x) + 0.05)));
+    if (hi[0] - lo[0] < 1e-3 && hi[1] - lo[1] < 1e-3) continue;
+    for (const sg of [1, -1]) quadCol(e, lo, hi, sg);
   }
   if (!idx.length) return null;
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
@@ -1602,7 +1611,7 @@ function noseOffset(pts, d) {
   cap.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); cap.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   cap.setIndex(idx); cap.computeVertexNormals();
   add(sNose, cap, 's-tiles', 'tileSolid', 'Heat shield tiles · nose');
-  edgeStrip(sNose, NOSE0, NOSE0 + 7.3);        // up the nose to where it is tiled all the way round
+  edgeStrip(sNose, NOSE0, NOSE0 + 8.1);        // up the nose to where it is tiled all the way round
   const ht = new THREE.SphereGeometry(1.35, 40, 20); ht.translate(0, NOSE0 + 3.2, 0);
   add(sNose, ht, 's-nose', 'steelNC', 'LOX header tank', { inner: true });
   add(sNose, cylG(0.17, 0.17, NOSE0 - 0.3, NOSE0 + 1.9, 16, true), 's-nose', 'steelNC', 'Header transfer tube', { inner: true });
