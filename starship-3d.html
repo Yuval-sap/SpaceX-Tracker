@@ -1417,8 +1417,8 @@ function gridFinGeo() {
 }
 // integrated hot-stage truss (after close-up photos of the stacked V3): no ring on the booster - its forward dome is
 // bare between the struts. Each strut is a straight tube with long pointed ends tapering to a thin rod; pairs meet at
-// the ship's top ring above and, below, in a black bracket bolted to the booster skin just under the dome weld, with
-// two prongs running down the hull.
+// the ship's top ring above and, below, in a black bracket on the straight barrel just under the dome weld, with
+// two short prongs down the hull.
 {
   const y0 = B_TOP, y1 = S0, N = 20, list = [], brackets = [];
   steelShell(hsrG, 'hsr', y1 - 0.3, y1, 'Hot-stage truss · top ring');
@@ -1428,7 +1428,7 @@ function gridFinGeo() {
     const bx = Math.sin(a) * rB, bz = Math.cos(a) * rB;
     for (const sg of [-1, 1]) {
       const at = a + sg * (TAU / N) / 2, tx = Math.sin(at) * rT, tz = Math.cos(at) * rT;
-      const p0 = new V3(bx, y0 + 0.2, bz), p1 = new V3(tx, y1 - 0.3, tz);
+      const p0 = new V3(bx, y0 - 0.05, bz), p1 = new V3(tx, y1 - 0.3, tz);   // tips into the bracket, on the barrel
       const dir = p1.clone().sub(p0), len = dir.length();
       // rod - cone - tube - cone - rod
       const prof = [[0.001, 0], [RT_, 0], [RT_, 0.05], [RR, 0.17], [RR, 0.83], [RT_, 0.95], [RT_, 1], [0.001, 1]].map(([r, t]) => [r, -len / 2 + t * len]);
@@ -1439,9 +1439,10 @@ function gridFinGeo() {
     }
     // bracket: a block the two strut tips go into, on the skin right at the dome weld, and two prongs down the hull
     const parts = [];
-    const blk = new THREE.BoxGeometry(0.24, 0.5, 0.2); blk.translate(0, y0 + 0.05, R + 0.1); parts.push(blk);
-    const lip = new THREE.BoxGeometry(0.3, 0.07, 0.24); lip.translate(0, y0 + 0.28, R + 0.1); parts.push(lip);
-    for (const sx of [-0.07, 0.07]) { const pr = new THREE.BoxGeometry(0.055, 1.3, 0.06); pr.translate(sx, y0 - 0.85, R + 0.04); parts.push(pr); }
+    // all on the straight barrel, starting just under the dome weld (nothing stands up into the air above it)
+    const blk = new THREE.BoxGeometry(0.24, 0.45, 0.2); blk.translate(0, y0 - 0.27, R + 0.1); parts.push(blk);
+    const lip = new THREE.BoxGeometry(0.3, 0.06, 0.24); lip.translate(0, y0 - 0.07, R + 0.1); parts.push(lip);
+    for (const sx of [-0.07, 0.07]) { const pr = new THREE.BoxGeometry(0.055, 0.55, 0.06); pr.translate(sx, y0 - 0.77, R + 0.04); parts.push(pr); }
     for (const g of parts) { g.rotateY(a); brackets.push(g); }
   }
   const truss = merge(list); scaleUV(truss, 0.05, 0.05);
