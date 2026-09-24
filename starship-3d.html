@@ -813,7 +813,9 @@ function makeNoseTiles(prof, arc) {
   for (let m = m0; rs.length < NOSE_ROWS_MAX; m++) {
     const sv = S0 + m * P - NOSE0;
     if (sv - 2 * P > S) break;
-    const [r, x] = at(clamp(sv, 0, S)), N = Math.max(6, Math.round(TAU * r / TWm));
+    // count from the hull radius (the skin sits 0.04 m out): at the base that is exactly the hull's NB, so the first rows
+    // continue the hull's pattern instead of starting a seam with one tile more
+    const [r, x] = at(clamp(sv, 0, S)), N = Math.max(6, Math.round(TAU * (r - 0.04) / TWm));
     let off;
     if (!rn.length || N === NB && rn[rn.length - 1] === NB) off = (m % 2 + 2) % 2 ? 0.5 : 0;   // the hull's own stagger
     else {
@@ -830,18 +832,23 @@ function makeNoseTiles(prof, arc) {
   const rowData = new Float32Array(NOSE_ROWS_MAX * 2 * 4);
   rs.forEach((v, i) => { rowData.set([v, rr[i], rx[i], rn[i]], i * 4); rowData.set([ro[i], 0, 0, 0], (NOSE_ROWS_MAX + i) * 4); });
   const rowTex = new THREE.DataTexture(rowData, NOSE_ROWS_MAX, 2, THREE.RGBAFormat, THREE.FloatType); rowTex.needsUpdate = true;
+  // the hull texture's own per-tile shades (makeTiles draws them with rng(5), row by row): rows that still have the hull's
+  // count use them, so a tile cut by the hull/nose joint has one shade on both sides instead of two
+  const hr = rng(5), hullShade = new Float32Array(18 * 18 * 4);
+  for (let row = 0; row < 18; row++) for (let col = 0; col < 18; col++) { const v = 24 + hr() * 8, tint = hr() * 2, rv = 95 + hr() * 40 | 0; hullShade.set([v, tint, rv, 0], (row * 18 + col) * 4); }
+  const shadeTex = new THREE.DataTexture(hullShade, 18, 18, THREE.RGBAFormat, THREE.FloatType); shadeTex.needsUpdate = true;
   const grout = TWm / 2 * 0.046, bevel = TWm / 2 * 0.137;         // same proportions as the hull tiles (makeTiles)
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       uS: { value: S }, uP: { value: P }, uRows: { value: rs.length }, uMode: { value: 0 },
-      uRowTex: { value: rowTex },
+      uRowTex: { value: rowTex }, uShade: { value: shadeTex }, uM0: { value: m0 }, uNB: { value: NB },
       uGrout: { value: grout }, uBevel: { value: bevel }, uNose0: { value: NOSE0 }, uWind: { value: WINDWARD },
     },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: `
 #define ROWS ${NOSE_ROWS_MAX}
 uniform float uS, uP, uGrout, uBevel, uNose0, uWind; uniform int uRows, uMode;
-uniform highp sampler2D uRowTex;
+uniform highp sampler2D uRowTex, uShade; uniform int uM0, uNB;
 vec4 rowA(int k){ return texelFetch(uRowTex, ivec2(k, 0), 0); }      // s, r, height, count
 float rowOff(int k){ return texelFetch(uRowTex, ivec2(k, 1), 0).x; }
 varying vec2 vUv;
@@ -886,14 +893,21 @@ void main(){
   if (!tiled(phi, uNose0 + hAt(s))) { gl_FragColor = uMode == 0 ? vec4(0.0) : vec4(55.0 / 255.0, 240.0 / 255.0, 0.0, 1.0); return; }
   vec2 id = vec2(float(bk), bi);
   float h1 = hash(id), h2 = hash(id + 7.1), h3 = hash(id + 13.7);
+  float tv = 24.0 + h1 * 8.0, tt = h2 * 2.0, tr = 95.0 + h3 * 40.0;
+  if (int(rowA(bk).w + 0.5) == uNB) {                 // a hull row: the hull texture's own shade for this tile
+    int hrow = int(mod(float(-(uM0 + bk)), 18.0)), hcol = int(mod(bi, 18.0));
+    vec4 hs = texelFetch(uShade, ivec2(hcol, hrow), 0); tv = hs.x; tt = hs.y; tr = hs.z;
+  }
   float aa = max(fwidth(e), 1e-5);
   float inTile = smoothstep(uGrout - aa, uGrout + aa, e), inTop = smoothstep(uBevel - aa, uBevel + aa, e);
   if (uMode == 0) {
-    float v = 24.0 + h1 * 8.0, tint = h2 * 2.0;                    // = makeTiles
+    float v = tv, tint = tt;                                        // = makeTiles
     vec3 c = mix(vec3(9.0, 9.0, 10.0), vec3(v + tint, v, v - 1.0), inTile) / 255.0;
-    gl_FragColor = vec4(pow(c, vec3(2.2)), 1.0);    // linear; the sRGB target encodes it
+    // exact sRGB decode (a plain 2.2 power is far too dark at these near-black values), like the hull's canvas texture
+    vec3 lin = mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+    gl_FragColor = vec4(lin, 1.0);                  // linear; the sRGB target encodes it
   } else {
-    float bump = mix(55.0, mix(150.0, 168.0, inTop), inTile), rough = mix(240.0, 95.0 + h3 * 40.0, inTile);
+    float bump = mix(55.0, mix(150.0, 168.0, inTop), inTile), rough = mix(240.0, tr, inTile);
     gl_FragColor = vec4(bump / 255.0, rough / 255.0, 0.0, 1.0);
   }
 }`,
@@ -908,7 +922,7 @@ void main(){
   mat.uniforms.uMode.value = 0; renderer.setRenderTarget(A); renderer.render(qScene, qCam);
   mat.uniforms.uMode.value = 1; renderer.setRenderTarget(B); renderer.render(qScene, qCam);
   renderer.setRenderTarget(prev);
-  mat.dispose(); rowTex.dispose();
+  mat.dispose(); rowTex.dispose(); shadeTex.dispose();
   for (const t of [A.texture, B.texture]) t.anisotropy = maxAniso;
   return { map: A.texture, rb: B.texture };
 }
