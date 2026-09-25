@@ -38,7 +38,7 @@ SS_I18N.en = {
 SS_I18N.he = {
   shipName: 'סטארשיפ', dir: 'rtl', starship: 'סטארשיפ', starlink: 'סטארלינק',
   units: { m: "מ'", ft: 'רגל', t: 'טון', lb: 'ליברות', kN: 'קילוניוטון', lbf: 'lbf' },
-  ui: { deploy: "שחרור {starlink}", share: "שיתוף", copied: "הקישור הועתק",
+  ui: { deploy: "פריסת {starlink}", share: "שיתוף", copied: "הקישור הועתק",
     booster: 'בוסטר', mFlight: 'טיסה {n}', vFlight: 'טיסה {n}', satLine: '{n} לווייני {starlink} V3', roll: 'סיבוב סביב הציר', scale: "השוואת גודל",
     eyebrow: 'SpaceX · מבנה הרקטה', height: 'גובה', diameter: 'קוטר', raptors: 'מנועי Raptor', thrust: 'דחף', liftoff: 'מסה בהמראה', selected: 'נבחר',
     hint: 'גרירה לסיבוב · גלילה לזום למקום שמצביעים עליו · גרירה ימנית להזזה · לחיצה כפולה לטיסה לנקודה · הקובייה למבטים',
