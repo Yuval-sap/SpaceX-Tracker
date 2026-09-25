@@ -60,7 +60,8 @@ FALLBACK_IMAGES = {
     "starlink": "https://spacexfantracker.com/starlink-share.jpg",
     "falcon": "https://wp.technologyreview.com/wp-content/uploads/2024/07/AP24191572534430.jpg?w=3000",
     "falcon_heavy": "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg",
-    "dragon": "https://i.insider.com/5c5b60d6342cca14f92e9a14?width=2000&format=jpeg&auto=webp",
+    # Same photo as index.html's dragon-launch-pad.jpg, as an absolute URL for link-preview crawlers.
+    "dragon": "https://spacexfantracker.com/dragon-launch-pad.jpg",
 }
 
 LL2_UPCOMING_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed"
