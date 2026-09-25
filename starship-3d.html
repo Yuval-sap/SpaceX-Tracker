@@ -2278,7 +2278,7 @@ const _m4a = new THREE.Matrix4(), _m4b = new THREE.Matrix4(), _b3 = new THREE.Bo
 function clampView() {
   if (camAnim) return;
   const t = controls.target, c = new V3();
-  if (scaleMode) c.copy(t).clamp(new V3(-14, 0, -10), new V3(HUMX + 2, extents(0, 0).L, 10));
+  if (scaleMode) c.copy(t).clamp(new V3(-14, 0, -10), new V3(HUMX + 2, extents(0, st.sepT).L, 10));
   else {
     const x = extents(st.explodeT, st.sepT);
     root.updateMatrixWorld(true);
@@ -2422,7 +2422,7 @@ function select(id, focus) {
   else if (!inner && autoSection) { st.sectionT = 0; autoSection = false; }
   btn('section').classList.toggle('on', !!st.sectionT && !autoSection);
   // the ship's engines sit inside the hot-stage truss while stacked: picking them from the list separates the stages
-  if (id === 's-raptors' && focus && !st.sepT && !scaleMode) { st.sepT = 1; autoSep = true; }
+  if (id === 's-raptors' && focus && !st.sepT) { st.sepT = 1; autoSep = true; }   // scale comparison too: the grid fin hid them
   else if (id !== 's-raptors' && autoSep) { st.sepT = 0; autoSep = false; }
   btn('stage').classList.toggle('on', !!st.sepT); setControlLabels();
   partsNav.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.part === id));
