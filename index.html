@@ -5881,6 +5881,9 @@
 
         function applyRealMissionTimelineData(data) {
             realMissionTimelineData = data;
+            if (data && data.postLaunchTimeline && data.postLaunchTimeline.length && typeof currentHeroMissionId !== 'undefined') {
+                rememberTimelineEnd(currentHeroMissionId, Math.max(...data.postLaunchTimeline.map(e => e.seconds)));
+            }
             realMissionTimelineTranslated.lang = null;
             realMissionTimelineTranslated.entries = null;
             realMissionTimelineTranslated.forData = null;
@@ -5913,6 +5916,28 @@
                     .catch(() => tryAt(i + 1));
             };
             return tryAt(0);
+        }
+
+        // How long a launched mission stays in the hero / "in progress": until 5 minutes after the LAST
+        // event of SpaceX's own post-launch timeline (Starship ~T+9:50 landing, a Falcon 9 ~T+9 min SECO),
+        // instead of a fixed 60/90 minutes that cut Starship's timeline off after payload deploy.
+        // The timeline's end is remembered per mission id (localStorage) as soon as it is fetched -
+        // normally already while the mission is still the upcoming hero - so the classification in
+        // processLaunchData still has it after a reload, or once the hero has moved on. Missions whose
+        // timeline SpaceX never published keep the old 60/90-minute window.
+        const TIMELINE_END_STORE_KEY = 'spacex_timeline_end_v1';
+        const TIMELINE_TAIL_MS = 5 * 60 * 1000;
+        function readTimelineEnds() { try { return JSON.parse(localStorage.getItem(TIMELINE_END_STORE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+        function rememberTimelineEnd(missionId, endSec) {
+            if (!missionId || !(endSec > 0)) return;
+            const ends = readTimelineEnds(); ends[missionId] = { endSec, at: Date.now() };
+            for (const k of Object.keys(ends)) if (Date.now() - (ends[k].at || 0) > 30 * 864e5) delete ends[k];   // keep a month
+            try { localStorage.setItem(TIMELINE_END_STORE_KEY, JSON.stringify(ends)); } catch (e) { }
+        }
+        function missionInFlightWindowMs(m) {
+            const e = m && m.id ? readTimelineEnds()[m.id] : null;
+            if (e && e.endSec > 0) return e.endSec * 1000 + TIMELINE_TAIL_MS;
+            return m && m.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
         }
 
         let realMissionTimelineFetchGen = 0;
@@ -6759,7 +6784,7 @@
                 current = entry;
             }
             if (!current) return null;
-            if (elapsedSec - current.tSeconds > MISSION_MILESTONE_STALE_AFTER_SEC && current === list[list.length - 1]) {
+            if (elapsedSec - current.tSeconds > TIMELINE_TAIL_MS / 1000 && current === list[list.length - 1]) {
                 return null;
             }
             return { label: current.label, explain: current.explain || '', tSeconds: current.tSeconds };
@@ -18544,7 +18569,8 @@
                         const MAX_FLIGHT_WINDOW_MS = 90 * 60 * 1000;
                         upcomingRaw = cachedCombinedForSanityCheck.filter(m => {
                             const t = new Date(m.net).getTime();
-                            return t >= nowMs || (nowMs - t) <= MAX_FLIGHT_WINDOW_MS;
+                            const ends = readTimelineEnds()[m.id];
+                            return t >= nowMs || (nowMs - t) <= Math.max(MAX_FLIGHT_WINDOW_MS, ends && ends.endSec > 0 ? ends.endSec * 1000 + TIMELINE_TAIL_MS : 0);
                         });
                     }
                     if (previousRaw === null) {
@@ -18857,7 +18883,7 @@
                 // Falcon 9 (and everything else) stays classified as current/upcoming for an
                 // hour after its scheduled time; Starship, with its much longer multi-stage
                 // flight profile, gets an hour and a half.
-                const flightWindowMs = m.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
+                const flightWindowMs = missionInFlightWindowMs(m);   // until 5 min after SpaceX's last timeline event (or 60/90 min)
                 const flyingNow = apiStatusMeansActuallyFlying(statusLower);
                 const windowStillOpen = isLaunchWindowStillOpen(m.windowStartAt, m.windowEndAt, now.getTime());
 
@@ -18906,7 +18932,8 @@
                         let nextTime = new Date(combinedRawMissions[j].date).getTime();
                         let otherStatus = combinedRawMissions[j].status.toLowerCase();
 
-                        if (nextTime > launchTime + (5 * 60 * 1000) && nextTime <= launchTime + flightWindowMs) {
+                        // another launch about to go (within 15 min) takes over, same rule as the hero's
+                        if (nextTime > launchTime + (5 * 60 * 1000) && nextTime - now.getTime() <= 15 * 60 * 1000) {
                             if (!otherStatus.includes('tbd') && !otherStatus.includes('tbc') && !otherStatus.includes('hold')) {
                                 hasCollision = true;
                                 break;
@@ -18932,7 +18959,10 @@
                         rawPastMissions.push(m);
                     }
                 } else {
-                    if (diff >= 0 && diff <= flightWindowMs && !apiStatusMeansHoldOrScrub(statusLower) && (flyingNow || !windowStillOpen)) {
+                    // the long timeline-based window only for a flight the API confirmed; an unconfirmed
+                    // "window closed" keeps the old short 60/90 minutes (it may be a scrub not reported yet)
+                    const shortWindowMs = m.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
+                    if (diff >= 0 && diff <= (flyingNow ? flightWindowMs : shortWindowMs) && !apiStatusMeansHoldOrScrub(statusLower) && (flyingNow || !windowStillOpen)) {
                         m.status = "In Progress";
                     } else if (apiStatusMeansHoldOrScrub(statusLower) || statusLower.includes("tbd") || statusLower.includes("tbc")) {
                         m.status = "Delayed / Under Review";
@@ -21278,8 +21308,10 @@
             } else if (rawPastMissions.length > 0) {
                 const mostRecentPast = rawPastMissions[0]; // sorted newest-first
                 const sinceLaunchMs = Date.now() - new Date(mostRecentPast.date).getTime();
-                const graceMs = mostRecentPast.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
-                if (sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
+                const graceMs = missionInFlightWindowMs(mostRecentPast);
+                // only a launch the API confirmed actually flew - never a scrubbed/delayed one
+                const confirmedFlew = mostRecentPast.status !== 'Delayed / Under Review';
+                if (confirmedFlew && sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
                     nextLaunch = Object.assign({}, mostRecentPast, { status: 'In Progress' });
                     nextUpcoming = dbMissions.length > 0 ? dbMissions[0] : null;
                 }
@@ -21297,7 +21329,7 @@
             // instead of the real 60/90-minute grace period.
             if (!nextLaunch && lastHeroInProgressMission) {
                 const sinceLaunchMs = Date.now() - new Date(lastHeroInProgressMission.date).getTime();
-                const graceMs = lastHeroInProgressMission.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
+                const graceMs = missionInFlightWindowMs(lastHeroInProgressMission);
                 if (sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
                     nextLaunch = Object.assign({}, lastHeroInProgressMission, { status: 'In Progress' });
                     nextUpcoming = dbMissions.length > 0 ? dbMissions[0] : null;
