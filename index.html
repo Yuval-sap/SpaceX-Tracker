@@ -13069,14 +13069,32 @@
         svgParts.push('<line class="lc-axis-line" x1="' + padLeft + '" x2="' + (padLeft + plotW) + '" y1="' + (PAD.top + plotH) + '" y2="' + (PAD.top + plotH) + '"/>');
 
         if (seriesData.length && n > 1) {
-          var tickCount = Math.min(6, n);
-          var seen = {};
-          for (var ti = 0; ti < tickCount; ti++) {
-            var idx = Math.round((ti / (tickCount - 1)) * (n - 1));
-            if (seen[idx]) continue;
-            seen[idx] = true;
-            var lab = tickLabel(seriesData[0].data.points[idx].date, multiYear);
-            labelParts.push('<text class="lc-axis-label" x="' + xPos(idx) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + lab + '</text>');
+          var pts0 = seriesData[0].data.points;
+          if (state.windowYears <= 1) {
+            // YTD / 1Y: a label on every month (the first point of each month - every point in the
+            // monthly view), thinned to every 2nd/3rd only where the plot is too narrow to fit them
+            var monthIdx = [];
+            for (var mi = 0; mi < n; mi++) {
+              var d0 = pts0[mi].date, dp = mi ? pts0[mi - 1].date : null;
+              if (!dp || d0.getMonth() !== dp.getMonth() || d0.getFullYear() !== dp.getFullYear()) monthIdx.push(mi);
+            }
+            var labW = multiYear ? 56 : 34, room = plotW / Math.max(1, monthIdx.length);
+            var every = room >= labW ? 1 : room * 2 >= labW ? 2 : 3;
+            for (var mk = 0; mk < monthIdx.length; mk++) {
+              if ((monthIdx.length - 1 - mk) % every) continue;          // always keep the newest month
+              var ix = monthIdx[mk];
+              labelParts.push('<text class="lc-axis-label" x="' + xPos(ix) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + tickLabel(pts0[ix].date, multiYear) + '</text>');
+            }
+          } else {
+            var tickCount = Math.min(6, n);
+            var seen = {};
+            for (var ti = 0; ti < tickCount; ti++) {
+              var idx = Math.round((ti / (tickCount - 1)) * (n - 1));
+              if (seen[idx]) continue;
+              seen[idx] = true;
+              var lab = tickLabel(pts0[idx].date, multiYear);
+              labelParts.push('<text class="lc-axis-label" x="' + xPos(idx) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + lab + '</text>');
+            }
           }
         }
 
