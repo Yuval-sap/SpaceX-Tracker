@@ -1238,13 +1238,8 @@
         /* weather | launch window inside the hero countdown box: a thin line between them while they
            sit side by side */
         .hero-window-row .hero-weather-col { border-inline-start: 1px solid rgba(113, 113, 122, 0.3); }
-        #hero-weather .hw-a { white-space: nowrap; }
-        @media (max-width: 639px) {
-            .hero-window-row { flex-direction: column; align-items: center; }
-            .hero-window-row .hero-weather-col { border-inline-start: 0; }
-            #hero-weather .hw-sep { display: none; }
-            #hero-weather .hw-b { flex-basis: 100%; text-align: center; }
-        }
+        #hero-weather .hw-row { white-space: nowrap; }
+        .hero-window-row { flex-wrap: nowrap; }
 
         body.light-theme #hero-details-text {
             color: #000 !important;
@@ -11012,7 +11007,7 @@
                                     class="text-[11px] uppercase tracking-[3px] text-zinc-500 font-bold mb-1.5 notranslate"
                                     translate="no" lang="en">WEATHER</div>
                                 <div id="hero-weather" translate="no"
-                                    class="notranslate text-xs sm:text-sm font-semibold text-zinc-300 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 cursor-default select-none">
+                                    class="notranslate text-xs sm:text-sm font-semibold text-zinc-300 flex flex-col items-center gap-0.5 leading-snug cursor-default select-none">
                                     <i class="fa-solid fa-spinner fa-spin"></i> Syncing Weather...
                                 </div>
                             </div>
@@ -20888,7 +20883,7 @@
                 }
 
                 let tStr = window.currentUnitSystem === 'metric' ? `${defaultTempC}°C` : `${defaultTempF}°F`;
-                weatherEl.innerHTML = `<i class="fa-solid ${defaultIcon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[defaultDescKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span>`;
+                weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${defaultIcon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[defaultDescKey]}</span></span><span class="hw-row notranslate" dir="ltr" translate="no">${tStr}</span>`;
                 return;
             }
 
@@ -20902,7 +20897,11 @@
             const isRtl = ['he', 'iw', 'ar'].includes(langKey) || document.documentElement.getAttribute('dir') === 'rtl';
             const windDir = isRtl ? 'rtl' : 'ltr';
 
-            weatherEl.innerHTML = `<span class="hw-a"><i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span> <span class="mx-1 opacity-50">|</span> <i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate" translate="no" dir="${windDir}" style="direction:${windDir}!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="${windDir}" style="unicode-bidi:isolate!important">${wUnit}</span></span></span><span class="hw-sep mx-1 opacity-50">|</span><span class="hw-b ${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
+            // one item per line (inside the hero countdown box, under its "Weather" label)
+            weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span></span>`
+                + `<span class="hw-row notranslate" dir="ltr" translate="no">${tStr}</span>`
+                + `<span class="hw-row"><i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate" translate="no" dir="${windDir}" style="direction:${windDir}!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="${windDir}" style="unicode-bidi:isolate!important">${wUnit}</span></span></span>`
+                + `<span class="hw-row ${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
         }
 
         // Pulls an 11-char YouTube video ID out of a watch/embed/live/shorts/youtu.be URL, or
