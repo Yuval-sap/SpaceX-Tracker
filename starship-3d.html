@@ -1840,35 +1840,40 @@ function decal(group, pid, canvas, y, ang, w, h) {
   const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.userData.part = pid; group.add(m);
   return m;
 }
-// a box standing out of the hull, following its curve: w wide (at the hull), h tall, its face depth out from the
-// skin, walls straight out; covered in heat-shield tiles. Its foot starts a little inside the skin so no gap shows.
-function raisedBox(group, pid, yc, ang, w, h, depth, label) {
-  const pos = [], uv = [], idx = [], rc = hullRadius(yc), da = w / rc, N = 10;
-  const put = (a, y, r, u, v) => { pos.push(Math.sin(a) * r, y, Math.cos(a) * r); uv.push(u / tileTex.w, v / tileTex.h); return pos.length / 3 - 1; };
-  // one surface as an N x N grid; f(s, t) -> [angle, y, radius, u, v]; every triangle turned to face `out(angle, y)`
-  const surf = (f, out) => {
-    const base = pos.length / 3;
-    for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) put(...f(i / N, j / N));
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const p = base + j * (N + 1) + i, q = p + N + 1;
-      for (const tri of [[p, q, p + 1], [p + 1, q, q + 1]]) {
-        const [A, B, C] = tri.map(k => new V3(pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]));
-        const n = B.clone().sub(A).cross(C.clone().sub(A)), o = out(A);
-        idx.push(...(n.dot(o) >= 0 ? tri : [tri[0], tri[2], tri[1]]));
-      }
+// a tiled pad standing out of the hull, following its curve (per close-up photos of the ship): a rounded rectangle
+// w wide by h tall in plan (corner radius cr), its edge a quarter-round fillet of radius f all the way round up to a
+// flat face depth out from the skin - no sharp edge or corner anywhere, heat-shield tiles over the whole thing.
+// Built as one smooth grid: square rings of the grid map onto shrinking copies of the rounded outline (m = 1 is the
+// outline itself, at the skin; its foot sinks a little into the skin so no gap shows).
+function tiledPad(group, pid, yc, ang, w, h, depth, cr, f, label) {
+  const N = 48, pos = [], uv = [], idx = [], rh = hullRadius(yc), half = Math.min(w, h) / 2;
+  const outline = (s, t) => {                       // (s, t) on the unit square's border -> point on the rounded outline
+    const q = [s * w / 2, t * h / 2], cx = w / 2 - cr, cy = h / 2 - cr;
+    if (Math.abs(q[0]) > cx && Math.abs(q[1]) > cy) {
+      const c = [Math.sign(q[0]) * cx, Math.sign(q[1]) * cy], d = Math.hypot(q[0] - c[0], q[1] - c[1]) || 1;
+      return [c[0] + cr * (q[0] - c[0]) / d, c[1] + cr * (q[1] - c[1]) / d];
     }
+    return q;
   };
-  const a0 = ang - da / 2, y0 = yc - h / 2, rOut = y => hullRadius(y) + depth, rIn = y => hullRadius(y) - 0.03;
-  const radial = A => new V3(A.x, 0, A.z);
-  // the face, and the four walls (bottom / top along the angle, the two sides along the height); the walls are the
-  // smooth face of a single tile (uv 0,0 is a tile's centre) - grout lines running across them read as a dashed edge
-  // the face's tiles are shifted off the hull's grid (not by a whole hex step): lined up, the face read as the hull
-  // seen straight through
-  surf((s, t) => { const a = a0 + da * s, y = y0 + h * t; return [a, y, rOut(y), a * rc + tileTex.w / 18 * 0.5, y + tileTex.h / 18 * 0.5]; }, radial);   // the texture holds 18 x 18 tiles
-  for (const [yy, dir] of [[y0, -1], [y0 + h, 1]])
-    surf((s, t) => { const a = a0 + da * s, r = rIn(yy) + (rOut(yy) - rIn(yy)) * t; return [a, yy, r, 0, 0]; }, () => new V3(0, dir, 0));
-  for (const [aa, dir] of [[a0, -1], [a0 + da, 1]])
-    surf((s, t) => { const y = y0 + h * s, r = rIn(y) + (rOut(y) - rIn(y)) * t; return [aa, y, r, 0, 0]; }, () => new V3(Math.cos(aa) * dir, 0, -Math.sin(aa) * dir));
+  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+    const s = i / N * 2 - 1, t = j / N * 2 - 1, m = Math.max(Math.abs(s), Math.abs(t));
+    const e = m > 0 ? outline(s / m, t / m) : [0, 0], x = e[0] * m, yy = e[1] * m;
+    const inset = (1 - m) * half, k = Math.min(1, inset / f);            // distance in from the outline, over the fillet
+    const lift = Math.sqrt(Math.max(0, 1 - (1 - k) * (1 - k)));        // quarter circle: 0 at the outline, 1 on the face
+    const y = yc + yy, a = ang + x / rh, r = hullRadius(y) - 0.03 + (depth + 0.03) * lift;
+    pos.push(Math.sin(a) * r, y, Math.cos(a) * r);
+    // tiles laid over it at hull size, shifted off the hull's own grid (the texture holds 18 x 18 tiles) so the pad
+    // doesn't read as the hull seen straight through
+    uv.push((x + ang * rh + tileTex.w / 36) / tileTex.w, (y + tileTex.h / 36) / tileTex.h);
+  }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const p0 = j * (N + 1) + i, p1 = p0 + N + 1;
+    for (const tri of [[p0, p1, p0 + 1], [p0 + 1, p1, p1 + 1]]) {
+      const [A, B, C] = tri.map(k => new V3(pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]));
+      const n = B.clone().sub(A).cross(C.clone().sub(A));
+      idx.push(...(n.dot(new V3(Math.sin(ang), 0, Math.cos(ang))) >= 0 ? tri : [tri[0], tri[2], tri[1]]));
+    }
+  }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx); g.computeVertexNormals();
   return add(group, g, pid, 'tileSolid', label);
@@ -1906,15 +1911,12 @@ function serialCanvas(text, upward = false) {
   const LOGO_Y = NOSE0 + 2.3;
   // the X itself sits in the left third of the logo canvas (the swoosh runs right), so shift the decal so the X is centred between the panels
   decal(sNose, 's-nose', logoCanvas(), LOGO_Y, LEEWARD + (0.5 - 0.303) * 2.6 / hullRadius(LOGO_Y), 2.6, 1.3);
-  // either side of the logo: the ship's two Starlink terminals (its own link to the ground in flight), low tiled
-  // boxes standing a little proud of the steel (photo of Ship 39 on the pad)
-  for (const da of [-0.5, 0.5]) raisedBox(sNose, 's-nose', LOGO_Y, LEEWARD + da, 0.8, 0.85, 0.09, 'Starlink terminal');
-  // on the heat-shield side at the same height, one each side: a bigger tiled box standing further out, a smaller
-  // block on top of it (same photo)
-  for (const sg of [1, -1]) {
-    raisedBox(sNose, 's-nose', LOGO_Y + 0.1, LEEWARD + sg * 1.8, 1.25, 1.3, 0.25, 'Tiled box');
-    raisedBox(sNose, 's-nose', LOGO_Y + 0.1, LEEWARD + sg * 1.8, 0.7, 0.72, 0.45, 'Tiled box');
-  }
+  // either side of the logo: the ship's two Starlink terminals (its own link to the ground in flight) - rounded,
+  // tiled pads a little taller than wide, standing a little proud of the steel (close-up photo of Ship 39)
+  for (const da of [-0.5, 0.5]) tiledPad(sNose, 's-nose', LOGO_Y, LEEWARD + da, 0.65, 1.0, 0.12, 0.16, 0.1, 'Starlink terminal');
+  // on the heat-shield side at the same height, one each side: the same kind of rounded tiled pad, bigger and standing
+  // further out (same photo)
+  for (const sg of [1, -1]) tiledPad(sNose, 's-nose', LOGO_Y + 0.1, LEEWARD + sg * 1.8, 0.9, 1.25, 0.25, 0.18, 0.13, 'Tiled box');
   // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
   if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.1, 0.6, 1.8);   // just outboard of the black strip
   // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings.
