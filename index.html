@@ -14973,6 +14973,15 @@
             localStorage.setItem('spacex_favorites', JSON.stringify(favoriteMissions));
         }
 
+        // Per-photo framing on the launch cards: the Crew Dragon pad shot has the rocket right in the
+        // middle, where it sat behind the start of the (right-aligned in RTL) title - shifted so the
+        // rocket moves left, clear of the title.
+        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '75% 19%' };
+        function cardImgPosStyle(src) {
+            const pos = CARD_IMG_POS[String(src || '').split('/').pop()];
+            return pos ? `style="object-position: ${pos};"` : '';
+        }
+
         const FALLBACK_IMAGES = {
             starship: "https://spacexfantracker.com/starship-share.jpg",
             starlink: "starlink-launch-pad.webp",
@@ -21580,7 +21589,7 @@ setTimeout(() => {
                 card.dataset.category = m.category;
                 card.style = `animation-delay: ${idx * 100}ms;`;
                 card.innerHTML = `
-                    <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom" alt="${escapeHtml(m.name)}">
+                    <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom" ${cardImgPosStyle(m.image)} alt="${escapeHtml(m.name)}">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
                     ${statusBadgeMobile}
                     <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pt-[182px]">
