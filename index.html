@@ -5934,6 +5934,23 @@
             for (const k of Object.keys(ends)) if (Date.now() - (ends[k].at || 0) > 30 * 864e5) delete ends[k];   // keep a month
             try { localStorage.setItem(TIMELINE_END_STORE_KEY, JSON.stringify(ends)); } catch (e) { }
         }
+        // When a LIVE source (LL2 / spacelaunch.dev - not the stale lldev mirror, not the local cache)
+        // last reported each mission's status. Lets the classification tell "the API answered after
+        // T-0 and still doesn't say it launched" (maybe a scrub not reported yet - short window) from
+        // "no fresh answer since T-0 at all" (we're rate-limited - don't punish a real launch).
+        const LIVE_STATUS_STORE_KEY = 'spacex_live_status_at_v1';
+        function readLiveStatusAt() { try { return JSON.parse(localStorage.getItem(LIVE_STATUS_STORE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+        function noteLiveStatus(rows) {
+            if (!Array.isArray(rows) || !rows.length) return;
+            const at = readLiveStatusAt(), now = Date.now();
+            for (const r of rows) { const id = r && (r.id || r.launch_id); if (id != null) at[String(id)] = now; }
+            for (const k of Object.keys(at)) if (now - at[k] > 7 * 864e5) delete at[k];
+            try { localStorage.setItem(LIVE_STATUS_STORE_KEY, JSON.stringify(at)); } catch (e) { }
+        }
+        function liveStatusSince(missionId, sinceMs) {
+            const t = readLiveStatusAt()[String(missionId)];
+            return !!t && t > sinceMs;
+        }
         function missionInFlightWindowMs(m) {
             const e = m && m.id ? readTimelineEnds()[m.id] : null;
             if (e && e.endSec > 0) return e.endSec * 1000 + TIMELINE_TAIL_MS;
@@ -18445,12 +18462,13 @@
             const CACHE_KEY = 'spacex_launches_cache';
 
             try {
+                let freshUpcoming = null, freshPrevious = null;   // what LIVE sources returned this round (see noteLiveStatus)
                 const fetchUpcomingWithFallback = async () => {
                     try {
                         const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
                         if (res.ok) {
                             const data = await res.json();
-                            if (data.results && data.results.length > 0) return data.results;
+                            if (data.results && data.results.length > 0) return (freshUpcoming = data.results);
                         }
                     } catch (e) { }
 
@@ -18458,7 +18476,7 @@
                         const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', { timeout: 12000 });
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
-                            if (fbData.launches && fbData.launches.length > 0) return fbData.launches;
+                            if (fbData.launches && fbData.launches.length > 0) return (freshUpcoming = fbData.launches);
                         }
                     } catch (e) { }
 
@@ -18492,6 +18510,7 @@
                     let rows = [];
                     try {
                         rows = await fetchPreviousLaunchPages('https://ll.thespacedevs.com', previousMaxPages);
+                        if (rows && rows.length) freshPrevious = rows.slice();
                     } catch (e) { }
 
                     // Primary host often returns the first 100 and then 429s the second page.
@@ -18520,6 +18539,7 @@
                     fetchPrevious ? fetchPreviousWithFallback() : Promise.resolve(null)
                 ]);
 
+                noteLiveStatus(freshUpcoming); noteLiveStatus(freshPrevious);
                 if (upcomingRaw === null && previousRaw === null) {
                     throw new Error("All APIs failed or timed out.");
                 }
@@ -18959,10 +18979,12 @@
                         rawPastMissions.push(m);
                     }
                 } else {
-                    // the long timeline-based window only for a flight the API confirmed; an unconfirmed
-                    // "window closed" keeps the old short 60/90 minutes (it may be a scrub not reported yet)
+                    // the long timeline-based window unless a LIVE answer since T-0 still doesn't say it flew
+                    // (then it may be a scrub not reported yet: the old short 60/90 min). With no live answer
+                    // since T-0 at all (rate-limited), a real launch keeps its full window and statuses.
                     const shortWindowMs = m.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
-                    if (diff >= 0 && diff <= (flyingNow ? flightWindowMs : shortWindowMs) && !apiStatusMeansHoldOrScrub(statusLower) && (flyingNow || !windowStillOpen)) {
+                    const unconfirmedButAnswered = !flyingNow && liveStatusSince(m.id, launchTime);
+                    if (diff >= 0 && diff <= (unconfirmedButAnswered ? shortWindowMs : flightWindowMs) && !apiStatusMeansHoldOrScrub(statusLower) && (flyingNow || !windowStillOpen)) {
                         m.status = "In Progress";
                     } else if (apiStatusMeansHoldOrScrub(statusLower) || statusLower.includes("tbd") || statusLower.includes("tbc")) {
                         m.status = "Delayed / Under Review";
