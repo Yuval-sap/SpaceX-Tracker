@@ -9101,13 +9101,39 @@
             // follows the SITE's selected language rather than whatever the OS happens to be
             // set to.
             const dateFmt = new Intl.DateTimeFormat(dateLocaleForLang(currentLang), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-            const paint = (comments) => {
+            // The translations keep the source's English dates ("NET September 22", "Sep 28 at ...") - put
+            // them in the site language's own date format (year taken from the update itself)
+            const langKey = (currentLang || 'en').split('-')[0];
+            const MONTH_RE = /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(\.?)(?:\s+(\d{1,2})(?:st|nd|rd|th)?\b)?/g;
+            const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+            const localizeDates = (text, u) => {
+                if (!text || langKey === 'en') return text;
+                const yr = u && u.createdOn ? new Date(u.createdOn).getUTCFullYear() : new Date().getUTCFullYear();
+                // Latin digits, like the times beside them in the same sentence (Arabic would otherwise mix ٢٨ with 13:15)
+                const loc = dateLocaleForLang(currentLang) + '-u-nu-latn';
+                return text.replace(MONTH_RE, (all, mon, dot, day) => {
+                    const mi = MONTHS.indexOf(mon.slice(0, 3).toLowerCase());
+                    const dd = day ? +day : 0;
+                    // a bare abbreviation with no day ("Mar", "Dec") can be an ordinary word in some languages
+                    if (mi < 0 || dd > 31 || (!dd && !/^(January|February|March|April|May|June|July|August|September|October|November|December)$/.test(mon))) return all;
+                    const dt = new Date(Date.UTC(yr, mi, dd || 1, 12));
+                    if (dd) return new Intl.DateTimeFormat(loc, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(dt);
+                    // month alone ("NET early September"): the dot after it ends the sentence, so it stays; Slavic
+                    // languages need the genitive ("начала сентября"), which is the form a day+month date carries
+                    const mo = /^(ru|pl|cs|uk)$/.test(langKey)
+                        ? new Intl.DateTimeFormat(loc, { day: 'numeric', month: 'long', timeZone: 'UTC' }).formatToParts(dt).find(p => p.type === 'month').value
+                        : new Intl.DateTimeFormat(loc, { month: 'long', timeZone: 'UTC' }).format(dt);
+                    return mo + (dot || '');
+                });
+            };
+            const paint = (commentsRaw) => {
                 if (_modalUpdatesGen !== myGen) return; // superseded by a newer open/re-render
+                const comments = commentsRaw.map((c, i) => localizeDates(c, real[i]));
                 if (summaryEl) summaryEl.innerText = truncateForTile(comments[0], 60);
                 list.innerHTML = real.map((u, i) => {
                     const d = u.createdOn ? dateFmt.format(new Date(u.createdOn)) : '';
                     return `<div class="border-s-2 border-emerald-500/40 ps-3 py-0.5">
-                        <div class="text-[10px] text-zinc-500" dir="ltr">${escapeHtml(d)}</div>
+                        <div class="text-[10px] text-zinc-500" dir="auto">${escapeHtml(d)}</div>
                         <div class="text-xs sm:text-sm text-zinc-300 leading-snug">${escapeHtml(comments[i])}</div>
                     </div>`;
                 }).join('');
