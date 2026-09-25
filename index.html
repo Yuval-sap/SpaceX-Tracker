@@ -18476,7 +18476,16 @@
                         const fbRes = await fetchWithTimeout('https://spacelaunch.dev/api/launches?provider=SpaceX&limit=60', { timeout: 12000 });
                         if (fbRes.ok) {
                             const fbData = await fbRes.json();
-                            if (fbData.launches && fbData.launches.length > 0) return (freshUpcoming = fbData.launches);
+                            if (fbData.launches && fbData.launches.length > 0) {
+                                // spacelaunch.dev carries no updates[] (the Pre-Launch Updates tile) - keep the
+                                // ones from the last cached LL2 copy of the same launch (same ids on both)
+                                const cachedById = new Map((cachedCombinedForSanityCheck || []).map(m => [m && m.id, m]));
+                                fbData.launches.forEach(l => {
+                                    const c = l && !Array.isArray(l.updates) && cachedById.get(l.id);
+                                    if (c && Array.isArray(c.updates)) l.updates = c.updates;
+                                });
+                                return (freshUpcoming = fbData.launches);
+                            }
                         }
                     } catch (e) { }
 
