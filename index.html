@@ -12822,7 +12822,9 @@
 
       function windowStartDate(years) {
         if (years === 0) return new Date(CURRENT_YEAR, 0, 1);
-        return new Date(TODAY.getFullYear() - years, TODAY.getMonth(), TODAY.getDate());
+        // from the 1st of this month N years back: the window starts with a whole month (starting on
+        // today's day-of-month left the first month holding only its last week or so - a false dip)
+        return new Date(TODAY.getFullYear() - years, TODAY.getMonth(), 1);
       }
 
       function buildWindowWeekly(providerKey, years) {
@@ -13080,9 +13082,14 @@
             }
             var labW = multiYear ? 56 : 34, room = plotW / Math.max(1, monthIdx.length);
             var every = room >= labW ? 1 : room * 2 >= labW ? 2 : 3;
-            for (var mk = 0; mk < monthIdx.length; mk++) {
-              if ((monthIdx.length - 1 - mk) % every) continue;          // always keep the newest month
+            var lastX = null;
+            for (var mk = monthIdx.length - 1; mk >= 0; mk--) {          // newest first: it is always kept
+              if ((monthIdx.length - 1 - mk) % every) continue;
               var ix = monthIdx[mk];
+              // a month with only a sliver inside the window (a week or two) sits right next to its
+              // neighbour's label - skip it rather than overprint
+              if (lastX !== null && Math.abs(xPos(ix) - lastX) < labW) continue;
+              lastX = xPos(ix);
               labelParts.push('<text class="lc-axis-label" x="' + xPos(ix) + '" y="' + (PAD.top + plotH + 20) + '" text-anchor="middle">' + tickLabel(pts0[ix].date, multiYear) + '</text>');
             }
           } else {
