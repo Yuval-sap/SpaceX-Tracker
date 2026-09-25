@@ -163,7 +163,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=18"></script>
+<script src="starship-3d-i18n.js?v=19"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -654,7 +654,7 @@ const PART_INFO = [
   { id: 's-tiles', n: 'Heat shield', k: 'Ship · 09', title: 'Heat shield', desc: 'About 18,000 hexagonal ceramic tiles cover the belly of the ship, the side that faces into the airflow during reentry. They are pinned to the steel skin and protect it from reentry heat of up to about 1,400 °C. The hexagonal pattern stops hot plasma from flowing straight through the gaps.', stats: [['TILES', '~18,000'], ['SHAPE', 'Hexagonal'], ['PEAK', '~1,400 °C']] },
   { id: 's-flaps', n: 'Flaps', k: 'Ship · 10', title: 'Forward & aft flaps', desc: 'Four body flaps work like a skydiver’s arms. During the bellyflop descent they control the ship’s attitude, until it flips upright and lights its engines to land.', stats: [['COUNT', '4'], ['ACTUATION', 'Electric'], ['MODE', 'Bellyflop']] },
   { id: 's-payload', n: 'Payload bay', k: 'Ship · 11', title: 'Payload bay & Pez slot', desc: 'On Starlink flights the satellites sit in a stack inside the payload bay. A long, narrow horizontal slot nicknamed the “Pez dispenser” opens on the bare-steel side (the side without tiles), and the satellites slide out through it one at a time.', stats: [['DOOR', 'Mail slot'], ['PAYLOAD', '100+ t'], ['CARGO', 'Starlink']] },
-  { id: 's-nose', n: 'Nose cone', k: 'Ship · 12', title: 'Nose cone & header tank', desc: 'The ogive nose houses the liquid-oxygen header tank and the forward flap actuators. Stainless steel keeps its strength both at cryogenic temperatures and in reentry heat.', stats: [['SHAPE', 'Ogive'], ['HOUSES', 'LOX header'], ['FLAPS', '2 forward']] },
+  { id: 's-nose', n: 'Nose cone', k: 'Ship · 12', title: 'Nose cone & header tank', desc: 'The ogive nose houses the liquid-oxygen header tank and the forward flap actuators. Stainless steel keeps its strength both at cryogenic temperatures and in reentry heat. The two Starlink terminals beside the logo keep the ship in contact with the ground throughout the flight.', stats: [['SHAPE', 'Ogive'], ['HOUSES', 'LOX header'], ['FLAPS', '2 forward']] },
 ];
 const parts = {};
 PART_INFO.forEach((p, i) => { parts[p.id] = { ...p, idx: i, grp: p.id.startsWith('b-') ? 'sh' : p.id === 'hsr' ? 'inter' : 'ship', mats: [], cache: {}, meshes: [] }; });
@@ -1840,6 +1840,39 @@ function decal(group, pid, canvas, y, ang, w, h) {
   const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.userData.part = pid; group.add(m);
   return m;
 }
+// a box standing out of the hull, following its curve: w wide (at the hull), h tall, its face depth out from the
+// skin, walls straight out; covered in heat-shield tiles. Its foot starts a little inside the skin so no gap shows.
+function raisedBox(group, pid, yc, ang, w, h, depth, label) {
+  const pos = [], uv = [], idx = [], rc = hullRadius(yc), da = w / rc, N = 10;
+  const put = (a, y, r, u, v) => { pos.push(Math.sin(a) * r, y, Math.cos(a) * r); uv.push(u / tileTex.w, v / tileTex.h); return pos.length / 3 - 1; };
+  // one surface as an N x N grid; f(s, t) -> [angle, y, radius, u, v]; every triangle turned to face `out(angle, y)`
+  const surf = (f, out) => {
+    const base = pos.length / 3;
+    for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) put(...f(i / N, j / N));
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p = base + j * (N + 1) + i, q = p + N + 1;
+      for (const tri of [[p, q, p + 1], [p + 1, q, q + 1]]) {
+        const [A, B, C] = tri.map(k => new V3(pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]));
+        const n = B.clone().sub(A).cross(C.clone().sub(A)), o = out(A);
+        idx.push(...(n.dot(o) >= 0 ? tri : [tri[0], tri[2], tri[1]]));
+      }
+    }
+  };
+  const a0 = ang - da / 2, y0 = yc - h / 2, rOut = y => hullRadius(y) + depth, rIn = y => hullRadius(y) - 0.03;
+  const radial = A => new V3(A.x, 0, A.z);
+  // the face, and the four walls (bottom / top along the angle, the two sides along the height); the walls are the
+  // smooth face of a single tile (uv 0,0 is a tile's centre) - grout lines running across them read as a dashed edge
+  // the face's tiles are shifted off the hull's grid (not by a whole hex step): lined up, the face read as the hull
+  // seen straight through
+  surf((s, t) => { const a = a0 + da * s, y = y0 + h * t; return [a, y, rOut(y), a * rc + tileTex.w / 18 * 0.5, y + tileTex.h / 18 * 0.5]; }, radial);   // the texture holds 18 x 18 tiles
+  for (const [yy, dir] of [[y0, -1], [y0 + h, 1]])
+    surf((s, t) => { const a = a0 + da * s, r = rIn(yy) + (rOut(yy) - rIn(yy)) * t; return [a, yy, r, 0, 0]; }, () => new V3(0, dir, 0));
+  for (const [aa, dir] of [[a0, -1], [a0 + da, 1]])
+    surf((s, t) => { const y = y0 + h * s, r = rIn(y) + (rOut(y) - rIn(y)) * t; return [aa, y, r, 0, 0]; }, () => new V3(Math.cos(aa) * dir, 0, -Math.sin(aa) * dir));
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  return add(group, g, pid, 'tileSolid', label);
+}
 // SpaceX "X" logo, black, on the steel side below the Pez slot (Reuters photo of Ship 41/42)
 function logoCanvas() {
   const c = mkCanvas(1024, 512), g = c.getContext('2d');
@@ -1873,10 +1906,15 @@ function serialCanvas(text, upward = false) {
   const LOGO_Y = NOSE0 + 2.3;
   // the X itself sits in the left third of the logo canvas (the swoosh runs right), so shift the decal so the X is centred between the panels
   decal(sNose, 's-nose', logoCanvas(), LOGO_Y, LEEWARD + (0.5 - 0.303) * 2.6 / hullRadius(LOGO_Y), 2.6, 1.3);
-  // the two dark square panels either side of the logo
-  const panel = mkCanvas(64, 64), pg = panel.getContext('2d');
-  pg.fillStyle = '#1b1d21'; pg.fillRect(4, 4, 56, 56); pg.strokeStyle = 'rgba(0,0,0,.6)'; pg.lineWidth = 3; pg.strokeRect(5, 5, 54, 54);
-  for (const da of [-0.5, 0.5]) decal(sNose, 's-nose', panel, LOGO_Y, LEEWARD + da, 0.8, 0.85);
+  // either side of the logo: the ship's two Starlink terminals (its own link to the ground in flight), low tiled
+  // boxes standing a little proud of the steel (photo of Ship 39 on the pad)
+  for (const da of [-0.5, 0.5]) raisedBox(sNose, 's-nose', LOGO_Y, LEEWARD + da, 0.8, 0.85, 0.09, 'Starlink terminal');
+  // on the heat-shield side at the same height, one each side: a bigger tiled box standing further out, a smaller
+  // block on top of it (same photo)
+  for (const sg of [1, -1]) {
+    raisedBox(sNose, 's-nose', LOGO_Y + 0.1, LEEWARD + sg * 1.8, 1.25, 1.3, 0.25, 'Tiled box');
+    raisedBox(sNose, 's-nose', LOGO_Y + 0.1, LEEWARD + sg * 1.8, 0.7, 0.72, 0.45, 'Tiled box');
+  }
   // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
   if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.1, 0.6, 1.8);   // just outboard of the black strip
   // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings.
