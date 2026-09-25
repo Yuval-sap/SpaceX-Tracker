@@ -1235,6 +1235,10 @@
            (past-launch cards go straight from the date/site line to the details button, no
            separate description) - scoped to #missions-grid alone for that reason. */
         /* Hero location/date line in black on the day theme (per user request, with the hero photo at 40%) */
+        /* dot between the hero's date and site: margins, not spaces - in RTL the space after the
+           year was swallowed by the bidi reordering ("2026•") */
+        #hero-details-text .hero-sep { margin: 0 0.45em; }
+
         body.light-theme #hero-details-text {
             color: #000 !important;
         }
@@ -10408,7 +10412,7 @@
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
                 if (heroDetailsTextEl && window.currentActiveHeroSite) {
                     const heroDateSpan = heroDetailsTextEl.textContent.split('•')[0].trim();
-                    heroDetailsTextEl.innerHTML = `<span dir="auto">${heroDateSpan}</span> • <span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
+                    heroDetailsTextEl.innerHTML = `<span dir="auto">${heroDateSpan}</span><span class="hero-sep" aria-hidden="true">•</span><span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
                 }
                 // Same for the hero's launch-window line ("(Instant)"/"Instantaneous Window") -
                 // also notranslate, also JS-set-per-language only (see renderHeroWindowText's
@@ -21359,7 +21363,7 @@ setTimeout(() => {
                     fetchRealMissionTimeline();
                 }
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
-                if (heroDetailsTextEl) heroDetailsTextEl.innerHTML = `<span dir="auto">${dateStr}</span> • <span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
+                if (heroDetailsTextEl) heroDetailsTextEl.innerHTML = `<span dir="auto">${dateStr}</span><span class="hero-sep" aria-hidden="true">•</span><span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
                 fetchLiveWeather(nextLaunch.siteLower, nextLaunch.probability);
 
                 window.currentActiveHeroWindowStart = nextLaunch.windowStart;
