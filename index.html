@@ -541,6 +541,7 @@
         #i18n-countdown-to-launch,
         #hero-tplus,
         #i18n-launch-window,
+        #i18n-hero-weather,
         .milestones-title,
         #doc-ep1-title,
         #doc-ep2-title,
@@ -1240,6 +1241,7 @@
         .hero-window-row .hero-weather-col { border-inline-start: 1px solid rgba(113, 113, 122, 0.3); }
         #hero-weather .hw-row { white-space: nowrap; }
         .hero-window-row { flex-wrap: nowrap; }
+        .hero-window-row .hero-window-col { flex: 1 1 0; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; }
         /* phones: the two columns don't reliably fit side by side (a longer condition like "Partly
            Cloudy" pushes them over), so they always stack there, without the divider */
         @media (max-width: 639px) {
@@ -2538,7 +2540,6 @@
            green, and the reminder button's hover green to the same green already used in
            the hero pills above, for consistency. (The reminder button sits right next to
            View Brief, so the two must share the same hover shade or the mismatch is obvious.) */
-        body.light-theme #hero-weather,
         body.light-theme #hero-weather .text-emerald-400 {
             color: #047857 !important;
         }
@@ -3081,6 +3082,7 @@
         body.mars-theme #i18n-countdown-to-launch,
         body.mars-theme #hero-tplus,
         body.mars-theme #i18n-launch-window,
+        body.mars-theme #i18n-hero-weather,
         body.mars-theme .milestones-title,
         body.mars-theme #doc-ep1-title,
         body.mars-theme #doc-ep2-title,
@@ -3565,6 +3567,7 @@
         body.moon-theme #i18n-countdown-to-launch,
         body.moon-theme #hero-tplus,
         body.moon-theme #i18n-launch-window,
+        body.moon-theme #i18n-hero-weather,
         body.moon-theme .milestones-title,
         body.moon-theme #doc-ep1-title,
         body.moon-theme #doc-ep2-title,
@@ -4859,7 +4862,8 @@
         html[dir="rtl"] #i18n-countdown-to-launch {
             font-size: 14px !important;
         }
-        html[dir="rtl"] #i18n-launch-window {
+        html[dir="rtl"] #i18n-launch-window,
+        html[dir="rtl"] #i18n-hero-weather {
             font-size: 13px !important;
         }
         html[dir="rtl"] .milestones-title {
@@ -20890,7 +20894,7 @@
                 }
 
                 let tStr = window.currentUnitSystem === 'metric' ? `${defaultTempC}°C` : `${defaultTempF}°F`;
-                weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${defaultIcon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[defaultDescKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`;
+                weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${defaultIcon}"></i> <span class="notranslate" translate="no">${wDict[defaultDescKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`;
                 return;
             }
 
@@ -20905,8 +20909,8 @@
             const windDir = isRtl ? 'rtl' : 'ltr';
 
             // one item per line (inside the hero countdown box, under its "Weather" label)
-            weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${w.icon} text-emerald-400"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`
-                + `<span class="hw-row"><i class="fa-solid fa-wind text-zinc-500"></i> <span class="notranslate" translate="no" dir="${windDir}" style="direction:${windDir}!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="${windDir}" style="unicode-bidi:isolate!important">${wUnit}</span></span></span>`
+            weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${w.icon}"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`
+                + `<span class="hw-row"><i class="fa-solid fa-wind"></i> <span class="notranslate" translate="no" dir="${windDir}" style="direction:${windDir}!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="${windDir}" style="unicode-bidi:isolate!important">${wUnit}</span></span></span>`
                 + `<span class="hw-row ${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
         }
 
