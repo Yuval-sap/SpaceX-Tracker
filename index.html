@@ -5839,7 +5839,13 @@
                 if (!v || v.length < 4 || slugs.includes(v) || GENERIC_CMS_SLUGS.test(v)) return;
                 slugs.push(v);
             };
-            const raw = String(name || '');
+            const full = String(name || '');
+            // the hero passes the FULL API name (with LL2's trailing "(Dedicated ... Rideshare)" /
+            // "(Starship Flight N)"): slug guesses come from the name without it, plus Starship's own
+            // starship-flight-N from the number inside it
+            const raw = full.replace(/\s*\([^)]*\)\s*$/, '');
+            const ssFlight = /\(\s*starship\s+flight\s+(\d+)\s*\)/i.exec(full);
+            if (ssFlight) add('starship-flight-' + ssFlight[1]);
             const payload = raw.includes('|') ? raw.split('|').pop().trim() : raw.trim();
             const starlink = /starlink(?:\s+group)?\s+(\d+)\s*[-–]\s*(\d+)/i.exec(raw);
             if (starlink) add('sl-' + starlink[1] + '-' + starlink[2]);
