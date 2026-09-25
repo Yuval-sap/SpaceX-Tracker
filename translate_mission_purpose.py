@@ -338,6 +338,155 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list) -> dict:
     raise RuntimeError(last_error)
 
 
+# SpaceX's own post-launch timeline events (content.spacex.com, shown in the site's hero status and
+# "Mission Status" list for EVERY vehicle - Falcon 9, Falcon Heavy, Starship). The site shows each
+# event's English title as-is and a one-line explanation under it in the visitor's language. Hand-
+# written explanations in index.html cover the events seen so far; this generates one for every
+# event text SpaceX publishes (new wording, new mission phases), stored in the "timeline" map keyed
+# by the event text itself, and index.html uses it wherever its own dictionary has nothing.
+SPACEX_UPCOMING_TILES_URL = "https://content.spacex.com/api/spacex-website/launches-page-tiles/upcoming"
+SPACEX_MISSION_URL = "https://content.spacex.com/api/spacex-website/missions/"
+# "en" too: an event nobody has seen before has no English explanation either
+TIMELINE_LANG_BATCHES = [["en"] + LANG_BATCHES[0], LANG_BATCHES[1]]
+TIMELINE_LANGS = ["en"] + list(LANG_NAMES)
+TIMELINE_DEPLOY_TEMPLATE = "{payload} deploys, manifested by {company}"
+
+TIMELINE_PROMPT = """You write short explanations for the events of a SpaceX rocket launch's official
+post-launch timeline (e.g. "Max Q", "MECO", "Boostback burn start", "Payload deploy complete"), for a
+launch-tracking website. The site shows the event title in English and your explanation under it.
+
+Return ONLY valid JSON. Top-level keys must be exactly these language codes:
+{lang_keys}
+
+Each language value must be a JSON ARRAY of exactly {count} strings, in the SAME ORDER as the numbered
+events below. Do not skip, merge, or reorder any entry.
+
+Rules:
+- Each string is ONE short plain-language sentence (max ~14 words) saying what happens at that moment,
+  for a general audience. No trailing period. Do not repeat the event title itself.
+- If an event's text already contains an explanation in parentheses, e.g. "Max Q (moment of peak
+  aerodynamic stress on the rocket)", your string must be a faithful translation of that parenthetical
+  (in "en": the parenthetical as-is), not a new explanation.
+- Know the terms: MECO = main engine cutoff, SECO = second engine cutoff, SES = second engine start,
+  BECO = booster engine cutoff, boostback burn = the booster turning back toward its landing site,
+  entry burn = slowing down before re-entering the atmosphere, hot-staging = the upper stage igniting
+  before separation, deorbit burn = the burn that brings the vehicle out of orbit, orbital insertion
+  burn = the burn that places the vehicle into its orbit, "shutdown"/"ends" = engines turn off,
+  "start"/"begins" = engines ignite.
+- "launch" here ALWAYS means a ROCKET launch, never a product launch.{launch_term_note}
+- zh must be Simplified Chinese.
+- Keep as-is in every language: SpaceX, Falcon 9, Falcon Heavy, Dragon, Raptor, Super Heavy, Max Q, MECO,
+  SECO, BECO. For "Starship" use exactly: {starship_terms}. For "Starlink" use exactly: {starlink_terms}
+- An event may contain {{payload}} / {{company}} placeholders (a template for many satellites):
+  keep those two tokens exactly as written, untranslated, in every language.
+- Do not add labels, markdown, or commentary.
+
+Events:
+{entries_block}
+"""
+
+
+def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
+    """Same array-per-language response shape as call_gemini_update_batch (index-matched to the
+    input order); returns {lang: {event_text: explanation}}."""
+    pinned = {lang: LAUNCH_NOUN_TERM[lang] for lang in langs if lang in LAUNCH_NOUN_TERM}
+    launch_term_note = (
+        " Specifically: " + ", ".join(f"{lang}={term}" for lang, term in pinned.items())
+        if pinned else ""
+    )
+    body = {
+        "contents": [{"parts": [{"text": TIMELINE_PROMPT.format(
+            lang_keys=", ".join(langs),
+            count=len(events),
+            launch_term_note=launch_term_note,
+            starship_terms=", ".join(f"{lang}={STARSHIP_TERM.get(lang, 'Starship')}" for lang in langs),
+            starlink_terms=", ".join(f"{lang}={STARLINK_TERM.get(lang, 'Starlink')}" for lang in langs),
+            entries_block="\n".join(f"{i + 1}. {e}" for i, e in enumerate(events)),
+        )}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "responseMimeType": "application/json",
+            "maxOutputTokens": 8192,
+        },
+    }
+    payload = json.dumps(body).encode("utf-8")
+    global _active_model
+    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    last_error = None
+    for model in models_to_try:
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    gemini_url(model),
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": api_key,
+                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                text = (
+                    data.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+                parsed = json.loads(strip_json_fences(text))
+                if not isinstance(parsed, dict):
+                    raise ValueError("Gemini did not return a JSON object")
+                out = {}
+                for lang in langs:
+                    arr = parsed.get(lang)
+                    if not isinstance(arr, list) or len(arr) != len(events):
+                        continue
+                    cleaned = {}
+                    for event, val in zip(events, arr):
+                        if isinstance(val, str) and val.strip():
+                            cleaned[event] = val.strip().rstrip(".\u3002")
+                    if cleaned:
+                        out[lang] = cleaned
+                if not out:
+                    raise ValueError("Gemini returned no usable timeline explanations")
+                if model != _active_model:
+                    print(f"Using Gemini model {model}")
+                    _active_model = model
+                return out
+            except urllib.error.HTTPError as e:
+                detail = ""
+                try:
+                    detail = e.read().decode("utf-8", errors="replace")[:400]
+                except Exception:
+                    detail = str(e)
+                last_error = RuntimeError(f"HTTP {e.code} {model}: {detail}")
+                if e.code in (401, 403):
+                    raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
+                if e.code in (404, 400) and attempt == 0:
+                    print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    break
+                if e.code == 429:
+                    if "exceeded your current quota" in detail.lower():
+                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
+                    wait = 15 * (attempt + 1)
+                    print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                if attempt < 2:
+                    wait = 8 * (attempt + 1)
+                    print(f"Warning: Gemini timeline-batch call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                break
+            except Exception as e:
+                last_error = e
+                wait = 8 * (attempt + 1)
+                print(f"Warning: Gemini timeline-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
+                time.sleep(wait)
+    raise RuntimeError(last_error)
+
+
 def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
     """Returns {lang: {original_name: translated_name}} for whichever languages came back as a
     correctly-sized array - see NAME_PROMPT's own comment for why this is array-of-translations
@@ -463,6 +612,87 @@ def fetch_launches(url: str, retries: int = 4) -> list:
     return []
 
 
+def fetch_json(url: str):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "spacexfantracker-gemini-purpose/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return None
+
+
+# Same slug guesses as candidateSlugsFromMissionName in index.html (SpaceX's CMS slugs are
+# inconsistent: ussf153 / sl-15-27 / starship-flight-14), for launches the upcoming-tiles feed
+# doesn't list yet.
+def candidate_slugs(full_name: str) -> list:
+    slugs = []
+
+    def add(v):
+        v = (v or "").lower().strip("/")
+        if len(v) >= 4 and v not in slugs and not re.fullmatch(r"starlink|falcon|mission|spacex", v):
+            slugs.append(v)
+
+    raw = re.sub(r"\s*\([^)]*\)\s*$", "", full_name or "")
+    m = re.search(r"\(\s*starship\s+flight\s+(\d+)\s*\)", full_name or "", re.I)
+    if m:
+        add(f"starship-flight-{m.group(1)}")
+    payload = raw.split("|")[-1].strip() if "|" in raw else raw.strip()
+    m = re.search(r"starlink(?:\s+group)?\s+(\d+)\s*[-\u2013]\s*(\d+)", raw, re.I)
+    if m:
+        add(f"sl-{m.group(1)}-{m.group(2)}")
+    add(re.sub(r"[^a-z0-9]", "", payload.lower()))
+    add(re.sub(r"[^a-z0-9]+", "-", payload.lower()).strip("-"))
+    return slugs[:5]
+
+
+def normalize_timeline_event(text: str) -> str:
+    # must match normTimelineEvent in index.html (the "timeline" map is keyed by this)
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+# Every post-launch timeline event SpaceX has published for the launches the site can show:
+# everything in SpaceX's own upcoming-launches feed, plus a slug guess for each upcoming LL2
+# launch the feed doesn't list (yet).
+def fetch_timeline_events(upcoming: list) -> list:
+    slugs = []
+    tiles = fetch_json(SPACEX_UPCOMING_TILES_URL)
+    for t in tiles if isinstance(tiles, list) else []:
+        link = ((t or {}).get("link") or "").strip("/")
+        if link and link not in slugs:
+            slugs.append(link)
+    guesses = [candidate_slugs(l.get("name") or "") for l in upcoming]
+    events, seen, fetched = [], set(), set()
+
+    def take(slug):
+        if slug in fetched:
+            return False
+        fetched.add(slug)
+        mission = fetch_json(SPACEX_MISSION_URL + urllib.request.quote(slug))
+        entries = ((mission or {}).get("postLaunchTimeline") or {}).get("timelineEntries")
+        if not isinstance(entries, list) or not entries:
+            return False
+        for e in entries:
+            text = normalize_timeline_event((e or {}).get("description"))
+            # a rideshare lists every satellite this way (~80 on a Transporter) - one template for all
+            # of them, filled in by index.html (geminiTimelineExplain)
+            if re.match(r"^.+? deploys, manifested by .+$", text, re.I):
+                text = TIMELINE_DEPLOY_TEMPLATE
+            if text and text not in seen:
+                seen.add(text)
+                events.append(text)
+        return True
+
+    for slug in slugs:
+        take(slug)
+    for group in guesses:
+        if any(g in fetched for g in group):
+            continue
+        for g in group:
+            if take(g):
+                break
+    return events
+
+
 # Mirrors index.html's own fetchPreviousLaunchPages: same page size, same net__gte cutoff, same
 # page cap - so this script and the site agree on exactly which past launches "count".
 def fetch_previous_launches() -> list:
@@ -561,7 +791,7 @@ def name_hash(name: str) -> str:
 
 
 def load_existing() -> dict:
-    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}}
+    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}, "timeline": {}}
     if not OUTPUT_PATH.exists():
         return default
     try:
@@ -574,12 +804,15 @@ def load_existing() -> dict:
     data.setdefault("entries", {})
     data.setdefault("names", {})
     data.setdefault("updates", {})
+    data.setdefault("timeline", {})
     if not isinstance(data["entries"], dict):
         data["entries"] = {}
     if not isinstance(data["names"], dict):
         data["names"] = {}
     if not isinstance(data["updates"], dict):
         data["updates"] = {}
+    if not isinstance(data["timeline"], dict):
+        data["timeline"] = {}
     return data
 
 
@@ -798,6 +1031,8 @@ def main() -> int:
     entries = store["entries"]
     names_store = store["names"]
     updates_store = store["updates"]
+    timeline_store = store["timeline"]
+    timeline_events = fetch_timeline_events(upcoming)
 
     # A brand-new upcoming mission (just entered the top-7 window, or a description LL2 only
     # just published) must be translated before this run spends any quota on the 365-day past
@@ -810,6 +1045,7 @@ def main() -> int:
         upcoming_still_needs_entries(upcoming, entries)
         or upcoming_still_needs_names(upcoming, names_store)
         or upcoming_still_needs_updates(upcoming, updates_store)
+        or any(not name_langs_complete(timeline_store.get(e), TIMELINE_LANGS) for e in timeline_events)
     ):
         print("Upcoming launches still need translation - skipping the past-launch backlog this run.")
         previous = []
@@ -914,6 +1150,49 @@ def main() -> int:
     print(
         f"Names: new={name_translated} reused={name_reused} failed={name_failed} "
         f"total_names={len(names_store)}"
+    )
+
+    # Timeline explanations - right after names (cheap, batched, and shown live in the hero at
+    # launch time); same chunk / per-language-batch / reuse shape as the names pass.
+    timeline_new = 0
+    timeline_failed = 0
+    events_to_do = [e for e in timeline_events if not name_langs_complete(timeline_store.get(e), TIMELINE_LANGS)]
+    TIMELINE_CHUNK_SIZE = 15
+    for chunk in [events_to_do[i:i + TIMELINE_CHUNK_SIZE] for i in range(0, len(events_to_do), TIMELINE_CHUNK_SIZE)]:
+        merged_by_event = {e: dict(timeline_store.get(e) or {}) for e in chunk}
+        for batch in TIMELINE_LANG_BATCHES:
+            needing = [e for e in chunk if not name_langs_complete(merged_by_event[e], batch)]
+            if not needing:
+                continue
+            try:
+                result = call_gemini_timeline_batch(api_key, needing, batch)
+                for lang, event_map in result.items():
+                    for e, text in event_map.items():
+                        if e in merged_by_event:
+                            merged_by_event[e][lang] = text
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+            except (GeminiAuthError, GeminiQuotaExceededError) as e:
+                print(f"{e} - stopping this run.", file=sys.stderr)
+                for ev in chunk:
+                    if merged_by_event.get(ev):
+                        timeline_store[ev] = merged_by_event[ev]
+                store["timeline"] = timeline_store
+                write_output(store)
+                return 1 if isinstance(e, GeminiAuthError) else 0
+            except Exception as e:
+                print(f"Warning: skipped timeline-batch languages {','.join(batch)}: {e}", file=sys.stderr)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+        for e in chunk:
+            if merged_by_event.get(e):
+                timeline_store[e] = merged_by_event[e]
+            if name_langs_complete(merged_by_event.get(e), TIMELINE_LANGS):
+                timeline_new += 1
+            else:
+                timeline_failed += 1
+    store["timeline"] = timeline_store
+    print(
+        f"Timeline: events={len(timeline_events)} new={timeline_new} failed={timeline_failed} "
+        f"total_timeline={len(timeline_store)}"
     )
 
     translated = 0

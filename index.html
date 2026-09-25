@@ -6591,12 +6591,15 @@
         function identifyRealTimelineEventId(text) {
             const norm = String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
             if (!norm) return null;
-            if (REAL_TIMELINE_EXACT[norm]) return REAL_TIMELINE_EXACT[norm];
-            for (const [pattern, id] of REAL_TIMELINE_PATTERNS) {
+            let found = REAL_TIMELINE_EXACT[norm] || null;
+            if (!found) for (const [pattern, id] of REAL_TIMELINE_PATTERNS) {
                 pattern.lastIndex = 0; // these /gi patterns are shared with localizeRealTimelineEventLabel's .replace() calls elsewhere - reset before .test() so leftover state can't skip a match
-                if (pattern.test(norm)) return id;
+                if (pattern.test(norm)) { found = id; break; }
             }
-            return null;
+            // "Boostback burn ends" / "Super Heavy boostback burn shutdown" share the boostbackBurn id
+            // with the ignition, whose explanation describes the engines lighting - not this moment
+            if (found === 'boostbackBurn' && /\b(shutdown|ends?|complete)\b/.test(norm)) return 'boostbackBurnShutdown';
+            return found;
         }
 
         // Fills in the description line for real per-mission events whose own SpaceX wording
@@ -6641,6 +6644,9 @@
             // covers both (same approach already used for entryBurn/landingBurn below).
             boostbackBurn: {
                 en: "The booster fires its engines to head back toward the landing site", he: "הבוסטר מצית את מנועיו כדי לחזור לכיוון אתר הנחיתה", es: "El booster enciende sus motores para regresar hacia el sitio de aterrizaje", fr: "Le booster allume ses moteurs pour repartir vers le site d'atterrissage", de: "Der Booster zündet seine Triebwerke, um zur Landestelle zurückzukehren", ru: "Ускоритель включает двигатели, чтобы направиться обратно к месту посадки", zh: "助推器点火返回着陆点", it: "Il booster accende i motori per tornare verso il sito di atterraggio", cs: "Booster zapaluje motory, aby se vrátil k místu přistání", sv: "Boostern tänder motorerna för att vända tillbaka mot landningsplatsen", nl: "De booster ontsteekt zijn motoren om terug te keren naar de landingsplaats", da: "Boosteren tænder motorerne for at vende tilbage mod landingsstedet", pt: "O booster acende os motores para retornar ao local de pouso", pl: "Booster zapala silniki, aby wrócić w stronę miejsca lądowania", hi: "बूस्टर लैंडिंग स्थल की ओर वापस जाने के लिए इंजन प्रज्वलित करता है", ar: "يُشعل المعزز محركاته للعودة نحو موقع الهبوط", tr: "Güçlendirici iniş sahasına geri dönmek için motorlarını ateşliyor",
+            },
+            boostbackBurnShutdown: {
+                en: "The booster shuts its engines off, now heading back toward the landing site", he: "הבוסטר מכבה את מנועיו, כשהוא כבר בדרך חזרה לאתר הנחיתה", es: "El booster apaga sus motores, ya de regreso hacia el sitio de aterrizaje", fr: "Le booster coupe ses moteurs, désormais en route vers le site d'atterrissage", de: "Der Booster schaltet seine Triebwerke ab und ist nun auf dem Rückweg zur Landestelle", ru: "Ускоритель выключает двигатели, уже направляясь обратно к месту посадки", zh: "助推器关闭发动机，已转向返回着陆点", it: "Il booster spegne i motori, ormai diretto verso il sito di atterraggio", cs: "Booster vypíná motory, už míří zpět k místu přistání", sv: "Boostern stänger av motorerna, nu på väg tillbaka mot landningsplatsen", nl: "De booster schakelt zijn motoren uit, nu op weg terug naar de landingsplaats", da: "Boosteren slukker motorerne, nu på vej tilbage mod landingsstedet", pt: "O booster desliga os motores, já a caminho do local de pouso", pl: "Booster wyłącza silniki, lecąc już z powrotem w stronę miejsca lądowania", hi: "बूस्टर अपने इंजन बंद करता है, अब वह लैंडिंग स्थल की ओर लौट रहा है", ar: "يُطفئ المعزز محركاته وهو في طريق العودة نحو موقع الهبوط", tr: "Güçlendirici motorlarını kapatıyor, artık iniş sahasına geri dönüyor",
             },
             // Single-core "entry burn begins" vs "ends" - two distinct moments (ignition vs.
             // shutdown), given their own text instead of sharing entryBurn's one generic line
@@ -6760,6 +6766,32 @@
             return '';
         }
 
+        const normTimelineEvent = t => String(t || '').replace(/\s+/g, ' ').trim();   // = normalize_timeline_event in translate_mission_purpose.py
+        function geminiTimelineExplain(event, key) {
+            if (!_geminiTimelineMap) {
+                // not loaded yet: load it once, then rebuild whatever timeline is showing
+                loadGeminiPurposeMap().then(() => {
+                    if (!realMissionTimelineData) return;
+                    realMissionTimelineTranslated.lang = null;
+                    realMissionTimelineTranslated.forData = null;
+                    if (typeof renderMissionStatusBreakdown === 'function' && realTimelineMatchesMission(window.currentActiveHeroMissionName)) {
+                        renderMissionStatusBreakdown(document.documentElement.lang);
+                    }
+                });
+                return '';
+            }
+            const lang = key === 'iw' ? 'he' : key;
+            const norm = normTimelineEvent(event);
+            const hit = _geminiTimelineMap[norm];
+            if (hit && hit[lang]) return hit[lang];
+            // rideshare flights list every satellite as "<satellite> deploys, manifested by <company>" -
+            // one template for all of them ({payload} / {company} filled in here)
+            const m = /^(.+?) deploys, manifested by (.+)$/i.exec(norm);
+            const tpl = m && _geminiTimelineMap['{payload} deploys, manifested by {company}'];
+            if (tpl && tpl[lang]) return tpl[lang].replace('{payload}', m[1]).replace('{company}', m[2]);
+            return '';
+        }
+
         // Site-owned translations only - never Google. The rendered list is also marked
         // notranslate so the on-page widget cannot rewrite a phrase we already localized
         // (or leave an unknown leftover in English, which is better than a mistranslation).
@@ -6777,7 +6809,11 @@
                 // an explanation ("1st and 2nd stages separate", "Fairing separation", etc. are
                 // often plain one-liners) - fill in our own canned one-line description for any
                 // event we recognize, instead of leaving that row with a title and nothing else.
-                const explain = localized.explain || fallbackRealTimelineExplain(identifyRealTimelineEventId(e.event), key);
+                let explain = localized.explain || fallbackRealTimelineExplain(identifyRealTimelineEventId(e.event), key);
+                // nothing hand-written for this event (or only SpaceX's own English parenthetical, left
+                // untranslated): the explanation generated for it by translate_mission_purpose.py
+                const gem = geminiTimelineExplain(e.event, key);
+                if (gem && (!explain || (key !== 'en' && explain === english.explain))) explain = gem;
                 return {
                     tSeconds: e.seconds,
                     label: english.title,
@@ -8840,21 +8876,28 @@
         // -> plain translated string per language, see translate_mission_purpose.py), so
         // lookupGeminiName below is reused as-is rather than duplicated for a third map.
         let _geminiUpdatesMap = null;
+        // SpaceX post-launch timeline explanations from the same file's "timeline" key, keyed by the
+        // event text itself (translate_mission_purpose.py writes one for every event SpaceX publishes
+        // for an upcoming launch) - used by ensureRealMissionTimelineTranslated wherever the
+        // hand-written dictionaries below have no explanation in the visitor's language.
+        let _geminiTimelineMap = null;
         let _geminiPurposeLoad = null;
         function loadGeminiPurposeMap() {
             if (_geminiPurposeLoad) return _geminiPurposeLoad;
             _geminiPurposeLoad = fetch('mission-purpose-gemini.json', { cache: 'no-cache' })
-                .then(res => (res && res.ok ? res.json() : { entries: {}, names: {}, updates: {} }))
+                .then(res => (res && res.ok ? res.json() : { entries: {}, names: {}, updates: {}, timeline: {} }))
                 .then(data => {
                     _geminiPurposeMap = (data && data.entries) || {};
                     _geminiNamesMap = (data && data.names) || {};
                     _geminiUpdatesMap = (data && data.updates) || {};
+                    _geminiTimelineMap = (data && data.timeline) || {};
                     return _geminiPurposeMap;
                 })
                 .catch(() => {
                     _geminiPurposeMap = {};
                     _geminiNamesMap = {};
                     _geminiUpdatesMap = {};
+                    _geminiTimelineMap = {};
                     return _geminiPurposeMap;
                 });
             return _geminiPurposeLoad;
