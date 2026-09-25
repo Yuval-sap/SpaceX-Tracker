@@ -21393,7 +21393,10 @@ setTimeout(() => {
                 } catch (e) { }
 
                 window.currentActiveHeroSite = nextLaunch.site;
-                window.currentActiveHeroMissionName = nextLaunch.name;
+                // used only to find SpaceX's own post-launch timeline: the FULL API name, since the
+                // displayed one drops Starship's "(Starship Flight N)" - the only part that matches
+                // SpaceX's "Starship Flight N" / starship-flight-N
+                window.currentActiveHeroMissionName = nextLaunch.patchTagName || nextLaunch.name;
                 if (typeof fetchRealMissionTimeline === 'function' &&
                     !realTimelineMatchesMission(nextLaunch.name)) {
                     fetchRealMissionTimeline();
