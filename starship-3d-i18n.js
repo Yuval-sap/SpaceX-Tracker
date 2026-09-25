@@ -8,7 +8,7 @@ window.SS_I18N = {};
 SS_I18N.en = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Share", copied: "Link copied",
+  ui: { deploy: "Deploy", share: "Share", copied: "Link copied",
     booster: 'Booster', mFlight: 'Flight {n}', vFlight: 'flight {n}', satLine: '{n} {starlink} V3 satellites', roll: 'Spin on its axis', scale: "Scale",
     eyebrow: 'SpaceX · Vehicle study', height: 'Height', diameter: 'Diameter', raptors: 'Raptors', thrust: 'Thrust', liftoff: 'Liftoff mass', selected: 'Selected',
     hint: 'Drag to rotate · Scroll to zoom where you point · Right-drag to pan · Double-click to fly there · Cube for views',
@@ -38,7 +38,7 @@ SS_I18N.en = {
 SS_I18N.he = {
   shipName: 'סטארשיפ', dir: 'rtl', starship: 'סטארשיפ', starlink: 'סטארלינק',
   units: { m: "מ'", ft: 'רגל', t: 'טון', lb: 'ליברות', kN: 'קילוניוטון', lbf: 'lbf' },
-  ui: { share: "שיתוף", copied: "הקישור הועתק",
+  ui: { deploy: "שחרור לוויינים", share: "שיתוף", copied: "הקישור הועתק",
     booster: 'בוסטר', mFlight: 'טיסה {n}', vFlight: 'טיסה {n}', satLine: '{n} לווייני {starlink} V3', roll: 'סיבוב סביב הציר', scale: "השוואת גודל",
     eyebrow: 'SpaceX · מבנה הרקטה', height: 'גובה', diameter: 'קוטר', raptors: 'מנועי Raptor', thrust: 'דחף', liftoff: 'מסה בהמראה', selected: 'נבחר',
     hint: 'גרירה לסיבוב · גלילה לזום למקום שמצביעים עליו · גרירה ימנית להזזה · לחיצה כפולה לטיסה לנקודה · הקובייה למבטים',
@@ -80,7 +80,7 @@ SS_I18N.iw = SS_I18N.he;
 SS_I18N.es = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'pies', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Compartir", copied: "Enlace copiado",
+  ui: { deploy: "Desplegar", share: "Compartir", copied: "Enlace copiado",
     booster: 'Booster', mFlight: 'Vuelo {n}', vFlight: 'vuelo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar sobre su eje', scale: "Escala",
     eyebrow: 'SpaceX · Estudio del vehículo', height: 'Altura', diameter: 'Diámetro', raptors: 'Raptors', thrust: 'Empuje', liftoff: 'Masa al despegue', selected: 'Seleccionado',
     hint: 'Arrastra para girar · Rueda para acercar donde apuntas · Clic derecho y arrastra para desplazar · Doble clic para volar allí · Cubo para vistas',
@@ -121,7 +121,7 @@ SS_I18N.es = {
 SS_I18N.fr = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'pieds', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Partager", copied: "Lien copié",
+  ui: { deploy: "Déployer", share: "Partager", copied: "Lien copié",
     booster: 'Booster', mFlight: 'Vol {n}', vFlight: 'vol {n}', satLine: '{n} satellites {starlink} V3', roll: 'Tourner sur son axe', scale: "Échelle",
     eyebrow: 'SpaceX · Étude du lanceur', height: 'Hauteur', diameter: 'Diamètre', raptors: 'Raptor', thrust: 'Poussée', liftoff: 'Masse au décollage', selected: 'Sélection',
     hint: 'Glisser pour tourner · Molette pour zoomer là où vous pointez · Clic droit + glisser pour déplacer · Double-clic pour s\'y rendre · Cube pour les vues',
@@ -162,7 +162,7 @@ SS_I18N.fr = {
 SS_I18N.de = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Teilen", copied: "Link kopiert",
+  ui: { deploy: "Aussetzen", share: "Teilen", copied: "Link kopiert",
     booster: 'Booster', mFlight: 'Flug {n}', vFlight: 'Flug {n}', satLine: '{n} {starlink}-V3-Satelliten', roll: 'Um die eigene Achse drehen', scale: "Größenvergleich",
     eyebrow: 'SpaceX · Fahrzeugstudie', height: 'Höhe', diameter: 'Durchmesser', raptors: 'Raptoren', thrust: 'Schub', liftoff: 'Startmasse', selected: 'Auswahl',
     hint: 'Ziehen zum Drehen · Scrollen zoomt dorthin, wo Sie zeigen · Rechtsziehen verschiebt · Doppelklick fliegt hin · Würfel für Ansichten',
@@ -203,7 +203,7 @@ SS_I18N.de = {
 SS_I18N.it = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'piedi', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Condividi", copied: "Link copiato",
+  ui: { deploy: "Rilascio", share: "Condividi", copied: "Link copiato",
     booster: 'Booster', mFlight: 'Volo {n}', vFlight: 'volo {n}', satLine: '{n} satelliti {starlink} V3', roll: 'Ruota sul proprio asse', scale: "Scala",
     eyebrow: 'SpaceX · Studio del veicolo', height: 'Altezza', diameter: 'Diametro', raptors: 'Raptor', thrust: 'Spinta', liftoff: 'Massa al decollo', selected: 'Selezione',
     hint: 'Trascina per ruotare · Rotella per zoomare dove punti · Trascina col tasto destro per spostare · Doppio clic per volare lì · Cubo per le viste',
@@ -244,7 +244,7 @@ SS_I18N.it = {
 SS_I18N.pt = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'pés', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Compartilhar", copied: "Link copiado",
+  ui: { deploy: "Liberar", share: "Compartilhar", copied: "Link copiado",
     booster: 'Booster', mFlight: 'Voo {n}', vFlight: 'voo {n}', satLine: '{n} satélites {starlink} V3', roll: 'Girar no próprio eixo', scale: "Escala",
     eyebrow: 'SpaceX · Estudo do veículo', height: 'Altura', diameter: 'Diâmetro', raptors: 'Raptors', thrust: 'Empuxo', liftoff: 'Massa na decolagem', selected: 'Selecionado',
     hint: 'Arraste para girar · Role para dar zoom onde aponta · Arraste com o botão direito para mover · Duplo clique para voar até lá · Cubo para vistas',
@@ -285,7 +285,7 @@ SS_I18N.pt = {
 SS_I18N.nl = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Delen", copied: "Link gekopieerd",
+  ui: { deploy: "Uitzetten", share: "Delen", copied: "Link gekopieerd",
     booster: 'Booster', mFlight: 'Vlucht {n}', vFlight: 'vlucht {n}', satLine: '{n} {starlink} V3-satellieten', roll: 'Om de eigen as draaien', scale: "Schaal",
     eyebrow: 'SpaceX · Voertuigstudie', height: 'Hoogte', diameter: 'Diameter', raptors: 'Raptors', thrust: 'Stuwkracht', liftoff: 'Startmassa', selected: 'Geselecteerd',
     hint: 'Sleep om te draaien · Scroll om in te zoomen waar je wijst · Rechts slepen om te verschuiven · Dubbelklik om erheen te vliegen · Kubus voor aanzichten',
@@ -326,7 +326,7 @@ SS_I18N.nl = {
 SS_I18N.sv = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'fot', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Dela", copied: "Länk kopierad",
+  ui: { deploy: "Släpp", share: "Dela", copied: "Länk kopierad",
     booster: 'Booster', mFlight: 'Flygning {n}', vFlight: 'flygning {n}', satLine: '{n} {starlink} V3-satelliter', roll: 'Rotera kring sin axel', scale: "Skala",
     eyebrow: 'SpaceX · Farkoststudie', height: 'Höjd', diameter: 'Diameter', raptors: 'Raptor', thrust: 'Dragkraft', liftoff: 'Startmassa', selected: 'Vald',
     hint: 'Dra för att vrida · Scrolla för att zooma dit du pekar · Högerdra för att panorera · Dubbelklicka för att flyga dit · Kuben för vyer',
@@ -367,7 +367,7 @@ SS_I18N.sv = {
 SS_I18N.da = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'fod', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Del", copied: "Link kopieret",
+  ui: { deploy: "Udsæt", share: "Del", copied: "Link kopieret",
     booster: 'Booster', mFlight: 'Flyvning {n}', vFlight: 'flyvning {n}', satLine: '{n} {starlink} V3-satellitter', roll: 'Drej om sin akse', scale: "Skala",
     eyebrow: 'SpaceX · Fartøjsstudie', height: 'Højde', diameter: 'Diameter', raptors: 'Raptor', thrust: 'Trykkraft', liftoff: 'Startmasse', selected: 'Valgt',
     hint: 'Træk for at dreje · Rul for at zoome derhen, hvor du peger · Højretræk for at panorere · Dobbeltklik for at flyve derhen · Terningen for visninger',
@@ -408,7 +408,7 @@ SS_I18N.da = {
 SS_I18N.cs = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Sdílet", copied: "Odkaz zkopírován",
+  ui: { deploy: "Vypuštění", share: "Sdílet", copied: "Odkaz zkopírován",
     booster: 'Booster', mFlight: 'Let {n}', vFlight: 'let {n}', satLine: '{n} družic {starlink} V3', roll: 'Otáčet kolem osy', scale: "Měřítko",
     eyebrow: 'SpaceX · Studie nosiče', height: 'Výška', diameter: 'Průměr', raptors: 'Raptory', thrust: 'Tah', liftoff: 'Startovní hmotnost', selected: 'Vybráno',
     hint: 'Tažením otáčejte · Kolečkem přibližujte tam, kam ukazujete · Pravým tlačítkem posouvejte · Dvojklikem tam přeletíte · Kostka pro pohledy',
@@ -449,7 +449,7 @@ SS_I18N.cs = {
 SS_I18N.pl = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lb', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Udostępnij", copied: "Link skopiowany",
+  ui: { deploy: "Wypuszczanie", share: "Udostępnij", copied: "Link skopiowany",
     booster: 'Booster', mFlight: 'Lot {n}', vFlight: 'lot {n}', satLine: '{n} satelitów {starlink} V3', roll: 'Obracaj wokół osi', scale: "Skala",
     eyebrow: 'SpaceX · Studium pojazdu', height: 'Wysokość', diameter: 'Średnica', raptors: 'Raptory', thrust: 'Ciąg', liftoff: 'Masa startowa', selected: 'Wybrano',
     hint: 'Przeciągnij, by obracać · Kółko przybliża tam, gdzie wskazujesz · Prawy przycisk przesuwa · Dwuklik, by tam polecieć · Kostka do widoków',
@@ -490,7 +490,7 @@ SS_I18N.pl = {
 SS_I18N.ru = {
   shipName: 'Старшип', dir: 'ltr', starship: 'Старшип', starlink: 'Старлинк',
   units: { m: 'м', ft: 'фут', t: 'т', lb: 'фунт', kN: 'кН', lbf: 'lbf' },
-  ui: { share: "Поделиться", copied: "Ссылка скопирована",
+  ui: { deploy: "Выпуск", share: "Поделиться", copied: "Ссылка скопирована",
     booster: 'Бустер', mFlight: 'Полёт {n}', vFlight: 'полёт {n}', satLine: '{n} спутников {starlink} V3', roll: 'Вращать вокруг оси', scale: "Масштаб",
     eyebrow: 'SpaceX · Устройство ракеты', height: 'Высота', diameter: 'Диаметр', raptors: 'Raptor', thrust: 'Тяга', liftoff: 'Стартовая масса', selected: 'Выбрано',
     hint: 'Тяните, чтобы вращать · Колёсико приближает туда, куда указываете · Правая кнопка — сдвиг · Двойной клик — перелёт к точке · Куб — виды',
@@ -531,7 +531,7 @@ SS_I18N.ru = {
 SS_I18N.zh = {
   shipName: '星舰', dir: 'ltr', starship: '星舰', starlink: '星链',
   units: { m: '米', ft: '英尺', t: '吨', lb: '磅', kN: '千牛', lbf: 'lbf' },
-  ui: { share: "分享", copied: "链接已复制",
+  ui: { deploy: "部署卫星", share: "分享", copied: "链接已复制",
     booster: '助推器', mFlight: '第 {n} 次飞行', vFlight: '第 {n} 次飞行', satLine: '{n} 颗{starlink} V3 卫星', roll: '绕自身轴旋转', scale: "尺寸对比",
     eyebrow: 'SpaceX · 箭体结构', height: '高度', diameter: '直径', raptors: '猛禽发动机', thrust: '推力', liftoff: '起飞质量', selected: '已选',
     hint: '拖动旋转 · 滚轮向指针处缩放 · 右键拖动平移 · 双击飞到该处 · 立方体切换视角',
@@ -572,7 +572,7 @@ SS_I18N.zh = {
 SS_I18N.tr = {
   dir: 'ltr', starship: 'Starship', starlink: 'Starlink',
   units: { m: 'm', ft: 'ft', t: 't', lb: 'lbs', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "Paylaş", copied: "Bağlantı kopyalandı",
+  ui: { deploy: "Bırak", share: "Paylaş", copied: "Bağlantı kopyalandı",
     booster: 'Booster', mFlight: 'Uçuş {n}', vFlight: '{n}. uçuş', satLine: '{n} {starlink} V3 uydusu', roll: 'Kendi ekseninde döndür', scale: "Ölçek",
     eyebrow: 'SpaceX · Araç incelemesi', height: 'Yükseklik', diameter: 'Çap', raptors: 'Raptor', thrust: 'İtki', liftoff: 'Kalkış kütlesi', selected: 'Seçili',
     hint: 'Döndürmek için sürükleyin · İşaret ettiğiniz yere yakınlaşmak için kaydırın · Sağ tıkla sürükleyerek kaydırın · Oraya uçmak için çift tıklayın · Görünümler için küp',
@@ -613,7 +613,7 @@ SS_I18N.tr = {
 SS_I18N.hi = {
   shipName: 'स्टारशिप', dir: 'ltr', starship: 'स्टारशिप', starlink: 'स्टारलिंक',
   units: { m: 'मी', ft: 'फीट', t: 'टन', lb: 'पाउंड', kN: 'kN', lbf: 'lbf' },
-  ui: { share: "साझा करें", copied: "लिंक कॉपी हुआ",
+  ui: { deploy: "तैनाती", share: "साझा करें", copied: "लिंक कॉपी हुआ",
     booster: 'बूस्टर', mFlight: 'उड़ान {n}', vFlight: 'उड़ान {n}', satLine: '{n} {starlink} V3 उपग्रह', roll: 'अपनी धुरी पर घुमाएँ', scale: "आकार तुलना",
     eyebrow: 'SpaceX · यान अध्ययन', height: 'ऊँचाई', diameter: 'व्यास', raptors: 'Raptor इंजन', thrust: 'थ्रस्ट', liftoff: 'उड़ान के समय द्रव्यमान', selected: 'चयनित',
     hint: 'घुमाने के लिए खींचें · जहाँ इंगित करें वहाँ ज़ूम करने के लिए स्क्रॉल करें · खिसकाने के लिए राइट-ड्रैग करें · वहाँ जाने के लिए डबल-क्लिक करें · दृश्यों के लिए क्यूब',
@@ -654,7 +654,7 @@ SS_I18N.hi = {
 SS_I18N.ar = {
   shipName: 'ستارشيب', dir: 'rtl', starship: 'ستارشيب', starlink: 'ستارلينك',
   units: { m: 'م', ft: 'قدم', t: 'طن', lb: 'رطل', kN: 'كيلونيوتن', lbf: 'lbf' },
-  ui: { share: "مشاركة", copied: "تم نسخ الرابط",
+  ui: { deploy: "إطلاق الأقمار", share: "مشاركة", copied: "تم نسخ الرابط",
     booster: 'المعزز', mFlight: 'الرحلة {n}', vFlight: 'الرحلة {n}', satLine: '{n} قمرًا من {starlink} V3', roll: 'تدوير حول محورها', scale: "مقارنة الحجم",
     eyebrow: 'SpaceX · دراسة المركبة', height: 'الارتفاع', diameter: 'القطر', raptors: 'محركات Raptor', thrust: 'الدفع', liftoff: 'كتلة الإقلاع', selected: 'المحدد',
     hint: 'اسحب للتدوير · مرّر للتكبير نحو ما تشير إليه · اسحب بالزر الأيمن للتحريك · انقر مرتين للانتقال إلى هناك · المكعب لتغيير الزاوية',

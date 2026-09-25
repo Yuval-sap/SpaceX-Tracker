@@ -163,7 +163,7 @@
     html.embed[dir=rtl] #ss-close{left:10px}
   }
 </style>
-<script src="starship-3d-i18n.js?v=15"></script>
+<script src="starship-3d-i18n.js?v=16"></script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
@@ -203,6 +203,7 @@
     <button class="pill" data-act="stage">Separate</button>
     <button class="pill" data-act="section">Section</button>
     <button class="pill" data-act="flow">Ignition</button>
+    <button class="pill" data-act="deploy">Deploy</button>
     <button class="pill" data-act="pause">Pause</button>
     <button class="pill" data-act="scale">Scale</button>
     <button class="pill" data-act="reset">Reset</button>
@@ -291,7 +292,7 @@ function setControlLabels() {
   if (!b('explode')) return;
   b('explode').textContent = st.explodeT ? I.ui.assemble : I.ui.explode;
   b('stage').textContent = st.sepT ? I.ui.stack : I.ui.separate;
-  b('section').textContent = I.ui.section; b('flow').textContent = I.ui.flow; b('reset').textContent = I.ui.reset; b('scale').textContent = I.ui.scale;
+  b('section').textContent = I.ui.section; b('flow').textContent = I.ui.flow; b('reset').textContent = I.ui.reset; b('scale').textContent = I.ui.scale; b('deploy').textContent = I.ui.deploy || 'Deploy';
   b('pause').textContent = paused ? I.ui.play : I.ui.pause;
 }
 // the parts list starts just under the title block, which grows by a line when a mission is shown
@@ -1492,6 +1493,14 @@ add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 19, -1), 's-tanks', 'steel', 'Common dome'
 add(sCh4, domeGeo(R - 0.03, 1.5, S0 + 28.4, 1), 's-tanks', 'steel', 'Forward dome', { inner: true });
 fluid(sCh4, 's-tanks', 'fluidCh4', { y: S0 + 19, h: 1.5, dir: -1 }, S0 + 26.6);
 let deployer = null;
+// the Starlink deployment cycle runs only while the Deploy button is on; switched off, every satellite is back in the
+// stack and the carriage parked at the slot (the cycle's own start)
+let deploying = false;
+function setDeploy(on) {
+  deploying = on;
+  document.querySelector('[data-act="deploy"]').classList.toggle('on', on);
+  if (!on && deployer) { deployer.t = 0; placeDeploy(deployer, 0); }
+}
 const SAT_N = Math.min(40, Math.max(1, parseInt(new URLSearchParams(location.search).get('n'), 10) || 26));   // satellites on board (mission's count when known)
 // Deploy cycle, as on the real ship: the satellites lie flat in one stack under the Pez slot. A carriage riding the two
 // dispenser rails goes down to the top satellite of the stack, clamps it, lifts it to the slot, and a pusher shoves it out
@@ -2500,7 +2509,9 @@ document.getElementById('controls').addEventListener('click', e => {
   if (a === 'flow') { if (!st.fireT && scaleMode) setScale(false); st.fireT = st.fireT ? 0 : 1; btn('flow').classList.toggle('on', !!st.fireT); fireTheme(!!st.fireT); if (vertical && !userMoved) flyTo(defaultView()); }
   if (a === 'pause') { paused = !paused; btn('pause').classList.toggle('on', paused); }
   if (a === 'scale') setScale(!scaleMode);
+  if (a === 'deploy') setDeploy(!deploying);
   if (a === 'reset') {
+    setDeploy(false);
     if (scaleMode) setScale(false);
     st.explodeT = st.sectionT = st.fireT = st.sepT = 0; fireTheme(false); autoSection = false; autoSep = false; paused = false; select(null);
     rolling = false; rollPending = 0; root.rotation.y = 0; syncCube(); document.querySelector('#nav [data-z="roll"]').classList.remove('on');
@@ -2750,7 +2761,7 @@ function tick() {
     }
   }
 
-  if (deployer && !paused) { deployer.t += adt; placeDeploy(deployer, deployer.t); }
+  if (deployer && deploying && !paused) { deployer.t += adt; placeDeploy(deployer, deployer.t); }
 
   // camera: fly-to animation, inertia, smooth zoom, idle turntable
   if (camAnim) {
