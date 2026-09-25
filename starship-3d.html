@@ -1777,7 +1777,9 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
       const dr = (hullRadiusAt(y + 0.05) - hullRadiusAt(y - 0.05)) / 0.1, L = Math.hypot(1, dr);
       const n1x = 1 / L, n1y = -dr / L;                       // across the seam, in the radial/vertical plane
       for (let i = 0; i <= NR; i++) {
-        const th = th0 + Math.PI * i / NR, sx = Math.sin(th), cz = Math.cos(th);
+        // the half of the tube that would sit inside the hull is pressed flat onto the skin's outside (sx >= 0.03):
+        // otherwise it shows inside the open aft skirt, seen from below
+        const th = th0 + Math.PI * i / NR, sx = Math.max(0.03, Math.sin(th)), cz = Math.cos(th);
         pos.push(x + hingeR * sx * n1x, y + hingeR * sx * n1y, hingeR * cz);
         uv.push(th * hingeR / tileTex.w, y / tileTex.h);
       }
@@ -1877,7 +1879,17 @@ function serialCanvas(text, upward = false) {
   for (const da of [-0.5, 0.5]) decal(sNose, 's-nose', panel, LOGO_Y, LEEWARD + da, 0.8, 0.85);
   // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
   if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.1, 0.6, 1.8);   // just outboard of the black strip
-  // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings
+  // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings.
+  // Their inner side is pressed onto the skin's outside: centred just outside the hull, the rest poked through the
+  // skin and showed as two rods inside the open aft skirt, seen from below
+  const outsideHull = geo => {
+    const P = geo.attributes.position;
+    for (let i = 0; i < P.count; i++) {
+      const x = P.getX(i), z = P.getZ(i), r = Math.hypot(x, z);
+      if (r < R + 0.01) { const k = (R + 0.01) / r; P.setXYZ(i, x * k, P.getY(i), z * k); }
+    }
+    P.needsUpdate = true;   // normals kept: the outer side must shade exactly as before
+  };
   const fTop = ringY(59) + 0.85, groupsFor = [[sAft, 's-tanks', S0 + 0.8, S0 + 5.2], [sLox, 's-tanks', S0 + 5.2, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
   for (const da of [-0.36, 0.36]) {
     const a = LEEWARD + da;
@@ -1890,10 +1902,12 @@ function serialCanvas(text, upward = false) {
       const g = lathe(pts, 20); g.scale(1, 1, 0.75);
       g.rotateY(a); g.translate(Math.sin(a) * (R + 0.1), 0, Math.cos(a) * (R + 0.1));
       scaleUV(g, 0.05, len / TEXM);
+      outsideHull(g);
       add(grp, g, pid, 'steelNC', 'Raceway (cable & line tunnel)');
       for (let y = Math.ceil(ya / (RING * 4)) * RING * 4; y < yb - 0.4; y += RING * 4) {
         const c = new THREE.CylinderGeometry(0.33, 0.33, 0.35, 20); c.scale(1, 1, 0.8); c.rotateY(a);
         c.translate(Math.sin(a) * (R + 0.1), y, Math.cos(a) * (R + 0.1));
+        outsideHull(c);
         add(grp, c, pid, 'steelNC', 'Raceway (cable & line tunnel)');
       }
     }
