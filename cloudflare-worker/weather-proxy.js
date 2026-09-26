@@ -81,6 +81,15 @@ const LANGS = { he: 'Hebrew', es: 'Spanish', fr: 'French', de: 'German', ru: 'Ru
 // same forms as the site itself uses (translate_mission_purpose.py STARSHIP_TERM / STARLINK_TERM)
 const STARSHIP = { he: 'סטארשיפ', ru: 'Старшип', zh: '星舰', hi: 'स्टारशिप', ar: 'ستارشيب' };
 const STARLINK = { he: 'סטארלינק', ru: 'Старлинк', zh: '星链', hi: 'स्टारलिंक', ar: 'ستارلينك' };
+// every letter of a translation must be English (names like SpaceX / NASA) or the language's own script - the
+// light model once put the Thai word "ภาพ" into a Hebrew headline; such a text is dropped and asked for again
+const OWN_SCRIPT = { he: /\p{Script=Hebrew}/u, ar: /\p{Script=Arabic}/u, ru: /\p{Script=Cyrillic}/u, zh: /\p{Script=Han}/u, hi: /\p{Script=Devanagari}/u };
+function validTranslation(lang, text) {
+  if (typeof text !== 'string' || !text.trim()) return false;
+  const own = OWN_SCRIPT[lang];
+  for (const ch of text.match(/\p{L}/gu) || []) if (!/\p{Script=Latin}/u.test(ch) && !(own && own.test(ch))) return false;
+  return !own || own.test(text);          // and a non-Latin language must actually be in its script
+}
 const GEMINI_MIN_GAP_MS = 10 * 60 * 1000;
 const GEMINI_MAX_TITLES = 10;
 // the free quota is counted per model and per day: start with models the GitHub translation job doesn't use
@@ -109,7 +118,10 @@ async function news(url, env, ctx) {
   if (kv) {
     await Promise.all(items.map(async it => {
       const t = await kv.get('t:' + await hash(it.title), 'json');
-      if (t && typeof t === 'object') it.t = t;
+      if (t && typeof t === 'object') {
+        for (const l of Object.keys(t)) if (!validTranslation(l, t[l])) delete t[l];   // a bad one is asked for again
+        if (Object.keys(t).length) it.t = t;
+      }
       if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
     }));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
@@ -207,7 +219,8 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       const k = 't:' + await hash(it.title), t = Object.assign({}, it.t || {});
       for (const l of langs) {
         const arr = parsed[l];
-        if (Array.isArray(arr) && arr.length === items.length && typeof arr[i] === 'string' && arr[i].trim()) t[l] = arr[i].trim().replace(/[.。]$/, '');
+        const v = Array.isArray(arr) && arr.length === items.length && typeof arr[i] === 'string' ? arr[i].trim().replace(/[.。]$/, '') : '';
+        if (validTranslation(l, v)) t[l] = v;
       }
       if (Object.keys(t).length) await kv.put(k, JSON.stringify(t));
     }));
