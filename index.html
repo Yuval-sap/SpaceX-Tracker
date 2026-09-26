@@ -17195,22 +17195,26 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-            fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://satellitemap.space/constellation/starlink'), { signal: controller.signal })
+            // starlink-stats.json: satellitemap.space's "Active Satellites" figure, read every few hours by the
+            // scheduled GitHub Action (update_starlink_count.py) and served from this site. The browser used to
+            // read that page itself through the allorigins proxy, which took ~20 s or failed (past the 5 s
+            // timeout), and its pattern picked up the "400" of a CSS class name instead of the count - so the
+            // live number never arrived and the card always showed the estimate below.
+            fetch('starlink-stats.json', { signal: controller.signal, cache: 'no-cache' })
                 .then(res => {
                     if (!res.ok) throw new Error("API Error");
                     return res.json();
                 })
                 .then(data => {
                     clearTimeout(timeoutId);
-                    const match = data.contents.match(/Active Satellites[^\d]*([\d,]+)/i);
-                    if (match && match[1]) {
-                        const count = parseInt(match[1].replace(/,/g, ''));
-                        if (!isNaN(count) && count > 5000) {
-                            localStorage.setItem(CACHE_KEY, count.toString());
-                            localStorage.setItem(CACHE_KEY + '_ts', Date.now().toString());
-                            applyStarlinkCount(count, true);
-                            return;
-                        }
+                    const count = data && Number(data.active), at = data && Date.parse(data.updatedAt);
+                    if (Number.isFinite(count) && count > 5000 && Number.isFinite(at)) {
+                        localStorage.setItem(CACHE_KEY, count.toString());
+                        localStorage.setItem(CACHE_KEY + '_ts', String(at));
+                        // plus Starlink launches since that count was taken (same estimate as the cached path below);
+                        // "live" while the count is under two days old
+                        applyStarlinkCount(count + estimateStarlinkSatsAddedSince(at).added, Date.now() - at < 2 * 864e5);
+                        return;
                     }
                     throw new Error("Invalid count");
                 })
