@@ -5759,7 +5759,7 @@
         // Once elapsed time is this far past the LAST tracked milestone (SECO-1), stop showing
         // it and fall back to the plain "MISSION IN PROGRESS" text - long enough to actually be
         // seen, short enough not to sit there stale for the rest of the mission's time in hero.
-        const MISSION_MILESTONE_STALE_AFTER_SEC = 90;
+        const MISSION_MILESTONE_STALE_AFTER_SEC = 60;   // 1 min after the last event, like SpaceX's own timeline on a Falcon flight
 
         function getCurrentMissionMilestone(elapsedSec, currentLang) {
             let current = null;
@@ -5963,11 +5963,18 @@
             const t = readLiveStatusAt()[String(missionId)];
             return !!t && t > sinceMs;
         }
+        // Starship: until 5 min after the last event of SpaceX's timeline (~9 h 50 m), 90 min without one.
+        // Falcon 9 / Falcon Heavy: a flat 75 minutes - their timelines end ~10 min in (SECO, booster landing),
+        // long before the webcast does (Starlink deploy is about an hour in); leaving the hero earlier only
+        // when the API reports the outcome (see processLaunchData / setupHeroBanner).
         function missionInFlightWindowMs(m) {
-            const e = m && m.id ? readTimelineEnds()[m.id] : null;
+            if (!(m && m.category === 'starship')) return 75 * 60 * 1000;
+            const e = m.id ? readTimelineEnds()[m.id] : null;
             if (e && e.endSec > 0) return e.endSec * 1000 + TIMELINE_TAIL_MS;
-            return m && m.category === 'starship' ? 90 * 60 * 1000 : 60 * 60 * 1000;
+            return 90 * 60 * 1000;
         }
+        // the API has reported how a (non-Starship) flight ended - success or failure - so it can leave the hero
+        const apiReportedOutcome = m => !!m && m.category !== 'starship' && (m.launchSuccess === true || m.launchSuccess === false);
 
         let realMissionTimelineFetchGen = 0;
         function fetchRealMissionTimeline() {
@@ -6850,7 +6857,9 @@
                 current = entry;
             }
             if (!current) return null;
-            if (elapsedSec - current.tSeconds > TIMELINE_TAIL_MS / 1000 && current === list[list.length - 1]) {
+            // the last event stays up 5 min on Starship, 1 min on a Falcon flight (then "MISSION IN PROGRESS")
+            const tailSec = /starship/i.test(missionName || '') ? TIMELINE_TAIL_MS / 1000 : 60;
+            if (elapsedSec - current.tSeconds > tailSec && current === list[list.length - 1]) {
                 return null;
             }
             return { label: current.label, explain: current.explain || '', tSeconds: current.tSeconds };
@@ -19033,6 +19042,9 @@
                     // Window is still live and the source has not reported flight — keep this
                     // as upcoming even if `net` (window open) is already in the past.
                     isPast = false;
+                } else if (diff >= 0 && apiReportedOutcome(m)) {
+                    // Falcon 9 / Heavy: the API already says how it ended - no need to wait out the 75 minutes
+                    isPast = true;
                 } else if (flyingNow && diff > flightWindowMs) {
                     isPast = true;
                 } else if (unresolved && diff > UNRESOLVED_PAST_FALLBACK_MS) {
@@ -21428,7 +21440,8 @@
                 const graceMs = missionInFlightWindowMs(mostRecentPast);
                 // only a launch the API confirmed actually flew - never a scrubbed/delayed one
                 const confirmedFlew = mostRecentPast.status !== 'Delayed / Under Review';
-                if (confirmedFlew && sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
+                // (a Falcon flight whose outcome the API already reported has finished - not held here)
+                if (confirmedFlew && !apiReportedOutcome(mostRecentPast) && sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
                     nextLaunch = Object.assign({}, mostRecentPast, { status: 'In Progress' });
                     nextUpcoming = dbMissions.length > 0 ? dbMissions[0] : null;
                 }
@@ -25667,9 +25680,9 @@ setTimeout(() => {
                 // Last event in the list, LIFTOFF, and the generic "MISSION IN PROGRESS"
                 // fallback all have no next stage to announce.
                 const current = getCurrentRealMissionMilestone(elapsedSec, lang, name) ||
-                    (hasAsdsProfile ? getCurrentMissionMilestone(elapsedSec, lang) : null);
+                    (hasAsdsProfile && !realTimelineMatchesMission(name) ? getCurrentMissionMilestone(elapsedSec, lang) : null);
                 const next = getNextRealMissionMilestone(elapsedSec, lang, name) ||
-                    (hasAsdsProfile ? getNextMissionMilestone(elapsedSec, lang) : null);
+                    (hasAsdsProfile && !realTimelineMatchesMission(name) ? getNextMissionMilestone(elapsedSec, lang) : null);
                 if (!current || !next || !next.label) {
                     hide();
                     return;
@@ -25912,7 +25925,7 @@ setTimeout(() => {
                     // this mission actually leaves the hero (per its 60/90-min grace period)
                     // rather than an approximate fixed delay after T-0.
                     if (diff > -3 * 60 * 1000 &&
-                        !(hasAsdsProfile && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang)) &&
+                        !(hasAsdsProfile && !realTimelineMatchesMission(window.currentActiveHeroMissionName) && getCurrentMissionMilestone(-diff / 1000, document.documentElement.lang)) &&
                         !getCurrentRealMissionMilestone(-diff / 1000, document.documentElement.lang, window.currentActiveHeroMissionName)) {
                         // First 3 minutes after T-0: "LIFTOFF" - after that, "MISSION IN PROGRESS"
                         // takes over (below) until the mission is evicted from the hero per
@@ -25949,7 +25962,7 @@ setTimeout(() => {
                         // mission-specific to trust.
                         const elapsedSec = -diff / 1000;
                         const milestone = getCurrentRealMissionMilestone(elapsedSec, document.documentElement.lang, window.currentActiveHeroMissionName) ||
-                            (hasAsdsProfile ? getCurrentMissionMilestone(elapsedSec, document.documentElement.lang) : null);
+                            (hasAsdsProfile && !realTimelineMatchesMission(window.currentActiveHeroMissionName) ? getCurrentMissionMilestone(elapsedSec, document.documentElement.lang) : null);
                         const displayText = milestone ? milestone.label : (el.dataset.inProgressText || 'MISSION IN PROGRESS');
 
                         setCountdownLabel(true, elapsedSec);
