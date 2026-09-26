@@ -9243,6 +9243,65 @@
             else loadGeminiPurposeMap().then(() => applyGeminiOrGoogle(_geminiUpdatesMap));
         }
 
+        // #news-list-modal - the ticker's headlines as a list, newest first. Titles follow the ticker's own rule:
+        // Gemini's translation (worker /news, item.t) when there is one, kept away from Google Translate; otherwise the
+        // English headline, left for Google Translate. Dates in the site language, via Intl.
+        const NEWS_LIST_TITLE_I18N = {
+            en: "Space News", he: "חדשות החלל", es: "Noticias del Espacio", fr: "Actualités Spatiales", de: "Raumfahrt-News",
+            ru: "Космические новости", zh: "航天新闻", it: "Notizie Spaziali", cs: "Vesmírné zprávy", sv: "Rymdnyheter",
+            nl: "Ruimtevaartnieuws", da: "Rumnyheder", pt: "Notícias Espaciais", pl: "Wiadomości kosmiczne", hi: "अंतरिक्ष समाचार",
+            ar: "أخبار الفضاء", tr: "Uzay Haberleri",
+        };
+        function renderNewsList() {
+            const list = document.getElementById('news-list');
+            const titleEl = document.getElementById('news-list-title');
+            if (!list) return;
+            let lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (lang === 'iw') lang = 'he';
+            if (titleEl) titleEl.textContent = NEWS_LIST_TITLE_I18N[lang] || NEWS_LIST_TITLE_I18N.en;
+            const items = [...(window._tickerNewsItems || [])].sort((a, b) => (Date.parse(b.pubDate) || 0) - (Date.parse(a.pubDate) || 0));
+            const sourceStyles = {
+                'SpaceX': 'bg-emerald-500/15 text-emerald-400', 'NASA': 'bg-blue-500/15 text-blue-400', 'Blue Origin': 'bg-orange-500/15 text-orange-400',
+                'Space News': 'bg-violet-500/15 text-violet-400', 'ESA': 'bg-sky-500/15 text-sky-400'
+            };
+            const fmt = new Intl.DateTimeFormat(dateLocaleForLang(document.documentElement.lang), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            list.innerHTML = items.map(item => {
+                const own = lang !== 'en' && item.t && item.t[lang];
+                const title = own
+                    ? `<span class="notranslate" translate="no">${escapeHtml(own)}</span>`
+                    : `<span>${escapeHtml(item.title)}</span>`;
+                const d = Date.parse(item.pubDate);
+                return `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener"
+                        class="flex items-start gap-3 rounded-xl px-3 py-2.5 md:hover:bg-zinc-800/60 transition-colors">
+                    <span class="notranslate shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${sourceStyles[item.source] || 'bg-zinc-700/30 text-zinc-300'}" translate="no">${escapeHtml(item.source || '')}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm text-zinc-200 leading-snug">${title}</span>
+                        <span class="notranslate block text-[11px] text-zinc-500 mt-0.5" translate="no" dir="auto">${Number.isFinite(d) ? escapeHtml(fmt.format(new Date(d))) : ''}</span>
+                    </span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-zinc-600 mt-1.5 shrink-0"></i>
+                </a>`;
+            }).join('');
+            localizeStarshipTerm(list);
+            protectRomanTelescopeName(list);
+        }
+        function openNewsListModal() {
+            const modal = document.getElementById('news-list-modal');
+            if (!modal || !window._tickerNewsItems) return;
+            renderNewsList();
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            lockBodyScroll();
+            const content = document.getElementById('news-list-modal-content');
+            if (content) content.scrollTop = 0;
+        }
+        function closeNewsListModal() {
+            const modal = document.getElementById('news-list-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+            unlockBodyScroll();
+        }
+
         function openPreflightStatusModal() {
             const modal = document.getElementById('preflight-status-modal');
             if (!modal) return;
@@ -10785,8 +10844,9 @@
     <div id="news-ticker-wrap" dir="ltr"
         class="hidden bg-zinc-950 border-b border-emerald-500/20 overflow-hidden relative transition-colors duration-500">
         <div class="max-w-screen-2xl mx-auto flex items-center">
-            <div id="news-ticker-label-wrap"
-                class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-500/10 border-r border-zinc-800/80 z-10">
+            <!-- opens #news-list-modal: every headline in the ticker as a list, newest first -->
+            <div id="news-ticker-label-wrap" role="button" tabindex="0" onclick="openNewsListModal()" onkeydown="activateOnEnterOrSpace(event)"
+                class="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 bg-emerald-500/10 border-r border-zinc-800/80 z-10 cursor-pointer md:hover:bg-emerald-500/20 transition-colors">
                 <i class="fa-solid fa-satellite-dish text-emerald-400 text-[10px] animate-pulse"></i>
                 <span
                     class="text-[9px] sm:text-[10px] font-bold tracking-widest text-emerald-400 uppercase whitespace-nowrap">Space
@@ -14384,6 +14444,29 @@
                     <span id="i18n-preflight-status-title" class="notranslate" translate="no" lang="en">Pre-Launch Updates</span>
                 </h4>
                 <div id="modal-updates-list" class="notranslate space-y-2.5" translate="no"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- News list - opened from the ticker's "Space News" label: every headline the ticker runs, newest first,
+         each linking to its original article (renderNewsList) -->
+    <div id="news-list-modal" onclick="if (event.target.id === 'news-list-modal') closeNewsListModal()"
+        class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
+        <div id="news-list-modal-content" onclick="event.stopImmediatePropagation()"
+            class="dossier-modal-shell card-modal-scroll bg-zinc-900 border w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col my-auto transition-colors duration-500">
+            <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
+                <button onclick="closeNewsListModal()"
+                    class="mission-modal-close flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-2 border-emerald-400 text-emerald-400 md:hover:bg-emerald-400/10 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors"
+                    title="Close">
+                    <i class="fa-solid fa-xmark text-lg leading-none"></i>
+                </button>
+            </div>
+            <div class="p-4 sm:p-6 pt-10 sm:pt-12 space-y-4">
+                <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
+                    <i class="fa-solid fa-satellite-dish text-sm"></i>
+                    <span id="news-list-title" class="notranslate" translate="no">Space News</span>
+                </h4>
+                <div id="news-list" class="space-y-1"></div>
             </div>
         </div>
     </div>
@@ -18251,6 +18334,8 @@
             }).join('<span class="text-zinc-700 mx-2">/</span>');
 
             tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
+            const newsModal = document.getElementById('news-list-modal');
+            if (newsModal && !newsModal.classList.contains('hidden')) renderNewsList();
             // Dynamic content added long after page load — Google Translate's mutation
             // observer will translate it on the fly, so this must run synchronously,
             // right now, before that has a chance to run and mangle "Starship".
@@ -26643,6 +26728,7 @@ if (heroNameEl) {
                 ['patch-mission-modal', closePatchMissionModal],
                 ['astronaut-modal', closeAstronautModal],
                 ['preflight-status-modal', closePreflightStatusModal],
+                ['news-list-modal', closeNewsListModal],
                 ['landing-modal', closeLandingSpecs],
                 ['orbit-modal', closeOrbitSpecs],
                 ['site-modal', closeLaunchSiteModal],
