@@ -21655,6 +21655,61 @@ setTimeout(() => {
         // newer site's weather after the fact.
         let _weatherGen = 0;
 
+        // Live surface observation (METAR / SPECI) from the airfield next to the pad, through our Cloudflare
+        // Worker (cloudflare-worker/weather-proxy.js). Open-Meteo's "current" weather is a model forecast and
+        // misses things like Vandenberg's morning fog (it said "overcast, 14.6 km visibility" while the base
+        // reported fog at half a mile); the observation, when fresh, replaces its condition, temperature, wind
+        // and humidity. Empty URL = feature off, Open-Meteo only.
+        const WEATHER_OBS_URL = '';
+        const OBS_STATIONS = [['KVBG', 34.7294, -120.5767], ['KXMR', 28.4676, -80.5669], ['KTTS', 28.6150, -80.6945], ['KBRO', 25.9068, -97.4259]];
+        const OBS_MAX_AGE_MS = 90 * 60 * 1000;   // METARs are hourly; older than this, keep Open-Meteo
+        const _obsCache = {};
+        function nearestObsStation(lat, lon) {
+            let best = null, bestKm = 60;           // nothing within 60 km: no station
+            for (const [id, la, lo] of OBS_STATIONS) {
+                const km = Math.hypot((la - lat) * 111, (lo - lon) * 111 * Math.cos(lat * Math.PI / 180));
+                if (km < bestKm) { best = id; bestKm = km; }
+            }
+            return best;
+        }
+        // the report's weather / cloud groups -> the WMO code the rest of the weather code already speaks
+        function metarToWmoCode(m) {
+            const wx = ' ' + String(m.wxString || '') + ' ';
+            if (/TS/.test(wx)) return 95;
+            if (/SH(RA|SN)/.test(wx)) return /SN/.test(wx) ? 85 : (/\+SHRA/.test(wx) ? 81 : 80);
+            if (/FZ(RA|DZ)/.test(wx)) return /RA/.test(wx) ? 67 : 57;
+            if (/SN|SG|PL|IC|GS|GR/.test(wx)) return /\+/.test(wx) ? 75 : 73;
+            if (/RA/.test(wx)) return /\+RA/.test(wx) ? 65 : (/-RA/.test(wx) ? 61 : 63);
+            if (/DZ/.test(wx)) return /\+DZ/.test(wx) ? 55 : (/-DZ/.test(wx) ? 51 : 53);
+            if (/FZFG/.test(wx)) return 48;
+            if (/FG/.test(wx)) return 45;             // fog, incl. patches (BCFG) / shallow (MIFG) / partial (PRFG)
+            const rank = { SKC: 0, CLR: 0, CAVOK: 0, FEW: 1, SCT: 2, BKN: 3, OVC: 3, OVX: 3 };
+            const covers = (m.clouds || []).map(c => rank[c.cover] ?? 0);
+            if (m.vertVis != null) covers.push(3);   // sky obscured
+            return covers.length ? Math.max(...covers) : 0;
+        }
+        async function fetchSiteObservation(lat, lon) {
+            if (!WEATHER_OBS_URL) return null;
+            const id = nearestObsStation(lat, lon);
+            if (!id) return null;
+            const c = _obsCache[id];
+            if (c && Date.now() - c.at < 2 * 60 * 1000) return c.obs;
+            try {
+                const res = await fetchWithTimeout(`${WEATHER_OBS_URL}/metar?ids=${id}`, { timeout: 5000 });
+                if (!res.ok) return null;
+                const arr = await res.json();
+                const m = Array.isArray(arr) ? arr.find(x => x && x.icaoId === id) : null;
+                const at = m && m.obsTime ? m.obsTime * 1000 : NaN;
+                if (!m || !(Date.now() - at < OBS_MAX_AGE_MS) || typeof m.temp !== 'number') return null;
+                const rh = typeof m.dewp === 'number'
+                    ? Math.round(100 * Math.exp((17.625 * m.dewp) / (243.04 + m.dewp)) / Math.exp((17.625 * m.temp) / (243.04 + m.temp)))
+                    : null;
+                const obs = { station: id, at, code: metarToWmoCode(m), temp: m.temp, windKmh: (Number(m.wspd) || 0) * 1.852, humidity: rh };
+                _obsCache[id] = { at: Date.now(), obs };
+                return obs;
+            } catch (e) { return null; }
+        }
+
         // Shared Go/No-Go call used by both the hero weather badge (fetchLiveWeather) and
         // the mission-modal site-weather widget (renderSiteWeather). Same thresholds so the
         // two never disagree on the same conditions. LL2 sends -1 when it has no official
@@ -21667,11 +21722,11 @@ setTimeout(() => {
                 probNumeric = apiProbability;
             } else {
                 if (code === 0 && windMph < 15) probNumeric = 95;
-                else if (code >= 1 && code <= 3 && windMph < 20) probNumeric = 85;
-                else if (code >= 45 && code <= 48) probNumeric = 70;
+                // fog isn't a launch rule (USSF-385 flew through Vandenberg fog) - it counts like cloud
+                else if (((code >= 1 && code <= 3) || code === 45 || code === 48) && windMph < 20) probNumeric = 85;
                 else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) probNumeric = 40;
                 else if (code >= 95 || windMph >= 25 || (code >= 71 && code <= 77) || code === 85 || code === 86) probNumeric = 10;
-                else if (code >= 0 && code <= 3) probNumeric = 60;          // fair sky but windy (15-25 mph)
+                else if ((code >= 0 && code <= 3) || code === 45 || code === 48) probNumeric = 60;          // fair sky (or fog) but windy (15-25 mph)
             }
             let probKey = 'tbd';
             let probColor = 'text-zinc-400';
@@ -21725,6 +21780,13 @@ setTimeout(() => {
                 if (cached) {
                     try { weatherData = JSON.parse(cached); } catch (e) { }
                 }
+            }
+
+            // the airfield's own report beats the model when there is a fresh one
+            const obs = await fetchSiteObservation(lat, lon);
+            if (obs) {
+                weatherData = Object.assign({}, weatherData || {});
+                weatherData.current = Object.assign({}, weatherData.current || {}, { temperature_2m: obs.temp, weather_code: obs.code, wind_speed_10m: obs.windKmh });
             }
 
             if (myWeatherGen !== _weatherGen) return; // superseded by a newer call while this one was in flight
@@ -23757,6 +23819,12 @@ setTimeout(() => {
                     sunset: Array.isArray(daily.sunset) ? daily.sunset[0] : '',
                     timezone: json.timezone || site.timezone || '',
                 };
+                // the airfield's own report beats the model when there is a fresh one (see fetchSiteObservation)
+                const obs = await fetchSiteObservation(site.lat, site.lng);
+                if (obs) {
+                    data.code = obs.code; data.temp = Math.round(obs.temp); data.wind = Math.round(obs.windKmh);
+                    if (obs.humidity != null) data.humidity = obs.humidity;
+                }
                 siteWeatherCache[siteKey] = { data, fetchedAt: Date.now() };
                 try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch (e) { }
                 renderSiteWeather(siteKey, data);
