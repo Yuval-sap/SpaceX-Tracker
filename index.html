@@ -21084,7 +21084,7 @@
             const windDir = isRtl ? 'rtl' : 'ltr';
 
             // one item per line (inside the hero countdown box, under its "Weather" label)
-            weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${w.icon}"></i> <span class="notranslate" translate="no">${wDict[w.descKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`
+            weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${w.icon}"></i> <span class="notranslate" translate="no">${(SITE_WEATHER_I18N[langKey] || SITE_WEATHER_I18N.en)[w.descKey] || wDict[w.descKey] || ''}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`
                 + `<span class="hw-row"><i class="fa-solid fa-wind"></i> <span class="notranslate" translate="no" dir="${windDir}" style="direction:${windDir}!important;unicode-bidi:isolate!important;display:inline-block!important;white-space:nowrap!important">${wNum}&nbsp;<span class="notranslate" translate="no" dir="${windDir}" style="unicode-bidi:isolate!important">${wUnit}</span></span></span>`
                 + `<span class="hw-row ${w.probColor} font-bold notranslate" translate="no">${probText}</span>`;
         }
@@ -21798,15 +21798,11 @@ setTimeout(() => {
                 const windKmh = weatherData.current.wind_speed_10m;
                 const windMph = Math.round(windKmh * 0.621371);
 
-                let icon = 'fa-cloud-sun';
-                let descKey = 'partlyCloudy';
-
-                if (code === 0) { icon = 'fa-sun'; descKey = 'clear'; }
-                else if (code >= 1 && code <= 3) { icon = 'fa-cloud-sun'; descKey = 'partlyCloudy'; }
-                else if (code >= 45 && code <= 48) { icon = 'fa-smog'; descKey = 'fog'; }
-                else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) { icon = 'fa-cloud-showers-heavy'; descKey = 'rain'; }   // 80-82: rain showers
-                else if ((code >= 71 && code <= 77) || code === 85 || code === 86) { icon = 'fa-snowflake'; descKey = 'snow'; }
-                else if (code >= 95) { icon = 'fa-cloud-bolt'; descKey = 'storm'; }
+                // same condition buckets, words and icons as the launch card's weather (wmoCodeToConditionBucket /
+                // SITE_WEATHER_I18N / WEATHER_ICON_BY_CONDITION_DAY) - the hero had its own coarser set and showed
+                // an overcast sky as "partly cloudy"
+                const descKey = wmoCodeToConditionBucket(code);
+                const icon = WEATHER_ICON_BY_CONDITION_DAY[descKey] || 'fa-cloud';
 
                 const { probKey, probNumeric, probColor } = computeLaunchWeatherCall(code, windKmh, probability);
 
