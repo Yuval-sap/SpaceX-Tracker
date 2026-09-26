@@ -95,6 +95,7 @@ const GEMINI_MAX_TITLES = 10;
 // the free quota is counted per model and per day: start with models the GitHub translation job doesn't use
 // (it starts with gemini-3.8-flash), and move on to the next when one is used up
 const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.8-flash'];
+const GEMINI_MODELS_RETRY = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
 async function news(url, env, ctx) {
   const cache = caches.default, key = new Request('https://cache.internal/news-v1');
@@ -119,9 +120,10 @@ async function news(url, env, ctx) {
     await Promise.all(items.map(async it => {
       const t = await kv.get('t:' + await hash(it.title), 'json');
       if (t && typeof t === 'object') {
-        for (const l of Object.keys(t)) if (!validTranslation(l, t[l])) delete t[l];   // a bad one is asked for again
+        for (const l of Object.keys(t)) if (!validTranslation(l, t[l])) { delete t[l]; it.retry = true; }   // a bad one is asked for again
         if (Object.keys(t).length) it.t = t;
       }
+      if (!it.retry && await kv.get('r:' + await hash(it.title))) it.retry = true;   // rejected before
       if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
     }));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
@@ -194,13 +196,16 @@ Rules:
 - "Starship": ${langs.map(l => `${l}=${STARSHIP[l] || 'Starship'}`).join(', ')}
 - "Starlink": ${langs.map(l => `${l}=${STARLINK[l] || 'Starlink'}`).join(', ')}
 - zh must be Simplified Chinese.
+- Write each translation ONLY in its own language's alphabet (Hebrew letters for he, Arabic for ar, Cyrillic for ru, Chinese characters for zh, Devanagari for hi, Latin for the rest), plus the English names / codes above kept as they are. Never let a letter or word of any other language or alphabet slip in.
 - No labels, markdown or commentary.
 
 Headlines:
 ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', maxOutputTokens: 8192 } });
   let quotaHit = false;
-  for (const model of (env.GEMINI_MODEL ? [env.GEMINI_MODEL] : GEMINI_MODELS)) {
+  // a headline whose translation was rejected before goes to the stronger model first, not the light one again
+  const models = env.GEMINI_MODEL ? [env.GEMINI_MODEL] : items.some(it => it.retry) ? GEMINI_MODELS_RETRY : GEMINI_MODELS;
+  for (const model of models) {
     let r;
     try {
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body });
@@ -216,13 +221,16 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
     } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }); return; }
     await Promise.all(items.map(async (it, i) => {
-      const k = 't:' + await hash(it.title), t = Object.assign({}, it.t || {});
+      const h = await hash(it.title), k = 't:' + h, t = Object.assign({}, it.t || {});
+      let rejected = false;
       for (const l of langs) {
         const arr = parsed[l];
         const v = Array.isArray(arr) && arr.length === items.length && typeof arr[i] === 'string' ? arr[i].trim().replace(/[.。]$/, '') : '';
         if (validTranslation(l, v)) t[l] = v;
+        else if (v) rejected = true;
       }
       if (Object.keys(t).length) await kv.put(k, JSON.stringify(t));
+      if (rejected || it.retry) await kv.put('r:' + h, '1');
     }));
     await caches.default.delete(new Request('https://cache.internal/news-v1'));   // next request picks them up
     await noteAttempt(kv, { model, ok: true, titles: items.length });
