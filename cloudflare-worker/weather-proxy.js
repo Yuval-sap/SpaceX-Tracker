@@ -33,6 +33,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/metar') return metar(url, ctx);
     if (url.pathname === '/news') return news(url, env, ctx);
+    if (url.pathname === '/news/status') return newsStatus(env);
     return new Response('Not found', { status: 404, headers: CORS });
   },
 };
@@ -82,7 +83,9 @@ const STARSHIP = { he: 'סטארשיפ', ru: 'Старшип', zh: '星舰', hi:
 const STARLINK = { he: 'סטארלינק', ru: 'Старлинк', zh: '星链', hi: 'स्टारलिंक', ar: 'ستارلينك' };
 const GEMINI_MIN_GAP_MS = 10 * 60 * 1000;
 const GEMINI_MAX_TITLES = 10;
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.8-flash'];
+// the free quota is counted per model and per day: start with models the GitHub translation job doesn't use
+// (it starts with gemini-3.8-flash), and move on to the next when one is used up
+const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.8-flash'];
 
 async function news(url, env, ctx) {
   const cache = caches.default, key = new Request('https://cache.internal/news-v1');
@@ -121,6 +124,20 @@ async function news(url, env, ctx) {
   return out;
 }
 
+// what the translation side is doing - whether it's set up, and how the last Gemini request went (never the key)
+async function newsStatus(env) {
+  const kv = env.NEWS_KV;
+  const out = { kvBound: !!kv, geminiKeySet: !!env.GEMINI_API_KEY };
+  if (kv) {
+    out.nextGeminiAt = new Date(Number(await kv.get('meta:next-gemini-at-v2')) || 0).toISOString();
+    out.lastAttempt = await kv.get('meta:last-attempt', 'json');
+  }
+  return json(out, 200, { 'Cache-Control': 'no-store' });
+}
+async function noteAttempt(kv, result) {
+  try { await kv.put('meta:last-attempt', JSON.stringify({ at: new Date().toISOString(), ...result })); } catch (e) { }
+}
+
 async function readFeed(u, source) {
   try {
     const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (spacexfantracker news ticker)' }, cf: { cacheTtl: 300 } });
@@ -149,9 +166,9 @@ async function hash(s) {
 
 async function translateLater(items, env) {
   const kv = env.NEWS_KV, now = Date.now();
-  const last = Number(await kv.get('meta:next-gemini-at')) || 0;
+  const last = Number(await kv.get('meta:next-gemini-at-v2')) || 0;
   if (now < last) return;                                       // one request per 10 minutes at most
-  await kv.put('meta:next-gemini-at', String(now + GEMINI_MIN_GAP_MS));
+  await kv.put('meta:next-gemini-at-v2', String(now + GEMINI_MIN_GAP_MS));
   const langs = Object.keys(LANGS);
   const prompt = `You translate short news headlines about spaceflight (SpaceX, NASA, ESA, Blue Origin and the space industry) from English for a news ticker on a rocket-launch tracking website.
 
@@ -170,20 +187,22 @@ Rules:
 Headlines:
 ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', maxOutputTokens: 8192 } });
+  let quotaHit = false;
   for (const model of (env.GEMINI_MODEL ? [env.GEMINI_MODEL] : GEMINI_MODELS)) {
     let r;
     try {
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body });
-    } catch (e) { return; }
-    if (r.status === 404 || r.status === 400) continue;             // model not available on this key - next one
-    if (r.status === 429) { await kv.put('meta:next-gemini-at', String(now + 60 * 60 * 1000)); return; }   // quota: back off an hour
-    if (!r.ok) return;
+    } catch (e) { await noteAttempt(kv, { model, error: 'network: ' + e.message }); return; }
+    const errText = r.ok ? '' : (await r.text()).slice(0, 300);
+    if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }   // model not available on this key - next one
+    if (r.status === 429) { quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }); continue; }   // this model's quota is used up - next one
+    if (!r.ok) { await noteAttempt(kv, { model, status: r.status, error: errText }); return; }
     let parsed;
     try {
       const data = await r.json();
       const text = (((data.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '';
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
-    } catch (e) { return; }
+    } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }); return; }
     await Promise.all(items.map(async (it, i) => {
       const k = 't:' + await hash(it.title), t = Object.assign({}, it.t || {});
       for (const l of langs) {
@@ -193,6 +212,9 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       if (Object.keys(t).length) await kv.put(k, JSON.stringify(t));
     }));
     await caches.default.delete(new Request('https://cache.internal/news-v1'));   // next request picks them up
+    await noteAttempt(kv, { model, ok: true, titles: items.length });
     return;
   }
+  // no model had quota left: try again in an hour
+  if (quotaHit) await kv.put('meta:next-gemini-at-v2', String(now + 60 * 60 * 1000));
 }
