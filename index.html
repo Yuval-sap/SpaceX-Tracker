@@ -5542,6 +5542,15 @@
         // per-language object literals above, so this addition can't accidentally corrupt one of
         // those single-line objects. Text case doesn't matter visually - the label class already
         // forces `uppercase` - kept here matching how the source text was given.
+        // Hero countdown while saved data says T-0 has passed but the page's first live check hasn't answered
+        // yet (see awaitingFirstLiveCheck)
+        const CHECKING_STATUS_I18N = {
+            en: "UPDATING STATUS…", he: "מעדכן סטטוס…", iw: "מעדכן סטטוס…", es: "ACTUALIZANDO ESTADO…", fr: "MISE À JOUR DU STATUT…",
+            de: "STATUS WIRD AKTUALISIERT…", ru: "ОБНОВЛЕНИЕ СТАТУСА…", zh: "正在更新状态…", it: "AGGIORNAMENTO STATO…",
+            cs: "AKTUALIZACE STAVU…", sv: "UPPDATERAR STATUS…", nl: "STATUS BIJWERKEN…", da: "OPDATERER STATUS…",
+            pt: "ATUALIZANDO STATUS…", pl: "AKTUALIZACJA STATUSU…", hi: "स्थिति अपडेट हो रही है…", ar: "جارٍ تحديث الحالة…", tr: "DURUM GÜNCELLENİYOR…",
+        };
+        for (const [k, v] of Object.entries(CHECKING_STATUS_I18N)) if (LAUNCH_LABEL_I18N[k]) LAUNCH_LABEL_I18N[k].checkingStatus = v;
         Object.assign(LAUNCH_LABEL_I18N.en, { preflightStatus: "Pre-Launch Updates" });
         Object.assign(LAUNCH_LABEL_I18N.he, { preflightStatus: "עדכוני טרום-שיגור" });
         Object.assign(LAUNCH_LABEL_I18N.iw, { preflightStatus: "עדכוני טרום-שיגור" });
@@ -5947,6 +5956,9 @@
             for (const k of Object.keys(at)) if (now - at[k] > 7 * 864e5) delete at[k];
             try { localStorage.setItem(LIVE_STATUS_STORE_KEY, JSON.stringify(at)); } catch (e) { }
         }
+        // true only between rendering saved launch data on page load and the end of that page's first live
+        // fetch (success or failure) - see where it is set, next to the cached render
+        let awaitingFirstLiveCheck = false;
         function liveStatusSince(missionId, sinceMs) {
             const t = readLiveStatusAt()[String(missionId)];
             return !!t && t > sinceMs;
@@ -17801,9 +17813,7 @@
             const progEl = document.getElementById('starlink-progress');
             const percEl = document.getElementById('starlink-percentage');
 
-            const liveIndicator = isLive ? `<i class="fa-solid fa-circle text-[8px] text-red-500 animate-pulse ml-1.5 align-middle" title="Live sync from satellitemap.space"></i>` : '';
-
-            if (countEl) countEl.innerHTML = `${currentCount.toLocaleString()} ${liveIndicator}`;
+            if (countEl) countEl.innerHTML = `${currentCount.toLocaleString()}`;
             if (progEl) progEl.style.width = `${percentage}%`;
             if (percEl) percEl.innerText = `~${Math.round(percentage)}% of planned`;
             updateStarlinkGenerationCounts(currentCount);
@@ -18623,6 +18633,7 @@
                 ]);
 
                 noteLiveStatus(freshUpcoming); noteLiveStatus(freshPrevious);
+                awaitingFirstLiveCheck = false;   // answered or not, the first check is over (a blocked API keeps the flight view)
                 if (upcomingRaw === null && previousRaw === null) {
                     throw new Error("All APIs failed or timed out.");
                 }
@@ -18721,6 +18732,7 @@
                 }
 
             } catch (error) {
+                awaitingFirstLiveCheck = false;
                 const cachedData = localStorage.getItem(CACHE_KEY);
                 if (cachedData) {
                     try {
@@ -25876,6 +25888,24 @@ setTimeout(() => {
                     return;
                 }
 
+                // T-0 already passed per the SAVED data, this page hasn't heard from a live source yet, nobody has
+                // since T-0, and the saved status doesn't say it's flying: it may have been pushed back since the
+                // last visit, so neither "flying" nor a countdown until the first live check settles it
+                if (diff <= 0 && awaitingFirstLiveCheck && !flyingNow && !liveStatusSince(currentHeroMissionId, target.getTime())) {
+                    const key = (document.documentElement.lang || 'en').split('-')[0];
+                    const checking = (LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en).checkingStatus || LAUNCH_LABEL_I18N.en.checkingStatus;
+                    setCountdownLabel(false);
+                    setHeroStatusExplain('');
+                    el.innerHTML = checking;
+                    fitMissionStatusText();
+                    el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-zinc-400 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                    stickyEls.forEach(stEl => {
+                        stEl.innerText = checking;
+                        stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-zinc-400 animate-pulse notranslate";
+                    });
+                    return;
+                }
+
                 if (diff <= 0) {
                     // Past-launches refresh is no longer triggered from here - see the
                     // eviction-based trigger in setupHeroBanner(), which fires precisely when
@@ -26119,6 +26149,12 @@ setTimeout(() => {
                 // A mission that left the hero while the site was closed is caught separately,
                 // by setupHeroBanner() itself (now primed with a persisted lastHeroInProgressId)
                 // once the "upcoming" fetch below resolves and calls processLaunchData again.
+                // Saved data can be stale on a launch day: a launch pushed back since the last visit still
+                // has its old, already-passed T-0 here, and the hero showed it as flying ("MISSION IN
+                // PROGRESS" / timeline events) until the fresh answer brought the real countdown back. Until
+                // this page's first live check finishes, a hero launch whose T-0 has passed with no live
+                // answer since shows "updating status" instead (see the hero countdown's update()).
+                awaitingFirstLiveCheck = true;
                 processLaunchData(parsedCachedLaunches);
                 const cachedPastNeedsVideoRecheck = (rawPastMissions || []).some(m => {
                     if (m.youtubeId) return false;
