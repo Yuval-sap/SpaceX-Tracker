@@ -377,8 +377,10 @@ Rules:
 - zh must be Simplified Chinese.
 - Keep as-is in every language: SpaceX, Falcon 9, Falcon Heavy, Dragon, Raptor, Super Heavy, Max Q, MECO,
   SECO, BECO. For "Starship" use exactly: {starship_terms}. For "Starlink" use exactly: {starlink_terms}
-- An event may contain {{payload}} / {{company}} placeholders (a template for many satellites):
-  keep those two tokens exactly as written, untranslated, in every language.
+- Only an event whose OWN text contains the literal tokens {{payload}} / {{company}} is a template (for
+  many satellites): keep those two tokens exactly as written there. Never write curly braces or any
+  placeholder into any other explanation - e.g. "Payload deploy start" is about the ship's payload in
+  plain words, not a template.
 - Do not add labels, markdown, or commentary.
 
 Events:
@@ -444,7 +446,8 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
                         continue
                     cleaned = {}
                     for event, val in zip(events, arr):
-                        if isinstance(val, str) and val.strip():
+                        # a placeholder is only right in the rideshare template itself
+                        if isinstance(val, str) and val.strip() and ("{" in event or "{" not in val):
                             cleaned[event] = val.strip().rstrip(".\u3002")
                     if cleaned:
                         out[lang] = cleaned
@@ -1156,7 +1159,13 @@ def main() -> int:
     # launch time); same chunk / per-language-batch / reuse shape as the names pass.
     timeline_new = 0
     timeline_failed = 0
-    events_to_do = [e for e in timeline_events if not name_langs_complete(timeline_store.get(e), TIMELINE_LANGS)]
+    # drop stored texts with a stray placeholder (Gemini once wrote "{payload}" into "Payload deploy start"),
+    # so those languages are written again below
+    for ev, entry in list(timeline_store.items()):
+        if isinstance(entry, dict) and "{" not in ev:
+            for lang in [l for l, v in entry.items() if isinstance(v, str) and "{" in v]:
+                del entry[lang]
+    events_to_do =[e for e in timeline_events if not name_langs_complete(timeline_store.get(e), TIMELINE_LANGS)]
     TIMELINE_CHUNK_SIZE = 15
     for chunk in [events_to_do[i:i + TIMELINE_CHUNK_SIZE] for i in range(0, len(events_to_do), TIMELINE_CHUNK_SIZE)]:
         merged_by_event = {e: dict(timeline_store.get(e) or {}) for e in chunk}
@@ -1168,7 +1177,9 @@ def main() -> int:
                 result = call_gemini_timeline_batch(api_key, needing, batch)
                 for lang, event_map in result.items():
                     for e, text in event_map.items():
-                        if e in merged_by_event:
+                        # a placeholder is only right in the rideshare template itself - otherwise left unwritten,
+                        # so the next run asks again
+                        if e in merged_by_event and ("{" in e or "{" not in text):
                             merged_by_event[e][lang] = text
                 time.sleep(GEMINI_CALL_PACING_SECONDS)
             except (GeminiAuthError, GeminiQuotaExceededError) as e:

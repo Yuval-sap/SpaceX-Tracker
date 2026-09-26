@@ -6803,7 +6803,9 @@
             const lang = key === 'iw' ? 'he' : key;
             const norm = normTimelineEvent(event);
             const hit = _geminiTimelineMap[norm];
-            if (hit && hit[lang]) return hit[lang];
+            // a {payload}/{company} placeholder belongs only to the rideshare template below - Gemini once put
+            // "{payload}" into "Payload deploy start" ("שחרור {payload} מתחיל"); such a text is skipped
+            if (hit && hit[lang] && (norm.includes('{') || !hit[lang].includes('{'))) return hit[lang];
             // rideshare flights list every satellite as "<satellite> deploys, manifested by <company>" -
             // one template for all of them ({payload} / {company} filled in here)
             const m = /^(.+?) deploys, manifested by (.+)$/i.exec(norm);
