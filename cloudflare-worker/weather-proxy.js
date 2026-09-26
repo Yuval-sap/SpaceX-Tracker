@@ -213,6 +213,8 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
     const errText = r.ok ? '' : (await r.text()).slice(0, 300);
     if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }   // model not available on this key - next one
     if (r.status === 429) { quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }); continue; }   // this model's quota is used up - next one
+    // overloaded / server error (503 'high demand', 500...): a temporary problem with this model - next one
+    if (r.status >= 500) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }
     if (!r.ok) { await noteAttempt(kv, { model, status: r.status, error: errText }); return; }
     let parsed;
     try {
