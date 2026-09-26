@@ -24053,8 +24053,13 @@ setTimeout(() => {
         // ends up in the full interactive app, on the right mission - the static page
         // immediately JS-forwards humans (not preview bots) to index.html?mission=<id>,
         // which handleDeepLinkMission() (see near processLaunchData) picks up and opens.
+        // ?v= is a short fingerprint of what the preview card shows (name + date): X keeps a link's card cached
+        // for days - including one fetched without its image - so a card that changed (a new date) or went bad
+        // gets a fresh URL and is read again. Other apps ignore the parameter; the page is the same.
         function buildMissionShareUrl(m) {
-            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html`;
+            let h = 5381;
+            for (const ch of `${m.name || ''}|${m.date || ''}`) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html?v=${h.toString(36)}`;
         }
 
         // Desktop share menu labels only (brand names stay in English). Mobile never
