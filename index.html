@@ -9376,6 +9376,7 @@
         let lastAppliedSpecLang = null;
         let lastPersistedLang = null; // see the localStorage mirror in the Bulletproof Timer below
         let lastTickerRtlState = null; // see renderNewsTickerTrack() and its Bulletproof Timer hook
+        let lastTickerLang = null;     // the language the ticker's own (Gemini) translations were last picked for
         function applyMilestonesTranslations(currentLang) {
             let key = currentLang.split('-')[0];
             if (key === 'zh') key = 'zh';
@@ -10375,7 +10376,10 @@
             // the language flips RTL<->LTR after the ticker already rendered, re-render it
             // from the already-fetched items (no re-fetch) instead of leaving it in the wrong
             // order until the next scheduled 15-minute refresh.
-            if (window._tickerNewsItems && lastTickerRtlState !== isRtl && typeof renderNewsTickerTrack === 'function') {
+            // ...and again when the language changes at all, so each headline switches to its own translation
+            let tickerLangNow = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (tickerLangNow === 'iw') tickerLangNow = 'he';
+            if (window._tickerNewsItems && (lastTickerRtlState !== isRtl || lastTickerLang !== tickerLangNow) && typeof renderNewsTickerTrack === 'function') {
                 renderNewsTickerTrack(isRtl);
             }
 
@@ -18129,6 +18133,23 @@
             const tickerTrack = document.getElementById('news-ticker-track');
             if (!tickerWrap || !tickerTrack) return;
 
+            // Our Cloudflare Worker first (cloudflare-worker/weather-proxy.js, /news): the same five feeds, read
+            // server-side, each headline with its Gemini translation into the site's languages once it has one
+            // (item.t = { he: ..., es: ... }). Headlines it hasn't translated yet come without, and are left to
+            // Google Translate as before (renderNewsTickerTrack).
+            if (WEATHER_OBS_URL) {
+                try {
+                    const res = await fetchWithTimeout(`${WEATHER_OBS_URL}/news`, { timeout: 8000 });
+                    const data = res.ok ? await res.json() : null;
+                    const items = data && Array.isArray(data.items) ? data.items.filter(i => i && i.title && i.link) : [];
+                    if (items.length) {
+                        window._tickerNewsItems = items;
+                        renderNewsTickerTrack();
+                        return;
+                    }
+                } catch (e) { /* fall back to reading the feeds through rss2json below */ }
+            }
+
             try {
                 // Independent editorial sources — no social platforms involved:
                 // Teslarati's SpaceX category, NASA's official releases, SpaceNews' general
@@ -18201,16 +18222,33 @@
             };
 
             const orderedItems = isRtl ? [...window._tickerNewsItems].reverse() : window._tickerNewsItems;
+            let tLang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (tLang === 'iw') tLang = 'he';
+            lastTickerLang = tLang;
+            // The track itself always runs left-to-right (#news-ticker-wrap is direction:ltr for the marquee), so
+            // a Hebrew / Arabic headline gets its own isolated right-to-left run - otherwise one that starts or
+            // ends with "SpaceX" / "NASA" / "Falcon 9" is laid out left-to-right and the sentence falls apart
+            // (the English name jumps to the wrong end, the punctuation with it).
+            // The item itself (source label, headline, time) is laid out right-to-left too, so it reads label first.
+            const titleDir = isRtl ? ' dir="rtl" style="unicode-bidi:isolate"' : '';
 
             // Build the ticker items once, then duplicate the whole set so the CSS
             // marquee loops seamlessly with no visible seam.
-            const tickerItems = orderedItems.map(item => `
-                <a href="${escapeHtml(item.link)}" target="_blank" class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
+            const tickerItems = orderedItems.map(item => {
+                // Gemini's translation (from the worker) when there is one - kept away from Google Translate;
+                // otherwise the English headline, which Google Translate translates as before
+                const own = tLang !== 'en' && item.t && item.t[tLang];
+                const title = own
+                    ? `<span class="notranslate" translate="no"${titleDir}>${escapeHtml(own)}</span>`
+                    : `<span${titleDir}>${escapeHtml(item.title)}</span>`;
+                return `
+                <a href="${escapeHtml(item.link)}" target="_blank"${isRtl ? ' dir="rtl"' : ''} class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
                     <span class="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${sourceStyles[item.source] || 'bg-zinc-700/30 text-zinc-300'}">${item.source}</span>
-                    <span>${escapeHtml(item.title)}</span>
+                    ${title}
                     <span class="text-zinc-600 text-[10px]">${timeAgoLabel(item.pubDate)}</span>
                 </a>
-            `).join('<span class="text-zinc-700 mx-2">/</span>');
+            `;
+            }).join('<span class="text-zinc-700 mx-2">/</span>');
 
             tickerTrack.innerHTML = tickerItems + '<span class="text-zinc-700 mx-2">/</span>' + tickerItems;
             // Dynamic content added long after page load — Google Translate's mutation
