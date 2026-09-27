@@ -9572,11 +9572,8 @@
             const live = programLiveStats(p);
             // the labels are set in capitals - but not the brand inside one ("SpaceX", not "SPACEX")
             const capsLabel = label => escapeHtml(label).replace(/SpaceX/g, '<span class="normal-case">SpaceX</span>');
-            const box = (label, valueHtml) => `<div class="bg-zinc-950 border border-zinc-800/50 rounded-2xl p-3 text-center transition-colors duration-500">
-                    <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">${capsLabel(label)}</div>
-                    <div class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-snug">${valueHtml}</div>
-                </div>`;
-            const section = (title, inner) => `<div class="space-y-2">
+            const smallCaps = 'modal-subhead text-[10px] sm:text-[11px] uppercase tracking-wider text-emerald-400 font-bold';
+            const section = (title, inner) => `<div class="space-y-3">
                     <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">${escapeHtml(title)}</h4>
                     ${inner}
                 </div>`;
@@ -9584,43 +9581,65 @@
                 if (myGen !== _programModalGen) return;
                 if (nameEl) nameEl.textContent = names[idx].name;
                 let t = 0;
-                const facts = [];
-                if (prof && prof.status && card[prof.status]) facts.push(box(card.status, escapeHtml(card[prof.status])));
-                if (prof) (prof.facts || []).forEach(f => { const v = texts[t++]; if (card[f[0]]) facts.push(box(card[f[0]], `<span dir="auto">${escapeHtml(v)}</span>`)); });
-                else if (year(p)) facts.push(box(card.started, escapeHtml(year(p))));
-                if (live.pastCount > 0) facts.push(box(card.launchesYear, escapeHtml(String(live.pastCount))));
-                if (live.next) {
-                    const d = new Date(live.next.date);
-                    const when = isNaN(d) ? '' : new Intl.DateTimeFormat(dateLocaleForLang(lang), { day: 'numeric', month: 'short' }).format(d);
-                    facts.push(`<button type="button" data-program-next="1" class="bg-zinc-950 border border-zinc-800/50 rounded-2xl p-3 text-center md:hover:border-emerald-500/60 transition-colors duration-300">
-                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">${escapeHtml(card.nextLaunch)}</div>
-                        <div class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-snug">${escapeHtml(localizeMissionName(live.next.name, lang))}</div>
-                        <div class="text-[11px] text-zinc-500 mt-0.5" dir="auto">${escapeHtml(when)}</div>
-                    </button>`);
+                let html = '';
+                // status pill + the key facts as a plain two-column list (label over value, hairlines between rows)
+                const rows = [];
+                if (prof) (prof.facts || []).forEach(f => { const v = texts[t++]; if (card[f[0]]) rows.push([card[f[0]], v]); });
+                else if (year(p)) rows.push([card.started, year(p)]);
+                const pill = prof && prof.status && card[prof.status]
+                    ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>${escapeHtml(card[prof.status])}</span>` : '';
+                if (pill || rows.length) html += `<div class="space-y-3">
+                        ${pill ? `<div>${pill}</div>` : ''}
+                        ${rows.length ? `<dl class="grid grid-cols-2 gap-x-6 sm:gap-x-10">${rows.map(r => `<div class="py-2.5 border-b border-zinc-800/50 min-w-0">
+                            <dt class="${smallCaps}">${capsLabel(r[0])}</dt>
+                            <dd class="text-sm sm:text-base font-semibold text-zinc-200 mt-0.5 leading-snug" dir="auto">${escapeHtml(r[1])}</dd>
+                        </div>`).join('')}</dl>` : ''}
+                    </div>`;
+                // live figures from the site's own launch lists: a big number, and the next launch as a link
+                if (live.pastCount > 0 || live.next) {
+                    let when = '';
+                    if (live.next) { const d = new Date(live.next.date); when = isNaN(d) ? '' : new Intl.DateTimeFormat(dateLocaleForLang(lang), { day: 'numeric', month: 'short' }).format(d); }
+                    html += `<div class="flex flex-wrap items-center gap-x-8 gap-y-4 py-1">
+                        ${live.pastCount > 0 ? `<div class="flex items-baseline gap-2.5">
+                            <span class="font-space text-3xl sm:text-4xl font-bold text-emerald-400 tabular-nums leading-none">${escapeHtml(String(live.pastCount))}</span>
+                            <span class="text-xs sm:text-sm text-zinc-400 leading-snug max-w-[11rem]">${escapeHtml(card.launchesYear)}</span>
+                        </div>` : ''}
+                        ${live.next ? `<button type="button" data-program-next="1" class="group text-start min-w-0">
+                            <div class="${smallCaps}">${capsLabel(card.nextLaunch)}</div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-sm sm:text-base font-semibold text-zinc-200 md:group-hover:text-emerald-400 transition-colors">${escapeHtml(localizeMissionName(live.next.name, lang))}</span>
+                                <i class="fa-solid fa-chevron-left rtl:rotate-0 ltr:rotate-180 text-[10px] text-emerald-400"></i>
+                            </div>
+                            ${when ? `<div class="text-xs text-zinc-500 mt-0.5" dir="auto">${escapeHtml(when)}</div>` : ''}
+                        </button>` : ''}
+                    </div>`;
                 }
-                let html = facts.length ? `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">${facts.join('')}</div>` : '';
-                const para = x => `<p class="text-zinc-300 text-xs sm:text-sm leading-relaxed">${escapeHtml(String(x).trim())}</p>`;
+                const para = x => `<p class="text-zinc-300 text-sm leading-relaxed">${escapeHtml(String(x).trim())}</p>`;
                 if (prof) {
                     const ov = (prof.overview || []).map(() => texts[t++]);
                     const ms = (prof.milestones || []).map(m => [m[0], texts[t++]]);
                     const sx = prof.spacex ? texts[t++] : '';
-                    if (ov.length) html += section(card.overview, `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl space-y-3 transition-colors duration-500">${ov.map(para).join('')}</div>`);
-                    if (ms.length) html += section(card.milestones, `<div class="bg-zinc-950/40 border border-zinc-850 rounded-2xl transition-colors duration-500">${ms.map(m => `<div class="flex items-start gap-3 px-4 sm:px-5 py-3 border-b border-zinc-800/50 last:border-b-0">
-                            <span class="shrink-0 font-space text-xs sm:text-sm font-bold text-emerald-400 tabular-nums pt-0.5">${escapeHtml(m[0])}</span>
-                            <span class="text-zinc-300 text-xs sm:text-sm leading-relaxed">${escapeHtml(String(m[1]).trim())}</span>
-                        </div>`).join('')}</div>`);
-                    if (sx) html += section(card.spacex, `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl transition-colors duration-500">${para(sx)}</div>`);
+                    if (ov.length) html += section(card.overview, `<div class="space-y-3">${ov.map(para).join('')}</div>`);
+                    // milestones as a timeline: a thin line down the start edge, a dot and the year for each step
+                    if (ms.length) html += section(card.milestones, `<ol class="relative border-s border-emerald-500/30 ms-1.5 space-y-4">${ms.map(m => `<li class="relative ps-5">
+                            <span class="absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-500/10"></span>
+                            <div class="font-space text-xs sm:text-sm font-bold text-emerald-400 tabular-nums">${escapeHtml(m[0])}</div>
+                            <div class="text-zinc-300 text-sm leading-relaxed mt-0.5">${escapeHtml(String(m[1]).trim())}</div>
+                        </li>`).join('')}</ol>`);
+                    // SpaceX's part, set off with an accent bar on the start edge
+                    if (sx) html += section(card.spacex, `<div class="border-s-2 border-emerald-500 ps-4">${para(sx)}</div>`);
                 } else if (names[idx].description) {
-                    html += section(card.about, `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl transition-colors duration-500">${para(names[idx].description)}</div>`);
+                    html += section(card.about, para(names[idx].description));
                 }
                 // the mission's other programmes (e.g. the ISS for a crew or cargo flight): each opens its own card here
-                if (others.length) html += section(card.also, others.map(i => `<button type="button" data-program-index="${i}" class="w-full text-start bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl space-y-1 md:hover:border-emerald-500/60 transition-colors duration-300">
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-sm sm:text-base font-semibold text-zinc-200">${escapeHtml(names[i].name)}</span>
-                            <i class="fa-solid fa-chevron-left rtl:rotate-0 ltr:rotate-180 text-xs text-emerald-400"></i>
-                        </div>
-                        ${year(all[i]) ? `<div class="text-[11px] text-zinc-500">${escapeHtml(since.replace('{y}', year(all[i])))}</div>` : ''}
-                    </button>`).join('<div class="h-2"></div>'));
+                if (others.length) html += section(card.also, `<div>${others.map(i => `<button type="button" data-program-index="${i}" class="group w-full text-start flex items-center justify-between gap-3 py-3 border-t border-zinc-800/50 last:border-b">
+                        <span class="min-w-0">
+                            <span class="block text-sm sm:text-base font-semibold text-zinc-200 md:group-hover:text-emerald-400 transition-colors">${escapeHtml(names[i].name)}</span>
+                            ${year(all[i]) ? `<span class="block text-xs text-zinc-500 mt-0.5">${escapeHtml(since.replace('{y}', year(all[i])))}</span>` : ''}
+                        </span>
+                        <i class="fa-solid fa-chevron-left rtl:rotate-0 ltr:rotate-180 text-xs text-emerald-400 shrink-0"></i>
+                    </button>`).join('')}</div>`);
                 body.innerHTML = html;
                 body.querySelectorAll('[data-program-index]').forEach(b => b.addEventListener('click', () => {
                     renderProgramModal(+b.dataset.programIndex);
