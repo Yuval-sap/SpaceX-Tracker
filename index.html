@@ -24258,9 +24258,10 @@ setTimeout(() => {
             let h = 5381;
             for (const ch of `${m.name || ''}|${m.date || ''}`) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
             // &lang= - the site language it was shared from, so the link opens in that language (the head script
-            // at the top of this file applies it)
+            // at the top of this file applies it). Hebrew shares point at the Hebrew copy of the preview page (m/he/,
+            // generate_mission_cards.py), so the link preview itself is in Hebrew too.
             const lang = (document.documentElement.lang || 'en').split('-')[0].toLowerCase() === 'zh' ? 'zh-CN' : (document.documentElement.lang || 'en');
-            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html?v=${h.toString(36)}&lang=${encodeURIComponent(lang)}`;
+            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${/^(iw|he)$/i.test(lang) ? 'he/' : ''}${encodeURIComponent(m.id)}.html?v=${h.toString(36)}&lang=${encodeURIComponent(lang)}`;
         }
 
         // Desktop share menu labels only (brand names stay in English). Mobile never

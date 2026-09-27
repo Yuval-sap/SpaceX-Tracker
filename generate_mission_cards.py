@@ -33,6 +33,7 @@ No dependencies beyond the Python standard library - deliberately, so there's no
 pip install before this will run.
 """
 
+import hashlib
 import html
 import json
 import re
@@ -48,6 +49,12 @@ from urllib.parse import quote
 SITE_BASE_URL = "https://spacexfantracker.com"
 
 OUTPUT_DIR = Path(__file__).parent / "m"
+# Hebrew copies of the same pages (m/he/<id>.html): a link shared while the site is in Hebrew points here
+# (buildMissionShareUrl in index.html), so the link preview - which preview bots read straight from the page,
+# without running any script - is in Hebrew too
+OUTPUT_DIR_HE = OUTPUT_DIR / "he"
+# The Gemini translations the site itself uses for mission names (translate_mission_purpose.py, "names")
+GEMINI_FILE = Path(__file__).parent / "mission-purpose-gemini.json"
 
 # Mirrors FALLBACK_IMAGES / mapLaunchToSchema's category detection in index.html exactly,
 # so a shared mission's preview image matches whatever image that mission actually shows
@@ -112,7 +119,7 @@ def format_date(net: str) -> str:
 
 
 PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
+<html {html_attrs}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -125,6 +132,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta property="og:description" content="{description_escaped}">
 <meta property="og:image" content="{image_escaped}">
 <meta property="og:url" content="{url_escaped}">
+<meta property="og:locale" content="{og_locale}">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{title_escaped}">
@@ -136,7 +144,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 (function(){{
   if (/Twitterbot|facebookexternalhit|Facebot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Discordbot|Pinterest|SkypeUriPreview|Applebot/i.test(navigator.userAgent||"")) return;
   // the sharer's site language rides along (?lang=, added by index.html's buildMissionShareUrl)
-  var lang = (location.search.match(/[?&]lang=([A-Za-z-]{{2,6}})(?:&|$)/) || [])[1];
+  var lang = (location.search.match(/[?&]lang=([A-Za-z-]{{2,6}})(?:&|$)/) || [])[1] || "{page_lang}";
   location.replace("{app_url_escaped}" + (lang ? "&lang=" + lang : ""));
 }})();
 </script>
@@ -163,31 +171,110 @@ p.lede{{color:#a1a1aa;font-size:.95rem}}
 </head>
 <body>
 <div class="wrap">
-<a class="brand" href="{home_url_escaped}">&larr; SpaceX Fan Tracker</a>
+<a class="brand" href="{home_url_escaped}">{back_arrow} SpaceX Fan Tracker</a>
 <img class="photo" src="{image_escaped}" alt="{title_escaped}">
 <h1>{name_escaped}</h1>
 <div class="vehicle">{vehicle_escaped}</div>
 <div class="stats">
-<div><div class="stat-label">Launch Site</div><div class="stat-value">{site_escaped}</div></div>
-<div><div class="stat-label">Date</div><div class="stat-value">{date_escaped}</div></div>
+<div><div class="stat-label">{label_site}</div><div class="stat-value">{site_escaped}</div></div>
+<div><div class="stat-label">{label_date}</div><div class="stat-value">{date_escaped}</div></div>
 </div>
-<p class="lede">Live countdown, launch window, booster and recovery details, and video coverage for this SpaceX mission are available in the full tracker.</p>
-<a class="cta" href="{app_url_escaped}">Open in Live Tracker &rarr;</a>
-<a class="back" href="{home_url_escaped}">&larr; Back to all missions</a>
+<p class="lede">{lede}</p>
+<a class="cta" href="{app_url_escaped}">{cta} {forward_arrow}</a>
+<a class="back" href="{home_url_escaped}">{back_arrow} {back}</a>
 </div>
 </body>
 </html>
 """
 
 
-def build_page(mission_id: str, name: str, vehicle: str, site: str, net: str) -> str:
+PAGE_TEXT = {
+    "en": {
+        "html_attrs": 'lang="en"', "og_locale": "en_US", "page_lang": "",
+        "label_site": "Launch Site", "label_date": "Date",
+        "lede": "Live countdown, launch window, booster and recovery details, and video coverage for this SpaceX mission are available in the full tracker.",
+        "cta": "Open in Live Tracker", "back": "Back to all missions", "forward_arrow": "&rarr;", "back_arrow": "&larr;",
+    },
+    "he": {
+        "html_attrs": 'lang="he" dir="rtl"', "og_locale": "he_IL", "page_lang": "iw",
+        "label_site": "אתר השיגור", "label_date": "תאריך",
+        "lede": "ספירה לאחור חיה, חלון השיגור, פרטי הבוסטר והנחיתה וסרטון השיגור של משימת SpaceX הזו נמצאים באתר המלא.",
+        "cta": "פתח באתר", "back": "לכל המשימות", "forward_arrow": "&larr;", "back_arrow": "&rarr;",
+    },
+}
+
+HE_MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"]
+# Right-to-left mark. At the start it makes the preview apps lay the Hebrew title out right-to-left even though
+# it starts with "SpaceX"; after a separator it keeps the number that follows an English code ("SFB • 26
+# בספטמבר") from being pulled into the English run and shown on the wrong side
+RLM = "‏"
+# index.html's SITE_NAME_I18N.he (+ the Louisiana name in localizeSiteStr)
+SITE_NAMES_HE = [
+    ("Orbital Launch Pad", "משטח שיגור מסלולי"), ("Kennedy Space Center", "מרכז החלל קנדי"),
+    ("Cape Canaveral", "קייפ קנוורל"), ("Vandenberg", "ואנדנברג"), ("Starbase", "סטארבייס"),
+    ("Pecan Island", "פקאן איילנד"), ("Louisiana", "לואיזיאנה"),
+]
+
+
+def format_date_he(net: str) -> str:
+    try:
+        dt = datetime.fromisoformat(net.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return f"{dt.day} ב{HE_MONTHS[dt.month - 1]} {dt.year}"
+    except Exception:
+        return "טרם נקבע"
+
+
+# Same cleanup translate_mission_purpose.py applies to a name before hashing it for the "names" map
+def clean_mission_name(name: str) -> str:
+    name = re.sub(r"\s*Block\s*5\b", "", name, flags=re.IGNORECASE)
+    name = re.sub(r"((?:bandwagon|starship|transporter)[^(]*)\([^)]*\)\s*$", r"\1", name, flags=re.IGNORECASE)
+    name = re.sub(r"\s{2,}", " ", name)
+    return name.strip()
+
+
+# index.html's localizeMissionName for Hebrew: the fixed terms the site itself puts into every mission title
+def localize_name_he(text: str) -> str:
+    text = re.sub(r"\bFlight\s+(\d+)", r"טיסה \1", text, flags=re.I)
+    text = re.sub(r"starship", "סטארשיפ", text, flags=re.I)
+    text = re.sub(r"starlink", "סטארלינק", text, flags=re.I)
+    text = re.sub(r"bandwagon", "בנדוואגון", text, flags=re.I)
+    text = re.sub(r"\btransporter(?=[\s-]*\d)", "טרנספורטר", text, flags=re.I)
+    text = re.sub(r"\bCrew-(\d+)\b", r"צוות \1", text, flags=re.I)
+    text = re.sub(r"סטארלינק\s+(?:Group|קבוצה)\s+", "קבוצת סטארלינק ", text, flags=re.I)
+    text = re.sub(r"Falcon\s+Heavy", "פלקון כבד", text, flags=re.I)
+    return re.sub(r"Falcon\s+9", "פלקון 9", text, flags=re.I)
+
+
+def load_he_names() -> dict:
+    try:
+        names = json.loads(GEMINI_FILE.read_text(encoding="utf-8")).get("names") or {}
+        return {h: v["he"] for h, v in names.items() if isinstance(v, dict) and isinstance(v.get("he"), str) and v["he"].strip()}
+    except Exception as e:
+        print(f"Warning: couldn't read Hebrew mission names from {GEMINI_FILE.name}: {e}", file=sys.stderr)
+        return {}
+
+
+def build_page(mission_id: str, name: str, vehicle: str, site: str, net: str, lang: str = "en", he_names: dict = None) -> str:
     category = detect_category(name, vehicle)
     image = FALLBACK_IMAGES.get(category, FALLBACK_IMAGES["falcon"])
-    date_str = format_date(net)
-    title = f"SpaceX • {name}"
-    description = f"{vehicle} • {site} • {date_str}"
+    text = PAGE_TEXT[lang]
     app_url = f"{SITE_BASE_URL}/?mission={quote(mission_id)}"
-    card_url = f"{SITE_BASE_URL}/m/{quote(mission_id)}.html"
+    if lang == "he":
+        cleaned = clean_mission_name(name)
+        name = localize_name_he((he_names or {}).get(hashlib.sha256(cleaned.encode("utf-8")).hexdigest()) or cleaned)
+        vehicle = localize_name_he(clean_mission_name(vehicle))
+        site = re.sub(r",\s*(?:[A-Z]{2},\s*)?USA$", "", site)
+        for en_name, he_name in SITE_NAMES_HE:
+            site = site.replace(en_name, he_name)
+        date_str = format_date_he(net)
+        title = f"{RLM}SpaceX • {name}"
+        description = f"{RLM}{vehicle} •{RLM} {site} •{RLM} {date_str}"
+        card_url = f"{SITE_BASE_URL}/m/he/{quote(mission_id)}.html"
+    else:
+        date_str = format_date(net)
+        title = f"SpaceX • {name}"
+        description = f"{vehicle} • {site} • {date_str}"
+        card_url = f"{SITE_BASE_URL}/m/{quote(mission_id)}.html"
 
     jsonld_obj = {
         "@context": "https://schema.org",
@@ -226,6 +313,7 @@ def build_page(mission_id: str, name: str, vehicle: str, site: str, net: str) ->
         site_escaped=html.escape(site),
         date_escaped=html.escape(date_str),
         jsonld=jsonld,
+        **text,
     )
 
 
@@ -241,6 +329,8 @@ def build_sitemap(mission_ids: list) -> str:
 
 def main():
     OUTPUT_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR_HE.mkdir(exist_ok=True)
+    he_names = load_he_names()
 
     upcoming = fetch_launches(LL2_UPCOMING_URL)
     time.sleep(3)
@@ -281,6 +371,7 @@ def main():
         safe_id = re.sub(r"[^a-zA-Z0-9._-]", "_", mission_id)
         out_path = OUTPUT_DIR / f"{safe_id}.html"
         out_path.write_text(build_page(mission_id, name, vehicle, site, net), encoding="utf-8")
+        (OUTPUT_DIR_HE / f"{safe_id}.html").write_text(build_page(mission_id, name, vehicle, site, net, "he", he_names), encoding="utf-8")
         written += 1
         written_safe_ids.append(safe_id)
 
@@ -303,7 +394,7 @@ def main():
     # OUTPUT_DIR (m/) that match the mission-id filename pattern this script itself writes.
     keep = {f"{safe_id}.html" for safe_id in written_safe_ids}
     pruned = 0
-    for existing in OUTPUT_DIR.glob("*.html"):
+    for existing in list(OUTPUT_DIR.glob("*.html")) + list(OUTPUT_DIR_HE.glob("*.html")):
         if existing.name not in keep:
             existing.unlink()
             pruned += 1
