@@ -135,7 +135,9 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <script>
 (function(){{
   if (/Twitterbot|facebookexternalhit|Facebot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Discordbot|Pinterest|SkypeUriPreview|Applebot/i.test(navigator.userAgent||"")) return;
-  location.replace("{app_url_escaped}");
+  // the sharer's site language rides along (?lang=, added by index.html's buildMissionShareUrl)
+  var lang = (location.search.match(/[?&]lang=([A-Za-z-]{{2,6}})(?:&|$)/) || [])[1];
+  location.replace("{app_url_escaped}" + (lang ? "&lang=" + lang : ""));
 }})();
 </script>
 

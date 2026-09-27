@@ -110,6 +110,30 @@
          runs thousands of lines later. Running this synchronous, DOM-independent check right
          before the async tag is declared means it always completes before that download could
          possibly finish, closing the race instead of merely narrowing it. -->
+    <!-- A shared mission link carries the sharer's language (?lang=he, see buildMissionShareUrl): it becomes this
+         visitor's language - the googtrans cookie Google Translate reads (host and domain-wide, the two places Google
+         itself keeps it) and the localStorage backup below - before Google's script loads. The parameter is then
+         dropped from the address, so a reload after switching language doesn't switch it back. -->
+    <script type="text/javascript">
+        (function () {
+            let lang = null;
+            try { lang = new URLSearchParams(location.search).get('lang'); } catch (e) { }
+            if (!lang) return;
+            const LANGS = { en: 'en', he: 'iw', iw: 'iw', es: 'es', fr: 'fr', de: 'de', ru: 'ru', zh: 'zh-CN', 'zh-cn': 'zh-CN', it: 'it', cs: 'cs', sv: 'sv', nl: 'nl', da: 'da', pt: 'pt', pl: 'pl', hi: 'hi', ar: 'ar', tr: 'tr' };
+            const code = LANGS[lang.toLowerCase()];
+            if (code) {
+                const value = 'googtrans=/en/' + code + '; path=/; max-age=' + (60 * 60 * 24 * 365);
+                document.cookie = value;
+                if (/\./.test(location.hostname) && !/^[\d.]+$/.test(location.hostname)) document.cookie = value + '; domain=.' + location.hostname.replace(/^www\./, '');
+                try { localStorage.setItem('spacex_lang_pref', code); } catch (e) { }
+            }
+            try {
+                const u = new URL(location.href);
+                u.searchParams.delete('lang');
+                history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+            } catch (e) { }
+        })();
+    </script>
     <script type="text/javascript">
         (function () {
             const hasCookieNow = document.cookie.split('; ').some(c => c.startsWith('googtrans='));
@@ -24233,7 +24257,10 @@ setTimeout(() => {
         function buildMissionShareUrl(m) {
             let h = 5381;
             for (const ch of `${m.name || ''}|${m.date || ''}`) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
-            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html?v=${h.toString(36)}`;
+            // &lang= - the site language it was shared from, so the link opens in that language (the head script
+            // at the top of this file applies it)
+            const lang = (document.documentElement.lang || 'en').split('-')[0].toLowerCase() === 'zh' ? 'zh-CN' : (document.documentElement.lang || 'en');
+            return `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/m/${encodeURIComponent(m.id)}.html?v=${h.toString(36)}&lang=${encodeURIComponent(lang)}`;
         }
 
         // Desktop share menu labels only (brand names stay in English). Mobile never
