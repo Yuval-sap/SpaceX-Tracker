@@ -241,6 +241,38 @@ Entries:
 """
 
 
+# The hand-written program cards (program-profiles.json - overview paragraphs, milestones, SpaceX's role, fact
+# values) shown in the site's Program card. Same array response shape; long texts, so fewer languages per call.
+PROFILE_PROMPT = """You translate the texts of an information card about a spaceflight program (NASA, SpaceX,
+US Space Force, European and commercial programs) from English into several languages, for a rocket-launch
+tracking website. The entries are short fact values, milestone lines and paragraphs.
+
+Return ONLY valid JSON. Top-level keys must be exactly these language codes:
+{lang_keys}
+
+Each language value must be a JSON ARRAY of exactly {count} strings - the translations, in the
+SAME ORDER as the numbered entries below. Do not skip, merge, split, or reorder any entry.
+
+Rules:
+- Natural, accurate, fluent translation in the style of a good encyclopedia or science magazine - not
+  word-for-word. Keep every fact, number and date exactly as in the source; add nothing.
+- "launch" ALWAYS means a ROCKET launch, never a product launch.{launch_term_note}
+- Keep as-is, untranslated, in every language: SpaceX, NASA, ESA, JAXA, CSA, NOAA, Roscosmos, Falcon 9, Falcon
+  Heavy, Dragon, Crew Dragon, Cargo Dragon, Cygnus, Starliner, Orion, SLS, Raptor, Sentinel, GOES, GPS, ISS and
+  other acronyms, codes and mission names (Ax-1, Crew-1, IM-1, CRS-21...). Company names stay as they are.
+- A fact value that is only names, numbers or units (e.g. "NASA", "~400 km", "33 + 6 Raptor") stays the same,
+  apart from writing numbers and units the way the language does.
+- "Starship": {starship_terms}
+- "Starlink": {starlink_terms}
+- zh must be Simplified Chinese.
+- Write each translation ONLY in its own language's alphabet (plus the names / acronyms kept as they are).
+- Do not add labels, markdown, or commentary.
+
+Entries:
+{entries_block}
+"""
+
+
 UPDATE_PROMPT = """You translate short official status-update log entries for a SpaceX rocket
 launch, from English into several languages, for a chronological update feed on a
 launch-tracking website.
@@ -269,7 +301,7 @@ Entries:
 """
 
 
-def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: str = None) -> dict:
+def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: str = None, max_tokens: int = 8192) -> dict:
     """Same call/response shape as call_gemini_name_batch below (array of translations,
     index-matched to the input order) - see that function's own comment for why."""
     pinned = {lang: LAUNCH_NOUN_TERM[lang] for lang in langs if lang in LAUNCH_NOUN_TERM}
@@ -290,7 +322,7 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
         "generationConfig": {
             "temperature": 0.2,
             "responseMimeType": "application/json",
-            "maxOutputTokens": 8192,
+            "maxOutputTokens": max_tokens,
         },
     }
     payload = json.dumps(body).encode("utf-8")
@@ -310,7 +342,7 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
                     },
                     method="POST",
                 )
-                with urllib.request.urlopen(req, timeout=60) as resp:
+                with urllib.request.urlopen(req, timeout=120 if max_tokens > 8192 else 60) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                 text = (
                     data.get("candidates", [{}])[0]
@@ -826,8 +858,19 @@ def name_hash(name: str) -> str:
     return hashlib.sha256(name.encode("utf-8")).hexdigest()
 
 
+# A program card's translatable texts, in a fixed order: fact values, overview paragraphs, milestone lines, the
+# SpaceX paragraph. index.html (programProfileTexts) flattens a card the same way to read the translations back.
+def profile_texts(prof: dict) -> list:
+    texts = [str(v) for _, v in (prof.get("facts") or [])]
+    texts += [str(x) for x in (prof.get("overview") or [])]
+    texts += [str(m[1]) for m in (prof.get("milestones") or [])]
+    if prof.get("spacex"):
+        texts.append(str(prof["spacex"]))
+    return texts
+
+
 def load_existing() -> dict:
-    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}, "timeline": {}, "programs": {}, "missionPrograms": {}}
+    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}, "timeline": {}, "programs": {}, "missionPrograms": {}, "programProfiles": {}}
     if not OUTPUT_PATH.exists():
         return default
     try:
@@ -843,6 +886,7 @@ def load_existing() -> dict:
     data.setdefault("timeline", {})
     data.setdefault("programs", {})
     data.setdefault("missionPrograms", {})
+    data.setdefault("programProfiles", {})
     if not isinstance(data["entries"], dict):
         data["entries"] = {}
     if not isinstance(data["names"], dict):
@@ -855,6 +899,8 @@ def load_existing() -> dict:
         data["programs"] = {}
     if not isinstance(data["missionPrograms"], dict):
         data["missionPrograms"] = {}
+    if not isinstance(data["programProfiles"], dict):
+        data["programProfiles"] = {}
     return data
 
 
@@ -1455,6 +1501,59 @@ def main() -> int:
                 print(f"Warning: skipped program languages {','.join(batch)}: {e}", file=sys.stderr)
                 time.sleep(GEMINI_CALL_PACING_SECONDS)
     store["programs"] = programs_store
+
+    # The hand-written program cards (program-profiles.json): every text translated per language, stored in the
+    # same order as the source list ("programProfiles": {id: {"src": hash of the English texts, "t": {lang: [...]}}});
+    # an edited card (new hash) is translated again. Runs last - it's the least urgent pass, so it only uses quota
+    # the missions themselves didn't need.
+    profiles_path = Path(__file__).parent / "program-profiles.json"
+    try:
+        profiles = json.loads(profiles_path.read_text(encoding="utf-8")).get("profiles") or {}
+    except Exception as e:
+        print(f"Warning: couldn't read {profiles_path.name}: {e}", file=sys.stderr)
+        profiles = {}
+    profile_store = store["programProfiles"]
+    langs_all = list(LANG_NAMES)
+    PROFILE_LANG_BATCHES = [langs_all[i:i + 4] for i in range(0, len(langs_all), 4)]
+    profiles_done = 0
+    for pid, prof in profiles.items():
+        texts = profile_texts(prof)
+        if not texts:
+            continue
+        src = name_hash(json.dumps(texts, ensure_ascii=False))
+        entry = profile_store.get(pid) if isinstance(profile_store.get(pid), dict) else {}
+        if entry.get("src") != src:
+            entry = {"src": src, "t": {}}
+        for batch in PROFILE_LANG_BATCHES:
+            need = [lang for lang in batch if not (isinstance(entry["t"].get(lang), list) and len(entry["t"][lang]) == len(texts))]
+            if not need:
+                continue
+            try:
+                result = call_gemini_update_batch(api_key, texts, need, PROFILE_PROMPT, 24576)
+                for lang, by_text in result.items():
+                    arr = [by_text.get(t) for t in texts]
+                    if all(isinstance(x, str) and x.strip() and "{" not in x for x in arr):
+                        entry["t"][lang] = arr
+                profile_store[pid] = entry
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+            except GeminiAuthError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                store["programProfiles"] = profile_store
+                write_output(store)
+                return 1
+            except GeminiQuotaExceededError as e:
+                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+                store["programProfiles"] = profile_store
+                write_output(store)
+                return 0
+            except Exception as e:
+                print(f"Warning: skipped program card {pid} languages {','.join(need)}: {e}", file=sys.stderr)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+        profile_store[pid] = entry
+        if all(isinstance(entry["t"].get(lang), list) for lang in langs_all):
+            profiles_done += 1
+    store["programProfiles"] = profile_store
+    print(f"Program cards: {profiles_done}/{len(profiles)} fully translated")
     print(f"Programs: total={len(programs_store)} missions_mapped={len(mission_programs)} "
           f"translated_now={sum(1 for pid in program_ids if all(isinstance(programs_store[pid]['t'].get(l), dict) for l in LANG_NAMES))}/{len(program_ids)}")
 

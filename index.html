@@ -8961,6 +8961,8 @@
         // past launches, whose data here comes without the programme field (translate_mission_purpose.py)
         let _geminiProgramsMap = null;
         let _geminiMissionPrograms = null;
+        // translations of the hand-written program cards (program-profiles.json), "programProfiles": {id: {t: {lang: [...]}}}
+        let _geminiProgramProfiles = null;
         let _geminiPurposeLoad = null;
         function loadGeminiPurposeMap() {
             if (_geminiPurposeLoad) return _geminiPurposeLoad;
@@ -8973,6 +8975,7 @@
                     _geminiTimelineMap = (data && data.timeline) || {};
                     _geminiProgramsMap = (data && data.programs) || {};
                     _geminiMissionPrograms = (data && data.missionPrograms) || {};
+                    _geminiProgramProfiles = (data && data.programProfiles) || {};
                     return _geminiPurposeMap;
                 })
                 .catch(() => {
@@ -8982,6 +8985,7 @@
                     _geminiTimelineMap = {};
                     _geminiProgramsMap = {};
                     _geminiMissionPrograms = {};
+                    _geminiProgramProfiles = {};
                     return _geminiPurposeMap;
                 });
             return _geminiPurposeLoad;
@@ -9401,24 +9405,25 @@
             pt: "Desde {y}", pl: "Od {y} r.", hi: "{y} से", ar: "منذ {y}", tr: "{y} yılından beri",
         };
         // the card's stats box / section titles
+        // the card's section titles, fact labels (program-profiles.json "facts" keys) and status words
         const PROGRAM_CARD_I18N = {
-            en: { started: "Started", about: "About the Program", also: "Other Programs" },
-            he: { started: "שנת הקמה", about: "על התוכנית", also: "תוכניות נוספות" },
-            es: { started: "Inicio", about: "Sobre el Programa", also: "Otros programas" },
-            fr: { started: "Lancement", about: "À propos du Programme", also: "Autres programmes" },
-            de: { started: "Beginn", about: "Über das Programm", also: "Weitere Programme" },
-            ru: { started: "Год начала", about: "О программе", also: "Другие программы" },
-            zh: { started: "启动年份", about: "项目简介", also: "其他项目" },
-            it: { started: "Avvio", about: "Il Programma", also: "Altri programmi" },
-            cs: { started: "Zahájení", about: "O programu", also: "Další programy" },
-            sv: { started: "Start", about: "Om programmet", also: "Andra program" },
-            nl: { started: "Gestart", about: "Over het programma", also: "Andere programma's" },
-            da: { started: "Startet", about: "Om programmet", also: "Andre programmer" },
-            pt: { started: "Início", about: "Sobre o Programa", also: "Outros programas" },
-            pl: { started: "Początek", about: "O programie", also: "Inne programy" },
-            hi: { started: "शुरुआत", about: "कार्यक्रम के बारे में", also: "अन्य कार्यक्रम" },
-            ar: { started: "سنة البدء", about: "عن البرنامج", also: "برامج أخرى" },
-            tr: { started: "Başlangıç", about: "Program Hakkında", also: "Diğer Programlar" },
+            en: { started: "Started", about: "About the Program", also: "Other Programs", operator: "Operator", partners: "Partners", spacecraft: "Spacecraft", vehicle: "Launch vehicles", orbit: "Orbit", crewedSince: "Crewed since", satellites: "Satellites", height: "Height", engines: "Engines", status: "Status", active: "Active", completed: "Completed", development: "In development", overview: "Overview", milestones: "Milestones", spacex: "SpaceX in the Program", launchesYear: "SpaceX launches (past year)", nextLaunch: "Next launch" },
+            he: { started: "שנת הקמה", about: "על התוכנית", also: "תוכניות נוספות", operator: "גוף מפעיל", partners: "שותפות", spacecraft: "חלליות", vehicle: "משגרים", orbit: "גובה המסלול", crewedSince: "מאוישת מאז", satellites: "לוויינים", height: "גובה", engines: "מנועים", status: "סטטוס", active: "פעילה", completed: "הסתיימה", development: "בפיתוח", overview: "סקירה", milestones: "אבני דרך", spacex: "SpaceX בתוכנית", launchesYear: "שיגורי SpaceX בשנה האחרונה", nextLaunch: "השיגור הבא בתוכנית" },
+            es: { started: "Inicio", about: "Sobre el Programa", also: "Otros programas", operator: "Operador", partners: "Socios", spacecraft: "Naves", vehicle: "Lanzadores", orbit: "Órbita", crewedSince: "Habitada desde", satellites: "Satélites", height: "Altura", engines: "Motores", status: "Estado", active: "Activo", completed: "Finalizado", development: "En desarrollo", overview: "Resumen", milestones: "Hitos", spacex: "SpaceX en el programa", launchesYear: "Lanzamientos de SpaceX (último año)", nextLaunch: "Próximo lanzamiento" },
+            fr: { started: "Lancement", about: "À propos du Programme", also: "Autres programmes", operator: "Opérateur", partners: "Partenaires", spacecraft: "Vaisseaux", vehicle: "Lanceurs", orbit: "Orbite", crewedSince: "Habitée depuis", satellites: "Satellites", height: "Hauteur", engines: "Moteurs", status: "Statut", active: "Actif", completed: "Terminé", development: "En développement", overview: "Présentation", milestones: "Étapes clés", spacex: "SpaceX dans le programme", launchesYear: "Lancements SpaceX (12 derniers mois)", nextLaunch: "Prochain lancement" },
+            de: { started: "Beginn", about: "Über das Programm", also: "Weitere Programme", operator: "Betreiber", partners: "Partner", spacecraft: "Raumschiffe", vehicle: "Trägerraketen", orbit: "Umlaufbahn", crewedSince: "Bewohnt seit", satellites: "Satelliten", height: "Höhe", engines: "Triebwerke", status: "Status", active: "Aktiv", completed: "Abgeschlossen", development: "In Entwicklung", overview: "Überblick", milestones: "Meilensteine", spacex: "SpaceX im Programm", launchesYear: "SpaceX-Starts (letzte 12 Monate)", nextLaunch: "Nächster Start" },
+            ru: { started: "Год начала", about: "О программе", also: "Другие программы", operator: "Оператор", partners: "Партнёры", spacecraft: "Корабли", vehicle: "Ракеты-носители", orbit: "Орбита", crewedSince: "Обитаема с", satellites: "Спутники", height: "Высота", engines: "Двигатели", status: "Статус", active: "Действует", completed: "Завершена", development: "В разработке", overview: "Обзор", milestones: "Ключевые этапы", spacex: "SpaceX в программе", launchesYear: "Запуски SpaceX за год", nextLaunch: "Следующий запуск" },
+            zh: { started: "启动年份", about: "项目简介", also: "其他项目", operator: "运营方", partners: "合作方", spacecraft: "航天器", vehicle: "运载火箭", orbit: "轨道", crewedSince: "有人驻留始于", satellites: "卫星", height: "高度", engines: "发动机", status: "状态", active: "进行中", completed: "已结束", development: "研制中", overview: "概述", milestones: "里程碑", spacex: "SpaceX 的角色", launchesYear: "过去一年 SpaceX 发射次数", nextLaunch: "下一次发射" },
+            it: { started: "Avvio", about: "Il Programma", also: "Altri programmi", operator: "Operatore", partners: "Partner", spacecraft: "Veicoli spaziali", vehicle: "Lanciatori", orbit: "Orbita", crewedSince: "Abitata dal", satellites: "Satelliti", height: "Altezza", engines: "Motori", status: "Stato", active: "Attivo", completed: "Concluso", development: "In sviluppo", overview: "Panoramica", milestones: "Tappe fondamentali", spacex: "SpaceX nel programma", launchesYear: "Lanci SpaceX (ultimo anno)", nextLaunch: "Prossimo lancio" },
+            cs: { started: "Zahájení", about: "O programu", also: "Další programy", operator: "Provozovatel", partners: "Partneři", spacecraft: "Kosmické lodě", vehicle: "Nosné rakety", orbit: "Oběžná dráha", crewedSince: "Obydlena od", satellites: "Družice", height: "Výška", engines: "Motory", status: "Stav", active: "Aktivní", completed: "Ukončen", development: "Ve vývoji", overview: "Přehled", milestones: "Milníky", spacex: "SpaceX v programu", launchesYear: "Starty SpaceX (poslední rok)", nextLaunch: "Příští start" },
+            sv: { started: "Start", about: "Om programmet", also: "Andra program", operator: "Operatör", partners: "Partner", spacecraft: "Rymdfarkoster", vehicle: "Bärraketer", orbit: "Omloppsbana", crewedSince: "Bemannad sedan", satellites: "Satelliter", height: "Höjd", engines: "Motorer", status: "Status", active: "Aktivt", completed: "Avslutat", development: "Under utveckling", overview: "Översikt", milestones: "Milstolpar", spacex: "SpaceX i programmet", launchesYear: "SpaceX-uppskjutningar (senaste året)", nextLaunch: "Nästa uppskjutning" },
+            nl: { started: "Gestart", about: "Over het programma", also: "Andere programma's", operator: "Operator", partners: "Partners", spacecraft: "Ruimtevaartuigen", vehicle: "Draagraketten", orbit: "Baan", crewedSince: "Bemand sinds", satellites: "Satellieten", height: "Hoogte", engines: "Motoren", status: "Status", active: "Actief", completed: "Afgerond", development: "In ontwikkeling", overview: "Overzicht", milestones: "Mijlpalen", spacex: "SpaceX in het programma", launchesYear: "SpaceX-lanceringen (afgelopen jaar)", nextLaunch: "Volgende lancering" },
+            da: { started: "Startet", about: "Om programmet", also: "Andre programmer", operator: "Operatør", partners: "Partnere", spacecraft: "Rumfartøjer", vehicle: "Løfteraketter", orbit: "Kredsløb", crewedSince: "Bemandet siden", satellites: "Satellitter", height: "Højde", engines: "Motorer", status: "Status", active: "Aktivt", completed: "Afsluttet", development: "Under udvikling", overview: "Overblik", milestones: "Milepæle", spacex: "SpaceX i programmet", launchesYear: "SpaceX-opsendelser (seneste år)", nextLaunch: "Næste opsendelse" },
+            pt: { started: "Início", about: "Sobre o Programa", also: "Outros programas", operator: "Operador", partners: "Parceiros", spacecraft: "Naves", vehicle: "Lançadores", orbit: "Órbita", crewedSince: "Habitada desde", satellites: "Satélites", height: "Altura", engines: "Motores", status: "Status", active: "Ativo", completed: "Encerrado", development: "Em desenvolvimento", overview: "Visão geral", milestones: "Marcos", spacex: "A SpaceX no programa", launchesYear: "Lançamentos da SpaceX (último ano)", nextLaunch: "Próximo lançamento" },
+            pl: { started: "Początek", about: "O programie", also: "Inne programy", operator: "Operator", partners: "Partnerzy", spacecraft: "Statki kosmiczne", vehicle: "Rakiety nośne", orbit: "Orbita", crewedSince: "Załogowa od", satellites: "Satelity", height: "Wysokość", engines: "Silniki", status: "Status", active: "Aktywny", completed: "Zakończony", development: "W fazie rozwoju", overview: "Przegląd", milestones: "Kamienie milowe", spacex: "SpaceX w programie", launchesYear: "Starty SpaceX (ostatni rok)", nextLaunch: "Następny start" },
+            hi: { started: "शुरुआत", about: "कार्यक्रम के बारे में", also: "अन्य कार्यक्रम", operator: "संचालक", partners: "साझेदार", spacecraft: "अंतरिक्ष यान", vehicle: "प्रक्षेपण यान", orbit: "कक्षा", crewedSince: "मानवयुक्त (वर्ष से)", satellites: "उपग्रह", height: "ऊँचाई", engines: "इंजन", status: "स्थिति", active: "सक्रिय", completed: "समाप्त", development: "विकासाधीन", overview: "अवलोकन", milestones: "प्रमुख पड़ाव", spacex: "कार्यक्रम में SpaceX", launchesYear: "SpaceX प्रक्षेपण (पिछला वर्ष)", nextLaunch: "अगला प्रक्षेपण" },
+            ar: { started: "سنة البدء", about: "عن البرنامج", also: "برامج أخرى", operator: "الجهة المشغلة", partners: "الشركاء", spacecraft: "المركبات الفضائية", vehicle: "الصواريخ", orbit: "المدار", crewedSince: "مأهولة منذ", satellites: "الأقمار الصناعية", height: "الارتفاع", engines: "المحركات", status: "الحالة", active: "نشط", completed: "منتهٍ", development: "قيد التطوير", overview: "نظرة عامة", milestones: "محطات رئيسية", spacex: "دور SpaceX في البرنامج", launchesYear: "إطلاقات SpaceX (العام الماضي)", nextLaunch: "الإطلاق التالي" },
+            tr: { started: "Başlangıç", about: "Program Hakkında", also: "Diğer Programlar", operator: "Operatör", partners: "Ortaklar", spacecraft: "Uzay araçları", vehicle: "Fırlatma araçları", orbit: "Yörünge", crewedSince: "İnsanlı (yıl)", satellites: "Uydular", height: "Yükseklik", engines: "Motorlar", status: "Durum", active: "Aktif", completed: "Tamamlandı", development: "Geliştiriliyor", overview: "Genel Bakış", milestones: "Kilometre Taşları", spacex: "Programda SpaceX", launchesYear: "SpaceX fırlatmaları (son bir yıl)", nextLaunch: "Sonraki fırlatma" },
         };
         function programLangKey(currentLang) {
             const k = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
@@ -9479,59 +9484,163 @@
             } else paint();
         }
         let _programModalGen = 0;
-        function renderProgramModal() {
+        // The hand-written program cards (program-profiles.json), loaded when a card is first opened
+        let _programProfiles = null, _programProfilesLoad = null;
+        function loadProgramProfiles() {
+            if (_programProfilesLoad) return _programProfilesLoad;
+            _programProfilesLoad = fetch('program-profiles.json', { cache: 'no-cache' })
+                .then(r => (r && r.ok ? r.json() : {}))
+                .then(d => { _programProfiles = (d && d.profiles) || {}; })
+                .catch(() => { _programProfiles = {}; });
+            return _programProfilesLoad;
+        }
+        const normProgramName = n => String(n || '').replace(/^\s*SpaceX\s+/i, '').trim().toLowerCase();
+        function programProfileFor(p) {
+            if (!_programProfiles || !p) return null;
+            if (p.id != null && _programProfiles[String(p.id)]) return { id: String(p.id), prof: _programProfiles[String(p.id)] };
+            const n = normProgramName(p.name);
+            for (const [id, prof] of Object.entries(_programProfiles)) {
+                if ((prof.names || []).some(x => normProgramName(x) === n)) return { id, prof };
+            }
+            return null;
+        }
+        // same order as translate_mission_purpose.py's profile_texts: fact values, overview, milestones, SpaceX
+        function programProfileTexts(prof) {
+            return (prof.facts || []).map(f => String(f[1]))
+                .concat((prof.overview || []).map(String))
+                .concat((prof.milestones || []).map(m => String(m[1])))
+                .concat(prof.spacex ? [String(prof.spacex)] : []);
+        }
+        // every programme a mission belongs to, for the card's live figures (Starlink flights whose data has no
+        // programme field still count as Starlink)
+        function programsOfMission(m) {
+            if (!m) return [];
+            if (Array.isArray(m.programs) && m.programs.length) return m.programs;
+            const ids = (_geminiMissionPrograms && _geminiMissionPrograms[m.id]) || [];
+            if (ids.length) return ids.map(id => Object.assign({ id: String(id) }, (_geminiProgramsMap && _geminiProgramsMap[id]) || {}));
+            return m.category === 'starlink' ? [{ id: '25', name: 'Starlink' }] : [];
+        }
+        function sameProgram(a, b) {
+            if (a.id != null && b.id != null && String(a.id) === String(b.id)) return true;
+            return !!a.name && normProgramName(a.name) === normProgramName(b.name);
+        }
+        // from this site's own launch lists: SpaceX launches in this programme over the past 12 months, and the next one
+        function programLiveStats(p) {
+            const now = Date.now(), yearAgo = now - 365 * 86400000;
+            const inProg = m => programsOfMission(m).some(q => sameProgram(q, p));
+            const past = (rawPastMissions || []).filter(m => { const t = Date.parse(m.date); return t >= yearAgo && t <= now && inProg(m); });
+            // the next one other than the mission whose card this is
+            const self = window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.id;
+            const next = (dbMissions || []).filter(m => m.id !== self && Date.parse(m.date) > now && inProg(m)).sort((a, b) => Date.parse(a.date) - Date.parse(b.date))[0] || null;
+            return { pastCount: new Set(past.map(m => m.id)).size, next };
+        }
+        function renderProgramModal(index) {
             const body = document.getElementById('program-modal-body');
             if (!body) return;
+            const all = window.currentActiveMissionPrograms || [];
+            if (!all.length) return;
+            if (typeof index === 'number') window._programModalIndex = index;
+            const idx = Math.min(window._programModalIndex || 0, all.length - 1);
             const key = programLangKey();
+            const lang = document.documentElement.lang || 'en';
             const myGen = ++_programModalGen;
-            const progs = window.currentActiveMissionPrograms || [];
-            if (!progs.length) return;
             const card = PROGRAM_CARD_I18N[key] || PROGRAM_CARD_I18N.en;
             const since = PROGRAM_SINCE_I18N[key] || PROGRAM_SINCE_I18N.en;
-            const texts = progs.map(p => programText(p, key));
-            const year = p => /^\d{4}/.test(p.start || '') ? p.start.slice(0, 4) : '';
+            const p = all[idx];
+            const others = all.map((q, i) => i).filter(i => i !== idx);
+            const names = all.map(q => programText(q, key));
+            const found = programProfileFor(p);
+            const prof = found && found.prof;
+            // the card's texts in the site language: the Gemini translation of the hand-written card, or (card not
+            // translated yet / no card) Google Translate meanwhile
+            let texts = prof ? programProfileTexts(prof) : [];
+            const stored = found && _geminiProgramProfiles && _geminiProgramProfiles[found.id];
+            const tr = key !== 'en' && stored && stored.t && Array.isArray(stored.t[key]) && stored.t[key].length === texts.length ? stored.t[key] : null;
+            if (tr) texts = tr.slice();
+            const needsGoogle = prof && key !== 'en' && !tr;
+            const year = q => /^\d{4}/.test(q.start || '') ? q.start.slice(0, 4) : '';
             const titleEl = document.getElementById('program-modal-title');
             const nameEl = document.getElementById('program-modal-name');
             const imgEl = document.getElementById('program-modal-img');
             const hero = document.getElementById('program-modal-hero');
             if (titleEl) titleEl.textContent = programLabel(key);
-            // the main programme's image across the top, faded into the card (same as the other info cards); a
-            // programme with no image gets the mission's own photo instead
-            const img = progs[0].image || (window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.image) || '';
-            if (imgEl) { imgEl.onerror = () => { if (hero) hero.classList.add('hidden'); }; imgEl.src = img; imgEl.alt = texts[0].name; }
+            // the programme's image across the top, faded into the card (as in the other info cards); one with no
+            // image gets the mission's own photo instead
+            const img = p.image || (window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.image) || '';
+            if (imgEl) { imgEl.onerror = () => { if (hero) hero.classList.add('hidden'); }; imgEl.src = img; imgEl.alt = names[idx].name; }
             if (hero) hero.classList.toggle('hidden', !img);
+            const live = programLiveStats(p);
+            // the labels are set in capitals - but not the brand inside one ("SpaceX", not "SPACEX")
+            const capsLabel = label => escapeHtml(label).replace(/SpaceX/g, '<span class="normal-case">SpaceX</span>');
+            const box = (label, valueHtml) => `<div class="bg-zinc-950 border border-zinc-800/50 rounded-2xl p-3 text-center transition-colors duration-500">
+                    <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">${capsLabel(label)}</div>
+                    <div class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-snug">${valueHtml}</div>
+                </div>`;
+            const section = (title, inner) => `<div class="space-y-2">
+                    <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">${escapeHtml(title)}</h4>
+                    ${inner}
+                </div>`;
             const paint = () => {
                 if (myGen !== _programModalGen) return;
-                if (nameEl) nameEl.textContent = texts[0].name;
-                const y0 = year(progs[0]);
-                let html = y0 ? `<div class="grid grid-cols-1 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
-                        <div>
-                            <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">${escapeHtml(card.started)}</div>
-                            <div class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">${escapeHtml(y0)}</div>
+                if (nameEl) nameEl.textContent = names[idx].name;
+                let t = 0;
+                const facts = [];
+                if (prof && prof.status && card[prof.status]) facts.push(box(card.status, escapeHtml(card[prof.status])));
+                if (prof) (prof.facts || []).forEach(f => { const v = texts[t++]; if (card[f[0]]) facts.push(box(card[f[0]], `<span dir="auto">${escapeHtml(v)}</span>`)); });
+                else if (year(p)) facts.push(box(card.started, escapeHtml(year(p))));
+                if (live.pastCount > 0) facts.push(box(card.launchesYear, escapeHtml(String(live.pastCount))));
+                if (live.next) {
+                    const d = new Date(live.next.date);
+                    const when = isNaN(d) ? '' : new Intl.DateTimeFormat(dateLocaleForLang(lang), { day: 'numeric', month: 'short' }).format(d);
+                    facts.push(`<button type="button" data-program-next="1" class="bg-zinc-950 border border-zinc-800/50 rounded-2xl p-3 text-center md:hover:border-emerald-500/60 transition-colors duration-300">
+                        <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">${escapeHtml(card.nextLaunch)}</div>
+                        <div class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-snug">${escapeHtml(localizeMissionName(live.next.name, lang))}</div>
+                        <div class="text-[11px] text-zinc-500 mt-0.5" dir="auto">${escapeHtml(when)}</div>
+                    </button>`);
+                }
+                let html = facts.length ? `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">${facts.join('')}</div>` : '';
+                const para = x => `<p class="text-zinc-300 text-xs sm:text-sm leading-relaxed">${escapeHtml(String(x).trim())}</p>`;
+                if (prof) {
+                    const ov = (prof.overview || []).map(() => texts[t++]);
+                    const ms = (prof.milestones || []).map(m => [m[0], texts[t++]]);
+                    const sx = prof.spacex ? texts[t++] : '';
+                    if (ov.length) html += section(card.overview, `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl space-y-3 transition-colors duration-500">${ov.map(para).join('')}</div>`);
+                    if (ms.length) html += section(card.milestones, `<div class="bg-zinc-950/40 border border-zinc-850 rounded-2xl transition-colors duration-500">${ms.map(m => `<div class="flex items-start gap-3 px-4 sm:px-5 py-3 border-b border-zinc-800/50 last:border-b-0">
+                            <span class="shrink-0 font-space text-xs sm:text-sm font-bold text-emerald-400 tabular-nums pt-0.5">${escapeHtml(m[0])}</span>
+                            <span class="text-zinc-300 text-xs sm:text-sm leading-relaxed">${escapeHtml(String(m[1]).trim())}</span>
+                        </div>`).join('')}</div>`);
+                    if (sx) html += section(card.spacex, `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl transition-colors duration-500">${para(sx)}</div>`);
+                } else if (names[idx].description) {
+                    html += section(card.about, `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl transition-colors duration-500">${para(names[idx].description)}</div>`);
+                }
+                // the mission's other programmes (e.g. the ISS for a crew or cargo flight): each opens its own card here
+                if (others.length) html += section(card.also, others.map(i => `<button type="button" data-program-index="${i}" class="w-full text-start bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl space-y-1 md:hover:border-emerald-500/60 transition-colors duration-300">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-sm sm:text-base font-semibold text-zinc-200">${escapeHtml(names[i].name)}</span>
+                            <i class="fa-solid fa-chevron-left rtl:rotate-0 ltr:rotate-180 text-xs text-emerald-400"></i>
                         </div>
-                    </div>` : '';
-                if (texts[0].description) html += `<div class="space-y-2">
-                        <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">${escapeHtml(card.about)}</h4>
-                        <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">${escapeHtml(texts[0].description.trim())}</p>
-                    </div>`;
-                // the other programmes (e.g. the ISS for a crew / cargo flight), each in its own box below
-                if (progs.length > 1) html += `<div class="space-y-2">
-                        <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">${escapeHtml(card.also)}</h4>
-                        ${progs.slice(1).map((p, j) => `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl space-y-1.5 transition-colors duration-500">
-                            <div class="text-sm sm:text-base font-semibold text-zinc-200">${escapeHtml(texts[j + 1].name)}</div>
-                            ${year(p) ? `<div class="text-[11px] text-zinc-500">${escapeHtml(since.replace('{y}', year(p)))}</div>` : ''}
-                            ${texts[j + 1].description ? `<p class="text-zinc-300 text-xs sm:text-sm leading-relaxed whitespace-pre-line">${escapeHtml(texts[j + 1].description.trim())}</p>` : ''}
-                        </div>`).join('')}
-                    </div>`;
+                        ${year(all[i]) ? `<div class="text-[11px] text-zinc-500">${escapeHtml(since.replace('{y}', year(all[i])))}</div>` : ''}
+                    </button>`).join('<div class="h-2"></div>'));
                 body.innerHTML = html;
+                body.querySelectorAll('[data-program-index]').forEach(b => b.addEventListener('click', () => {
+                    renderProgramModal(+b.dataset.programIndex);
+                    const content = document.getElementById('program-modal-content');
+                    if (content) content.scrollTop = 0;
+                }));
+                const nextBtn = body.querySelector('[data-program-next]');
+                if (nextBtn && live.next) nextBtn.addEventListener('click', () => { closeProgramModal(); openMissionModal(live.next); });
             };
             paint();
-            // programmes the GitHub job hasn't translated yet: the description through Google Translate meanwhile, the
-            // name left in English (see renderModalProgram)
-            const miss = texts.map((t, i) => t.translated || !progs[i].description ? -1 : i).filter(i => i >= 0);
-            if (miss.length) {
-                translateBatchViaGoogle(miss.map(i => progs[i].description), key).then(out => {
-                    miss.forEach((i, j) => { if (out[j]) texts[i].description = fixMistranslatedPhrasesText(out[j], key); });
+            if (needsGoogle) {
+                translateBatchViaGoogle(programProfileTexts(prof), key).then(out => {
+                    if (myGen !== _programModalGen || !Array.isArray(out) || out.length !== texts.length) return;
+                    texts = out.map(x => fixMistranslatedPhrasesText(x, key));
+                    paint();
+                });
+            } else if (!prof && !names[idx].translated && p.description) {
+                translateBatchViaGoogle([p.description], key).then(([d]) => {
+                    if (myGen !== _programModalGen || !d) return;
+                    names[idx].description = fixMistranslatedPhrasesText(d, key);
                     paint();
                 });
             }
@@ -9539,7 +9648,8 @@
         function openProgramModal() {
             const modal = document.getElementById('program-modal');
             if (!modal || !(window.currentActiveMissionPrograms || []).length) return;
-            renderProgramModal();
+            renderProgramModal(0);
+            if (_programProfiles === null) loadProgramProfiles().then(() => renderProgramModal());
             modal.classList.remove('hidden');
             modal.style.display = 'flex';
             lockBodyScroll();
