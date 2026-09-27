@@ -135,6 +135,8 @@ async function news(url, env, ctx) {
     await Promise.all(items.map(async it => {
       const h = await hash(it.title);
       let t = await kv.get('t3:' + h, 'json');
+      // made by the light model (before it was dropped): never shown
+      if (t && await kv.get('l3:' + h)) t = null;
       // Not translated again yet by a full model: the translation the site showed before (the 't:' keys) meanwhile,
       // unless it's one known to be wrong (a made-up word) - checked language by language below like any other
       if (!t) {
@@ -147,8 +149,7 @@ async function news(url, env, ctx) {
       }
       if (!it.retry && await kv.get('r3:' + h)) it.retry = true;   // rejected before
       // made by the light model (before it was dropped): not shown - Google Translate meanwhile - and translated again
-      if (t && !it.old && await kv.get('l3:' + h)) { delete it.t; missing.push(it); }
-      else if (!t || it.old || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
+      if (!t || it.old || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
     }));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
   }
