@@ -22027,7 +22027,7 @@ setTimeout(() => {
                 // stays centered as the countdown's width changes).
                 // font-orbitron: same heading font as the card titles in every mode (Orbitron in
                 // day/night; the mars/moon theme blocks remap .font-orbitron to Zen Dots/Audiowide).
-                const statusBadgeMobile = `<div class="mission-status-badge font-orbitron md:hidden px-2 py-0.5 text-[11px] leading-[14px] whitespace-nowrap font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
+                const statusBadgeMobile = `<div class="col-start-2 row-start-2 justify-self-end mission-status-badge font-orbitron md:hidden px-2 py-0.5 text-[11px] leading-[14px] whitespace-nowrap font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
                 const statusBadgeDesktop = `<div class="mission-status-badge status-badge-fit font-orbitron max-w-full truncate whitespace-nowrap px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
 
                 const isFav = favoriteMissions.includes(m.id);
@@ -22060,25 +22060,25 @@ setTimeout(() => {
                                  at the same height in every card instead of shifting per description. -->
                             <div class="notranslate mission-card-desc no-starship-protect text-sm text-zinc-400 mb-4 line-clamp-2 min-h-[2.5rem]" translate="no">${escapeHtml(m.description)}</div>
                         </div>
-                        <div class="pt-3 border-t border-zinc-800/60 flex justify-between items-end md:gap-2">
-                            <div class="md:shrink-0">
+                        <div class="pt-3 border-t border-zinc-800/60 grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 md:flex md:justify-between md:items-end md:gap-2">
+                            <!-- Phones: a 2x2 grid - label | countdown on top, buttons | status pill below (the two
+                                 wrappers are display:contents there, so their children are the grid's cells) -->
+                            <div class="contents md:block md:shrink-0">
                                 <!-- md:w-0 + nowrap (desktop only): the label still shows in full
                                      (overflowing its zero-width box toward the badge column, one line
                                      above it), but no longer sets this column's width - the digits
                                      alone do, so the badge re-centers as the countdown's width changes. -->
-                                <div class="md:w-0 md:whitespace-nowrap text-[11px] md:text-[10px] text-zinc-500 font-bold tracking-wider mb-2 md:mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
-                                <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400 md:whitespace-nowrap" translate="no" dir="ltr">--d --h --m</div>
+                                <div class="md:w-0 md:whitespace-nowrap col-start-1 row-start-1 text-[11px] md:text-[10px] text-zinc-500 font-bold tracking-wider md:mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
+                                <div id="countdown-${m.id}" class="col-start-2 row-start-1 justify-self-end countdown-small text-lg font-bold tabular-nums text-emerald-400 md:whitespace-nowrap" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <!-- Desktop only. h-7 = the countdown digits' own line box (text-lg),
                                  so the badge centers on that line; flex-1 + justify-center keeps it
                                  midway between the countdown and the buttons as the digits' width
                                  changes. -->
                             <div class="hidden md:flex flex-1 min-w-0 h-7 items-center justify-center">${statusBadgeDesktop}</div>
-                            <!-- Phones: the status pill sits above the buttons, level with the countdown label on the
-                                 other side. md:contents dissolves this column on desktop, where the pill is the centred one above. -->
-                            <div class="flex flex-col items-end justify-between self-stretch gap-1.5 shrink-0 md:contents">
+                            <div class="contents">
                             ${statusBadgeMobile}
-                            <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
+                            <div class="col-start-1 row-start-2 justify-self-start flex items-center gap-1.5 shrink-0 md:pb-0.5">
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
                                 </button>
@@ -22256,11 +22256,11 @@ setTimeout(() => {
                     if (sLower.includes("hold") || sLower.includes("review") || sLower.includes("delay")) {
                         stamp = 'hold';
                         html = 'HOLD / DELAYED';
-                        className = "countdown-small text-lg font-bold tabular-nums text-amber-500 animate-pulse";
+                        className = CARD_COUNTDOWN_CELL + "countdown-small text-lg font-bold tabular-nums text-amber-500 animate-pulse";
                     } else {
                         stamp = 'live';
                         html = 'IN PROGRESS';
-                        className = "countdown-small text-lg font-bold tabular-nums text-emerald-400 animate-pulse-calm";
+                        className = CARD_COUNTDOWN_CELL + "countdown-small text-lg font-bold tabular-nums text-emerald-400 animate-pulse-calm";
                     }
                 } else {
                     const d = Math.floor(diff / 86400000);
@@ -22268,7 +22268,7 @@ setTimeout(() => {
                     const min = Math.floor((diff % 3600000) / 60000);
                     stamp = `${d}:${h}:${min}`;
                     html = `${d}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">d</span> ${h}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">h</span> ${min}<span class="text-[14px] text-zinc-400 ml-[1px] mr-[1px]">m</span>`;
-                    className = "countdown-small text-lg font-bold tabular-nums text-emerald-400";
+                    className = CARD_COUNTDOWN_CELL + "countdown-small text-lg font-bold tabular-nums text-emerald-400";
                 }
                 if (el.dataset.cdStamp === stamp) return;
                 el.dataset.cdStamp = stamp;
@@ -22276,6 +22276,10 @@ setTimeout(() => {
                 el.innerHTML = html;
             });
         }
+
+        // the countdown's cell in the card's phone grid (label | countdown, buttons | pill) - kept when the
+        // tick above rewrites its classes
+        const CARD_COUNTDOWN_CELL = 'col-start-2 row-start-1 justify-self-end ';
 
         function startCountdowns(missionList) {
             // Same look as before (d/h/m only). Tick every second off the same cadence as
