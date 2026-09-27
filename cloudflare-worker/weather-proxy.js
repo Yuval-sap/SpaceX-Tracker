@@ -1,4 +1,4 @@
-// Cloudflare Worker for spacexfantracker.com - two jobs:
+// Cloudflare Worker for spacexfantracker.com - three jobs:
 //
 // 1. GET /metar?ids=KVBG  - live surface observations (METAR / SPECI) for the stations next to SpaceX's
 //    launch sites, for the site's weather boxes (index.html, fetchSiteObservation).
@@ -13,6 +13,12 @@
 //    the background, at most one request every 10 minutes (a few headlines a day - well inside the free tier),
 //    and until then goes out untranslated, so the page lets Google Translate handle it meanwhile.
 //
+// 3. POST /updates  {texts: [...]}  - Gemini translations of Starship "Pre-Launch Updates" log lines (index.html,
+//    renderModalUpdates). The GitHub job translates them every 4 hours; a line it hasn't reached yet used to go to
+//    Google Translate meanwhile ("FAA launch license acquired" -> "רישיון השיגור של FAA נרכש"). The page now asks
+//    here first: a line is translated once, right then, and kept for good (KV); Gemini is asked at most once every
+//    20 seconds, and only for lines of the kind the log has (short, a handful at a time).
+//
 // Needs (Cloudflare dashboard -> this worker -> Settings):
 //   - KV namespace binding  NEWS_KV   (Storage & databases -> KV -> create one, then bind it here)
 //   - Secret                GEMINI_API_KEY  (same key as the GitHub Actions secret)
@@ -25,7 +31,7 @@ const STATIONS = new Set([
   'KBRO',   // Brownsville airport - nearest station to Starbase (~30 km)
 ]);
 const METAR_CACHE_SECONDS = 120;
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' };
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
 
 export default {
   async fetch(request, env, ctx) {
@@ -34,6 +40,7 @@ export default {
     if (url.pathname === '/metar') return metar(url, ctx);
     if (url.pathname === '/news') return news(url, env, ctx);
     if (url.pathname === '/news/status') return newsStatus(env);
+    if (url.pathname === '/updates' && request.method === 'POST') return updates(request, env);
     return new Response('Not found', { status: 404, headers: CORS });
   },
 };
@@ -240,4 +247,85 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
   }
   // no model had quota left: try again in an hour
   if (quotaHit) await kv.put('meta:next-gemini-at-v2', String(now + 60 * 60 * 1000));
+}
+
+// ------------------------------------------------------------------ pre-launch updates
+const UPDATE_MAX_TEXTS = 20;
+const UPDATE_MAX_CHARS = 300;
+const UPDATE_GEMINI_GAP_MS = 20 * 1000;
+
+async function updates(request, env) {
+  let texts;
+  try { texts = (await request.json()).texts; } catch (e) { return json({ error: 'bad request' }, 400); }
+  if (!Array.isArray(texts) || !texts.length || texts.length > UPDATE_MAX_TEXTS
+    || texts.some(t => typeof t !== 'string' || !t.trim() || t.length > UPDATE_MAX_CHARS)) return json({ error: 'bad request' }, 400);
+  const kv = env.NEWS_KV;
+  if (!kv) return json({ translations: texts.map(() => null) });
+  const langs = Object.keys(LANGS);
+  const keys = await Promise.all(texts.map(async t => 'u:' + await hash(t.trim())));
+  const out = await Promise.all(keys.map(k => kv.get(k, 'json')));
+  const missing = [];
+  out.forEach((t, i) => { if (!t || langs.some(l => !t[l])) missing.push(i); });
+  if (missing.length && env.GEMINI_API_KEY) {
+    const got = await translateUpdates(missing.map(i => texts[i].trim()), env);
+    if (got) await Promise.all(missing.map(async (i, j) => {
+      const t = Object.assign({}, out[i] || {}, got[j]);
+      if (Object.keys(t).length) { out[i] = t; await kv.put(keys[i], JSON.stringify(t)); }
+    }));
+  }
+  return json({ translations: out.map(t => t || null) }, 200, { 'Cache-Control': 'no-store' });
+}
+
+async function translateUpdates(texts, env) {
+  const kv = env.NEWS_KV, now = Date.now();
+  if (now < (Number(await kv.get('meta:upd-next-gemini-at')) || 0)) return null;
+  await kv.put('meta:upd-next-gemini-at', String(now + UPDATE_GEMINI_GAP_MS));
+  const langs = Object.keys(LANGS);
+  // same rules as the GitHub job's UPDATE_PROMPT (translate_mission_purpose.py)
+  const prompt = `You translate short official status-update log entries for a SpaceX rocket launch, from English into several languages, for a chronological update feed on a launch-tracking website.
+
+Return ONLY valid JSON. Top-level keys must be exactly these language codes: ${langs.join(', ')}
+Each language value must be a JSON ARRAY of exactly ${texts.length} strings - the translations, in the SAME ORDER as the numbered entries below. Do not skip, merge, or reorder any entry.
+
+Rules:
+- Natural, accurate translation - not word-for-word. These are terse launch-operations log entries, not full sentences - expand abbreviations naturally in the translation: NET = No Earlier Than, TBC = To Be Confirmed, TBD = To Be Determined, "GO for launch" means the launch has been approved/authorized to proceed.
+- CRITICAL: "launch" / "launched" / "launch window" here ALWAYS means a ROCKET launch (SpaceX sending a vehicle to space) - NEVER a product or service launch. Use each language's own correct term for a rocket launch specifically. Specifically: he=שיגור
+- Regulatory wording: a launch license is issued / granted / received (Hebrew: התקבל רישיון שיגור), never "bought" or "acquired" in the purchase sense.
+- zh must be Simplified Chinese.
+- Keep as-is, untranslated, in every language: SpaceX, Falcon, Falcon 9, Falcon Heavy, Starship, Dragon, FAA, dates, times, and mission/satellite codes such as USSF-153. Keep month names in English exactly as written (the site puts them in each language's own date format itself).
+- Write each translation ONLY in its own language's alphabet (Hebrew letters for he, Arabic for ar, Cyrillic for ru, Chinese characters for zh, Devanagari for hi, Latin for the rest), plus the English names / codes / months above kept as they are.
+- Do not add labels, markdown, or commentary.
+
+Entries:
+${texts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
+  const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', maxOutputTokens: 8192 } });
+  // the stronger models first: a visitor is waiting for this one, and there are only a few lines a day
+  for (const model of env.GEMINI_MODEL ? [env.GEMINI_MODEL] : GEMINI_MODELS_RETRY) {
+    let r;
+    try {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body });
+    } catch (e) { await noteAttempt(kv, { job: 'updates', model, error: 'network: ' + e.message }); return null; }
+    if (!r.ok) {
+      await noteAttempt(kv, { job: 'updates', model, status: r.status, error: (await r.text()).slice(0, 300) });
+      if (r.status === 429 || r.status === 404 || r.status === 400 || r.status >= 500) continue;   // next model
+      return null;
+    }
+    let parsed;
+    try {
+      const data = await r.json();
+      const text = (((data.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '';
+      parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+    } catch (e) { await noteAttempt(kv, { job: 'updates', model, error: 'unreadable answer: ' + e.message }); return null; }
+    await noteAttempt(kv, { job: 'updates', model, ok: true, texts: texts.length });
+    return texts.map((_, i) => {
+      const t = {};
+      for (const l of langs) {
+        const arr = parsed[l];
+        const v = Array.isArray(arr) && arr.length === texts.length && typeof arr[i] === 'string' ? arr[i].trim() : '';
+        if (validTranslation(l, v)) t[l] = v;
+      }
+      return t;
+    });
+  }
+  return null;
 }

@@ -624,6 +624,20 @@
             }
         }
 
+        /* Mission modal info tiles: each title centred over its value, rather than both pinned to the start edge */
+        #modal-vehicle-info-grid > div,
+        #modal-booster-info-grid > div {
+            text-align: center;
+        }
+        #modal-vehicle-info-grid > div > .flex,
+        #modal-booster-info-grid > div > .flex {
+            justify-content: center;
+        }
+        /* the status value is .lang-en-lock, which RTL pins to the right with !important */
+        html[dir="rtl"] #modal-status.lang-en-lock {
+            text-align: center !important;
+        }
+
         /* The 0.7rem/0.8rem shrink right above exists ONLY because Orbitron (this label's
            declared font-family, see .modal-subhead above) is wide enough to wrap these 6 labels
            to 2 lines in English at their original text-sm/text-base size. Orbitron has no Hebrew
@@ -9193,15 +9207,18 @@
                     return mo + (dot || '');
                 });
             };
+            // A Hebrew/Arabic prefix joined to an English name ("מה-FAA.") must never break across lines -
+            // the tile once showed "התקבל רישיון שיגור מה-" with "FAA." alone on the next line
+            const keepPrefixedNames = html => html.replace(/([֐-׿؀-ۿ]+[-־][A-Za-z0-9][A-Za-z0-9.\-]*)/g, '<span class="whitespace-nowrap">$1</span>');
             const paint = (commentsRaw) => {
                 if (_modalUpdatesGen !== myGen) return; // superseded by a newer open/re-render
                 const comments = commentsRaw.map((c, i) => localizeDates(c, real[i]));
-                if (summaryEl) summaryEl.innerText = truncateForTile(comments[0], 60);
+                if (summaryEl) summaryEl.innerHTML = keepPrefixedNames(escapeHtml(truncateForTile(comments[0], 60) || ''));
                 list.innerHTML = real.map((u, i) => {
                     const d = u.createdOn ? dateFmt.format(new Date(u.createdOn)) : '';
                     return `<div class="border-s-2 border-emerald-500/40 ps-3 py-0.5">
                         <div class="text-[10px] text-zinc-500" dir="auto">${escapeHtml(d)}</div>
-                        <div class="text-xs sm:text-sm text-zinc-300 leading-snug">${escapeHtml(comments[i])}</div>
+                        <div class="text-xs sm:text-sm text-zinc-300 leading-snug">${keepPrefixedNames(escapeHtml(comments[i]))}</div>
                     </div>`;
                 }).join('');
             };
@@ -9231,11 +9248,27 @@
                         paint(hits.map(h => fixMistranslatedPhrasesText(h, key)));
                         return;
                     }
-                    translateBatchViaGoogle(missIdx.map(i => expandedEn[i]), key).then(translatedMisses => {
-                        if (_modalUpdatesGen !== myGen) return;
+                    // A line the GitHub job hasn't reached yet: the worker translates it with Gemini on the spot (and
+                    // keeps it). Google Translate goes out alongside and fills in only until - or unless - that answers.
+                    let fromWorker = false;
+                    const paintMisses = (texts) => {
                         const merged = hits.slice();
-                        missIdx.forEach((i, j) => { merged[i] = translatedMisses[j]; });
+                        missIdx.forEach((i, j) => { merged[i] = texts[j]; });
                         paint(merged.map(t => fixMistranslatedPhrasesText(t, key)));
+                    };
+                    fetch(`${WEATHER_OBS_URL}/updates`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ texts: missIdx.map(i => real[i].comment.trim()) })
+                    }).then(r => r.ok ? r.json() : null).then(data => {
+                        if (_modalUpdatesGen !== myGen || !data || !Array.isArray(data.translations)) return;
+                        const got = missIdx.map((i, j) => (data.translations[j] && data.translations[j][key]) || null);
+                        if (got.some(t => !t)) return;   // not all of them - leave it to Google
+                        fromWorker = true;
+                        paintMisses(got);
+                    }).catch(() => { });
+                    translateBatchViaGoogle(missIdx.map(i => expandedEn[i]), key).then(translatedMisses => {
+                        if (_modalUpdatesGen !== myGen || fromWorker) return;
+                        paintMisses(translatedMisses);
                     });
                 });
             };
