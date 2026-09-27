@@ -101,11 +101,12 @@ const GEMINI_MIN_GAP_MS = 10 * 60 * 1000;
 const GEMINI_MAX_TITLES = 10;
 // the free quota is counted per model and per day: start with models the GitHub translation job doesn't use
 // (it starts with gemini-3.8-flash), and move on to the next when one is used up
-const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.8-flash'];
+// the full flash models first - the lite one made up words now and then (Hebrew "רקטחיים" for "rocket") - lite only as the last resort
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 const GEMINI_MODELS_RETRY = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
 async function news(url, env, ctx) {
-  const cache = caches.default, key = new Request('https://cache.internal/news-v1');
+  const cache = caches.default, key = new Request('https://cache.internal/news-v2');
   const hit = await cache.match(key);
   if (hit) {
     const out = new Response(hit.body, hit);
@@ -125,12 +126,12 @@ async function news(url, env, ctx) {
   const missing = [];
   if (kv) {
     await Promise.all(items.map(async it => {
-      const t = await kv.get('t:' + await hash(it.title), 'json');
+      const t = await kv.get('t2:' + await hash(it.title), 'json');
       if (t && typeof t === 'object') {
         for (const l of Object.keys(t)) if (!validTranslation(l, t[l])) { delete t[l]; it.retry = true; }   // a bad one is asked for again
         if (Object.keys(t).length) it.t = t;
       }
-      if (!it.retry && await kv.get('r:' + await hash(it.title))) it.retry = true;   // rejected before
+      if (!it.retry && await kv.get('r2:' + await hash(it.title))) it.retry = true;   // rejected before
       if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
     }));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
@@ -230,7 +231,7 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
     } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }); return; }
     await Promise.all(items.map(async (it, i) => {
-      const h = await hash(it.title), k = 't:' + h, t = Object.assign({}, it.t || {});
+      const h = await hash(it.title), k = 't2:' + h, t = Object.assign({}, it.t || {});
       let rejected = false;
       for (const l of langs) {
         const arr = parsed[l];
@@ -239,9 +240,9 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
         else if (v) rejected = true;
       }
       if (Object.keys(t).length) await kv.put(k, JSON.stringify(t));
-      if (rejected || it.retry) await kv.put('r:' + h, '1');
+      if (rejected || it.retry) await kv.put('r2:' + h, '1');
     }));
-    await caches.default.delete(new Request('https://cache.internal/news-v1'));   // next request picks them up
+    await caches.default.delete(new Request('https://cache.internal/news-v2'));   // next request picks them up
     await noteAttempt(kv, { model, ok: true, titles: items.length });
     return;
   }
