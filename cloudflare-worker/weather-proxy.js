@@ -91,8 +91,9 @@ const STARLINK = { he: 'סטארלינק', ru: 'Старлинк', zh: '星链',
 // every letter of a translation must be English (names like SpaceX / NASA) or the language's own script - the
 // light model once put the Thai word "ภาพ" into a Hebrew headline; such a text is dropped and asked for again
 const OWN_SCRIPT = { he: /\p{Script=Hebrew}/u, ar: /\p{Script=Arabic}/u, ru: /\p{Script=Cyrillic}/u, zh: /\p{Script=Han}/u, hi: /\p{Script=Devanagari}/u };
-function validTranslation(lang, text) {
+function validTranslation(lang, text, source) {
   if (typeof text !== 'string' || !text.trim()) return false;
+  if (source && /SpaceX/.test(source) && !/SpaceX/.test(text)) return false;   // "SpaceX" must stay as it is
   const own = OWN_SCRIPT[lang];
   for (const ch of text.match(/\p{L}/gu) || []) if (!/\p{Script=Latin}/u.test(ch) && !(own && own.test(ch))) return false;
   return !own || own.test(text);          // and a non-Latin language must actually be in its script
@@ -108,7 +109,7 @@ const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-fl
 const GEMINI_MODELS_RETRY = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
 async function news(url, env, ctx) {
-  const cache = caches.default, key = new Request('https://cache.internal/news-v2');
+  const cache = caches.default, key = new Request('https://cache.internal/news-v3');
   const hit = await cache.match(key);
   if (hit) {
     const out = new Response(hit.body, hit);
@@ -128,20 +129,22 @@ async function news(url, env, ctx) {
   const missing = [];
   if (kv) {
     await Promise.all(items.map(async it => {
-      const t = await kv.get('t2:' + await hash(it.title), 'json');
+      const t = await kv.get('t3:' + await hash(it.title), 'json');
       if (t && typeof t === 'object') {
-        for (const l of Object.keys(t)) if (!validTranslation(l, t[l])) { delete t[l]; it.retry = true; }   // a bad one is asked for again
+        for (const l of Object.keys(t)) if (!validTranslation(l, t[l], it.title)) { delete t[l]; it.retry = true; }   // a bad one is asked for again
         if (Object.keys(t).length) it.t = t;
       }
-      if (!it.retry && await kv.get('r2:' + await hash(it.title))) it.retry = true;   // rejected before
+      if (!it.retry && await kv.get('r3:' + await hash(it.title))) it.retry = true;   // rejected before
       if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
+      else if (await kv.get('l3:' + await hash(it.title))) { it.provisional = true; }
     }));
+    if (!(await kv.get('meta:full-busy'))) missing.push(...items.filter(it => it.provisional && !missing.includes(it)));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
   }
   const body = JSON.stringify({ at: new Date().toISOString(), items });
   const res = new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${NEWS_CACHE_SECONDS}` } });
   // don't hold a response with untranslated headlines for the full 5 minutes when a translation is on its way
-  if (!missing.length) ctx.waitUntil(cache.put(key, res.clone()));
+  if (!missing.some(it => !it.provisional)) ctx.waitUntil(cache.put(key, res.clone()));
   else ctx.waitUntil(cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60' } })));
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
@@ -155,11 +158,20 @@ async function newsStatus(env) {
   if (kv) {
     out.nextGeminiAt = new Date(Number(await kv.get('meta:next-gemini-at-v2')) || 0).toISOString();
     out.lastAttempt = await kv.get('meta:last-attempt', 'json');
+    out.attempts = await kv.get('meta:attempts', 'json');
+    out.fullModelsBusy = !!(await kv.get('meta:full-busy'));
   }
   return json(out, 200, { 'Cache-Control': 'no-store' });
 }
+// (KV's free tier allows 1,000 writes a day: one log entry per model tried, a round of news translation is ~10 writes)
 async function noteAttempt(kv, result) {
-  try { await kv.put('meta:last-attempt', JSON.stringify({ at: new Date().toISOString(), ...result })); } catch (e) { }
+  try {
+    const entry = { at: new Date().toISOString(), ...result };
+    await kv.put('meta:last-attempt', JSON.stringify(entry));
+    const log = (await kv.get('meta:attempts', 'json')) || [];
+    log.unshift(entry);
+    await kv.put('meta:attempts', JSON.stringify(log.slice(0, 12)));
+  } catch (e) { }
 }
 
 async function readFeed(u, source) {
@@ -212,17 +224,17 @@ Rules:
 Headlines:
 ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', maxOutputTokens: 8192 } });
-  let quotaHit = false;
+  let quotaHit = false, fullFailed = false;
   // a headline whose translation was rejected before goes to the stronger model first, not the light one again
   const models = env.GEMINI_MODEL ? [env.GEMINI_MODEL] : items.some(it => it.retry) ? GEMINI_MODELS_RETRY : GEMINI_MODELS;
   for (const model of models) {
     let r;
-    // recorded before the call, so a call that gets cut off still shows in /news/status
-    await noteAttempt(kv, { model, started: true, titles: items.length });
     try {
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body, signal: AbortSignal.timeout(25000) });
     } catch (e) { await noteAttempt(kv, { model, error: (e.name === 'TimeoutError' ? 'timeout: ' : 'network: ') + e.message }); return; }
     const errText = r.ok ? '' : (await r.text()).slice(0, 300);
+    const lite = /lite/.test(model);
+    if (!r.ok && !lite) fullFailed = true;
     if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }   // model not available on this key - next one
     if (r.status === 429) { quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }); continue; }   // this model's quota is used up - next one
     // overloaded / server error (503 'high demand', 500...): a temporary problem with this model - next one
@@ -235,18 +247,22 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
     } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }); return; }
     await Promise.all(items.map(async (it, i) => {
-      const h = await hash(it.title), k = 't2:' + h, t = Object.assign({}, it.t || {});
+      const h = await hash(it.title), k = 't3:' + h, t = Object.assign({}, it.t || {});
       let rejected = false;
       for (const l of langs) {
         const arr = parsed[l];
         const v = Array.isArray(arr) && arr.length === items.length && typeof arr[i] === 'string' ? arr[i].trim().replace(/[.。]$/, '') : '';
-        if (validTranslation(l, v)) t[l] = v;
+        if (validTranslation(l, v, it.title)) t[l] = v;
         else if (v) rejected = true;
       }
       if (Object.keys(t).length) await kv.put(k, JSON.stringify(t));
-      if (rejected || it.retry) await kv.put('r2:' + h, '1');
+      // made by the light model: kept for now, and translated again once a full model has quota
+      if (lite) await kv.put('l3:' + h, '1'); else await kv.delete('l3:' + h);
+      if (rejected || it.retry) await kv.put('r3:' + h, '1');
     }));
-    await caches.default.delete(new Request('https://cache.internal/news-v2'));   // next request picks them up
+    // every full model was out of quota or overloaded: don't send the light model's own translations back to it
+    if (lite && fullFailed) await kv.put('meta:full-busy', '1', { expirationTtl: 3600 });
+    await caches.default.delete(new Request('https://cache.internal/news-v3'));   // next request picks them up
     await noteAttempt(kv, { model, ok: true, titles: items.length });
     return;
   }

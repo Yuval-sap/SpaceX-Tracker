@@ -1516,6 +1516,10 @@ def main() -> int:
     langs_all = list(LANG_NAMES)
     PROFILE_LANG_BATCHES = [langs_all[i:i + 4] for i in range(0, len(langs_all), 4)]
     profiles_done = 0
+    # At most 2 cards a run (8 calls): all 19 in one run used up the day's quota of every Gemini model the key
+    # has - the site's news translations (the Cloudflare worker, same key) were left with only the light model.
+    PROFILES_PER_RUN = 2
+    profiles_worked = 0
     for pid, prof in profiles.items():
         texts = profile_texts(prof)
         if not texts:
@@ -1524,6 +1528,14 @@ def main() -> int:
         entry = profile_store.get(pid) if isinstance(profile_store.get(pid), dict) else {}
         if entry.get("src") != src:
             entry = {"src": src, "t": {}}
+        if all(isinstance(entry["t"].get(lang), list) and len(entry["t"][lang]) == len(texts) for lang in langs_all):
+            profile_store[pid] = entry
+            profiles_done += 1
+            continue
+        if profiles_worked >= PROFILES_PER_RUN:
+            profile_store[pid] = entry
+            continue
+        profiles_worked += 1
         for batch in PROFILE_LANG_BATCHES:
             need = [lang for lang in batch if not (isinstance(entry["t"].get(lang), list) and len(entry["t"][lang]) == len(texts))]
             if not need:
