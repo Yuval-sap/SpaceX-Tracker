@@ -9588,35 +9588,30 @@
                 if (nameEl) nameEl.textContent = names[idx].name;
                 let t = 0;
                 let html = '';
-                // the key facts as a plain list (label over value, hairlines between rows) - four to a row, two on phones
-                const rows = [];
-                if (prof) (prof.facts || []).forEach(f => { const v = texts[t++]; if (card[f[0]]) rows.push([card[f[0]], v]); });
-                else if (year(p)) rows.push([card.started, year(p)]);
-                if (rows.length) html += `<div>
-                        ${rows.length ? `<dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 sm:gap-x-5">${rows.map(r => `<div class="py-2.5 border-b border-zinc-800/50 min-w-0">
-                            <dt class="${smallCaps}">${capsLabel(r[0])}</dt>
-                            <dd class="text-sm sm:text-base font-semibold text-zinc-200 mt-0.5 leading-snug" dir="auto">${escapeHtml(r[1])}</dd>
-                        </div>`).join('')}</dl>` : ''}
+                // the key facts and the live figures (launches this year, next launch - from the site's own launch lists)
+                // as one plain list: label over value, a hairline under each, four to a row (two on phones), so the live
+                // figures carry on right after the last fact instead of starting a row of their own
+                const cell = (label, valueHtml, extra = '') => `<div class="py-2.5 border-b border-zinc-800/50 min-w-0 ${extra}">
+                        <dt class="${smallCaps}">${capsLabel(label)}</dt>
+                        <dd class="text-sm sm:text-base font-semibold text-zinc-200 mt-0.5 leading-snug">${valueHtml}</dd>
                     </div>`;
-                // live figures from the site's own launch lists, side by side and styled alike: launches this year, next launch
-                if (live.pastCount > 0 || live.next) {
-                    let when = '';
-                    if (live.next) { const d = new Date(live.next.date); when = isNaN(d) ? '' : new Intl.DateTimeFormat(dateLocaleForLang(lang), { day: 'numeric', month: 'short' }).format(d); }
-                    html += `<div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 sm:gap-x-5">
-                        ${live.pastCount > 0 ? `<div class="min-w-0">
-                            <div class="${smallCaps}">${capsLabel(card.launchesYear)}</div>
-                            <div class="text-sm sm:text-base font-semibold text-zinc-200 mt-0.5 leading-snug tabular-nums">${escapeHtml(String(live.pastCount))}</div>
-                        </div>` : ''}
-                        ${live.next ? `<button type="button" data-program-next="1" class="group text-start min-w-0 sm:col-span-3">
-                            <div class="${smallCaps}">${capsLabel(card.nextLaunch)}</div>
-                            <div class="flex items-center gap-2 mt-0.5">
-                                <span class="text-sm sm:text-base font-semibold text-zinc-200 md:group-hover:text-emerald-400 transition-colors leading-snug">${escapeHtml(localizeMissionName(live.next.name, lang))}</span>
-                                <i class="fa-solid fa-chevron-left rtl:rotate-0 ltr:rotate-180 text-[10px] text-emerald-400"></i>
-                            </div>
-                            ${when ? `<div class="text-xs text-zinc-500 mt-0.5" dir="auto">${escapeHtml(when)}</div>` : ''}
-                        </button>` : ''}
-                    </div>`;
+                const cells = [];
+                if (prof) (prof.facts || []).forEach(f => { const v = texts[t++]; if (card[f[0]]) cells.push(cell(card[f[0]], `<span dir="auto">${escapeHtml(v)}</span>`)); });
+                else if (year(p)) cells.push(cell(card.started, escapeHtml(year(p))));
+                if (live.pastCount > 0) cells.push(cell(card.launchesYear, `<span class="tabular-nums">${escapeHtml(String(live.pastCount))}</span>`));
+                if (live.next) {
+                    const d = new Date(live.next.date);
+                    const when = isNaN(d) ? '' : new Intl.DateTimeFormat(dateLocaleForLang(lang), { day: 'numeric', month: 'short' }).format(d);
+                    cells.push(`<button type="button" data-program-next="1" class="group text-start py-2.5 border-b border-zinc-800/50 min-w-0 col-span-2">
+                        <div class="${smallCaps}">${capsLabel(card.nextLaunch)}</div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-sm sm:text-base font-semibold text-zinc-200 md:group-hover:text-emerald-400 transition-colors leading-snug">${escapeHtml(localizeMissionName(live.next.name, lang))}</span>
+                            <i class="fa-solid fa-chevron-left rtl:rotate-0 ltr:rotate-180 text-[10px] text-emerald-400"></i>
+                        </div>
+                        ${when ? `<div class="text-xs text-zinc-500 mt-0.5" dir="auto">${escapeHtml(when)}</div>` : ''}
+                    </button>`);
                 }
+                if (cells.length) html += `<dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 sm:gap-x-5">${cells.join('')}</dl>`;
                 const para = x => `<p class="text-zinc-300 text-sm leading-relaxed">${escapeHtml(String(x).trim())}</p>`;
                 if (prof) {
                     const ov = (prof.overview || []).map(() => texts[t++]);
