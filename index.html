@@ -659,6 +659,11 @@
             body.moon-theme .news-list-item:hover { border-color: #3fa9f5; }
         }
 
+        /* Program card logo: the version made for the current theme (Galileo's has a light-page and a dark-page one) */
+        .program-logo-light { display: none; }
+        body.light-theme .program-logo-light { display: block; }
+        body.light-theme .program-logo-dark { display: none; }
+
         /* Mission modal info tiles: each title centred over its value, rather than both pinned to the start edge */
         #modal-vehicle-info-grid > div,
         #modal-booster-info-grid > div {
@@ -9574,12 +9579,18 @@
             // image only when the mission has none. A programme whose image is its logo / emblem (program-profiles.json
             // "logoImage") shows it small beside the title, like the mission patch beside a mission's title.
             const img = (window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.image) || p.image || '';
+            // the logo: a transparent version of our own when the programme's comes on a background (program-profiles.json
+            // "logo", one for dark and one for light pages), otherwise Launch Library's own transparent logo
+            // (two copies of the image; CSS shows the one for the current theme - .program-logo-dark / -light)
             const logoEl = document.getElementById('program-modal-logo');
-            if (logoEl) {
-                const logo = prof && prof.logoImage && p.image ? p.image : '';
-                logoEl.onerror = () => logoEl.classList.add('hidden');
-                logoEl.classList.toggle('hidden', !logo);
-                if (logo) { logoEl.src = logo; logoEl.alt = names[idx].name; } else logoEl.removeAttribute('src');
+            const logoLightEl = document.getElementById('program-modal-logo-light');
+            const logoWrap = document.getElementById('program-modal-logo-wrap');
+            if (logoEl && logoLightEl && logoWrap) {
+                const dark = (prof && prof.logo && prof.logo.dark) || (prof && prof.logoImage && p.image) || '';
+                const light = (prof && prof.logo && prof.logo.light) || dark;
+                logoWrap.classList.toggle('hidden', !dark);
+                if (dark) { logoEl.src = dark; logoLightEl.src = light; logoEl.alt = logoLightEl.alt = names[idx].name; }
+                else { logoEl.removeAttribute('src'); logoLightEl.removeAttribute('src'); }
             }
             if (imgEl) { imgEl.onerror = () => { if (hero) hero.classList.add('hidden'); }; imgEl.src = img; imgEl.alt = names[idx].name; }
             if (hero) hero.classList.toggle('hidden', !img);
@@ -14866,19 +14877,30 @@
             <div id="program-modal-hero" class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
                 <img id="program-modal-img" src="" class="absolute inset-0 w-full h-full object-cover" alt="">
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
-                <!-- name + status, and the programme's logo beside them (like the mission patch beside a mission's title) -->
-                <div class="relative z-10 h-full flex items-end justify-between gap-3 p-4 sm:p-6">
-                    <div class="min-w-0">
-                        <div id="program-modal-name" class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight" translate="no"></div>
-                        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
-                            <div id="program-modal-title"
-                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase notranslate"
-                                translate="no">Program</div>
-                            <span id="program-modal-status" class="notranslate" translate="no"></span>
+                <!-- name + status, with the programme's logo right beside them - the same layout, size and hover as the
+                     mission patch beside a mission's title (#modal-patch-wrap); a click opens it large -->
+                <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
+                    <div class="flex items-center gap-6 min-w-0">
+                        <div class="min-w-0">
+                            <div id="program-modal-name" class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight" translate="no"></div>
+                            <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
+                                <div id="program-modal-title"
+                                    class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase notranslate"
+                                    translate="no">Program</div>
+                                <span id="program-modal-status" class="notranslate" translate="no"></span>
+                            </div>
+                        </div>
+                        <div id="program-modal-logo-wrap"
+                            class="hidden relative shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center group/patch cursor-pointer"
+                            onclick="openPatchLightbox(document.getElementById(document.body.classList.contains('light-theme') ? 'program-modal-logo-light' : 'program-modal-logo').src, document.getElementById('program-modal-logo').alt, event)">
+                            <div class="absolute inset-1 rounded-full patch-hover-glow transition-all duration-300 pointer-events-none"></div>
+                            <img id="program-modal-logo" src="" alt=""
+                                class="program-logo-dark relative w-11 h-11 sm:w-12 sm:h-12 object-contain transition-transform duration-300 group-active/patch:-translate-y-0.5 group-active/patch:scale-105 md:group-hover/patch:-translate-y-0.5 md:group-hover/patch:scale-105"
+                                onerror="this.closest('#program-modal-logo-wrap').classList.add('hidden')">
+                            <img id="program-modal-logo-light" src="" alt=""
+                                class="program-logo-light relative w-11 h-11 sm:w-12 sm:h-12 object-contain transition-transform duration-300 group-active/patch:-translate-y-0.5 group-active/patch:scale-105 md:group-hover/patch:-translate-y-0.5 md:group-hover/patch:scale-105">
                         </div>
                     </div>
-                    <img id="program-modal-logo" src="" alt=""
-                        class="hidden shrink-0 w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-xl shadow-lg">
                 </div>
             </div>
             <div id="program-modal-body" class="notranslate p-4 sm:p-6 space-y-5 sm:space-y-6" translate="no"></div>
