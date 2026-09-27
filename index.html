@@ -22173,14 +22173,7 @@ setTimeout(() => {
                 // Hollow star (fa-regular) even when favorited, matching the "Watchlist"
                 // filter-row button's own icon style - was fa-solid (filled) here before.
                 const starClass = isFav ? 'fa-regular fa-star text-amber-400' : 'fa-regular fa-star text-zinc-400 group-hover/fav:text-amber-400 md:group-hover/fav:text-black';
-
-                const isReminded = remindedMissions.includes(m.id);
-                const bellClass = isReminded
-                    ? "flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-emerald-500 text-black rounded-xl border border-emerald-500 transition-colors"
-                    : "group/remind flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black text-zinc-400 rounded-xl border border-zinc-700 transition-colors";
-
-                const bellIconClass = isReminded ? "fa-solid fa-bell" : "fa-solid fa-bell group-hover/remind:animate-pulse";
-
+                // no reminder button here - a launch that already happened has nothing to remind about
 
                 const card = document.createElement('div');
                 card.className = `relative min-w-[280px] sm:min-w-[340px] max-w-[340px] bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden snap-start shrink-0 cursor-pointer hover:border-zinc-700 z-20 mission-card`;
@@ -22213,9 +22206,6 @@ setTimeout(() => {
                             <div class="flex items-center gap-1.5 shrink-0">
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
-                                </button>
-                                <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
-                                    <i class="${bellIconClass}"></i>
                                 </button>
                             </div>
                         </div>
