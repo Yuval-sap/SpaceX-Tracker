@@ -9117,7 +9117,7 @@
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
         // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
         // language/unit switches live. The iframe is unloaded on close so it stops rendering.
-        const STARSHIP_SIM_VERSION = '63';
+        const STARSHIP_SIM_VERSION = '64';
         function openStarshipSim() {
             const modal = document.getElementById('starship-sim-modal');
             const frame = document.getElementById('starship-sim-frame');
@@ -9167,7 +9167,9 @@
                 if (!menu.classList.contains('hidden') && desktopShareAnchor) { setDesktopShareMenuOpen(false); return; }
                 const fr = document.getElementById('starship-sim-frame').getBoundingClientRect(), r = e.data.rect;
                 desktopShareAnchor = { left: fr.left + r.left, right: fr.left + r.right, top: fr.top + r.top, bottom: fr.top + r.bottom };
-                desktopSharePayload = e.data.payload;
+                // email subject in the site language ("SpaceX • סימולציית סטארשיפ"), like the mission shares
+                const simDict = LAUNCH_LABEL_I18N[(document.documentElement.lang || 'en').toLowerCase().split('-')[0]] || LAUNCH_LABEL_I18N.en;
+                desktopSharePayload = Object.assign({}, e.data.payload, { shareTitle: localizedShareTitle(simDict.starshipSim || LAUNCH_LABEL_I18N.en.starshipSim) });
                 wireDesktopShareMenuLinks(desktopSharePayload);
                 const copyLabel = document.getElementById('desktop-share-copy-label');
                 if (copyLabel) delete copyLabel.dataset.copied;
@@ -24321,13 +24323,20 @@ setTimeout(() => {
             if (tt && tt.getAttribute('title') !== ttHint) tt.setAttribute('title', ttHint);
         }
 
+        // The email subject, in the share language: the mission name as the site shows it (localizeMissionName now, the
+        // Gemini translation once the names map answers - see wireDesktopShareMenuLinks). A right-to-left mark leads a
+        // Hebrew / Arabic subject, which otherwise starts with "SpaceX" and gets laid out left-to-right, scrambled.
+        function localizedShareTitle(name) {
+            const lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return `${/^(he|iw|ar)$/.test(lang) ? '‏' : ''}SpaceX • ${name}`;
+        }
         function buildDesktopSharePayload(m) {
-            const shareTitle = `SpaceX • ${m.name}`;
+            const shareTitle = localizedShareTitle(localizeMissionName(m.name, document.documentElement.lang));
             const shareUrl = buildMissionShareUrl(m);
             // just the link: the preview card under it already shows the mission (in the share language), so a
             // caption was the same line twice - and always in English
             const shareText = shareUrl;
-            return { shareTitle, shareUrl, shareText };
+            return { shareTitle, shareUrl, shareText, missionName: m.name };
         }
 
         function buildXShareHref(payload) {
@@ -24383,6 +24392,16 @@ setTimeout(() => {
             if (x) x.href = buildXShareHref(payload);
             if (fb) fb.href = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
             if (mail) mail.href = `mailto:?subject=${encodedTitle}&body=${encodeURIComponent(payload.shareText)}`;
+            // the full translated mission name for the subject, as the mission title itself gets it (renderLocalizedMissionName)
+            let lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (!mail || !payload.missionName || lang === 'en') return;
+            if (lang === 'iw') lang = 'he';
+            const mapPromise = _geminiNamesMap !== null ? Promise.resolve(_geminiNamesMap) : loadGeminiPurposeMap().then(() => _geminiNamesMap);
+            mapPromise.then(map => lookupGeminiName(map, payload.missionName, lang)).then(hit => {
+                if (!hit || desktopSharePayload !== payload) return;
+                payload.shareTitle = localizedShareTitle(localizeMissionName(fixMistranslatedPhrasesText(hit, lang), lang));
+                mail.href = `mailto:?subject=${encodeURIComponent(payload.shareTitle)}&body=${encodeURIComponent(payload.shareText)}`;
+            }).catch(() => { });
         }
 
         function positionDesktopShareMenu() {

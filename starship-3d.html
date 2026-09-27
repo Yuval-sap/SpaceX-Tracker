@@ -389,10 +389,8 @@ function simShareData() {
   if (selected && selected !== 'f9') q.set('part', selected);
   const qs = q.toString();
   const url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sim.html' + (qs ? '?' + qs : '');
-  const f = Q.get('f'), pi = selected && PART_INFO.find(p => p.id === selected);
-  const title = 'SpaceX • Starship V3 3D';
-  const text = `Explore SpaceX's Starship V3 in interactive 3D${f ? ` (Flight ${f})` : ''}${pi ? ` - ${pi.n}` : ''}!\n${url}`;
-  return { shareTitle: title, shareUrl: url, shareText: text };
+  // just the link - the preview card under it already says what it is (the site's share menu sets the email subject)
+  return { shareTitle: 'SpaceX • Starship V3 3D', shareUrl: url, shareText: url };
 }
 const shareBtn = document.getElementById('share-btn');
 shareBtn.addEventListener('click', () => {
@@ -404,7 +402,7 @@ shareBtn.addEventListener('click', () => {
     window.parent.postMessage({ type: 'starship-sim-share', payload: data, rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } }, location.origin);
     return;
   }
-  if (navigator.share) { navigator.share({ title: data.shareTitle, text: data.shareText }).catch(() => {}); return; }
+  if (navigator.share) { navigator.share({ text: data.shareText }).catch(() => {}); return; }
   const done = () => { shareBtn.title = I.ui.copied; shareBtn.classList.add('on'); setTimeout(() => { shareBtn.title = I.ui.share; shareBtn.classList.remove('on'); }, 1600); };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(data.shareUrl).then(done, done); else done();
 });
