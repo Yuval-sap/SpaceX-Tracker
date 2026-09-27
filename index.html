@@ -8413,7 +8413,7 @@
                 closeLandingSpecs();
                 const missionModalEl = document.getElementById('mission-modal');
                 if (missionModalEl && typeof closeModal === 'function' && !missionModalEl.classList.contains('hidden')) {
-                    closeModal();
+                    closeModal(true);
                 }
                 if (typeof switchMainTab === 'function') switchMainTab('more');
                 // After the tab transition finishes, so the card has a real position to scroll to.
@@ -9663,9 +9663,19 @@
                     if (content) content.scrollTop = 0;
                 }));
                 const nextBtn = body.querySelector('[data-program-next]');
-                // the mission modal is already open under this card: close it properly first (its scroll lock, its video),
-                // so opening the next mission counts as one open window, not a second one that never gets closed
-                if (nextBtn && live.next) nextBtn.addEventListener('click', () => { closeProgramModal(); closeModal(); openMissionModal(live.next); });
+                // the next launch opens over this mission; closing it comes back here - this mission, this card, same place
+                if (nextBtn && live.next) nextBtn.addEventListener('click', () => {
+                    const cardIdx = window._programModalIndex || 0;
+                    const cardContent = document.getElementById('program-modal-content');
+                    const cardScroll = cardContent ? cardContent.scrollTop : 0;
+                    closeProgramModal();
+                    openMissionFrom(live.next, () => {
+                        openProgramModal();
+                        renderProgramModal(cardIdx);
+                        const c = document.getElementById('program-modal-content');
+                        setTimeout(() => { if (c) c.scrollTop = cardScroll; }, 200);
+                    });
+                });
             };
             paint();
             if (needsGoogle) {
@@ -18551,6 +18561,21 @@
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
         }
 
+        // A flight in the booster's history opens its mission; closing that mission comes back to this list, scrolled
+        // where it was (and to the mission under it, when the list was opened from one)
+        function openMissionFromFlightHistory(missionId) {
+            const m = [...(rawPastMissions || []), ...(dbMissions || [])].find(x => x.id === missionId);
+            if (!m) return;
+            const args = window._flightHistoryArgs || [];
+            const listContent = document.getElementById('flight-history-modal-content');
+            const listScroll = listContent ? listContent.scrollTop : 0;
+            closeFlightHistoryModal();
+            openMissionFrom(m, () => {
+                openFlightHistoryModal(args[0], args[1]);
+                const c = document.getElementById('flight-history-modal-content');
+                setTimeout(() => { if (c) c.scrollTop = listScroll; }, 200);
+            });
+        }
         function closeFlightHistoryModal() {
             const modal = document.getElementById('flight-history-modal');
             modal.classList.add('hidden');
@@ -18607,7 +18632,7 @@
                     upcomingListEl.innerHTML = upcomingFlights.map(m => `
                         <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800/50 rounded-xl p-3 cursor-pointer md:hover:border-amber-500/40 transition-colors"
                             role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)"
-                            onclick="closeFlightHistoryModal(); const m = [...(rawPastMissions||[]), ...(dbMissions||[])].find(x => x.id === '${m.id}'); if (m) openMissionModal(m);">
+                            onclick="openMissionFromFlightHistory('${m.id}')">
                             <div class="w-7 h-7 shrink-0 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
                                 <i class="fa-solid fa-clock text-[10px]"></i>
                             </div>
@@ -18625,7 +18650,7 @@
             listEl.innerHTML = flights.map((m, i) => `
                 <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800/50 rounded-xl p-3 cursor-pointer md:hover:border-emerald-500/40 transition-colors"
                     role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)"
-                    onclick="closeFlightHistoryModal(); const m = [...(rawPastMissions||[]), ...(dbMissions||[])].find(x => x.id === '${m.id}'); if (m) openMissionModal(m);">
+                    onclick="openMissionFromFlightHistory('${m.id}')">
                     <div class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[11px] font-bold text-emerald-400 font-mono">${i + 1}</div>
                     <div class="min-w-0 flex-1">
                         <div class="text-sm font-semibold text-zinc-200 truncate">${escapeHtml(m.name)}</div>
@@ -18640,6 +18665,7 @@
             modal.classList.add('flex');
             document.getElementById('flight-history-modal-content').scrollTop = 0;
             lockBodyScroll();
+            window._flightHistoryArgs = [serial, officialTotal];
         }
 
         function timeAgoLabel(dateInput) {
@@ -23268,7 +23294,23 @@ setTimeout(() => {
             setThreeUp(true);
         }
 
-        function openMissionModal(m) {
+        // Back navigation for the mission modal: a mission opened from inside another window (the program card's
+        // "next launch", a booster's flight history) remembers where it came from - the mission that was showing and
+        // how far it was scrolled, and a function that reopens the window the click came from. Closing the mission
+        // then goes back one step instead of closing everything (closeModal).
+        window._missionNavStack = [];
+        window._openMissionObj = null;
+        function openMissionFrom(m, reopen) {
+            if (!m) return;
+            const modal = document.getElementById('mission-modal');
+            const open = modal && !modal.classList.contains('hidden');
+            const content = document.getElementById('mission-modal-content');
+            window._missionNavStack.push({ mission: open ? window._openMissionObj : null, scrollTop: open && content ? content.scrollTop : 0, reopen: reopen || null });
+            if (open) resetMissionModalMedia();
+            openMissionModal(m, { keepTrail: true });
+        }
+
+        function openMissionModal(m, opts) {
             // Unlike the sibling rocket/site/orbit/landing modals (which all bail cleanly with
             // `if (!data) return;`), this had no guard at all - a malformed mission object (e.g.
             // a future API response missing an expected field) would throw partway through and
@@ -23276,6 +23318,9 @@ setTimeout(() => {
             // opening. Not observed in practice today since processLaunchData always populates
             // every mission fully, but defensive here for the same reason the other modals are.
             if (!m) return;
+            const missionModalWasOpen = !document.getElementById('mission-modal').classList.contains('hidden');
+            if (!(opts && opts.keepTrail)) window._missionNavStack = [];
+            window._openMissionObj = m;
             const missionModalContentEl = document.getElementById('mission-modal-content');
             if (missionModalContentEl) missionModalContentEl.scrollTop = 0;
             const modalNameEl = document.getElementById('modal-name');
@@ -23669,7 +23714,7 @@ setTimeout(() => {
             const modalEl = document.getElementById('mission-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            lockBodyScroll();
+            if (!missionModalWasOpen) lockBodyScroll();
             setTimeout(() => { if (missionModalContentEl) missionModalContentEl.scrollTop = 0; }, 10);
             // Fitted while the modal was display:none, clientWidth is 0 and the
             // size is cached too large. Remeasure now that the title row is visible.
@@ -24617,11 +24662,28 @@ setTimeout(() => {
             }, { passive: false });
         });
 
-        function closeModal() {
+        function closeModal(force) {
+            resetMissionModalMedia();
+            const back = force ? null : window._missionNavStack.pop();
+            if (force) window._missionNavStack = [];
+            // back to the mission this one was opened from, where it was scrolled, with the window the click came from
+            if (back && back.mission) {
+                openMissionModal(back.mission, { keepTrail: true });
+                const content = document.getElementById('mission-modal-content');
+                setTimeout(() => { if (content) content.scrollTop = back.scrollTop; }, 60);
+                if (back.reopen) back.reopen();
+                return;
+            }
             const modal = document.getElementById('mission-modal');
             modal.style.display = 'none';
             modal.classList.add('hidden');
             unlockBodyScroll();
+            window._openMissionObj = null;
+            // opened from a window with no mission under it (e.g. the flight history from the hero): back to that window
+            if (back && back.reopen) back.reopen();
+        }
+        // what closing / switching away from a mission has to stop: its video and the video-related controls
+        function resetMissionModalMedia() {
             // Stop any playing YouTube embed so audio/video does not continue in background -
             // saves the resume position first, if the video that was playing is resumable.
             stopYoutubePlayer('modal-video-iframe');
@@ -27231,6 +27293,7 @@ if (heroNameEl) {
                 ['astronaut-modal', closeAstronautModal],
                 ['preflight-status-modal', closePreflightStatusModal],
                 ['program-modal', closeProgramModal],
+                ['flight-history-modal', closeFlightHistoryModal],
                 ['news-list-modal', closeNewsListModal],
                 ['landing-modal', closeLandingSpecs],
                 ['orbit-modal', closeOrbitSpecs],
