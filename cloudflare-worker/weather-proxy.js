@@ -104,9 +104,11 @@ const GEMINI_MIN_GAP_MS = 3 * 60 * 1000;
 const GEMINI_MAX_TITLES = 3;
 // the free quota is counted per model and per day: start with models the GitHub translation job doesn't use
 // (it starts with gemini-3.8-flash), and move on to the next when one is used up
-// the full flash models first - the lite one made up words now and then (Hebrew "רקטחיים" for "rocket") - lite only as the last resort
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
-const GEMINI_MODELS_RETRY = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+// Full flash models only. The lite one made up Hebrew words ("רקטחיים", "פובלקת") and mistranslated ("סגנון" for
+// "alloy") - worse than Google Translate, which the site uses for a headline with no translation yet. So when every full
+// model is out of quota, headlines just wait (Google Translate meanwhile) until one has quota again.
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.8-flash'];
+const GEMINI_MODELS_RETRY = GEMINI_MODELS;
 
 async function news(url, env, ctx) {
   const cache = caches.default, key = new Request('https://cache.internal/news-v3');
@@ -135,16 +137,16 @@ async function news(url, env, ctx) {
         if (Object.keys(t).length) it.t = t;
       }
       if (!it.retry && await kv.get('r3:' + await hash(it.title))) it.retry = true;   // rejected before
-      if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
-      else if (await kv.get('l3:' + await hash(it.title))) { it.provisional = true; }
+      // made by the light model (before it was dropped): not shown - Google Translate meanwhile - and translated again
+      if (t && await kv.get('l3:' + await hash(it.title))) { delete it.t; missing.push(it); }
+      else if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
     }));
-    if (!(await kv.get('meta:full-busy'))) missing.push(...items.filter(it => it.provisional && !missing.includes(it)));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
   }
   const body = JSON.stringify({ at: new Date().toISOString(), items });
   const res = new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${NEWS_CACHE_SECONDS}` } });
   // don't hold a response with untranslated headlines for the full 5 minutes when a translation is on its way
-  if (!missing.some(it => !it.provisional)) ctx.waitUntil(cache.put(key, res.clone()));
+  if (!missing.length) ctx.waitUntil(cache.put(key, res.clone()));
   else ctx.waitUntil(cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60' } })));
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
@@ -159,7 +161,6 @@ async function newsStatus(env) {
     out.nextGeminiAt = new Date(Number(await kv.get('meta:next-gemini-at-v2')) || 0).toISOString();
     out.lastAttempt = await kv.get('meta:last-attempt', 'json');
     out.attempts = await kv.get('meta:attempts', 'json');
-    out.fullModelsBusy = !!(await kv.get('meta:full-busy'));
   }
   return json(out, 200, { 'Cache-Control': 'no-store' });
 }
@@ -224,7 +225,7 @@ Rules:
 Headlines:
 ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', maxOutputTokens: 8192 } });
-  let quotaHit = false, fullFailed = false;
+  let quotaHit = false;
   // a headline whose translation was rejected before goes to the stronger model first, not the light one again
   const models = env.GEMINI_MODEL ? [env.GEMINI_MODEL] : items.some(it => it.retry) ? GEMINI_MODELS_RETRY : GEMINI_MODELS;
   for (const model of models) {
@@ -233,8 +234,6 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body, signal: AbortSignal.timeout(25000) });
     } catch (e) { await noteAttempt(kv, { model, error: (e.name === 'TimeoutError' ? 'timeout: ' : 'network: ') + e.message }); return; }
     const errText = r.ok ? '' : (await r.text()).slice(0, 300);
-    const lite = /lite/.test(model);
-    if (!r.ok && !lite) fullFailed = true;
     if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }   // model not available on this key - next one
     if (r.status === 429) { quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }); continue; }   // this model's quota is used up - next one
     // overloaded / server error (503 'high demand', 500...): a temporary problem with this model - next one
@@ -256,12 +255,9 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
         else if (v) rejected = true;
       }
       if (Object.keys(t).length) await kv.put(k, JSON.stringify(t));
-      // made by the light model: kept for now, and translated again once a full model has quota
-      if (lite) await kv.put('l3:' + h, '1'); else await kv.delete('l3:' + h);
+      await kv.delete('l3:' + h);
       if (rejected || it.retry) await kv.put('r3:' + h, '1');
     }));
-    // every full model was out of quota or overloaded: don't send the light model's own translations back to it
-    if (lite && fullFailed) await kv.put('meta:full-busy', '1', { expirationTtl: 3600 });
     await caches.default.delete(new Request('https://cache.internal/news-v3'));   // next request picks them up
     await noteAttempt(kv, { model, ok: true, titles: items.length });
     return;
