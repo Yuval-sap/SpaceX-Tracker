@@ -22027,7 +22027,7 @@ setTimeout(() => {
                 // stays centered as the countdown's width changes).
                 // font-orbitron: same heading font as the card titles in every mode (Orbitron in
                 // day/night; the mars/moon theme blocks remap .font-orbitron to Zen Dots/Audiowide).
-                const statusBadgeMobile = `<div class="mission-status-badge font-orbitron md:hidden absolute top-3 left-3 px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full z-20 notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
+                const statusBadgeMobile = `<div class="mission-status-badge font-orbitron md:hidden px-2 py-0.5 text-[11px] leading-[14px] whitespace-nowrap font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
                 const statusBadgeDesktop = `<div class="mission-status-badge status-badge-fit font-orbitron max-w-full truncate whitespace-nowrap px-2.5 py-0.5 text-xs font-bold ${statusColor} border rounded-full notranslate lang-en-lock" translate="no" lang="en">${escapeHtml(m.status)}</div>`;
 
                 const isFav = favoriteMissions.includes(m.id);
@@ -22050,8 +22050,7 @@ setTimeout(() => {
                 card.innerHTML = `
                     <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom" ${cardImgPosStyle(m.image)} alt="${escapeHtml(m.name)}">
                     <div class="absolute inset-0 z-10 mission-card-fade pointer-events-none"></div>
-                    ${statusBadgeMobile}
-                    <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pt-[182px]">
+                    <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pb-1 md:pb-5 pt-[182px]">
                         <div>
                             <div class="notranslate mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
                             <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
@@ -22067,7 +22066,7 @@ setTimeout(() => {
                                      (overflowing its zero-width box toward the badge column, one line
                                      above it), but no longer sets this column's width - the digits
                                      alone do, so the badge re-centers as the countdown's width changes. -->
-                                <div class="md:w-0 md:whitespace-nowrap text-[10px] text-zinc-500 font-bold tracking-wider mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
+                                <div class="md:w-0 md:whitespace-nowrap text-[11px] md:text-[10px] text-zinc-500 font-bold tracking-wider mb-2 md:mb-1 notranslate font-orbitron" translate="no" lang="en" data-i18n-countdown-to-launch="1">${LAUNCH_LABEL_I18N.en.countdownToLaunch}</div>
                                 <div id="countdown-${m.id}" class="countdown-small text-lg font-bold tabular-nums text-emerald-400 md:whitespace-nowrap" translate="no" dir="ltr">--d --h --m</div>
                             </div>
                             <!-- Desktop only. h-7 = the countdown digits' own line box (text-lg),
@@ -22075,6 +22074,10 @@ setTimeout(() => {
                                  midway between the countdown and the buttons as the digits' width
                                  changes. -->
                             <div class="hidden md:flex flex-1 min-w-0 h-7 items-center justify-center">${statusBadgeDesktop}</div>
+                            <!-- Phones: the status pill sits above the buttons, level with the countdown label on the
+                                 other side. md:contents dissolves this column on desktop, where the pill is the centred one above. -->
+                            <div class="flex flex-col items-end justify-between self-stretch gap-1.5 shrink-0 md:contents">
+                            ${statusBadgeMobile}
                             <div class="flex items-center gap-1.5 shrink-0 pb-0.5">
                                 <button onclick="toggleFavorite('${m.id}', event)" class="group/fav relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-zinc-800 md:hover:bg-amber-500 md:hover:border-amber-500 rounded-xl border border-zinc-700 transition-colors" title="Watchlist">
                                     <i class="${starClass}"></i>
@@ -22082,6 +22085,7 @@ setTimeout(() => {
                                 <button onclick="toggleReminder('${m.id}', '${sanitizeForInlineAttr(m.name)}', '${m.date}', event)" class="${bellClass}" title="${isReminded ? 'Cancel Reminder' : 'Remind Me'}">
                                     <i class="${bellIconClass}"></i>
                                 </button>
+                            </div>
                             </div>
                         </div>
                     </div>
