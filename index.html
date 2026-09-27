@@ -24267,9 +24267,9 @@ setTimeout(() => {
         // Desktop share menu labels only (brand names stay in English). Mobile never
         // shows this UI, so these strings are unused below the md breakpoint.
         const DESKTOP_SHARE_I18N = {
-            en: { mail: "Email", copy: "Copy link", copied: "Copied!", igHint: "Copies the caption and link, then opens Instagram", ttHint: "Copies the caption and link, then opens TikTok" },
-            he: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הכיתוב והקישור ואז פותח את Instagram", ttHint: "מעתיק את הכיתוב והקישור ואז פותח את TikTok" },
-            iw: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הכיתוב והקישור ואז פותח את Instagram", ttHint: "מעתיק את הכיתוב והקישור ואז פותח את TikTok" },
+            en: { mail: "Email", copy: "Copy link", copied: "Copied!", igHint: "Copies the link, then opens Instagram", ttHint: "Copies the link, then opens TikTok" },
+            he: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הקישור ואז פותח את Instagram", ttHint: "מעתיק את הקישור ואז פותח את TikTok" },
+            iw: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הקישור ואז פותח את Instagram", ttHint: "מעתיק את הקישור ואז פותח את TikTok" },
             es: { mail: "Correo", copy: "Copiar enlace", copied: "¡Copiado!" },
             fr: { mail: "E-mail", copy: "Copier le lien", copied: "Copié !" },
             de: { mail: "E-Mail", copy: "Link kopieren", copied: "Kopiert!" },
@@ -24324,7 +24324,9 @@ setTimeout(() => {
         function buildDesktopSharePayload(m) {
             const shareTitle = `SpaceX • ${m.name}`;
             const shareUrl = buildMissionShareUrl(m);
-            const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!\n${shareUrl}`;
+            // just the link: the preview card under it already shows the mission (in the share language), so a
+            // caption was the same line twice - and always in English
+            const shareText = shareUrl;
             return { shareTitle, shareUrl, shareText };
         }
 
@@ -24539,17 +24541,17 @@ setTimeout(() => {
             // use "text" for the message body and silently drop "url". Targets that DO use both
             // (WhatsApp, Telegram...) would otherwise show the link twice, so it's kept out of
             // the "url" field entirely - plain http(s) text is auto-linkified almost everywhere.
-            const shareText = `Check out the upcoming SpaceX mission: ${m.name} using ${m.vehicle}. Launching from ${m.site}!\n${shareUrl}`;
+            // Just the link, no title or caption - the preview card already shows the mission, in the share language
+            // (some apps also print the share "title" as its own line under the link)
+            const shareText = shareUrl;
 
             if (navigator.share) {
                 navigator.share({
-                    title: shareTitle,
                     text: shareText
                 });
             } else {
-                const fullText = `${shareTitle}\n${shareText}\nLink: ${shareUrl}`;
-                navigator.clipboard.writeText(fullText).then(() => {
-                    alert('Share link and text copied to clipboard!');
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    alert('Share link copied to clipboard!');
                 });
             }
         }
