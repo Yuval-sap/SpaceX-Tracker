@@ -8952,6 +8952,11 @@
         // for an upcoming launch) - used by ensureRealMissionTimelineTranslated wherever the
         // hand-written dictionaries below have no explanation in the visitor's language.
         let _geminiTimelineMap = null;
+        // Programmes (Artemis, Commercial Crew...) from the same file: "programs" - each one's name, description,
+        // image and start date, with their translations - and "missionPrograms" (launch id -> programme ids), for
+        // past launches, whose data here comes without the programme field (translate_mission_purpose.py)
+        let _geminiProgramsMap = null;
+        let _geminiMissionPrograms = null;
         let _geminiPurposeLoad = null;
         function loadGeminiPurposeMap() {
             if (_geminiPurposeLoad) return _geminiPurposeLoad;
@@ -8962,6 +8967,8 @@
                     _geminiNamesMap = (data && data.names) || {};
                     _geminiUpdatesMap = (data && data.updates) || {};
                     _geminiTimelineMap = (data && data.timeline) || {};
+                    _geminiProgramsMap = (data && data.programs) || {};
+                    _geminiMissionPrograms = (data && data.missionPrograms) || {};
                     return _geminiPurposeMap;
                 })
                 .catch(() => {
@@ -8969,6 +8976,8 @@
                     _geminiNamesMap = {};
                     _geminiUpdatesMap = {};
                     _geminiTimelineMap = {};
+                    _geminiProgramsMap = {};
+                    _geminiMissionPrograms = {};
                     return _geminiPurposeMap;
                 });
             return _geminiPurposeLoad;
@@ -9093,12 +9102,12 @@
             const t = id => document.getElementById(id);
             const vehicle = t('modal-vehicle-tile'), site = t('modal-site-click-target'), orbit = t('modal-orbit-click-target'),
                 status = t('modal-status-tile'), sim = t('modal-starship-sim-tile'), booster = t('modal-booster-tile'),
-                landing = t('modal-landing-click-target'), preflight = t('modal-preflight-status-tile');
-            if (!vGrid || !bGrid || !vehicle || !site || !orbit || !status || !sim || !booster || !landing || !preflight) return;
+                landing = t('modal-landing-click-target'), preflight = t('modal-preflight-status-tile'), program = t('modal-program-tile');
+            if (!vGrid || !bGrid || !vehicle || !site || !orbit || !status || !sim || !booster || !landing || !preflight || !program) return;
             const isStarship = category === 'starship';
             if (isStarship) {
                 vGrid.append(vehicle, booster, status, sim);
-                bGrid.append(site, orbit, landing, preflight);
+                bGrid.append(site, orbit, landing, preflight, program);
                 sim.classList.remove('hidden');
                 vGrid.classList.add('starship-row');
                 const n = preflight.classList.contains('hidden') ? 3 : 4;
@@ -9107,7 +9116,7 @@
                 bGrid.classList.add('grid-cols-2', n === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3');
             } else {
                 vGrid.append(vehicle, site, orbit, status, sim);
-                bGrid.append(booster, landing, preflight);
+                bGrid.append(booster, landing, preflight, program);
                 sim.classList.add('hidden');
                 vGrid.classList.remove('starship-row');
                 bGrid.classList.remove('md:grid-cols-3', 'md:grid-cols-4');
@@ -9372,6 +9381,121 @@
         }
         function closeNewsListModal() {
             const modal = document.getElementById('news-list-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+            unlockBodyScroll();
+        }
+
+        // Program tile + card (#modal-program-tile / #program-modal). The programmes come with the mission (m.programs,
+        // from the launch data) or, for a past launch, from mission-purpose-gemini.json's "missionPrograms"; names and
+        // descriptions in the site language from that file's "programs" translations, Google Translate meanwhile for a
+        // programme the GitHub job hasn't translated yet.
+        const PROGRAM_SINCE_I18N = {
+            en: "Since {y}", he: "פעילה מאז {y}", es: "Desde {y}", fr: "Depuis {y}", de: "Seit {y}", ru: "С {y} года",
+            zh: "始于 {y} 年", it: "Dal {y}", cs: "Od roku {y}", sv: "Sedan {y}", nl: "Sinds {y}", da: "Siden {y}",
+            pt: "Desde {y}", pl: "Od {y} r.", hi: "{y} से", ar: "منذ {y}", tr: "{y} yılından beri",
+        };
+        function programLangKey(currentLang) {
+            const k = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return k === 'iw' ? 'he' : k;
+        }
+        function programLabel(key) {
+            const dict = MISSION_PURPOSE_I18N[key] || MISSION_PURPOSE_I18N.en;
+            return (dict.programLabel || 'Program:').replace(/\s*[:：]\s*$/, '');
+        }
+        function modalPrograms(m) {
+            if (!m || m.category === 'starship') return [];
+            if (Array.isArray(m.programs) && m.programs.length) return m.programs;
+            const ids = (_geminiMissionPrograms && _geminiMissionPrograms[m.id]) || [];
+            return ids.map(id => _geminiProgramsMap && _geminiProgramsMap[id] ? Object.assign({ id }, _geminiProgramsMap[id]) : null).filter(p => p && p.name);
+        }
+        // {name, description, translated} in the site language
+        function programText(p, key) {
+            const stored = _geminiProgramsMap && _geminiProgramsMap[p.id];
+            const t = key !== 'en' && stored && stored.t && stored.t[key];
+            if (t && t.name) return { name: localizeMissionName(t.name, key), description: t.description || '', translated: true };
+            return { name: localizeMissionName(p.name, key), description: p.description || '', translated: key === 'en' };
+        }
+        let _programGen = 0;
+        function renderModalProgram(m, currentLang) {
+            const tile = document.getElementById('modal-program-tile');
+            const grid = document.getElementById('modal-booster-info-grid');
+            const valueEl = document.getElementById('modal-program');
+            const labelEl = document.getElementById('i18n-program-tile');
+            if (!tile || !grid || !valueEl) return;
+            const myGen = ++_programGen;
+            const key = programLangKey(currentLang);
+            const paint = () => {
+                if (myGen !== _programGen) return;
+                const progs = modalPrograms(m);
+                window.currentActiveMissionPrograms = progs;
+                if (!progs.length) {
+                    tile.classList.add('hidden');
+                    // Starship flights lay this grid out themselves (applyStarshipTileLayout) - leave its columns alone
+                    if (!m || m.category !== 'starship') grid.classList.remove('md:grid-cols-3');
+                    return;
+                }
+                tile.classList.remove('hidden');
+                if (!grid.classList.contains('md:grid-cols-4')) grid.classList.add('md:grid-cols-3');
+                if (labelEl) labelEl.textContent = programLabel(key);
+                // a programme the GitHub job hasn't translated yet keeps its English name meanwhile - Google Translate
+                // got these names wrong ("National Security Space Launch" -> a product-"launch" in Hebrew)
+                valueEl.textContent = programText(progs[0], key).name;
+            };
+            if (_geminiProgramsMap === null) {
+                paint();
+                loadGeminiPurposeMap().then(paint);
+            } else paint();
+        }
+        let _programModalGen = 0;
+        function renderProgramModal() {
+            const body = document.getElementById('program-modal-body');
+            const titleEl = document.getElementById('program-modal-title');
+            if (!body) return;
+            const key = programLangKey();
+            const myGen = ++_programModalGen;
+            if (titleEl) titleEl.textContent = programLabel(key);
+            const progs = window.currentActiveMissionPrograms || [];
+            const since = PROGRAM_SINCE_I18N[key] || PROGRAM_SINCE_I18N.en;
+            const texts = progs.map(p => programText(p, key));
+            const paint = () => {
+                if (myGen !== _programModalGen) return;
+                body.innerHTML = progs.map((p, i) => {
+                    const year = /^\d{4}/.test(p.start || '') ? p.start.slice(0, 4) : '';
+                    return `<div class="space-y-3">
+                        ${p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(texts[i].name)}" class="w-full max-h-64 object-cover rounded-2xl border border-zinc-800/80" loading="lazy" onerror="this.remove()">` : ''}
+                        <div>
+                            <div class="text-lg sm:text-xl font-semibold text-zinc-200 leading-snug">${escapeHtml(texts[i].name)}</div>
+                            ${year ? `<div class="text-xs text-zinc-500 mt-0.5">${escapeHtml(since.replace('{y}', year))}</div>` : ''}
+                        </div>
+                        ${texts[i].description ? `<p class="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">${escapeHtml(texts[i].description.trim())}</p>` : ''}
+                    </div>`;
+                }).join('<div class="border-t border-zinc-800/60"></div>');
+            };
+            paint();
+            // programmes the GitHub job hasn't translated yet: the description through Google Translate meanwhile, the
+            // name left in English (see renderModalProgram)
+            const miss = texts.map((t, i) => t.translated || !progs[i].description ? -1 : i).filter(i => i >= 0);
+            if (miss.length) {
+                translateBatchViaGoogle(miss.map(i => progs[i].description), key).then(out => {
+                    miss.forEach((i, j) => { if (out[j]) texts[i].description = fixMistranslatedPhrasesText(out[j], key); });
+                    paint();
+                });
+            }
+        }
+        function openProgramModal() {
+            const modal = document.getElementById('program-modal');
+            if (!modal || !(window.currentActiveMissionPrograms || []).length) return;
+            renderProgramModal();
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            lockBodyScroll();
+            const content = document.getElementById('program-modal-content');
+            if (content) content.scrollTop = 0;
+        }
+        function closeProgramModal() {
+            const modal = document.getElementById('program-modal');
             if (!modal) return;
             modal.style.display = 'none';
             modal.classList.add('hidden');
@@ -10630,6 +10754,9 @@
                 // see renderModalUpdates's own comment.
                 if (missionModalEl && !missionModalEl.classList.contains('hidden') && window.currentActiveMissionCategory) {
                     renderModalUpdates(window.currentActiveMissionCategory, window.currentActiveMissionUpdates, currentLang);
+                    renderModalProgram(window.currentActiveMissionForProgram, currentLang);
+                    const programModalEl = document.getElementById('program-modal');
+                    if (programModalEl && !programModalEl.classList.contains('hidden')) renderProgramModal();
                 }
                 // Same for the upcoming-card descriptions (.mission-card-desc) already on
                 // screen - also notranslate now (see applyCardDescriptionsTranslation's own
@@ -13959,6 +14086,19 @@
                         </div>
                         <div id="modal-preflight-status-summary" class="notranslate text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight" translate="no"></div>
                     </div>
+                    <!-- The programme the mission belongs to (Artemis, Commercial Crew, Starlink...) - renderModalProgram.
+                         Not on Starship flights (their row is full, and the programme is just "Starship"), and only when
+                         the mission has one. On phones it takes the whole second row. Opens #program-modal. -->
+                    <div class="hidden p-1 cursor-pointer md:hover:bg-emerald-500/10 rounded-xl transition-colors col-span-2 md:col-span-1"
+                        id="modal-program-tile" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openProgramModal()">
+                        <div class="flex items-center gap-2">
+                            <div id="i18n-program-tile"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                translate="no">Program</div>
+                            <i class="fa-solid fa-circle-info text-emerald-400/70 text-[10px] mt-1"></i>
+                        </div>
+                        <div id="modal-program" class="notranslate text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight" translate="no"></div>
+                    </div>
                 </div>
 
                 <!-- Crew Members Section -->
@@ -14520,6 +14660,29 @@
                     <span id="i18n-preflight-status-title" class="notranslate" translate="no" lang="en">Pre-Launch Updates</span>
                 </h4>
                 <div id="modal-updates-list" class="notranslate space-y-2.5" translate="no"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Program card - opened from the mission modal's Program tile: each programme the mission belongs to, with its
+         image, the year it started and its description, in the site language (renderProgramModal) -->
+    <div id="program-modal" onclick="if (event.target.id === 'program-modal') closeProgramModal()"
+        class="hidden fixed inset-0 bg-black/95 backdrop-blur-md items-center justify-center p-2 sm:p-3 overflow-y-auto z-[200]">
+        <div id="program-modal-content" onclick="event.stopImmediatePropagation()"
+            class="dossier-modal-shell card-modal-scroll bg-zinc-900 border w-full max-w-2xl max-h-[95vh] rounded-3xl overflow-y-auto overflow-x-hidden flex flex-col my-auto transition-colors duration-500">
+            <div class="sticky top-3 z-40 h-0 overflow-visible flex justify-end px-3">
+                <button onclick="closeProgramModal()"
+                    class="mission-modal-close flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-2 border-emerald-400 text-emerald-400 md:hover:bg-emerald-400/10 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors"
+                    title="Close">
+                    <i class="fa-solid fa-xmark text-lg leading-none"></i>
+                </button>
+            </div>
+            <div class="p-4 sm:p-6 pt-10 sm:pt-12 space-y-4">
+                <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
+                    <i class="fa-solid fa-layer-group text-sm"></i>
+                    <span id="program-modal-title" class="notranslate" translate="no">Program</span>
+                </h4>
+                <div id="program-modal-body" class="notranslate space-y-6" translate="no"></div>
             </div>
         </div>
     </div>
@@ -19859,6 +20022,11 @@
                 return stripped ? stripped : n;
             });
             let missionAgencies = (launch.mission && Array.isArray(launch.mission.agencies)) ? launch.mission.agencies.map(a => a.name).filter(Boolean) : [];
+            // The programmes themselves, for the Program tile and card (renderModalProgram)
+            let programs = Array.isArray(launch.program) ? launch.program.filter(p => p && p.name).map(p => ({
+                id: String(p.id), name: p.name.replace(/^\s*SpaceX\s+/i, '').trim() || p.name, description: p.description || '',
+                image: p.image_url || '', start: (p.start_date || '').slice(0, 10),
+            })) : [];
 
             // Catches a real, separately-observed gap: even a genuine, un-degraded LL2 response
             // can have an empty mission.agencies[] for a launch whose own free-text description
@@ -19885,6 +20053,7 @@
             if (!missionType && cachedPurpose.missionType) missionType = cachedPurpose.missionType;
             if (programNames.length === 0 && cachedPurpose.programNames) programNames = cachedPurpose.programNames;
             if (missionAgencies.length === 0 && cachedPurpose.missionAgencies) missionAgencies = cachedPurpose.missionAgencies;
+            if (programs.length === 0 && cachedPurpose.programs) programs = cachedPurpose.programs;
 
             // Last resort for the partners line: LL2 leaves mission.agencies[] empty on SpaceX's
             // own in-house flights (Starship test flights have nobody else involved to list), so
@@ -19899,7 +20068,7 @@
             }
 
             if (missionType || programNames.length > 0 || missionAgencies.length > 0) {
-                purposeCache[purposeCacheKey] = { missionType, programNames, missionAgencies };
+                purposeCache[purposeCacheKey] = { missionType, programNames, missionAgencies, programs };
                 try { localStorage.setItem('spacex_mission_purpose_cache', JSON.stringify(purposeCache)); } catch (e) { }
             }
 
@@ -19950,6 +20119,7 @@
                 objectives: details.objectives,
                 missionType: missionType,
                 programNames: programNames,
+                programs: programs,
                 missionAgencies: missionAgencies,
                 image: launchImage,
                 patch: patchUrl,
@@ -23206,6 +23376,8 @@ setTimeout(() => {
             applyMissionPurposeHtml(document.getElementById('modal-description-detailed'), m.description, m.missionType, m.programNames, m.missionAgencies, document.documentElement.lang);
             window.currentActiveMissionUpdates = m.updates || [];
             renderModalUpdates(m.category, window.currentActiveMissionUpdates, document.documentElement.lang);
+            window.currentActiveMissionForProgram = m;
+            renderModalProgram(m, document.documentElement.lang);
             document.getElementById('modal-includes').innerHTML = (m.objectives || []).map(i => `<div class="flex items-center gap-x-2 text-sm text-zinc-300"><i class="fa-solid fa-circle-check text-emerald-400 text-xs shrink-0"></i> <span>${escapeHtml(i)}</span></div>`).join('');
 
             // "Key Flight Milestones" is gone for every mission type now, Starship included.
@@ -26830,6 +27002,7 @@ if (heroNameEl) {
                 ['patch-mission-modal', closePatchMissionModal],
                 ['astronaut-modal', closeAstronautModal],
                 ['preflight-status-modal', closePreflightStatusModal],
+                ['program-modal', closeProgramModal],
                 ['news-list-modal', closeNewsListModal],
                 ['landing-modal', closeLandingSpecs],
                 ['orbit-modal', closeOrbitSpecs],

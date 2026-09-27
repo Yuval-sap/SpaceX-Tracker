@@ -210,6 +210,37 @@ Names:
 # "Pre-Launch Updates" popup (renderModalUpdates in index.html, Starship flights only - see
 # is_starship_launch below). Same array-indexed response shape as NAME_PROMPT and for the same
 # reason (a JSON-key-per-entry format risks truncating a large batch past maxOutputTokens).
+# The programs a launch belongs to (LL2 launch.program[] - Artemis, Commercial Crew, Starlink...), shown in the
+# site's "Program" tile and its card (openProgramModal in index.html): each program's name and its description,
+# sent as one numbered list (name, description, name, description...). Same array response shape as UPDATE_PROMPT.
+PROGRAM_PROMPT = """You translate the names and descriptions of spaceflight programs (SpaceX, NASA, US Space
+Force and other space-agency programs) from English into several languages, for an information card on a
+rocket-launch tracking website.
+
+Return ONLY valid JSON. Top-level keys must be exactly these language codes:
+{lang_keys}
+
+Each language value must be a JSON ARRAY of exactly {count} strings - the translations, in the
+SAME ORDER as the numbered entries below. Do not skip, merge, or reorder any entry.
+
+Rules:
+- Natural, accurate, fluent translation - not word-for-word. Entries alternate: a program NAME, then that
+  program's DESCRIPTION. Translate a name the way that language's press refers to the program (keep a brand
+  or proper name such as Artemis, Gemini or Apollo in its usual form for that language).
+- "launch" ALWAYS means a ROCKET launch, never a product launch.{launch_term_note}
+- Keep as-is, untranslated, in every language: SpaceX, NASA, ESA, JAXA, ULA, Falcon 9, Falcon Heavy, Dragon,
+  Crew Dragon, Cygnus, ISS, and acronyms / codes (CRS, NSSL, SDA, CLPS...).
+- "Starship": {starship_terms}
+- "Starlink": {starlink_terms}
+- zh must be Simplified Chinese.
+- Write each translation ONLY in its own language's alphabet (plus the names / acronyms kept as they are).
+- Do not add labels, markdown, or commentary.
+
+Entries:
+{entries_block}
+"""
+
+
 UPDATE_PROMPT = """You translate short official status-update log entries for a SpaceX rocket
 launch, from English into several languages, for a chronological update feed on a
 launch-tracking website.
@@ -238,7 +269,7 @@ Entries:
 """
 
 
-def call_gemini_update_batch(api_key: str, comments: list, langs: list) -> dict:
+def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: str = None) -> dict:
     """Same call/response shape as call_gemini_name_batch below (array of translations,
     index-matched to the input order) - see that function's own comment for why."""
     pinned = {lang: LAUNCH_NOUN_TERM[lang] for lang in langs if lang in LAUNCH_NOUN_TERM}
@@ -248,11 +279,13 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list) -> dict:
     )
     entries_block = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(comments))
     body = {
-        "contents": [{"parts": [{"text": UPDATE_PROMPT.format(
+        "contents": [{"parts": [{"text": (prompt or UPDATE_PROMPT).format(
             lang_keys=", ".join(langs),
             count=len(comments),
             launch_term_note=launch_term_note,
             entries_block=entries_block,
+            starship_terms=", ".join(f"{lang}={STARSHIP_TERM[lang]}" for lang in langs if lang in STARSHIP_TERM),
+            starlink_terms=", ".join(f"{lang}={STARLINK_TERM[lang]}" for lang in langs if lang in STARLINK_TERM),
         )}]}],
         "generationConfig": {
             "temperature": 0.2,
@@ -794,7 +827,7 @@ def name_hash(name: str) -> str:
 
 
 def load_existing() -> dict:
-    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}, "timeline": {}}
+    default = {"version": 1, "generatedAt": "", "entries": {}, "names": {}, "updates": {}, "timeline": {}, "programs": {}, "missionPrograms": {}}
     if not OUTPUT_PATH.exists():
         return default
     try:
@@ -808,6 +841,8 @@ def load_existing() -> dict:
     data.setdefault("names", {})
     data.setdefault("updates", {})
     data.setdefault("timeline", {})
+    data.setdefault("programs", {})
+    data.setdefault("missionPrograms", {})
     if not isinstance(data["entries"], dict):
         data["entries"] = {}
     if not isinstance(data["names"], dict):
@@ -816,6 +851,10 @@ def load_existing() -> dict:
         data["updates"] = {}
     if not isinstance(data["timeline"], dict):
         data["timeline"] = {}
+    if not isinstance(data["programs"], dict):
+        data["programs"] = {}
+    if not isinstance(data["missionPrograms"], dict):
+        data["missionPrograms"] = {}
     return data
 
 
@@ -1060,6 +1099,34 @@ def main() -> int:
     if not launches:
         print("No launches fetched - leaving existing translations unchanged.", file=sys.stderr)
         return 0
+
+    # Programs (LL2 launch.program[]): each program's own details, and which programs every launch belongs to - the
+    # past launches the site shows come from a list without this field, so the site reads it from here
+    # ("missionPrograms"). A program whose English description changed loses its old translations.
+    programs_store = store["programs"]
+    mission_programs = store["missionPrograms"]
+    for launch in launches:
+        ids = []
+        for prog in launch.get("program") or []:
+            if not isinstance(prog, dict) or prog.get("id") is None:
+                continue
+            pid = str(prog["id"])
+            ids.append(pid)
+            name = re.sub(r"^\s*SpaceX\s+", "", prog.get("name") or "").strip() or (prog.get("name") or "")
+            desc = (prog.get("description") or "").strip()
+            entry = programs_store.get(pid) if isinstance(programs_store.get(pid), dict) else {}
+            if entry.get("description") != desc or entry.get("name") != name:
+                entry = {"t": {}}
+            entry.update({
+                "name": name, "description": desc,
+                "image": prog.get("image_url") or "", "start": (prog.get("start_date") or "")[:10],
+            })
+            entry.setdefault("t", {})
+            programs_store[pid] = entry
+        if launch.get("id") and ids:
+            mission_programs[launch["id"]] = ids
+    store["programs"] = programs_store
+    store["missionPrograms"] = mission_programs
 
     # Mission NAMES - runs BEFORE the descriptions pass below, deliberately: a names call
     # batches up to NAME_CHUNK_SIZE names per request, while descriptions cost a request per
@@ -1350,6 +1417,46 @@ def main() -> int:
         f"Updates: new={update_translated} reused={update_reused} failed={update_failed} "
         f"total_updates={len(updates_store)}"
     )
+
+    # Program names + descriptions: a handful of programs, rarely new, so one small batch per language group.
+    # Stored per program as "t": {lang: {"name", "description"}}.
+    program_ids = [pid for pid, e in programs_store.items()
+                   if isinstance(e, dict) and e.get("name")
+                   and not all(isinstance(e.get("t", {}).get(lang), dict) for lang in LANG_NAMES)]
+    PROGRAM_CHUNK_SIZE = 6
+    for i in range(0, len(program_ids), PROGRAM_CHUNK_SIZE):
+        chunk = program_ids[i:i + PROGRAM_CHUNK_SIZE]
+        for batch in LANG_BATCHES:
+            need = [pid for pid in chunk if any(not isinstance(programs_store[pid]["t"].get(lang), dict) for lang in batch)]
+            if not need:
+                continue
+            texts = []
+            for pid in need:
+                texts += [programs_store[pid]["name"], programs_store[pid]["description"] or "-"]
+            try:
+                result = call_gemini_update_batch(api_key, texts, batch, PROGRAM_PROMPT)
+                for lang, by_text in result.items():
+                    for pid in need:
+                        e = programs_store[pid]
+                        name_t = by_text.get(e["name"])
+                        desc_t = by_text.get(e["description"] or "-")
+                        if name_t and (desc_t or not e["description"]) and "{" not in name_t + (desc_t or ""):
+                            e["t"][lang] = {"name": name_t, "description": desc_t if e["description"] else ""}
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+            except GeminiAuthError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                write_output(store)
+                return 1
+            except GeminiQuotaExceededError as e:
+                print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+                write_output(store)
+                return 0
+            except Exception as e:
+                print(f"Warning: skipped program languages {','.join(batch)}: {e}", file=sys.stderr)
+                time.sleep(GEMINI_CALL_PACING_SECONDS)
+    store["programs"] = programs_store
+    print(f"Programs: total={len(programs_store)} missions_mapped={len(mission_programs)} "
+          f"translated_now={sum(1 for pid in program_ids if all(isinstance(programs_store[pid]['t'].get(l), dict) for l in LANG_NAMES))}/{len(program_ids)}")
 
     if translated == 0 and failed > 0 and not any(entries.values()):
         print(
