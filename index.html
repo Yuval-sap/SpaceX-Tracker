@@ -9285,6 +9285,14 @@
             nl: "Ruimtevaartnieuws", da: "Rumnyheder", pt: "Notícias Espaciais", pl: "Wiadomości kosmiczne", hi: "अंतरिक्ष समाचार",
             ar: "أخبار الفضاء", tr: "Uzay Haberleri",
         };
+        // An RTL headline like "APOD: 27 בספטמבר 2026" - the bidi algorithm glues the number to the English word before
+        // it (one left-to-right run "APOD: 27"), so on screen it read "27 :APOD בספטמבר". A right-to-left mark after the
+        // punctuation ends that run: "APOD:" stays one piece and the number goes with the Hebrew / Arabic that follows.
+        // ("Falcon 9", "Group 31-1" - a number right after the word, no punctuation between - are left joined.)
+        function detachNumberFromLatin(text, lang) {
+            if (!text || !/^(he|iw|ar)$/.test(lang)) return text;
+            return text.replace(/([A-Za-z][A-Za-z0-9.]*\)?)([:,;])(\s+)(?=\d)/g, '$1$2\u200F$3');
+        }
         function renderNewsList() {
             const list = document.getElementById('news-list');
             const titleEl = document.getElementById('news-list-title');
@@ -9301,7 +9309,7 @@
             list.innerHTML = items.map(item => {
                 const own = lang !== 'en' && item.t && item.t[lang];
                 const title = own
-                    ? `<span class="notranslate" translate="no">${escapeHtml(own)}</span>`
+                    ? `<span class="notranslate" translate="no">${escapeHtml(detachNumberFromLatin(own, lang))}</span>`
                     : `<span>${escapeHtml(item.title)}</span>`;
                 const d = Date.parse(item.pubDate);
                 return `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener"
@@ -18355,7 +18363,7 @@
                 // otherwise the English headline, which Google Translate translates as before
                 const own = tLang !== 'en' && item.t && item.t[tLang];
                 const title = own
-                    ? `<span class="notranslate" translate="no"${titleDir}>${escapeHtml(own)}</span>`
+                    ? `<span class="notranslate" translate="no"${titleDir}>${escapeHtml(detachNumberFromLatin(own, tLang))}</span>`
                     : `<span${titleDir}>${escapeHtml(item.title)}</span>`;
                 return `
                 <a href="${escapeHtml(item.link)}" target="_blank"${isRtl ? ' dir="rtl"' : ''} class="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-300 md:hover:text-emerald-400 transition-colors">
