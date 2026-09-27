@@ -9570,9 +9570,9 @@
             if (statusEl) statusEl.innerHTML = statusWord
                 ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[11px] sm:text-xs font-bold align-middle">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>${escapeHtml(statusWord)}</span>` : '';
-            // the programme's image across the top, faded into the card (as in the other info cards); one with no
-            // image gets the mission's own photo instead
-            const img = p.image || (window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.image) || '';
+            // the programme's image across the top, faded into the card (as in the other info cards); one with no image,
+            // or whose image is a logo / emblem rather than a photo (program-profiles.json "logoImage"), gets the mission's photo
+            const img = (!(prof && prof.logoImage) && p.image) || (window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.image) || '';
             if (imgEl) { imgEl.onerror = () => { if (hero) hero.classList.add('hidden'); }; imgEl.src = img; imgEl.alt = names[idx].name; }
             if (hero) hero.classList.toggle('hidden', !img);
             const live = programLiveStats(p);
