@@ -97,8 +97,10 @@ function validTranslation(lang, text) {
   for (const ch of text.match(/\p{L}/gu) || []) if (!/\p{Script=Latin}/u.test(ch) && !(own && own.test(ch))) return false;
   return !own || own.test(text);          // and a non-Latin language must actually be in its script
 }
-const GEMINI_MIN_GAP_MS = 10 * 60 * 1000;
-const GEMINI_MAX_TITLES = 10;
+// Small batches, more often: a background task gets only ~30 s after the response, and the full flash model needs
+// longer than that for 10 headlines x 16 languages - the call was cut off silently. 3 at a time finishes well inside it.
+const GEMINI_MIN_GAP_MS = 3 * 60 * 1000;
+const GEMINI_MAX_TITLES = 3;
 // the free quota is counted per model and per day: start with models the GitHub translation job doesn't use
 // (it starts with gemini-3.8-flash), and move on to the next when one is used up
 // the full flash models first - the lite one made up words now and then (Hebrew "רקטחיים" for "rocket") - lite only as the last resort
@@ -215,9 +217,11 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
   const models = env.GEMINI_MODEL ? [env.GEMINI_MODEL] : items.some(it => it.retry) ? GEMINI_MODELS_RETRY : GEMINI_MODELS;
   for (const model of models) {
     let r;
+    // recorded before the call, so a call that gets cut off still shows in /news/status
+    await noteAttempt(kv, { model, started: true, titles: items.length });
     try {
-      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body });
-    } catch (e) { await noteAttempt(kv, { model, error: 'network: ' + e.message }); return; }
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body, signal: AbortSignal.timeout(25000) });
+    } catch (e) { await noteAttempt(kv, { model, error: (e.name === 'TimeoutError' ? 'timeout: ' : 'network: ') + e.message }); return; }
     const errText = r.ok ? '' : (await r.text()).slice(0, 300);
     if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }   // model not available on this key - next one
     if (r.status === 429) { quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }); continue; }   // this model's quota is used up - next one
