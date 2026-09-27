@@ -601,6 +601,7 @@
         #i18n-first-stage-booster,
         #i18n-recovery-zone,
         #i18n-preflight-status,
+        #i18n-program-tile,
         #i18n-starship-sim {
             font-size: 0.7rem !important;
             letter-spacing: 0 !important;
@@ -621,6 +622,7 @@
             #i18n-first-stage-booster,
             #i18n-recovery-zone,
             #i18n-preflight-status,
+            #i18n-program-tile,
             #i18n-starship-sim {
                 font-size: 0.8rem !important;
             }
@@ -687,7 +689,8 @@
         html[dir="rtl"] #i18n-first-stage-booster,
         html[dir="rtl"] #i18n-recovery-zone,
         html[dir="rtl"] #i18n-starship-sim,
-        html[dir="rtl"] #i18n-preflight-status {
+        html[dir="rtl"] #i18n-preflight-status,
+        html[dir="rtl"] #i18n-program-tile {
             font-size: 0.85rem !important;
         }
         html[dir="rtl"] #i18n-spacex-rockets-title {
@@ -702,7 +705,8 @@
             html[dir="rtl"] #i18n-first-stage-booster,
             html[dir="rtl"] #i18n-recovery-zone,
             html[dir="rtl"] #i18n-starship-sim,
-            html[dir="rtl"] #i18n-preflight-status {
+            html[dir="rtl"] #i18n-preflight-status,
+            html[dir="rtl"] #i18n-program-tile {
                 font-size: 0.95rem !important;
             }
             html[dir="rtl"] #i18n-spacex-rockets-title {
@@ -9396,6 +9400,26 @@
             zh: "始于 {y} 年", it: "Dal {y}", cs: "Od roku {y}", sv: "Sedan {y}", nl: "Sinds {y}", da: "Siden {y}",
             pt: "Desde {y}", pl: "Od {y} r.", hi: "{y} से", ar: "منذ {y}", tr: "{y} yılından beri",
         };
+        // the card's stats box / section titles
+        const PROGRAM_CARD_I18N = {
+            en: { started: "Started", about: "About the Program", also: "Other Programs" },
+            he: { started: "שנת הקמה", about: "על התוכנית", also: "תוכניות נוספות" },
+            es: { started: "Inicio", about: "Sobre el Programa", also: "Otros programas" },
+            fr: { started: "Lancement", about: "À propos du Programme", also: "Autres programmes" },
+            de: { started: "Beginn", about: "Über das Programm", also: "Weitere Programme" },
+            ru: { started: "Год начала", about: "О программе", also: "Другие программы" },
+            zh: { started: "启动年份", about: "项目简介", also: "其他项目" },
+            it: { started: "Avvio", about: "Il Programma", also: "Altri programmi" },
+            cs: { started: "Zahájení", about: "O programu", also: "Další programy" },
+            sv: { started: "Start", about: "Om programmet", also: "Andra program" },
+            nl: { started: "Gestart", about: "Over het programma", also: "Andere programma's" },
+            da: { started: "Startet", about: "Om programmet", also: "Andre programmer" },
+            pt: { started: "Início", about: "Sobre o Programa", also: "Outros programas" },
+            pl: { started: "Początek", about: "O programie", also: "Inne programy" },
+            hi: { started: "शुरुआत", about: "कार्यक्रम के बारे में", also: "अन्य कार्यक्रम" },
+            ar: { started: "سنة البدء", about: "عن البرنامج", also: "برامج أخرى" },
+            tr: { started: "Başlangıç", about: "Program Hakkında", also: "Diğer Programlar" },
+        };
         function programLangKey(currentLang) {
             const k = (currentLang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
             return k === 'iw' ? 'he' : k;
@@ -9404,11 +9428,17 @@
             const dict = MISSION_PURPOSE_I18N[key] || MISSION_PURPOSE_I18N.en;
             return (dict.programLabel || 'Program:').replace(/\s*[:：]\s*$/, '');
         }
+        // The mission's own programme first: the space station it flies to (ISS) is listed as a programme too, but it's
+        // the destination, never the main programme - it goes after the others (their order otherwise kept)
+        const SECONDARY_PROGRAM_RE = /international space station|\bISS\b|space station/i;
         function modalPrograms(m) {
             if (!m || m.category === 'starship') return [];
-            if (Array.isArray(m.programs) && m.programs.length) return m.programs;
-            const ids = (_geminiMissionPrograms && _geminiMissionPrograms[m.id]) || [];
-            return ids.map(id => _geminiProgramsMap && _geminiProgramsMap[id] ? Object.assign({ id }, _geminiProgramsMap[id]) : null).filter(p => p && p.name);
+            let list = Array.isArray(m.programs) && m.programs.length ? m.programs : [];
+            if (!list.length) {
+                const ids = (_geminiMissionPrograms && _geminiMissionPrograms[m.id]) || [];
+                list = ids.map(id => _geminiProgramsMap && _geminiProgramsMap[id] ? Object.assign({ id }, _geminiProgramsMap[id]) : null).filter(p => p && p.name);
+            }
+            return list.filter(p => !SECONDARY_PROGRAM_RE.test(p.name)).concat(list.filter(p => SECONDARY_PROGRAM_RE.test(p.name)));
         }
         // {name, description, translated} in the site language
         function programText(p, key) {
@@ -9451,27 +9481,49 @@
         let _programModalGen = 0;
         function renderProgramModal() {
             const body = document.getElementById('program-modal-body');
-            const titleEl = document.getElementById('program-modal-title');
             if (!body) return;
             const key = programLangKey();
             const myGen = ++_programModalGen;
-            if (titleEl) titleEl.textContent = programLabel(key);
             const progs = window.currentActiveMissionPrograms || [];
+            if (!progs.length) return;
+            const card = PROGRAM_CARD_I18N[key] || PROGRAM_CARD_I18N.en;
             const since = PROGRAM_SINCE_I18N[key] || PROGRAM_SINCE_I18N.en;
             const texts = progs.map(p => programText(p, key));
+            const year = p => /^\d{4}/.test(p.start || '') ? p.start.slice(0, 4) : '';
+            const titleEl = document.getElementById('program-modal-title');
+            const nameEl = document.getElementById('program-modal-name');
+            const imgEl = document.getElementById('program-modal-img');
+            const hero = document.getElementById('program-modal-hero');
+            if (titleEl) titleEl.textContent = programLabel(key);
+            // the main programme's image across the top, faded into the card (same as the other info cards); a
+            // programme with no image gets the mission's own photo instead
+            const img = progs[0].image || (window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.image) || '';
+            if (imgEl) { imgEl.onerror = () => { if (hero) hero.classList.add('hidden'); }; imgEl.src = img; imgEl.alt = texts[0].name; }
+            if (hero) hero.classList.toggle('hidden', !img);
             const paint = () => {
                 if (myGen !== _programModalGen) return;
-                body.innerHTML = progs.map((p, i) => {
-                    const year = /^\d{4}/.test(p.start || '') ? p.start.slice(0, 4) : '';
-                    return `<div class="space-y-3">
-                        ${p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(texts[i].name)}" class="w-full max-h-64 object-cover rounded-2xl border border-zinc-800/80" loading="lazy" onerror="this.remove()">` : ''}
+                if (nameEl) nameEl.textContent = texts[0].name;
+                const y0 = year(progs[0]);
+                let html = y0 ? `<div class="grid grid-cols-1 gap-2 bg-zinc-950 border border-zinc-800/50 p-3 sm:p-4 rounded-2xl text-center transition-colors duration-500">
                         <div>
-                            <div class="text-lg sm:text-xl font-semibold text-zinc-200 leading-snug">${escapeHtml(texts[i].name)}</div>
-                            ${year ? `<div class="text-xs text-zinc-500 mt-0.5">${escapeHtml(since.replace('{y}', year))}</div>` : ''}
+                            <div class="modal-subhead text-[10px] sm:text-xs uppercase tracking-wider text-emerald-400 font-bold">${escapeHtml(card.started)}</div>
+                            <div class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5">${escapeHtml(y0)}</div>
                         </div>
-                        ${texts[i].description ? `<p class="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">${escapeHtml(texts[i].description.trim())}</p>` : ''}
+                    </div>` : '';
+                if (texts[0].description) html += `<div class="space-y-2">
+                        <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">${escapeHtml(card.about)}</h4>
+                        <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">${escapeHtml(texts[0].description.trim())}</p>
                     </div>`;
-                }).join('<div class="border-t border-zinc-800/60"></div>');
+                // the other programmes (e.g. the ISS for a crew / cargo flight), each in its own box below
+                if (progs.length > 1) html += `<div class="space-y-2">
+                        <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">${escapeHtml(card.also)}</h4>
+                        ${progs.slice(1).map((p, j) => `<div class="bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl space-y-1.5 transition-colors duration-500">
+                            <div class="text-sm sm:text-base font-semibold text-zinc-200">${escapeHtml(texts[j + 1].name)}</div>
+                            ${year(p) ? `<div class="text-[11px] text-zinc-500">${escapeHtml(since.replace('{y}', year(p)))}</div>` : ''}
+                            ${texts[j + 1].description ? `<p class="text-zinc-300 text-xs sm:text-sm leading-relaxed whitespace-pre-line">${escapeHtml(texts[j + 1].description.trim())}</p>` : ''}
+                        </div>`).join('')}
+                    </div>`;
+                body.innerHTML = html;
             };
             paint();
             // programmes the GitHub job hasn't translated yet: the description through Google Translate meanwhile, the
@@ -14677,13 +14729,17 @@
                     <i class="fa-solid fa-xmark text-lg leading-none"></i>
                 </button>
             </div>
-            <div class="p-4 sm:p-6 pt-10 sm:pt-12 space-y-4">
-                <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400 flex items-center gap-x-2">
-                    <i class="fa-solid fa-layer-group text-sm"></i>
-                    <span id="program-modal-title" class="notranslate" translate="no">Program</span>
-                </h4>
-                <div id="program-modal-body" class="notranslate space-y-6" translate="no"></div>
+            <div id="program-modal-hero" class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
+                <img id="program-modal-img" src="" class="absolute inset-0 w-full h-full object-cover" alt="">
+                <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
+                <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
+                    <div id="program-modal-name" class="notranslate font-space text-xl sm:text-2xl font-bold text-white tracking-tight" translate="no"></div>
+                    <div id="program-modal-title"
+                        class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                        translate="no">Program</div>
+                </div>
             </div>
+            <div id="program-modal-body" class="notranslate p-4 sm:p-6 space-y-5 sm:space-y-6" translate="no"></div>
         </div>
     </div>
 
