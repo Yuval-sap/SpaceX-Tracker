@@ -624,6 +624,15 @@
             }
         }
 
+        /* News list (#news-list-modal): hovering a headline outlines it in the theme's accent - the same colour as
+           the list's title (dark green by day, light green at night, Mars orange, Moon blue) - instead of shading it */
+        @media (hover: hover) {
+            .news-list-item:hover { border-color: #34d399; }
+            body.light-theme .news-list-item:hover { border-color: #047857; }
+            body.mars-theme .news-list-item:hover { border-color: #ff6b35; }
+            body.moon-theme .news-list-item:hover { border-color: #3fa9f5; }
+        }
+
         /* Mission modal info tiles: each title centred over its value, rather than both pinned to the start edge */
         #modal-vehicle-info-grid > div,
         #modal-booster-info-grid > div {
@@ -9313,7 +9322,7 @@
                     : `<span>${escapeHtml(item.title)}</span>`;
                 const d = Date.parse(item.pubDate);
                 return `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener"
-                        class="flex items-start gap-3 rounded-xl px-3 py-2.5 md:hover:bg-zinc-800/60 transition-colors">
+                        class="news-list-item flex items-start gap-3 rounded-xl px-3 py-2.5 border-2 border-transparent transition-colors">
                     <span class="notranslate shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${sourceStyles[item.source] || 'bg-zinc-700/30 text-zinc-300'}" translate="no">${escapeHtml(item.source || '')}</span>
                     <span class="min-w-0 flex-1">
                         <span class="block text-sm text-zinc-200 leading-snug">${title}</span>
