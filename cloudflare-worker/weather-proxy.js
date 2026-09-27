@@ -91,6 +91,8 @@ const STARLINK = { he: 'סטארלינק', ru: 'Старлинк', zh: '星链',
 // every letter of a translation must be English (names like SpaceX / NASA) or the language's own script - the
 // light model once put the Thai word "ภาพ" into a Hebrew headline; such a text is dropped and asked for again
 const OWN_SCRIPT = { he: /\p{Script=Hebrew}/u, ar: /\p{Script=Arabic}/u, ru: /\p{Script=Cyrillic}/u, zh: /\p{Script=Han}/u, hi: /\p{Script=Devanagari}/u };
+// words the light model made up in translations stored before it was dropped
+const BAD_WORDS = ['רקטחיים', 'פובלקת'];
 function validTranslation(lang, text, source) {
   if (typeof text !== 'string' || !text.trim()) return false;
   if (source && /SpaceX/.test(source) && !/SpaceX/.test(text)) return false;   // "SpaceX" must stay as it is
@@ -131,22 +133,29 @@ async function news(url, env, ctx) {
   const missing = [];
   if (kv) {
     await Promise.all(items.map(async it => {
-      const t = await kv.get('t3:' + await hash(it.title), 'json');
+      const h = await hash(it.title);
+      let t = await kv.get('t3:' + h, 'json');
+      // Not translated again yet by a full model: the translation the site showed before (the 't:' keys) meanwhile,
+      // unless it's one known to be wrong (a made-up word) - checked language by language below like any other
+      if (!t) {
+        const old = await kv.get('t:' + h, 'json');
+        if (old && typeof old === 'object') { t = old; it.old = true; }
+      }
       if (t && typeof t === 'object') {
-        for (const l of Object.keys(t)) if (!validTranslation(l, t[l], it.title)) { delete t[l]; it.retry = true; }   // a bad one is asked for again
+        for (const l of Object.keys(t)) if (!validTranslation(l, t[l], it.title) || BAD_WORDS.some(w => String(t[l]).includes(w))) { delete t[l]; it.retry = true; }   // a bad one is asked for again
         if (Object.keys(t).length) it.t = t;
       }
-      if (!it.retry && await kv.get('r3:' + await hash(it.title))) it.retry = true;   // rejected before
+      if (!it.retry && await kv.get('r3:' + h)) it.retry = true;   // rejected before
       // made by the light model (before it was dropped): not shown - Google Translate meanwhile - and translated again
-      if (t && await kv.get('l3:' + await hash(it.title))) { delete it.t; missing.push(it); }
-      else if (!t || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
+      if (t && !it.old && await kv.get('l3:' + h)) { delete it.t; missing.push(it); }
+      else if (!t || it.old || Object.keys(LANGS).some(l => !t[l])) missing.push(it);
     }));
     if (missing.length && env.GEMINI_API_KEY) ctx.waitUntil(translateLater(missing.slice(0, GEMINI_MAX_TITLES), env));
   }
   const body = JSON.stringify({ at: new Date().toISOString(), items });
   const res = new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${NEWS_CACHE_SECONDS}` } });
   // don't hold a response with untranslated headlines for the full 5 minutes when a translation is on its way
-  if (!missing.length) ctx.waitUntil(cache.put(key, res.clone()));
+  if (!missing.some(it => !it.old)) ctx.waitUntil(cache.put(key, res.clone()));
   else ctx.waitUntil(cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60' } })));
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
@@ -246,7 +255,7 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
     } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }); return; }
     await Promise.all(items.map(async (it, i) => {
-      const h = await hash(it.title), k = 't3:' + h, t = Object.assign({}, it.t || {});
+      const h = await hash(it.title), k = 't3:' + h, t = Object.assign({}, it.old ? {} : (it.t || {}));
       let rejected = false;
       for (const l of langs) {
         const arr = parsed[l];
