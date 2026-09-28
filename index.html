@@ -22095,7 +22095,9 @@
             // more than 15 (even more than the ~30 the code used to assume) minutes before
             // liftoff, so the old window was missing real early starts. Kept in sync with the
             // modal's own copy of this same window (wireModalLiveButton).
-            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 && minutesToLaunch >= -180;
+            // The hero button shows for as long as the flight is in the hero - the hero itself decides when a flight has
+            // ended (a Falcon flight about 90 min, Starship Flight 14 nearly 10 h), so no fixed cutoff after liftoff here
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60;
             const isEligible = !!(heroYoutubeId || withinLiveWindow);
 
             // This function is polled every 20s (see its setInterval caller) purely to re-check
@@ -23351,7 +23353,11 @@ setTimeout(() => {
             const launchTimeMs = new Date(m.date).getTime();
             const minutesToLaunch = (launchTimeMs - Date.now()) / 60000;
 
-            if (isPastMission) {
+            // Except the flight the hero is still showing: it keeps its live button for as long as it stays in the hero
+            // (the hero decides when a flight has ended - no fixed length fits them all). Starship Flight 14's broadcast
+            // on X ran past T+60 min, and at T+60 the live button vanished mid-flight, leaving only the archive
+            // "Watch the Launch" player (a YouTube recording).
+            if (isPastMission && m.id !== currentHeroMissionId) {
                 // A mission can land in "past" well before an hour has passed since it actually
                 // launched - normally that only happens when a fast-following launch takes over
                 // the hero early (setupHeroBanner's 15-minute-to-next-launch override cuts the
@@ -23377,7 +23383,9 @@ setTimeout(() => {
             const confirmedYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
             // Widened to match renderHeroLiveButton's own window (was 25, that one was 15 -
             // both too narrow, see that function's comment).
-            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 && minutesToLaunch >= -180;
+            // No cutoff after liftoff for the flight the hero is showing (see renderHeroLiveButton); 3 h for any other
+            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 &&
+                (minutesToLaunch >= -180 || m.id === currentHeroMissionId);
 
             if (!confirmedYoutubeId && !withinLiveWindow) {
                 setThreeUp(false);
