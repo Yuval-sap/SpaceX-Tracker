@@ -5560,6 +5560,9 @@
             const ss = document.getElementById('scale-text-starship');
             if (ss) ss.innerText = window.currentUnitSystem === 'metric' ? `124 ${scaleUnitDict.m}` : `407 ${scaleUnitDict.ft}`;
 
+            const sd = document.getElementById('scale-text-dragon');
+            if (sd) sd.innerText = window.currentUnitSystem === 'metric' ? `8.1 ${scaleUnitDict.m}` : `27 ${scaleUnitDict.ft}`;
+
             const orbitModalEl = document.getElementById('orbit-modal');
             if (orbitModalEl && !orbitModalEl.classList.contains('hidden')) {
                 renderOrbitDossier(window.currentActiveOrbitCode || 'LEO');
@@ -7738,6 +7741,9 @@
                     'i18n-filter-falcon-heavy': (key === 'he' || key === 'iw') ? 'פלקון כבד' : 'Falcon Heavy',
                     'i18n-filter-starlink': (() => { try { return STARLINK_I18N[key] || 'Starlink'; } catch (e) { return 'Starlink'; } })(),   // declared further down
                     'i18n-watch-launch': dict.watchLaunch || LAUNCH_LABEL_I18N.en.watchLaunch,
+                    // Dragon's label in the rockets comparison: the site's Hebrew name for it (the Dragon filter tab's),
+                    // the proper noun elsewhere - never Google, which renders it as the animal
+                    'i18n-scale-dragon': (key === 'he' || key === 'iw') ? 'דרגון' : 'Dragon',
                     'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
                     // "Open on X" while the live player plays SpaceX's X broadcast (wireModalLiveButton)
                     'i18n-open-youtube-live': window._liveOnX
@@ -8414,24 +8420,24 @@
         // page's language. km/h vs mph reuses WEATHER_I18N's kmh/mph entries so the two stay
         // consistent (see getSpecDict below).
         const SPEC_I18N = {
-            en: { mins: "Mins", hrs: "Hrs", seaLevel: "Sea Level", totalSystem: "Total System", reusable: "Reusable", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Target", costToOrbit: "Cost to Orbit", successfulLaunches: "Successful Launches" },
-            he: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול", successfulLaunches: "שיגורים מוצלחים" },
-            iw: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול", successfulLaunches: "שיגורים מוצלחים" },
-            es: { mins: "Min", hrs: "Hrs", seaLevel: "Nivel del Mar", totalSystem: "Sistema Total", reusable: "Reutilizable", km: "km", mi: "mi", m: "m", ft: "pies", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objetivo", costToOrbit: "Costo a Órbita", successfulLaunches: "Lanzamientos Exitosos" },
-            fr: { mins: "Min", hrs: "H", seaLevel: "Niveau de la Mer", totalSystem: "Système Total", reusable: "Réutilisable", km: "km", mi: "mi", m: "m", ft: "pieds", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objectif", costToOrbit: "Coût vers l'Orbite", successfulLaunches: "Lancements Réussis" },
-            de: { mins: "Min", hrs: "Std", seaLevel: "Meereshöhe", totalSystem: "Gesamtsystem", reusable: "Wiederverwendbar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Zielwert", costToOrbit: "Kosten zur Umlaufbahn", successfulLaunches: "Erfolgreiche Starts" },
-            ru: { mins: "Мин", hrs: "Ч", seaLevel: "Уровень Моря", totalSystem: "Вся Система", reusable: "Многоразовый", km: "км", mi: "миль", m: "м", ft: "фут", kg: "кг", lbs: "фунт", kN: "кН", lbf: "lbf", perKg: "/ кг", perLb: "/ фунт", target: "Целевой", costToOrbit: "Стоимость на Орбиту", successfulLaunches: "Успешные запуски" },
-            zh: { mins: "分钟", hrs: "小时", seaLevel: "海平面", totalSystem: "全系统", reusable: "可重复使用", km: "公里", mi: "英里", m: "米", ft: "英尺", kg: "千克", lbs: "磅", kN: "千牛", lbf: "lbf", perKg: "/ 千克", perLb: "/ 磅", target: "目标", costToOrbit: "入轨成本", successfulLaunches: "成功发射" },
-            it: { mins: "Min", hrs: "Ore", seaLevel: "Livello del Mare", totalSystem: "Sistema Totale", reusable: "Riutilizzabile", km: "km", mi: "mi", m: "m", ft: "piedi", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Obiettivo", costToOrbit: "Costo in Orbita", successfulLaunches: "Lanci Riusciti" },
-            cs: { mins: "Min", hrs: "Hod", seaLevel: "Hladina Moře", totalSystem: "Celý Systém", reusable: "Opakovaně Použitelný", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cíl", costToOrbit: "Náklady na Orbitu", successfulLaunches: "Úspěšné starty" },
-            sv: { mins: "Min", hrs: "Tim", seaLevel: "Havsnivå", totalSystem: "Hela Systemet", reusable: "Återanvändbar", km: "km", mi: "mi", m: "m", ft: "fot", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Kostnad till Omloppsbana", successfulLaunches: "Lyckade uppskjutningar" },
-            nl: { mins: "Min", hrs: "Uur", seaLevel: "Zeeniveau", totalSystem: "Volledig Systeem", reusable: "Herbruikbaar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Doel", costToOrbit: "Kosten naar Omloopbaan", successfulLaunches: "Geslaagde lanceringen" },
-            da: { mins: "Min", hrs: "Tim", seaLevel: "Havoverflade", totalSystem: "Samlet System", reusable: "Genanvendelig", km: "km", mi: "mi", m: "m", ft: "fod", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Omkostning til Kredsløb", successfulLaunches: "Vellykkede opsendelser" },
-            pt: { mins: "Min", hrs: "H", seaLevel: "Nível do Mar", totalSystem: "Sistema Total", reusable: "Reutilizável", km: "km", mi: "mi", m: "m", ft: "pés", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Meta", costToOrbit: "Custo até a Órbita", successfulLaunches: "Lançamentos Bem-sucedidos" },
-            pl: { mins: "Min", hrs: "Godz", seaLevel: "Poziom Morza", totalSystem: "Cały System", reusable: "Wielokrotnego Użytku", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cel", costToOrbit: "Koszt na Orbitę", successfulLaunches: "Udane starty" },
-            hi: { mins: "मिनट", hrs: "घंटे", seaLevel: "समुद्र तल पर", totalSystem: "पूर्ण प्रणाली", reusable: "पुन: प्रयोज्य", km: "किमी", mi: "मील", m: "मी", ft: "फीट", kg: "किग्रा", lbs: "पाउंड", kN: "केएन", lbf: "lbf", perKg: "/ किग्रा", perLb: "/ पाउंड", target: "लक्ष्य", costToOrbit: "कक्षा तक लागत", successfulLaunches: "सफल प्रक्षेपण" },
-            ar: { mins: "دقيقة", hrs: "ساعة", seaLevel: "مستوى سطح البحر", totalSystem: "النظام الكامل", reusable: "قابل لإعادة الاستخدام", km: "كم", mi: "ميل", m: "م", ft: "قدم", kg: "كغ", lbs: "رطل", kN: "كيلونيوتن", lbf: "lbf", perKg: "/ كغ", perLb: "/ رطل", target: "هدف", costToOrbit: "التكلفة إلى المدار", successfulLaunches: "إطلاقات ناجحة" },
-            tr: { mins: "Dk", hrs: "Sa", seaLevel: "Deniz Seviyesi", totalSystem: "Toplam Sistem", reusable: "Yeniden Kullanılabilir", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Hedef", costToOrbit: "Yörüngeye Maliyet", successfulLaunches: "Başarılı Fırlatmalar" },
+            en: { mins: "Mins", hrs: "Hrs", seaLevel: "Sea Level", totalSystem: "Total System", reusable: "Reusable", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Target", costToOrbit: "Cost to Orbit", successfulLaunches: "Successful Launches", crewCapacity: "Crew Capacity" },
+            he: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול", successfulLaunches: "שיגורים מוצלחים", crewCapacity: "קיבולת צוות" },
+            iw: { mins: "דקות", hrs: "שעות", seaLevel: "בגובה פני הים", totalSystem: "מערכת שלמה", reusable: "לשימוש חוזר", km: "ק\"מ", mi: "מייל", m: "מ'", ft: "רגל", kg: "ק\"ג", lbs: "ליברות", kN: "קילוניוטון", lbf: "lbf", perKg: "/ ק\"ג", perLb: "/ ליברה", target: "יעד", costToOrbit: "עלות שיגור למסלול", successfulLaunches: "שיגורים מוצלחים", crewCapacity: "קיבולת צוות" },
+            es: { mins: "Min", hrs: "Hrs", seaLevel: "Nivel del Mar", totalSystem: "Sistema Total", reusable: "Reutilizable", km: "km", mi: "mi", m: "m", ft: "pies", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objetivo", costToOrbit: "Costo a Órbita", successfulLaunches: "Lanzamientos Exitosos", crewCapacity: "Capacidad de tripulación" },
+            fr: { mins: "Min", hrs: "H", seaLevel: "Niveau de la Mer", totalSystem: "Système Total", reusable: "Réutilisable", km: "km", mi: "mi", m: "m", ft: "pieds", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Objectif", costToOrbit: "Coût vers l'Orbite", successfulLaunches: "Lancements Réussis", crewCapacity: "Capacité d'équipage" },
+            de: { mins: "Min", hrs: "Std", seaLevel: "Meereshöhe", totalSystem: "Gesamtsystem", reusable: "Wiederverwendbar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Zielwert", costToOrbit: "Kosten zur Umlaufbahn", successfulLaunches: "Erfolgreiche Starts", crewCapacity: "Besatzungskapazität" },
+            ru: { mins: "Мин", hrs: "Ч", seaLevel: "Уровень Моря", totalSystem: "Вся Система", reusable: "Многоразовый", km: "км", mi: "миль", m: "м", ft: "фут", kg: "кг", lbs: "фунт", kN: "кН", lbf: "lbf", perKg: "/ кг", perLb: "/ фунт", target: "Целевой", costToOrbit: "Стоимость на Орбиту", successfulLaunches: "Успешные запуски", crewCapacity: "Вместимость экипажа" },
+            zh: { mins: "分钟", hrs: "小时", seaLevel: "海平面", totalSystem: "全系统", reusable: "可重复使用", km: "公里", mi: "英里", m: "米", ft: "英尺", kg: "千克", lbs: "磅", kN: "千牛", lbf: "lbf", perKg: "/ 千克", perLb: "/ 磅", target: "目标", costToOrbit: "入轨成本", successfulLaunches: "成功发射", crewCapacity: "乘员容量" },
+            it: { mins: "Min", hrs: "Ore", seaLevel: "Livello del Mare", totalSystem: "Sistema Totale", reusable: "Riutilizzabile", km: "km", mi: "mi", m: "m", ft: "piedi", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Obiettivo", costToOrbit: "Costo in Orbita", successfulLaunches: "Lanci Riusciti", crewCapacity: "Capacità equipaggio" },
+            cs: { mins: "Min", hrs: "Hod", seaLevel: "Hladina Moře", totalSystem: "Celý Systém", reusable: "Opakovaně Použitelný", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cíl", costToOrbit: "Náklady na Orbitu", successfulLaunches: "Úspěšné starty", crewCapacity: "Kapacita posádky" },
+            sv: { mins: "Min", hrs: "Tim", seaLevel: "Havsnivå", totalSystem: "Hela Systemet", reusable: "Återanvändbar", km: "km", mi: "mi", m: "m", ft: "fot", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Kostnad till Omloppsbana", successfulLaunches: "Lyckade uppskjutningar", crewCapacity: "Besättningskapacitet" },
+            nl: { mins: "Min", hrs: "Uur", seaLevel: "Zeeniveau", totalSystem: "Volledig Systeem", reusable: "Herbruikbaar", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Doel", costToOrbit: "Kosten naar Omloopbaan", successfulLaunches: "Geslaagde lanceringen", crewCapacity: "Bemanningscapaciteit" },
+            da: { mins: "Min", hrs: "Tim", seaLevel: "Havoverflade", totalSystem: "Samlet System", reusable: "Genanvendelig", km: "km", mi: "mi", m: "m", ft: "fod", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Mål", costToOrbit: "Omkostning til Kredsløb", successfulLaunches: "Vellykkede opsendelser", crewCapacity: "Besætningskapacitet" },
+            pt: { mins: "Min", hrs: "H", seaLevel: "Nível do Mar", totalSystem: "Sistema Total", reusable: "Reutilizável", km: "km", mi: "mi", m: "m", ft: "pés", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Meta", costToOrbit: "Custo até a Órbita", successfulLaunches: "Lançamentos Bem-sucedidos", crewCapacity: "Capacidade de tripulação" },
+            pl: { mins: "Min", hrs: "Godz", seaLevel: "Poziom Morza", totalSystem: "Cały System", reusable: "Wielokrotnego Użytku", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lb", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Cel", costToOrbit: "Koszt na Orbitę", successfulLaunches: "Udane starty", crewCapacity: "Pojemność załogi" },
+            hi: { mins: "मिनट", hrs: "घंटे", seaLevel: "समुद्र तल पर", totalSystem: "पूर्ण प्रणाली", reusable: "पुन: प्रयोज्य", km: "किमी", mi: "मील", m: "मी", ft: "फीट", kg: "किग्रा", lbs: "पाउंड", kN: "केएन", lbf: "lbf", perKg: "/ किग्रा", perLb: "/ पाउंड", target: "लक्ष्य", costToOrbit: "कक्षा तक लागत", successfulLaunches: "सफल प्रक्षेपण", crewCapacity: "चालक दल क्षमता" },
+            ar: { mins: "دقيقة", hrs: "ساعة", seaLevel: "مستوى سطح البحر", totalSystem: "النظام الكامل", reusable: "قابل لإعادة الاستخدام", km: "كم", mi: "ميل", m: "م", ft: "قدم", kg: "كغ", lbs: "رطل", kN: "كيلونيوتن", lbf: "lbf", perKg: "/ كغ", perLb: "/ رطل", target: "هدف", costToOrbit: "التكلفة إلى المدار", successfulLaunches: "إطلاقات ناجحة", crewCapacity: "سعة الطاقم" },
+            tr: { mins: "Dk", hrs: "Sa", seaLevel: "Deniz Seviyesi", totalSystem: "Toplam Sistem", reusable: "Yeniden Kullanılabilir", km: "km", mi: "mi", m: "m", ft: "ft", kg: "kg", lbs: "lbs", kN: "kN", lbf: "lbf", perKg: "/ kg", perLb: "/ lb", target: "Hedef", costToOrbit: "Yörüngeye Maliyet", successfulLaunches: "Başarılı Fırlatmalar", crewCapacity: "Mürettebat kapasitesi" },
         };
 
         function getSpecDict(currentLang) {
@@ -14540,7 +14546,27 @@
                             <i class="fa-solid fa-arrows-up-down"></i>
                             <span id="i18n-spacex-rockets-title" class="notranslate normal-case" translate="no">SpaceX ROCKETS</span>
                         </h5>
-                        <div class="flex items-end justify-around h-48 font-mono text-xs">
+                        <div class="flex items-end justify-between gap-1 px-1 h-48 font-mono text-xs">
+                            <!-- Dragon (8.1 m) to the same scale as the rockets (Falcon 9's 70 m = 86 px) - first, the
+                                 row runs from the shortest to the tallest -->
+                            <div class="flex flex-col items-center transition-transform duration-300 cursor-pointer hover:scale-110 active:scale-95"
+                                id="scale-box-dragon" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('dragon')">
+                                <svg id="scale-bar-dragon" viewBox="0 0 50 100" class="w-auto transition-all" style="height: 10px" role="img" aria-label="Crew Dragon">
+                                    <path d="M25 2C31 2 35 8 36 16L40 44H10L14 16C15 8 19 2 25 2Z" fill="#f4f4f5" stroke="#71717a" stroke-width="1"/>
+                                    <path d="M15.5 14Q25 10.5 34.5 14" fill="none" stroke="#a1a1aa" stroke-width="1.2"/>
+                                    <rect x="18" y="24" width="4" height="5" rx="1" fill="#27272a"/>
+                                    <rect x="28" y="24" width="4" height="5" rx="1" fill="#27272a"/>
+                                    <rect x="10" y="42" width="30" height="3" fill="#d4d4d8"/>
+                                    <rect x="11" y="45" width="28" height="47" fill="#18181b" stroke="#3f3f46" stroke-width="1"/>
+                                    <path d="M18 50V86M25 50V86M32 50V86" stroke="#3f3f46" stroke-width="1.2"/>
+                                    <path d="M11 66L4 90H11ZM39 66L46 90H39Z" fill="#27272a" stroke="#3f3f46" stroke-width="1"/>
+                                    <rect x="11" y="92" width="28" height="6" fill="#e4e4e7"/>
+                                </svg>
+                                <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">
+                                    <span id="i18n-scale-dragon" class="notranslate" translate="no">Dragon</span></div>
+                                <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-dragon" dir="auto"
+                                    translate="no"></div>
+                            </div>
                             <div class="flex flex-col items-center transition-transform duration-300 cursor-pointer hover:scale-110 active:scale-95"
                                 id="scale-box-falcon" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('falcon')">
                                 <img src="falcon9.png" alt="Falcon 9" class="h-[86px] w-auto object-contain object-bottom transition-all" id="scale-bar-falcon">
@@ -24922,6 +24948,7 @@ setTimeout(() => {
             const boxFalcon = document.getElementById('scale-box-falcon');
             const boxHeavy = document.getElementById('scale-box-heavy');
             const boxStarship = document.getElementById('scale-box-starship');
+            const bDragon = document.getElementById('scale-bar-dragon');
             const theme = (typeof getPosterTheme === 'function')
                 ? getPosterTheme()
                 : { accent: '#10b981' };
@@ -24934,7 +24961,7 @@ setTimeout(() => {
                 ? `drop-shadow(0 0 2px rgba(${rgb},1)) drop-shadow(0 0 7px rgba(${rgb},0.9)) drop-shadow(0 0 14px rgba(${rgb},0.55))`
                 : `drop-shadow(0 0 3px rgba(${rgb},0.95)) drop-shadow(0 0 8px rgba(${rgb},0.8)) drop-shadow(0 0 16px rgba(${rgb},0.45))`;
 
-            [bFalcon, bHeavy, bStarship].forEach(el => { if (el) el.style.filter = ''; });
+            [bFalcon, bHeavy, bStarship, bDragon].forEach(el => { if (el) el.style.filter = ''; });
             [boxFalcon, boxHeavy, boxStarship].forEach(el => { if (el) el.style.opacity = '1'; });
 
             let activeBar = bFalcon;
@@ -24945,6 +24972,8 @@ setTimeout(() => {
                 activeBar = bHeavy;
             }
             if (activeBar) activeBar.style.filter = glow;
+            // a Dragon mission lights up the capsule too, beside its Falcon 9
+            if (bDragon && m.category === 'dragon') bDragon.style.filter = glow;
         }
 
 // Used to also reveal/re-hide a mobile tap-overlay sitting above the video iframe
@@ -25920,6 +25949,19 @@ setTimeout(() => {
                 costUsd: { perKg: 100, perLb: 45 },
                 costNote: "target",
                 desc: "Starship represents the next generation of space transportation: a fully and rapidly reusable system. The vehicle stands as the tallest and most powerful rocket ever constructed, generating more than double the thrust of the legendary Saturn V.\n\nPowered by innovative Raptor V3 engines fueled by sub-cooled liquid methane and liquid oxygen, the architecture consists of the Super Heavy booster and the Starship upper stage. Chosen by NASA for the Artemis program to return humans to the lunar surface, Starship's final objective is to create a multi-planetary pipeline capable of transporting over 100 tons of cargo and crew directly to Mars."
+            },
+            // Crew Dragon with its trunk (8.1 m) - a spacecraft rather than a rocket, so the "thrust" figure is its
+            // eight SuperDraco launch-escape engines and the fourth tile shows its crew capacity instead of a cost
+            dragon: {
+                name: "Crew Dragon",
+                image: "dragon-launch-pad.jpg",
+                alignmentClass: "object-[center_20%]",
+                height: { imperial: { num: "26.7", unit: "ft" }, metric: { num: "8.1", unit: "m" } },
+                thrust: { imperial: { num: "128,000", unit: "lbf" }, metric: { num: "570", unit: "kN" } },
+                thrustNote: "8× SuperDraco",
+                payload: { imperial: { num: "13,228", unit: "lbs" }, metric: { num: "6,000", unit: "kg" } },
+                crew: "4",
+                desc: "Dragon is SpaceX's reusable spacecraft, able to carry up to 7 people to and from Earth orbit. In May 2020 it became the first privately developed spacecraft to fly astronauts to the International Space Station, ending nearly a decade in which the United States had no way to launch its own crews.\n\nThe crew version, Crew Dragon, has eight SuperDraco engines that can pull the capsule clear of the rocket in an emergency at any point during ascent, and 16 Draco thrusters for maneuvering in orbit and docking autonomously with the station. Its unpressurized trunk carries cargo and the spacecraft's solar arrays, and is jettisoned before reentry.\n\nAfter splashing down under four parachutes, the capsule is recovered and flown again. A cargo version, Cargo Dragon, delivers supplies and experiments to the station for NASA and returns research samples to Earth."
             }
         };
 
@@ -26099,17 +26141,19 @@ setTimeout(() => {
                 const v = spec[window.currentUnitSystem];
                 const unitWord = specDict[v.unit] || v.unit;
                 const base = `${v.num} ${unitWord}`;
-                return noteKey ? `${base} (${specDict[noteKey]})` : base;
+                return noteKey ? `${base} (${specDict[noteKey] || noteKey})` : base;
             };
             document.getElementById('rocket-modal-height').innerText = fmt(data.height);
             document.getElementById('rocket-modal-thrust').innerText = fmt(data.thrust, data.thrustNote);
             document.getElementById('rocket-modal-payload').innerText = fmt(data.payload, data.payloadNote);
 
             const costLabelEl = document.getElementById('rocket-modal-cost-label');
-            if (costLabelEl) costLabelEl.innerText = specDict.costToOrbit;
+            if (costLabelEl) costLabelEl.innerText = data.crew ? specDict.crewCapacity : specDict.costToOrbit;
             const costEl = document.getElementById('rocket-modal-cost');
             if (costEl) {
-                if (data.costUsd) {
+                if (data.crew) {
+                    costEl.innerText = data.crew;
+                } else if (data.costUsd) {
                     const lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
                     const usdAmount = window.currentUnitSystem === 'metric' ? data.costUsd.perKg : data.costUsd.perLb;
                     const unitWord = window.currentUnitSystem === 'metric' ? specDict.perKg : specDict.perLb;
