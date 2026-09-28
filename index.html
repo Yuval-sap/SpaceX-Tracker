@@ -5965,6 +5965,12 @@
             }
         }
 
+        function cmsXBroadcastId(mission) {
+            const casts = (mission && Array.isArray(mission.webcasts)) ? mission.webcasts : [];
+            const x = casts.find(w => w && w.videoId && /x-live/i.test(w.streamingVideoType || ''));
+            return x && /^[A-Za-z0-9]+$/.test(x.videoId) ? x.videoId : null;
+        }
+
         function loadFirstMatchingCmsMission(slugs, gen, heroName) {
             const tryAt = (i) => {
                 if (gen !== realMissionTimelineFetchGen) return Promise.resolve();
@@ -5974,6 +5980,13 @@
                         if (!res.ok) return tryAt(i + 1);
                         return res.json().then(mission => {
                             if (gen !== realMissionTimelineFetchGen) return;
+                            // SpaceX's own live broadcast on X for this mission (webcasts[] "x-live-studio" - listed
+                            // for every flight, Starship included, unlike Launch Library's video list): the hero's
+                            // live player plays it (wireModalLiveButton)
+                            const xId = cmsXBroadcastId(mission);
+                            if (xId && heroName && namesReferToSameMission(mission && mission.title, slugs[i], heroName)) {
+                                window._heroXBroadcast = { id: xId, heroName };
+                            }
                             const data = parseCmsPostLaunchTimeline(mission, slugs[i]);
                             if (!data) return tryAt(i + 1);
                             if (heroName && !namesReferToSameMission(data.title, data.slug, heroName)) {
@@ -23236,7 +23249,11 @@ setTimeout(() => {
             }
             // SpaceX's own broadcast on X, when the mission has one: the player plays it, and the button beside it
             // opens it on X
-            const xId = m.xBroadcastId || null;
+            // from the mission's own data (Launch Library), or - for the hero mission - from SpaceX's website
+            // (fetchRealMissionTimeline), which lists it for every flight including Starship
+            const heroX = window._heroXBroadcast;
+            const xId = m.xBroadcastId
+                || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null);
             window._liveOnX = !!xId;
             const liveYtIcon = document.getElementById('modal-live-yt-icon');
             if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
