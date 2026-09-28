@@ -11622,7 +11622,7 @@
                         <!-- Populated by JS -->
                     </div>
                     <div id="hero-status-explain" translate="no"
-                        class="hidden notranslate text-[11px] sm:text-xs text-zinc-400 leading-snug mt-1.5 px-1 text-center max-w-full"></div>
+                        class="hidden notranslate no-starship-protect. text-[11px] sm:text-xs text-zinc-400 leading-snug mt-1.5 px-1 text-center max-w-full"></div>
                     <div id="hero-next-stage" translate="no"
                         class="hidden notranslate no-starship-protect text-xs sm:text-sm text-zinc-300 leading-snug mt-1.5 px-1 text-center max-w-full"></div>
 
@@ -26489,8 +26489,11 @@ setTimeout(() => {
             function setHeroStatusExplain(text) {
                 const explainEl = document.getElementById('hero-status-explain');
                 if (!explainEl) return;
-                const trimmed = (text || '').trim();
-                explainEl.textContent = trimmed;
+                             let key = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+             if (key === 'iw') key = 'he';
+             const term = STARSHIP_I18N[key] || STARSHIP_I18N.en;
+             const trimmed = (text || '').trim().replace(/(?<![a-zA-Z])Starship(?![a-zA-Z])/gi, term);
+             if (explainEl.textContent !== trimmed) explainEl.textContent = trimmed;
                 explainEl.classList.toggle('hidden', !trimmed);
             }
             function setHeroTPlus(show, elapsedSec) {
