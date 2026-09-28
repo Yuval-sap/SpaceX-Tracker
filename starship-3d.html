@@ -1161,6 +1161,10 @@ void main(){
   float diam = 1.0;
   vec3 cCore = vec3(1.0, 0.93, 0.86), cBlue = vec3(0.55, 0.62, 1.0), cPink = vec3(1.0, 0.52, 0.78), cOr = vec3(1.0, 0.52, 0.18);
   vec3 col = uCore > 0.5 ? mix(cCore, cBlue, s) : mix(mix(cBlue, cPink, smoothstep(0.0, 0.35, s)), cOr, smoothstep(0.3, 1.0, s));
+  // each engine's own short jet: lilac, with a train of Mach diamonds (4 nodes along the core)
+  if (uCore > 0.5) { col = mix(vec3(1.0, 0.86, 1.0), vec3(0.62, 0.36, 1.0), smoothstep(0.0, 0.9, s));
+    float ph = s * 4.3 - 0.35, k = floor(ph), dz = (fract(ph) - 0.5) / 0.2;
+    diam = 0.35 + 1.6 * exp(-dz * dz) * exp(-max(k, 0.0) * 0.35) * step(0.0, k); }
   float a = edge * fall * diam * (0.75 + 0.4*n) * (0.9 + 0.2*n2) * uI;
   gl_FragColor = vec4(col * a * (uCore > 0.5 ? 5.0 : 2.6), 1.0);
 }`;
@@ -1172,11 +1176,13 @@ void main(){ float g = pow(max(vUv.y, 1e-4), 1.6);
 const glowVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
 
 // Volumetric exhaust: each plume is raymarched through a capped cylinder around its axis (object space, the flame
-// runs down -Y from the nozzle exit at y = 0). Turbulent 3D noise scrolls downstream, temperature maps to a
-// blackbody-like ramp, and Mach diamonds brighten the first few meters.
+// runs down -Y from the nozzle exit at y = 0). Raptor burns methane with oxygen, so the jet is mostly see-through and
+// glows violet-pink rather than orange: a bright lilac core with a train of soft Mach diamonds (shock nodes) down its
+// axis, fading to a thin blue-violet haze. Burning with the outside air (sea level only) adds a faint warm fringe
+// downstream. uDiam is the spacing of the diamonds in metres (0: none), uWarm how much of that air-burning fringe shows.
 const flameVS = `varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
 const flameFS = FINITE_GLSL + `
-uniform float uTime, uI, uR0, uR1, uRB, uLen, uDiam, uSpeed, uDens, uSeed;
+uniform float uTime, uI, uR0, uR1, uRB, uLen, uDiam, uSpeed, uDens, uSeed, uWarm;
 uniform vec3 uCam;
 varying vec3 vPos;
 float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -1184,11 +1190,12 @@ float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f
   return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
              mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
 float fbm(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * noise(p); p = p * 2.07 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return s; }
-vec3 fire(float t){
-  vec3 c = mix(vec3(0.0), vec3(0.75, 0.08, 0.01), smoothstep(0.02, 0.22, t));
-  c = mix(c, vec3(1.0, 0.36, 0.05), smoothstep(0.18, 0.45, t));
-  c = mix(c, vec3(1.0, 0.72, 0.30), smoothstep(0.42, 0.7, t));
-  c = mix(c, vec3(1.0, 0.95, 0.82), smoothstep(0.68, 0.95, t));
+// methalox glow: deep blue-violet haze -> magenta-pink -> lilac-white core
+vec3 methalox(float t){
+  vec3 c = mix(vec3(0.0), vec3(0.22, 0.14, 0.75), smoothstep(0.02, 0.25, t));
+  c = mix(c, vec3(0.72, 0.30, 0.95), smoothstep(0.2, 0.5, t));
+  c = mix(c, vec3(1.0, 0.55, 0.92), smoothstep(0.45, 0.75, t));
+  c = mix(c, vec3(1.0, 0.88, 1.0), smoothstep(0.72, 1.0, t));
   return c;
 }
 void main(){
@@ -1202,36 +1209,44 @@ void main(){
   float dt = (tf - tn) / float(STEPS);
   // fixed half-step start: per-pixel jitter showed up as a grainy grid of dots near the nozzles
   float t = tn + dt * 0.5;
-  vec3 acc = vec3(0.0); float tr = 1.0;
+  vec3 acc = vec3(0.0);
   for (int i = 0; i < STEPS; i++) {
     vec3 p = ro + rd * t; t += dt;
-    float s = clamp(-p.y / uLen, 0.0, 1.0);
+    float z = max(-p.y, 0.0), s = clamp(z / uLen, 0.0, 1.0);
     float r = mix(uR0, uR1, pow(max(s, 1e-4), 0.65));
-    vec3 q = vec3(p.x, p.y + uTime * uSpeed, p.z) / uR0;
-    float n = fbm(q * 0.55 + uSeed);
-    float n2 = noise(q * 1.9 - uSeed);
-    float rr = length(p.xz) / (r * (0.78 + 0.5 * n));
-    if (rr > 1.25) continue;
-    float body = smoothstep(1.0, 0.15, rr);
-    float tail = 1.0 - smoothstep(0.62, 1.0, s + 0.2 * (n - 0.5));
-    float dens = body * tail * (0.35 + 1.1 * n * n2 + 0.4 * n);
-    float temp = (1.0 - rr * 0.85) * (1.0 - s * 0.72) * (0.8 + 0.55 * n);
-    // no discrete Mach-diamond bands: they read as hard white stripes rather than exhaust
-    vec3 col = fire(clamp(temp, 0.0, 0.92)) * (1.0 + 0.35 * smoothstep(0.7, 1.0, temp));   // warm core, never a blown-out white block
-    float k = dens * dt * uDens / uR0;
-    acc += tr * col * k;
-    tr *= exp(-k * 0.45);
-    if (tr < 0.03) break;
+    // stretched along the flow: long streaks, not round puffs
+    vec3 q = vec3(p.x / uR0, (p.y + uTime * uSpeed) / (uR0 * 3.5), p.z / uR0);
+    float n = fbm(q * 0.8 + uSeed);
+    float rr = length(p.xz) / (r * (0.88 + 0.24 * n));
+    if (rr > 1.2) continue;
+    float body = smoothstep(1.0, 0.1, rr);
+    float tail = 1.0 - smoothstep(0.45, 1.0, s + 0.15 * (n - 0.5));
+    float temp = (1.0 - rr * 0.9) * (1.0 - s * 0.85) * (0.85 + 0.3 * n);
+    vec3 col = methalox(clamp(temp, 0.0, 1.0));
+    // air burning at the jet's edge a few diameters down (sea level only): a faint orange fringe
+    col += uWarm * vec3(1.0, 0.42, 0.12) * smoothstep(0.35, 0.95, rr) * smoothstep(0.04, 0.25, s) * (1.0 - smoothstep(0.35, 0.9, s)) * n * 0.9;
+    float dens = body * tail * (0.25 + 0.55 * n);
+    // Mach diamonds: soft glowing nodes on the axis, one every uDiam metres, dimming downstream
+    if (uDiam > 0.0) {
+      float k = floor(z / uDiam - 0.35), zc = (k + 0.85) * uDiam;
+      float dz = (z - zc) / (uDiam * 0.2), dr = length(p.xz) / (uR0 * 0.42);
+      float node = exp(-(dz * dz + dr * dr)) * exp(-k * 0.28) * step(0.0, k) * step(k, 7.0);
+      // the jet necks in at each node and bulges between them
+      float neck = 0.5 + 0.5 * cos(6.2832 * (z / uDiam - 0.85));
+      col += vec3(1.0, 0.9, 1.0) * node * 3.2;
+      dens += node * 1.4 + body * neck * 0.12 * (1.0 - s);
+    }
+    acc += col * dens * dt * uDens / uR0;
   }
   gl_FragColor = vec4(finite3(acc * uI, 30.0), 1.0);
 }`;
 const FLAME_STEPS = isMobile ? 28 : 44;
 const flames = [];
-function makeFlame(parent, y0, R0, R1, L, diam, speed, dens, seed) {
+function makeFlame(parent, y0, R0, R1, L, diam, speed, dens, seed, warm = 0) {
   const RB = R1 * 1.3;
   const g = new THREE.CylinderGeometry(RB, RB, L, 40, 1, false); g.translate(0, -L / 2, 0);
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: timeU, uI: { value: 0 }, uCam: { value: new V3() }, uR0: { value: R0 }, uR1: { value: R1 }, uRB: { value: RB }, uLen: { value: L }, uDiam: { value: diam }, uSpeed: { value: speed }, uDens: { value: dens }, uSeed: { value: seed } },
+    uniforms: { uTime: timeU, uI: { value: 0 }, uCam: { value: new V3() }, uR0: { value: R0 }, uR1: { value: R1 }, uRB: { value: RB }, uLen: { value: L }, uDiam: { value: diam }, uWarm: { value: warm }, uSpeed: { value: speed }, uDens: { value: dens }, uSeed: { value: seed } },
     defines: { STEPS: FLAME_STEPS }, vertexShader: flameVS, fragmentShader: flameFS,
     side: THREE.FrontSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
   });
@@ -1286,7 +1301,7 @@ function placeEngine(group, pid, vac, x, y, z, label, delay, numIndex = null) {
   core.renderOrder = 4; core.visible = false; e.add(core);
   const plume = { visible: false };
   // ship engines each get their own volumetric flame; the booster's 33 share one big plume (below)
-  const flame = pid === 's-raptors' ? makeFlame(e, E.yE, E.rE * 0.92, vac ? 3.4 : 2.3, vac ? 17 : 21, vac ? 1.7 : 1.05, 24, 1.0, Math.random() * 20) : null;
+  const flame = pid === 's-raptors' ? makeFlame(e, E.yE, E.rE * 0.92, vac ? 3.4 : 2.3, vac ? 17 : 21, vac ? 0 : 2.2, 24, 1.0, Math.random() * 20, vac ? 0 : 0.2) : null;
   engines.push({ e, glow, plume, core, flame, delay, stage: pid, x, z, y });
   return e;
 }
@@ -1308,7 +1323,7 @@ ring(20, 3.85, 0.08, 'Raptor 3 · outer ring', 0.24, B_AFT - 0.05);
   engineNumTex = engineNumAtlas([...engineNumbers(33, qn('b')), ...engineNumbers(3, qn('s') * 7 + 1)]); }
 bEngPos.forEach((p, i) => placeEngine(bEng, 'b-raptors', false, p.x, p.y, p.z, p.name, p.delay, i));
 // the 33 jets merge into one big volumetric plume a few meters below the nozzles
-const clusterPlume = makeFlame(bEng, B_AFT - 0.75 - 3.1, 4.3, 10, 70, 3.2, 42, 1.0, 3.3);
+const clusterPlume = makeFlame(bEng, B_AFT - 0.75 - 3.1, 4.3, 10, 70, 0, 42, 0.55, 3.3, 0.6);
 
 // thrust section: dark band with external lines and junction boxes, tapered thrust plate below
 {
@@ -2754,10 +2769,10 @@ function tick() {
     const i = sstep(clamp((st.fire * 1.5 - en.delay) / 0.35)) * gate;
     const flick = 0.9 + 0.1 * Math.sin(t * 57 + en.x * 3.1 + en.z * 1.7);
     en.plume.visible = false;
-    en.core.material.uniforms.uI.value = i * (en.stage === 'b-raptors' ? 0 : 0.03) * flick;   // booster: the shared plume carries the hot core
+    en.core.material.uniforms.uI.value = i * (en.stage === 'b-raptors' ? 0.16 : 0.03) * flick;   // booster: each engine's own jet with its diamonds, before they merge
     en.glow.material.uniforms.uI.value = i;
     en.glow.visible = i > 0.002;
-    en.core.visible = en.stage !== 'b-raptors' && i > 0.002;
+    en.core.visible = i > 0.002;
     if (en.flame) { en.flame.material.uniforms.uI.value = i * flick; en.flame.visible = i > 0.002; }
     if (en.stage === 'b-raptors') bSum += i; else sSum += i;
   }
