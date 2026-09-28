@@ -7280,8 +7280,16 @@
                 }
                 const margin = 16; // px gutter from the screen edge - matches this file's other mobile margins
                 const anchorRect = anchorEl.getBoundingClientRect();
+                // The hero card has a transform (its entrance animation), which makes IT - not the viewport - the box a
+                // position:fixed child is placed in and clipped by: the viewport-based left below landed the card's own
+                // left offset further right, and the card's overflow:hidden cut off the panel's right side (both
+                // languages). So the panel is kept inside the card, and the left is corrected by measurement below.
+                const banner = document.getElementById('hero-banner');
+                const bRect = banner ? banner.getBoundingClientRect() : { left: 0, right: window.innerWidth };
+                const minX = Math.max(margin, bRect.left + 8);
+                const maxX = Math.min(window.innerWidth - margin, bRect.right - 8);
                 popup.style.setProperty('position', 'fixed', 'important');
-                popup.style.setProperty('max-width', `calc(100vw - ${margin * 2}px)`, 'important');
+                popup.style.setProperty('max-width', Math.max(160, maxX - minX) + 'px', 'important');
                 popup.style.setProperty('width', 'max-content', 'important');
                 // Vertical placement is left to clampMissionBreakdownHeight (called right after
                 // this), which anchors the panel to the top of the hero card - opening it just
@@ -7293,9 +7301,10 @@
                 // clamps the left edge so left+width can never exceed the viewport regardless of
                 // where the anchor itself sits.
                 const popupWidth = popup.getBoundingClientRect().width;
-                const maxLeft = window.innerWidth - popupWidth - margin;
-                const left = Math.max(margin, Math.min(anchorRect.left, maxLeft));
-                popup.style.setProperty('left', left + 'px', 'important');
+                const wantLeft = Math.max(minX, Math.min(anchorRect.left, maxX - popupWidth));
+                popup.style.setProperty('left', wantLeft + 'px', 'important');
+                const actualLeft = popup.getBoundingClientRect().left;
+                popup.style.setProperty('left', (wantLeft + (wantLeft - actualLeft)) + 'px', 'important');
             } catch (e) { /* popup stays open in its default CSS position - better than nothing */ }
         }
 
