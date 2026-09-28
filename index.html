@@ -5883,10 +5883,6 @@
         // lookup fails, fall back to STARLINK_ASDS_TIMELINE / plain "MISSION IN PROGRESS" as if
         // this feature did not exist.
         const SPACEX_UPCOMING_TILES_URL = 'https://content.spacex.com/api/spacex-website/launches-page-tiles/upcoming';
-        // Once a flight has lifted off SpaceX moves it out of the upcoming index; a page (re)opened mid-flight then found
-        // no tile for the hero, the slug guesses missed (a Starship Starlink flight's slug is starship-flight-N), and its
-        // live player lost SpaceX's X broadcast. The past index is where the same tile is looked up then.
-        const SPACEX_PAST_TILES_URL = 'https://content.spacex.com/api/spacex-website/launches-page-tiles/past';
         const SPACEX_MISSION_DETAIL_URL_BASE = 'https://content.spacex.com/api/spacex-website/missions/';
         const GENERIC_CMS_TITLE_CORES = /^(starlink|starship|falcon(?: 9| heavy)?|crew|transporter|starshield)$/;
         const GENERIC_CMS_SLUGS = /^(starlink|falcon|mission|spacex)$/;
@@ -6118,15 +6114,8 @@
                 .then(res => { if (!res.ok) return []; return res.json(); })
                 .catch(() => [])
                 .then(tiles => {
-                    const tile = pickHeroTimelineTile(tiles, heroName);
-                    if (tile) return tile;
-                    return fetch(SPACEX_PAST_TILES_URL, { mode: 'cors' })
-                        .then(res => (res.ok ? res.json() : []))
-                        .catch(() => [])
-                        .then(past => pickHeroTimelineTile(past, heroName));
-                })
-                .then(tile => {
                     if (gen !== realMissionTimelineFetchGen) return;
+                    const tile = pickHeroTimelineTile(tiles, heroName);
                     if (tile && tile.link && !slugs.includes(tile.link)) slugs.unshift(tile.link);
                     if (!slugs.length) return;
                     return loadFirstMatchingCmsMission(slugs, gen, heroName);
