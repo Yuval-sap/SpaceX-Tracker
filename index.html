@@ -7866,31 +7866,33 @@
         // DOM by renderMissions() (on search, filter, and data refresh), so it can't
         // rely on a value baked in at render time — it needs to be re-applied on every
         // tick, same as the other manually-translated labels here.
+        // "Vehicles", not "rockets", since Crew Dragon (a spacecraft) joined the comparison
         const SPACEX_ROCKETS_TITLE_I18N = {
-            en: 'SpaceX ROCKETS',
-            he: 'הרקטות של SpaceX',
-            iw: 'הרקטות של SpaceX',
-            es: 'Los COHETES de SpaceX',
-            fr: 'Les FUSÉES de SpaceX',
-            de: 'Die RAKETEN von SpaceX',
-            ru: 'РАКЕТЫ SpaceX',
-            zh: 'SpaceX 的火箭',
-            it: 'I RAZZI di SpaceX',
-            cs: 'RAKETY SpaceX',
-            sv: 'SpaceX-RAKETER',
-            nl: 'De RAKETTEN van SpaceX',
-            da: 'SpaceX-RAKETTER',
-            pt: 'Os FOGUETES da SpaceX',
-            pl: 'RAKIETY SpaceX',
-            hi: 'SpaceX के रॉकेट',
-            ar: 'صواريخ SpaceX',
-            tr: 'SpaceX ROKETLERİ'
+            en: 'SpaceX VEHICLES',
+            he: 'כלי הטיס של SpaceX',
+            iw: 'כלי הטיס של SpaceX',
+            es: 'Los VEHÍCULOS de SpaceX',
+            fr: 'Les VÉHICULES de SpaceX',
+            de: 'Die FLUGGERÄTE von SpaceX',
+            ru: 'АППАРАТЫ SpaceX',
+            zh: 'SpaceX 的飞行器',
+            it: 'I VEICOLI di SpaceX',
+            cs: 'STROJE SpaceX',
+            sv: 'SpaceX-FARKOSTER',
+            nl: 'De VOERTUIGEN van SpaceX',
+            da: 'SpaceX-FARTØJER',
+            pt: 'Os VEÍCULOS da SpaceX',
+            pl: 'POJAZDY SpaceX',
+            hi: 'SpaceX के यान',
+            ar: 'مركبات SpaceX',
+            tr: 'SpaceX ARAÇLARI'
         };
         function applySpacexRocketsTitleTranslation(currentLang) {
             let key = (currentLang || 'en').toLowerCase().split('-')[0];
             const text = SPACEX_ROCKETS_TITLE_I18N[key] || SPACEX_ROCKETS_TITLE_I18N.en;
             const el = document.getElementById('i18n-spacex-rockets-title');
             if (el && el.textContent !== text) el.textContent = text;
+            if (typeof applyVehicleGalleryLabel === 'function') applyVehicleGalleryLabel();
         }
 
         function applyCountdownToLaunchLabels(currentLang) {
@@ -12953,6 +12955,37 @@
         </div>
     </div>
 
+    <!-- Photo gallery for the vehicle dossier (#rocket-modal's "Photo Gallery" button) - photos per vehicle in
+         VEHICLE_GALLERY. z-[260]: above the dossier (z-200). -->
+    <div id="vehicle-gallery-modal" onclick="if (event.target.id === 'vehicle-gallery-modal') closeVehicleGallery()"
+        class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[260]">
+        <div class="relative max-w-3xl w-full">
+            <button onclick="closeVehicleGallery()"
+                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div id="vehicle-gallery-stage" class="relative w-full aspect-[3/2] bg-black flex items-center justify-center overflow-hidden">
+                    <i id="vehicle-gallery-spinner" class="hidden fa-solid fa-spinner fa-spin text-zinc-600 text-2xl"></i>
+                    <img id="vehicle-gallery-photo" src="" alt="" class="hidden w-full h-full object-contain">
+                    <video id="vehicle-gallery-video" class="hidden w-full h-full object-contain" controls playsinline preload="metadata"></video>
+                    <p id="vehicle-gallery-empty" class="hidden text-sm text-zinc-500 notranslate" translate="no"></p>
+                    <button type="button" id="vehicle-gallery-prev" onclick="stepVehicleGallery(-1)" aria-label="Previous"
+                        class="hidden absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 items-center justify-center bg-black/60 border border-zinc-600 rounded-full text-zinc-200">
+                        <i class="fa-solid fa-chevron-left"></i></button>
+                    <button type="button" id="vehicle-gallery-next" onclick="stepVehicleGallery(1)" aria-label="Next"
+                        class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 items-center justify-center bg-black/60 border border-zinc-600 rounded-full text-zinc-200">
+                        <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="p-4 sm:p-5 flex items-center justify-between gap-3">
+                    <div id="vehicle-gallery-title" class="font-semibold text-white text-base sm:text-lg notranslate" translate="no"></div>
+                    <div id="vehicle-gallery-counter" class="text-xs text-zinc-500 tabular-nums notranslate" dir="ltr" translate="no"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
         <!-- Starlink satellite-generation feature comparison - opened by the "COMPARE SPECS"
          button on the Satellite Deployment card. Fully self-translated via
          STARLINK_SPECS_I18N/applyStarlinkSpecsTranslations (same "own dictionary, not Google
@@ -14544,7 +14577,7 @@
                     <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
                         <h5 class="modal-subhead modal-mini-heading text-sm sm:text-base font-semibold font-space tracking-wider text-emerald-400 normal-case mb-3">
                             <i class="fa-solid fa-arrows-up-down"></i>
-                            <span id="i18n-spacex-rockets-title" class="notranslate normal-case" translate="no">SpaceX ROCKETS</span>
+                            <span id="i18n-spacex-rockets-title" class="notranslate normal-case" translate="no">SpaceX VEHICLES</span>
                         </h5>
                         <div class="flex items-end justify-between gap-1 px-1 h-48 font-mono text-xs">
                             <!-- Dragon (8.1 m) to the same scale as the rockets (Falcon 9's 70 m = 86 px) - first, the
@@ -14758,7 +14791,14 @@
                 </div>
 
                 <div class="space-y-2">
-                    <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
+                    <div class="flex items-center justify-between gap-3">
+                        <h4 class="modal-subhead font-space text-base sm:text-lg font-semibold text-emerald-400">Technical Overview</h4>
+                        <button type="button" id="rocket-gallery-btn" onclick="openVehicleGallery()"
+                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 rounded-xl text-xs font-semibold text-zinc-300 transition-colors duration-150">
+                            <i class="fa-solid fa-images text-emerald-400"></i>
+                            <span id="rocket-gallery-btn-label" class="notranslate" translate="no">Photo Gallery</span>
+                        </button>
+                    </div>
                     <p id="rocket-modal-desc" translate="no"
                         class="notranslate text-zinc-300 text-xs sm:text-sm leading-relaxed bg-zinc-950/40 border border-zinc-850 p-4 sm:p-5 rounded-2xl whitespace-pre-line transition-colors duration-500">
                     </p>
@@ -26134,6 +26174,7 @@ setTimeout(() => {
             imgEl.className = `absolute inset-0 w-full h-full object-cover ${data.alignmentClass}`;
 
             window.currentOpenRocketType = type;
+            applyVehicleGalleryLabel();
             const simBtn = document.getElementById('rocket-modal-sim-btn');
             if (simBtn) { simBtn.classList.toggle('hidden', type !== 'starship'); simBtn.classList.toggle('inline-flex', type === 'starship'); }
             const specDict = getSpecDict(document.documentElement.lang);
@@ -26186,6 +26227,141 @@ setTimeout(() => {
             lockBodyScroll();
             setTimeout(() => { if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0; }, 10);
         }
+
+        // Photos (and .mp4/.webm videos) for each vehicle's dossier gallery, by ROCKET_DATABASE key - file paths or URLs,
+        // in display order
+        const VEHICLE_GALLERY = {
+            falcon: [
+                'gallery/falcon9/1.jpg', 'gallery/falcon9/2.jpg', 'gallery/falcon9/3.jpg', 'gallery/falcon9/4.jpg',
+                'gallery/falcon9/5.jpg', 'gallery/falcon9/6.jpg', 'gallery/falcon9/7.jpg', 'gallery/falcon9/8.jpg'
+            ],
+            falcon_heavy: [
+                'gallery/falcon-heavy/1.jpg', 'gallery/falcon-heavy/2.jpg', 'gallery/falcon-heavy/3.jpg', 'gallery/falcon-heavy/4.mp4',
+                'gallery/falcon-heavy/5.jpg', 'gallery/falcon-heavy/6.jpg', 'gallery/falcon-heavy/7.jpg', 'gallery/falcon-heavy/8.jpg',
+                'gallery/falcon-heavy/9.jpg', 'gallery/falcon-heavy/10.jpg', 'gallery/falcon-heavy/11.webp', 'gallery/falcon-heavy/12.jpg'
+            ],
+            starship: [
+                'gallery/starship/1.jpg', 'gallery/starship/2.jpg', 'gallery/starship/3.jpg', 'gallery/starship/4.jpg', 'gallery/starship/5.jpg',
+                'gallery/starship/6.jpg', 'gallery/starship/7.jpg', 'gallery/starship/8.jpg', 'gallery/starship/9.jpg', 'gallery/starship/10.jpg',
+                'gallery/starship/11.jpg', 'gallery/starship/12.jpg'
+            ],
+            dragon: [
+                'gallery/dragon/1.webp', 'gallery/dragon/2.webp', 'gallery/dragon/3.jpg', 'gallery/dragon/4.jpg',
+                'gallery/dragon/5.jpg', 'gallery/dragon/6.jpg', 'gallery/dragon/7.jpg', 'gallery/dragon/8.jpg',
+                'gallery/dragon/9.jpg', 'gallery/dragon/10.jpg', 'gallery/dragon/11.jpg', 'gallery/dragon/12.jpg',
+                'gallery/dragon/13.webp'
+            ]
+        };
+        const VEHICLE_GALLERY_I18N = {
+            en: { btn: 'Photo Gallery', empty: 'Photos coming soon' },
+            he: { btn: 'גלריית תמונות', empty: 'תמונות יתווספו בקרוב' },
+            iw: { btn: 'גלריית תמונות', empty: 'תמונות יתווספו בקרוב' },
+            es: { btn: 'Galería de fotos', empty: 'Fotos próximamente' },
+            fr: { btn: 'Galerie photos', empty: 'Photos bientôt disponibles' },
+            de: { btn: 'Fotogalerie', empty: 'Fotos folgen in Kürze' },
+            ru: { btn: 'Фотогалерея', empty: 'Фотографии скоро появятся' },
+            zh: { btn: '图片库', empty: '图片即将上线' },
+            it: { btn: 'Galleria fotografica', empty: 'Foto in arrivo' },
+            cs: { btn: 'Fotogalerie', empty: 'Fotografie brzy přibudou' },
+            sv: { btn: 'Bildgalleri', empty: 'Bilder kommer snart' },
+            nl: { btn: 'Fotogalerij', empty: 'Foto’s volgen binnenkort' },
+            da: { btn: 'Fotogalleri', empty: 'Billeder kommer snart' },
+            pt: { btn: 'Galeria de fotos', empty: 'Fotos em breve' },
+            pl: { btn: 'Galeria zdjęć', empty: 'Zdjęcia wkrótce' },
+            hi: { btn: 'फ़ोटो गैलरी', empty: 'तस्वीरें जल्द आएँगी' },
+            ar: { btn: 'معرض الصور', empty: 'الصور قريبًا' },
+            tr: { btn: 'Fotoğraf galerisi', empty: 'Fotoğraflar yakında' }
+        };
+        function vehicleGalleryDict() {
+            const key = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return VEHICLE_GALLERY_I18N[key] || VEHICLE_GALLERY_I18N.en;
+        }
+        function applyVehicleGalleryLabel() {
+            const el = document.getElementById('rocket-gallery-btn-label');
+            const text = vehicleGalleryDict().btn;
+            if (el && el.textContent !== text) el.textContent = text;
+        }
+        let vehicleGalleryIndex = 0;
+        function renderVehicleGallery() {
+            const type = window.currentOpenRocketType;
+            const photos = VEHICLE_GALLERY[type] || [];
+            const img = document.getElementById('vehicle-gallery-photo');
+            const spinner = document.getElementById('vehicle-gallery-spinner');
+            const empty = document.getElementById('vehicle-gallery-empty');
+            const counter = document.getElementById('vehicle-gallery-counter');
+            const multi = photos.length > 1;
+            ['vehicle-gallery-prev', 'vehicle-gallery-next'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) { b.classList.toggle('hidden', !multi); b.classList.toggle('flex', multi); }
+            });
+            const titleEl = document.getElementById('vehicle-gallery-title');
+            if (titleEl) titleEl.textContent = (ROCKET_DATABASE[type] || {}).name || '';
+            const video = document.getElementById('vehicle-gallery-video');
+            if (video) { video.pause(); video.classList.add('hidden'); }
+            if (!photos.length) {
+                img.classList.add('hidden');
+                if (spinner) spinner.classList.add('hidden');
+                empty.textContent = vehicleGalleryDict().empty;
+                empty.classList.remove('hidden');
+                if (counter) counter.textContent = '';
+                return;
+            }
+            empty.classList.add('hidden');
+            vehicleGalleryIndex = (vehicleGalleryIndex + photos.length) % photos.length;
+            img.classList.add('hidden');
+            if (counter) counter.textContent = (vehicleGalleryIndex + 1) + ' / ' + photos.length;
+            if (video && /\.(mp4|webm)$/i.test(photos[vehicleGalleryIndex])) {
+                if (spinner) spinner.classList.add('hidden');
+                if (video.getAttribute('src') !== photos[vehicleGalleryIndex]) video.src = photos[vehicleGalleryIndex];
+                video.classList.remove('hidden');
+                return;
+            }
+            if (spinner) { spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl'; }
+            img.onload = () => { img.classList.remove('hidden'); if (spinner) spinner.classList.add('hidden'); };
+            img.onerror = () => { if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl'; };
+            img.src = photos[vehicleGalleryIndex];
+            img.alt = titleEl ? titleEl.textContent : '';
+            if (counter) counter.textContent = (vehicleGalleryIndex + 1) + ' / ' + photos.length;
+        }
+        function openVehicleGallery() {
+            vehicleGalleryIndex = 0;
+            renderVehicleGallery();
+            const modal = document.getElementById('vehicle-gallery-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function stepVehicleGallery(dir) {
+            vehicleGalleryIndex += dir;
+            renderVehicleGallery();
+        }
+        function closeVehicleGallery() {
+            const modal = document.getElementById('vehicle-gallery-modal');
+            if (!modal) return;
+            const video = document.getElementById('vehicle-gallery-video');
+            if (video) video.pause();
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        // arrow keys page through the gallery while it is open; a horizontal swipe does the same on touch screens
+        document.addEventListener('keydown', function (e) {
+            const modal = document.getElementById('vehicle-gallery-modal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            if (e.key === 'ArrowRight') stepVehicleGallery(1);
+            else if (e.key === 'ArrowLeft') stepVehicleGallery(-1);
+        });
+        (function () {
+            let x0 = null;
+            document.addEventListener('touchstart', e => {
+                if (e.target.closest && e.target.closest('#vehicle-gallery-stage')) x0 = e.touches[0].clientX;
+            }, { passive: true });
+            document.addEventListener('touchend', e => {
+                if (x0 === null) return;
+                const dx = e.changedTouches[0].clientX - x0;
+                x0 = null;
+                if (Math.abs(dx) > 40) stepVehicleGallery(dx < 0 ? 1 : -1);
+            }, { passive: true });
+        })();
 
         function closeRocketModal() {
             const modal = document.getElementById('rocket-modal');
@@ -27681,6 +27857,7 @@ if (heroNameEl) {
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
             const modalCloseOrder = [
+                ['vehicle-gallery-modal', closeVehicleGallery],
                 ['starship-sim-modal', closeStarshipSim],
                 ['launch-cadence-modal', closeLaunchCadenceModal],
                 ['doc-video-modal', closeDocVideoModal],
