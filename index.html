@@ -5883,6 +5883,10 @@
         // lookup fails, fall back to STARLINK_ASDS_TIMELINE / plain "MISSION IN PROGRESS" as if
         // this feature did not exist.
         const SPACEX_UPCOMING_TILES_URL = 'https://content.spacex.com/api/spacex-website/launches-page-tiles/upcoming';
+        // Once a flight has lifted off SpaceX moves it out of the upcoming index; a page (re)opened mid-flight then found
+        // no tile for the hero, the slug guesses missed (a Starship Starlink flight's slug is starship-flight-N), and its
+        // live player lost SpaceX's X broadcast. The past index is where the same tile is looked up then.
+        const SPACEX_PAST_TILES_URL = 'https://content.spacex.com/api/spacex-website/launches-page-tiles/past';
         const SPACEX_MISSION_DETAIL_URL_BASE = 'https://content.spacex.com/api/spacex-website/missions/';
         const GENERIC_CMS_TITLE_CORES = /^(starlink|starship|falcon(?: 9| heavy)?|crew|transporter|starshield)$/;
         const GENERIC_CMS_SLUGS = /^(starlink|falcon|mission|spacex)$/;
@@ -5991,6 +5995,33 @@
             }
         }
 
+        // Every X broadcast found for a hero mission, kept per mission (and on this device for 12 hours):
+        // window._heroXBroadcast only holds the CURRENT hero's - once a flight left the hero (its grace period over,
+        // the next mission's broadcast took that slot) or the page was reloaded, its live player lost SpaceX's X
+        // broadcast and fell back to the YouTube coverage (Spaceflight Now) mid-flight.
+        const X_BROADCASTS_KEY = 'xBroadcastsByMission';
+        const X_BROADCAST_KEEP_MS = 12 * 60 * 60 * 1000;
+        function loadSavedXBroadcasts() {
+            try {
+                const all = JSON.parse(localStorage.getItem(X_BROADCASTS_KEY) || '{}') || {};
+                const now = Date.now();
+                Object.keys(all).forEach(k => { if (!all[k] || !all[k].id || now - (all[k].t || 0) > X_BROADCAST_KEEP_MS) delete all[k]; });
+                return all;
+            } catch (e) { return {}; }
+        }
+        function rememberXBroadcast(missionName, id) {
+            if (!missionName || !id) return;
+            const all = loadSavedXBroadcasts();
+            all[missionName] = { id, t: Date.now() };
+            try { localStorage.setItem(X_BROADCASTS_KEY, JSON.stringify(all)); } catch (e) { }
+        }
+        function savedXBroadcastFor(missionName) {
+            if (!missionName) return null;
+            const all = loadSavedXBroadcasts();
+            const hit = Object.keys(all).find(k => namesReferToSameMission(k, '', missionName));
+            return hit ? all[hit].id : null;
+        }
+
         function cmsXBroadcastId(mission) {
             const casts = (mission && Array.isArray(mission.webcasts)) ? mission.webcasts : [];
             const x = casts.find(w => w && w.videoId && /x-live/i.test(w.streamingVideoType || ''));
@@ -6012,6 +6043,7 @@
                             const xId = cmsXBroadcastId(mission);
                             if (xId && heroName && namesReferToSameMission(mission && mission.title, slugs[i], heroName)) {
                                 window._heroXBroadcast = { id: xId, heroName };
+                                rememberXBroadcast(heroName, xId);
                             }
                             const data = parseCmsPostLaunchTimeline(mission, slugs[i]);
                             if (!data) return tryAt(i + 1);
@@ -6085,8 +6117,15 @@
                 .then(res => { if (!res.ok) return []; return res.json(); })
                 .catch(() => [])
                 .then(tiles => {
-                    if (gen !== realMissionTimelineFetchGen) return;
                     const tile = pickHeroTimelineTile(tiles, heroName);
+                    if (tile) return tile;
+                    return fetch(SPACEX_PAST_TILES_URL, { mode: 'cors' })
+                        .then(res => (res.ok ? res.json() : []))
+                        .catch(() => [])
+                        .then(past => pickHeroTimelineTile(past, heroName));
+                })
+                .then(tile => {
+                    if (gen !== realMissionTimelineFetchGen) return;
                     if (tile && tile.link && !slugs.includes(tile.link)) slugs.unshift(tile.link);
                     if (!slugs.length) return;
                     return loadFirstMatchingCmsMission(slugs, gen, heroName);
@@ -23363,7 +23402,8 @@ setTimeout(() => {
             // (fetchRealMissionTimeline), which lists it for every flight including Starship
             const heroX = window._heroXBroadcast;
             const xId = m.xBroadcastId
-                || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null);
+                || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
+                || savedXBroadcastFor(m.patchTagName || m.name);
             window._liveOnX = !!xId;
             const liveYtIcon = document.getElementById('modal-live-yt-icon');
             if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
