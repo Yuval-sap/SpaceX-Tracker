@@ -5963,6 +5963,31 @@
             return slugs.slice(0, MAX_CMS_SLUG_GUESSES);
         }
 
+        // Manual, one-flight correction for when a flight runs off SpaceX's published timeline: the named event really
+        // happened at `at` (UTC), so it and every later event move by the same amount. Drops out by itself at `expires`.
+        const TIMELINE_TIME_OVERRIDES = [
+            // Starship Flight 14 (2026-09-28): the deorbit burn ended well ahead of SpaceX's published time
+            { mission: /starship[\s-]*flight[\s-]*14\b/i, event: 'Deorbit burn shutdown', at: '2026-09-28T15:02:00Z', expires: '2026-09-29T12:00:00Z' },
+        ];
+        function applyTimelineTimeOverrides(entries, title, slug) {
+            const t0 = new Date(window.currentActiveHeroLaunchAt || '').getTime();
+            if (isNaN(t0)) return entries;
+            TIMELINE_TIME_OVERRIDES.forEach(o => {
+                if (Date.now() > new Date(o.expires).getTime()) return;
+                if (!o.mission.test(title || '') && !o.mission.test(slug || '')) return;
+                const idx = entries.findIndex(e => normTimelineEvent(e.event).toLowerCase() === o.event.toLowerCase());
+                if (idx < 0) return;
+                const planned = entries[idx].seconds;
+                const actual = Math.round((new Date(o.at).getTime() - t0) / 1000);
+                const delta = actual - planned;
+                entries.forEach((e, i) => {
+                    if (i >= idx) e.seconds += delta;
+                    else if (e.seconds > actual) e.seconds = actual;   // an earlier event can't end up after it
+                });
+            });
+            return entries;
+        }
+
         function parseCmsPostLaunchTimeline(mission, slug) {
             if (!mission) return null;
             const rawEntries = mission.postLaunchTimeline && mission.postLaunchTimeline.timelineEntries;
@@ -5971,6 +5996,7 @@
                 .map(e => ({ seconds: parseTimeToSeconds(e.time), event: (e.description || '').trim() }))
                 .filter(e => !isNaN(e.seconds) && e.event);
             if (!postLaunchTimeline.length) return null;
+            applyTimelineTimeOverrides(postLaunchTimeline, mission.title, slug);
             return { title: mission.title || '', slug: slug || '', postLaunchTimeline };
         }
 
@@ -22291,6 +22317,7 @@ setTimeout(() => {
                 // displayed one drops Starship's "(Starship Flight N)" - the only part that matches
                 // SpaceX's "Starship Flight N" / starship-flight-N
                 window.currentActiveHeroMissionName = nextLaunch.patchTagName || nextLaunch.name;
+                window.currentActiveHeroLaunchAt = nextLaunch.date;   // T0 for applyTimelineTimeOverrides
                 if (typeof fetchRealMissionTimeline === 'function' &&
                     !realTimelineMatchesMission(nextLaunch.name)) {
                     fetchRealMissionTimeline();
