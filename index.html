@@ -26853,6 +26853,9 @@ setTimeout(() => {
             if (!el) return;
             el.setAttribute('translate', 'no');
             el.setAttribute('lang', 'en');
+            // Every el/stEl.className string below carries no-starship-protect: those writes REPLACE the whole class
+            // list, so the class on these elements in the HTML was gone after the first tick, and the page-wide
+            // Starship->סטארשיפ swap fought the 1 s tick again, flipping the word every second.
             const target = new Date(targetDate);
 
             const heroBanner = document.getElementById('hero-banner');
@@ -26949,10 +26952,10 @@ setTimeout(() => {
                     setCountdownLabel(false);
                     setHeroStatusExplain('');
                     el.innerHTML = el.dataset.holdText || 'HOLD / DELAYED';
-                    el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                    el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-amber-500 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate no-starship-protect";
                     stickyEls.forEach(stEl => {
                         stEl.innerText = el.dataset.holdText || 'HOLD / DELAYED';
-                        stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate";
+                        stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-amber-500 animate-pulse notranslate no-starship-protect";
                     });
                     return;
                 }
@@ -26967,10 +26970,10 @@ setTimeout(() => {
                     setHeroStatusExplain('');
                     el.innerHTML = checking;
                     fitMissionStatusText();
-                    el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-zinc-400 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                    el.className = "font-space text-xl sm:text-3xl font-bold tracking-tighter text-zinc-400 animate-pulse whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate no-starship-protect";
                     stickyEls.forEach(stEl => {
                         stEl.innerText = checking;
-                        stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-zinc-400 animate-pulse notranslate";
+                        stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-zinc-400 animate-pulse notranslate no-starship-protect";
                     });
                     return;
                 }
@@ -27001,10 +27004,10 @@ setTimeout(() => {
                         setHeroStatusExplain('');
                         el.innerHTML = el.dataset.launchNowText || 'LIFTOFF';
                         fitMissionStatusText();
-                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 animate-pulse-calm whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate no-starship-protect";
                         stickyEls.forEach(stEl => {
                             stEl.innerText = el.dataset.launchNowText || 'LIFTOFF';
-                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate";
+                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 animate-pulse-calm notranslate no-starship-protect";
                         });
                     } else {
                         // Swaps the generic "MISSION IN PROGRESS" text for the current milestone
@@ -27025,10 +27028,10 @@ setTimeout(() => {
                         el.innerHTML = displayText;
                         setHeroStatusExplain(milestone && milestone.explain ? milestone.explain : '');
                         fitMissionStatusText();
-                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate";
+                        el.className = "font-space text-2xl sm:text-4xl font-bold tracking-tighter text-emerald-400 whitespace-nowrap text-center flex items-baseline justify-center py-2 notranslate no-starship-protect";
                         stickyEls.forEach(stEl => {
                             stEl.innerText = displayText;
-                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 notranslate";
+                            stEl.className = "font-space text-xs sm:text-sm font-bold tracking-tight text-emerald-400 notranslate no-starship-protect";
                         });
                     }
                     return;
@@ -27079,7 +27082,7 @@ setTimeout(() => {
                 // timeColor on the whole span, which made the "d"/"h"/"m"/"s" letters the same
                 // bright color as the numbers instead of the intended quieter gray.
                 stickyEls.forEach(stEl => {
-                    stEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate${pulseOuter ? ' animate-pulse-calm' : ''}`;
+                    stEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate no-starship-protect${pulseOuter ? ' animate-pulse-calm' : ''}`;
                     stEl.innerHTML = `
                         <span class="${timeColor}">${d}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">d</span>
                         <span class="${timeColor} tracking-[1px]">${h.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">h</span>
