@@ -16445,8 +16445,15 @@
             '521f3a1c-f977-4306-9b7f-495858719adf': 'patches/nancy-grace-roman.webp',
             'falcon heavy | nancy grace roman space telescope': 'patches/nancy-grace-roman.webp',
             '18441371-8b2e-457c-afb5-1ec1b11ab630': 'patches/crew-13.webp',
-            'falcon 9 block 5 | crew-13': 'patches/crew-13.webp'
+            'falcon 9 block 5 | crew-13': 'patches/crew-13.webp',
+            'starship | starlink group 31-1 (starship flight 14)': 'patches/starship-flight-14.webp'
         };
+        // Which mission a patch SHARED by several flights is filed under in the patches strip (one card per patch
+        // image). Every Starship flight gets the same generic patch, so the strip showed it under whichever flight
+        // this browser happened to see first; Flight 14 has its own patch now, and the generic one is Flight 13's.
+        const PATCH_STRIP_OWNERS = [
+            { patch: GENERIC_PATCH_IMAGES.starship, mission: /\bstarship\b.*\bflight\s*13\b/i }
+        ];
 
         const masterFacts = [
             "More than 300 times, Falcon 9 boosters have been landed by SpaceX. Reusability is no longer experimental — it is the standard.",
@@ -21015,7 +21022,8 @@
                 if (existingIdx !== -1) {
                     const old = archive[existingIdx];
                     if (old.patch !== m.patch && (
-                        (isWikimediaPatchUrl(old.patch) && !isWikimediaPatchUrl(m.patch))
+                        /^patches\//.test(m.patch)   // a hand-added patch (MANUAL_MISSION_PATCHES) replaces the one kept before
+                        || (isWikimediaPatchUrl(old.patch) && !isWikimediaPatchUrl(m.patch))
                         || (isWikimediaPatchUrl(old.patch) && isWikimediaPatchUrl(m.patch) && /\/thumb\//i.test(old.patch))
                     )) {
                         archive[existingIdx] = m;
@@ -21030,6 +21038,16 @@
                     knownPatchUrls.add(m.patch);
                     archiveChanged = true;
                 }
+            });
+
+            PATCH_STRIP_OWNERS.forEach(o => {
+                const owner = [...rawPastMissions, ...dbMissions].find(m => m && m.patch === o.patch && o.mission.test(m.patchTagName || m.name || ''));
+                if (!owner) return;
+                const idx = archive.findIndex(a => a && a.patch === o.patch);
+                if (idx !== -1 && archive[idx].id === owner.id) return;
+                if (idx === -1) archive.push(owner); else archive[idx] = owner;
+                knownPatchUrls.add(o.patch);
+                archiveChanged = true;
             });
 
             if (archiveChanged) savePatchArchive(archive);
