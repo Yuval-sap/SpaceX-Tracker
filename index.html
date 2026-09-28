@@ -6149,6 +6149,19 @@
                 .catch(() => { /* endpoint unreachable/shape changed/no timeline for this mission - keep any matching cache; the fallback path already covers a miss */ });
         }
         setInterval(fetchRealMissionTimeline, REAL_MISSION_TIMELINE_REFRESH_MS);
+        // From an hour before liftoff until 30 min after it, while no X broadcast has turned up for the hero yet, SpaceX's
+        // website is checked every 2.5 min instead of hourly - a broadcast published in that last hour was otherwise only
+        // found by the next hourly check, often after liftoff. Stops asking once the broadcast is found.
+        setInterval(() => {
+            const heroName = window.currentActiveHeroMissionName;
+            const t0 = new Date(window.currentActiveHeroLaunchAt || '').getTime();
+            if (!heroName || isNaN(t0)) return;
+            const minutesToLaunch = (t0 - Date.now()) / 60000;
+            if (minutesToLaunch > 60 || minutesToLaunch < -30) return;
+            const hx = window._heroXBroadcast;
+            if (hx && hx.id && hx.heroName === heroName) return;
+            fetchRealMissionTimeline();
+        }, 150 * 1000);
 
         // Reduces a mission name/title/slug to lowercase words separated by single spaces -
         // this app's own naming uses "|" and spaces ("Starship | Flight 14"), SpaceX's CMS uses
@@ -19872,6 +19885,8 @@
             updateRefreshSchedule();
             startPastVideoLongTailRecheck();
             handleDeepLinkMission();
+            // an open mission's live player picks up an X broadcast this refresh brought in (wireModalLiveButton)
+            if (typeof window._onHeroXBroadcast === 'function') window._onHeroXBroadcast();
             updateStarlinkStats();
             // rawPastMissions just got rebuilt above - recompute the Gen2/Gen3 split now that
             // it (may have) changed, using whatever total is already known (see
@@ -23431,7 +23446,10 @@ setTimeout(() => {
             let xId = null;
             const applyXId = function () {
                 const heroX = window._heroXBroadcast;
-                xId = m.xBroadcastId
+                // the latest Launch Library data for this mission too - `m` is the copy the modal was opened with, from
+                // before a later refresh may have brought the broadcast in
+                const fresh = dbMissions.concat(rawPastMissions).find(x => x && x.id === m.id);
+                xId = m.xBroadcastId || (fresh && fresh.xBroadcastId)
                     || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
                     || savedXBroadcastFor(m.patchTagName || m.name);
                 window._liveOnX = !!xId;
@@ -23537,8 +23555,9 @@ setTimeout(() => {
                 }
                 resetVideoControlsOverlay();
             };
-            // The hero's X broadcast arrived after this modal was wired: switch the button beside the live button to X,
-            // and a player already open on the YouTube fallback over to SpaceX's X broadcast
+            // An X broadcast arrived after this modal was wired (from SpaceX's website for the hero, or with a Launch
+            // Library refresh): switch the button beside the live button to X, and a player already open on the
+            // YouTube fallback over to SpaceX's X broadcast
             window._onHeroXBroadcast = function () {
                 const had = xId;
                 applyXId();
