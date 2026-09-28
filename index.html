@@ -27466,14 +27466,18 @@ if (heroNameEl) {
                 // Hide outgoing, show incoming at opacity 0, then fade/slide in
                 outgoing.classList.add('hidden');
                 incoming.classList.remove('hidden');
-                // the status headline changed while the Launches tab was hidden - fit it before it shows
-                if (incoming === panelLaunches && typeof fitMissionStatusText === 'function') fitMissionStatusText();
+                // The status headline may have changed while the Launches tab was hidden - fit it as the panel comes
+                // back. Only AFTER .tab-panel-preenter is on: measuring the panel before that fixed its starting
+                // opacity at 1, and the Launches tab lost its fade-in (02281ef).
+                const fitStatus = () => { if (incoming === panelLaunches && typeof fitMissionStatusText === 'function') fitMissionStatusText(); };
                 if (instant) {
+                    fitStatus();
                     return;
                 }
                 incoming.classList.add('tab-panel-preenter');
                 // Force a layout read so the preenter styles apply before we animate
                 void incoming.offsetWidth;
+                fitStatus();
                 incoming.classList.remove('tab-panel-preenter');
             };
 
