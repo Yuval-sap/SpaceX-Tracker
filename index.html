@@ -664,6 +664,10 @@
         body.light-theme .program-logo-light { display: block; }
         body.light-theme .program-logo-dark { display: none; }
 
+        /* X's broadcast player has its own "Watch on X" button in the top corner - the player's close button moves to
+           the top centre while it plays (wireModalLiveButton adds .x-live) */
+        #modal-video-section.x-live #modal-video-close-btn { left: 50% !important; right: auto !important; transform: translateX(-50%); }
+
         /* Mission modal info tiles: each title centred over its value, rather than both pinned to the start edge */
         #modal-vehicle-info-grid > div,
         #modal-booster-info-grid > div {
@@ -7614,7 +7618,10 @@
                     'i18n-filter-starlink': (() => { try { return STARLINK_I18N[key] || 'Starlink'; } catch (e) { return 'Starlink'; } })(),   // declared further down
                     'i18n-watch-launch': dict.watchLaunch || LAUNCH_LABEL_I18N.en.watchLaunch,
                     'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
-                    'i18n-open-youtube-live': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
+                    // "Open on X" while the live player plays SpaceX's X broadcast (wireModalLiveButton)
+                    'i18n-open-youtube-live': window._liveOnX
+                        ? (key === 'tr' ? "X'te aç" : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube).replace('YouTube', 'X'))
+                        : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube),
                     'i18n-patches-title': dict.patchesTitle || LAUNCH_LABEL_I18N.en.patchesTitle,
                     'i18n-patches-subtitle': dict.patchesSubtitle || LAUNCH_LABEL_I18N.en.patchesSubtitle,
                     'i18n-patch-full-details': dict.fullLaunchDetails || LAUNCH_LABEL_I18N.en.fullLaunchDetails,
@@ -14092,6 +14099,10 @@
                          real iframe (see loadYoutubeIntoPlayer) - must be a plain container, NOT
                          an <iframe> itself, or the replacement never actually loads a video. -->
                     <div id="modal-video-iframe" class="w-full h-full absolute inset-0"></div>
+                    <!-- SpaceX's live broadcast on X (wireModalLiveButton), shown instead of the YouTube player when the
+                         mission has one - X's own embeddable broadcast player -->
+                    <iframe id="modal-x-iframe" class="hidden w-full h-full absolute inset-0 border-0" title="SpaceX on X"
+                        allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
                     <!-- Used to have a #modal-video-tap-overlay here (catching the first mobile
                          tap to "reveal controls" before letting a second tap reach the real
                          YouTube player) - removed 2026-08-18: it made EVERY interaction with the
@@ -14154,7 +14165,7 @@
                         </button>
                         <a id="modal-live-yt-link" href="#" target="_blank" rel="noopener"
                             class="w-1/4 min-w-0 flex items-center justify-center text-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
-                            <i class="fa-brands fa-youtube text-red-500 shrink-0"></i>
+                            <i id="modal-live-yt-icon" class="fa-brands fa-youtube text-red-500 shrink-0"></i>
                             <span id="i18n-open-youtube-live" class="notranslate leading-tight" translate="no"
                                 lang="en">Open on YouTube</span>
                         </a>
@@ -19994,6 +20005,14 @@
                 }
             }
             if (!videoUrl && liveStreamUrl) videoUrl = liveStreamUrl;
+            // SpaceX's own live broadcast on X - Launch Library lists it among the videos for nearly every Falcon
+            // launch (x.com/i/broadcasts/<id>); the live player plays it in place of the YouTube coverage
+            let xBroadcastId = null;
+            for (const v of vidList) {
+                const u = (typeof v === 'string') ? v : (v && v.url ? v.url : '');
+                const mx = u.match(/(?:x|twitter)\.com\/i\/broadcasts\/([A-Za-z0-9]+)/);
+                if (mx) { xBroadcastId = mx[1]; break; }
+            }
 
             // The Launch Library API marks each video entry with a "live" boolean when a
             // stream is actually airing right now — this is the real signal for whether a
@@ -20378,6 +20397,7 @@
                 liveUrl: liveStreamUrl,
                 hasLiveVideo: hasLiveVideo,
                 liveVideoUrl: liveVideoUrl,
+                xBroadcastId: xBroadcastId,
                 youtubeId: youtubeId,
                 videoUrl: videoUrl,
                 booster: boosterStr,
@@ -23131,7 +23151,18 @@ setTimeout(() => {
             if (shouldAutoExpand) openPlayer();
         }
 
+        // Unloads SpaceX's X broadcast from the live player (#modal-x-iframe) and brings the YouTube player back
+        function stopXBroadcast() {
+            const xFrame = document.getElementById('modal-x-iframe');
+            if (xFrame && !xFrame.classList.contains('hidden')) { xFrame.src = 'about:blank'; xFrame.classList.add('hidden'); }
+            const ytEl = document.getElementById('modal-video-iframe');
+            if (ytEl) ytEl.style.display = '';
+            const section = document.getElementById('modal-video-section');
+            if (section) section.classList.remove('x-live');
+        }
+
         function wireModalLiveButton(m, isPastMission) {
+            window._liveOnX = false;
             const liveBtn = document.getElementById('modal-watch-live-btn');
             const liveLabel = document.getElementById('modal-watch-live-label');
             const shareBtn = document.getElementById('modal-share-btn');
@@ -23203,6 +23234,20 @@ setTimeout(() => {
                     ? `https://www.youtube.com/watch?v=${confirmedYoutubeId}`
                     : (liveSrcUrl || youtubeOpenUrlFallback);
             }
+            // SpaceX's own broadcast on X, when the mission has one: the player plays it, and the button beside it
+            // opens it on X
+            const xId = m.xBroadcastId || null;
+            window._liveOnX = !!xId;
+            const liveYtIcon = document.getElementById('modal-live-yt-icon');
+            if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
+            if (xId && liveYtLink) liveYtLink.href = `https://x.com/i/broadcasts/${xId}`;
+            const liveYtLabel = document.getElementById('i18n-open-youtube-live');
+            if (liveYtLabel) {
+                const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                const ld = LAUNCH_LABEL_I18N[lk] || LAUNCH_LABEL_I18N.en;
+                const yt = ld.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube;
+                liveYtLabel.innerText = xId ? (lk === 'tr' ? "X'te aç" : yt.replace('YouTube', 'X')) : yt;
+            }
 
             const openLiveVideo = function () {
                 if (!videoIframe || !videoSection) return;
@@ -23211,6 +23256,25 @@ setTimeout(() => {
                 if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
                 videoSection.classList.remove('hidden');
                 resetVideoControlsOverlay();
+
+                if (xId) {
+                    // X's broadcast player, in the site language; the YouTube player is stopped and hidden meanwhile
+                    stopYoutubePlayer('modal-video-iframe');
+                    const ytEl = document.getElementById('modal-video-iframe');
+                    if (ytEl) ytEl.style.display = 'none';
+                    const xFrame = document.getElementById('modal-x-iframe');
+                    videoSection.classList.add('x-live');
+                    if (xFrame) {
+                        const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                        xFrame.src = `https://studio.x.com/embed/broadcast/${encodeURIComponent(xId)}?dnt=true&lang=${lk === 'iw' ? 'he' : lk}`;
+                        xFrame.classList.remove('hidden');
+                    }
+                    if (videoUnconfirmedOverlay) {
+                        videoUnconfirmedOverlay.classList.add('hidden');
+                        videoUnconfirmedOverlay.classList.remove('flex');
+                    }
+                    return;
+                }
 
                 if (confirmedYoutubeId) {
                     // The API confirmed a specific, real SpaceX video - most precise, embed it
@@ -23257,6 +23321,7 @@ setTimeout(() => {
             // clicking WATCH LIVE again while the player is already open close it the same way -
             // see liveBtn.onclick just below, which is what actually makes this a toggle.
             const closeLiveVideo = function () {
+                stopXBroadcast();
                 stopYoutubePlayer('modal-video-iframe'); // saves the resume position first, if applicable
                 if (videoSection) videoSection.classList.add('hidden');
                 if (videoUnconfirmedOverlay) {
@@ -24684,6 +24749,7 @@ setTimeout(() => {
         }
         // what closing / switching away from a mission has to stop: its video and the video-related controls
         function resetMissionModalMedia() {
+            stopXBroadcast();
             // Stop any playing YouTube embed so audio/video does not continue in background -
             // saves the resume position first, if the video that was playing is resumable.
             stopYoutubePlayer('modal-video-iframe');
