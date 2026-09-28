@@ -6044,6 +6044,7 @@
                             if (xId && heroName && namesReferToSameMission(mission && mission.title, slugs[i], heroName)) {
                                 window._heroXBroadcast = { id: xId, heroName };
                                 rememberXBroadcast(heroName, xId);
+                                if (typeof window._onHeroXBroadcast === 'function') window._onHeroXBroadcast();
                             }
                             const data = parseCmsPostLaunchTimeline(mission, slugs[i]);
                             if (!data) return tryAt(i + 1);
@@ -23400,21 +23401,28 @@ setTimeout(() => {
             // opens it on X
             // from the mission's own data (Launch Library), or - for the hero mission - from SpaceX's website
             // (fetchRealMissionTimeline), which lists it for every flight including Starship
-            const heroX = window._heroXBroadcast;
-            const xId = m.xBroadcastId
-                || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
-                || savedXBroadcastFor(m.patchTagName || m.name);
-            window._liveOnX = !!xId;
-            const liveYtIcon = document.getElementById('modal-live-yt-icon');
-            if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
-            if (xId && liveYtLink) liveYtLink.href = `https://x.com/i/broadcasts/${xId}`;
-            const liveYtLabel = document.getElementById('i18n-open-youtube-live');
-            if (liveYtLabel) {
-                const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
-                const ld = LAUNCH_LABEL_I18N[lk] || LAUNCH_LABEL_I18N.en;
-                const yt = ld.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube;
-                liveYtLabel.innerText = xId ? (lk === 'tr' ? "X'te aç" : yt.replace('YouTube', 'X')) : yt;
-            }
+            // Looked up again when the player opens, and once more when the hero's X broadcast arrives: it comes from
+            // SpaceX's website a few seconds after the page loads, so a WATCH LIVE tapped right after (re)opening the
+            // site found none yet and stayed on the YouTube fallback (Spaceflight Now) for the rest of the flight.
+            let xId = null;
+            const applyXId = function () {
+                const heroX = window._heroXBroadcast;
+                xId = m.xBroadcastId
+                    || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
+                    || savedXBroadcastFor(m.patchTagName || m.name);
+                window._liveOnX = !!xId;
+                const liveYtIcon = document.getElementById('modal-live-yt-icon');
+                if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
+                if (xId && liveYtLink) liveYtLink.href = `https://x.com/i/broadcasts/${xId}`;
+                const liveYtLabel = document.getElementById('i18n-open-youtube-live');
+                if (liveYtLabel) {
+                    const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                    const ld = LAUNCH_LABEL_I18N[lk] || LAUNCH_LABEL_I18N.en;
+                    const yt = ld.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube;
+                    liveYtLabel.innerText = xId ? (lk === 'tr' ? "X'te aç" : yt.replace('YouTube', 'X')) : yt;
+                }
+            };
+            applyXId();
 
             const openLiveVideo = function () {
                 if (!videoIframe || !videoSection) return;
@@ -23423,6 +23431,7 @@ setTimeout(() => {
                 if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
                 videoSection.classList.remove('hidden');
                 resetVideoControlsOverlay();
+                applyXId();
 
                 if (xId) {
                     // X's broadcast player, in the site language; the YouTube player is stopped and hidden meanwhile
@@ -23503,6 +23512,15 @@ setTimeout(() => {
                     if (watchBtn) watchBtn.classList.remove('hidden');
                 }
                 resetVideoControlsOverlay();
+            };
+            // The hero's X broadcast arrived after this modal was wired: switch the button beside the live button to X,
+            // and a player already open on the YouTube fallback over to SpaceX's X broadcast
+            window._onHeroXBroadcast = function () {
+                const had = xId;
+                applyXId();
+                if (!had && xId && videoSection && !videoSection.classList.contains('hidden') && !videoSection.classList.contains('x-live')) {
+                    openLiveVideo();
+                }
             };
             liveBtn.onclick = function () {
                 if (videoSection && !videoSection.classList.contains('hidden')) {
