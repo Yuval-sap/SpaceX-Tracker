@@ -7325,6 +7325,10 @@
             const el = document.getElementById('hero-countdown');
             const box = document.getElementById('countdown-box');
             if (!el || !box) return;
+            // Not rendered (the Info tab is showing): nothing can be measured, so leave the last fitted size alone.
+            // Clearing it first used to reset the headline to its full CSS size every tick while hidden, and coming
+            // back to the Launches tab showed it huge, spilling past the card, until the next tick refitted it.
+            if (!box.getClientRects().length) return;
             el.style.removeProperty('font-size');
             if (!box.classList.contains('mission-status-mode')) return; // digits mode: leave as-is
             // Measured with a Range over the element's own contents, NOT scrollWidth: this
@@ -27462,6 +27466,8 @@ if (heroNameEl) {
                 // Hide outgoing, show incoming at opacity 0, then fade/slide in
                 outgoing.classList.add('hidden');
                 incoming.classList.remove('hidden');
+                // the status headline changed while the Launches tab was hidden - fit it before it shows
+                if (incoming === panelLaunches && typeof fitMissionStatusText === 'function') fitMissionStatusText();
                 if (instant) {
                     return;
                 }
