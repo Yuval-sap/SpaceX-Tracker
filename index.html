@@ -15971,12 +15971,16 @@
         // Per-photo framing on the launch cards: the Crew Dragon pad shot has the rocket right in the
         // middle, where it sat behind the start of the (right-aligned in RTL) title - shifted so the
         // rocket moves left, clear of the title.
-        // The Falcon 9 launch photo (upcoming Falcon 9 cards) sits a little lower, so the tip of the rocket clears the
-        // card's top edge instead of being cut off.
-        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': '50% 10%' };
+        // The Falcon 9 launch photo (upcoming Falcon 9 cards): the photo is wider than the card, so it already fills the
+        // card's height and object-position alone moves nothing up or down - the rocket's tip was cut by the card's
+        // 10% zoom, which grows from the bottom edge and so pushed the top out of the card. Here the zoom grows from
+        // the top edge instead, keeping the whole top of the photo (and the tip) inside the card.
+        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', 'top'] };
         function cardImgPosStyle(src) {
             const pos = CARD_IMG_POS[String(src || '').split('?')[0].split('/').pop()];
-            return pos ? `style="object-position: ${pos};"` : '';
+            if (!pos) return '';
+            const [objectPos, origin] = Array.isArray(pos) ? pos : [pos];
+            return `style="object-position: ${objectPos};${origin ? ` transform-origin: ${origin};` : ''}"`;
         }
 
         const FALLBACK_IMAGES = {
