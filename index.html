@@ -1199,13 +1199,14 @@
         /* Card photos are zoomed from their bottom edge (10% on upcoming-launch and launch-site cards, 6% on past
            launches), so they overhang the card at the top and both sides - and that overhang showed through the
            card's rounded edges as a colored line under the green hover glow. The overhang is cut off the photo
-           itself (clip-path works in the photo's own unzoomed size: 0.1/1.1 top, 0.05/1.1 each side, plus a hair).
+           itself (clip-path works in the photo's own unzoomed size: 0.1/1.1 top, 0.05/1.1 each side) - exactly at
+           the card's edge: any margin inside it leaves a dark rim between the photo and the border.
            A photo framed differently gets its own cut inline (cardImgPosStyle). */
         .mission-card > img.scale-\[1\.1\].origin-bottom {
-            clip-path: inset(9.39% 4.85% 0 4.85%);
+            clip-path: inset(9.09% 4.55% 0 4.55%);
         }
         .mission-card > img.scale-\[1\.06\].origin-bottom {
-            clip-path: inset(5.96% 3.13% 0 3.13%);
+            clip-path: inset(5.66% 2.83% 0 2.83%);
         }
 
         /* Mobile carousel: keep the first/last upcoming card fully visible.
@@ -16004,10 +16005,10 @@
             // The card's 10% zoom makes the photo overhang the card on every side it grows past (the sides always, the
             // bottom too when it isn't zoomed from the bottom edge), and the overhang showed through the card's rounded
             // edge as a colored line under the green hover glow (yellow ground on the Falcon 9 photo). The overhang is
-            // cut off the photo itself; clip-path is in the photo's own, unzoomed, coordinates (hence /1.1), plus a
-            // hair so the cut sits just inside the card's edge.
+            // cut off the photo itself; clip-path is in the photo's own, unzoomed, coordinates (hence /1.1), exactly at
+            // the card's edge (a margin inside it showed as a dark rim around the photo).
             const oy = origin ? parseFloat(origin.split(' ')[1]) / 100 : 1;
-            const pct = f => (Math.max(0, f / 1.1 * 100) + (f > 0 ? 0.3 : 0)).toFixed(2) + '%';
+            const pct = f => Math.max(0, f / 1.1 * 100).toFixed(2) + '%';
             const clip = `clip-path: inset(${pct(0.1 * oy)} ${pct(0.05)} ${pct(0.1 * (1 - oy))} ${pct(0.05)});`;
             return `style="${objectPos ? `object-position: ${objectPos}; ` : ''}${origin ? `transform-origin: ${origin}; ` : ''}${clip}"`;
         }
