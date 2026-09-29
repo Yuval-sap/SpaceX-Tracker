@@ -1196,6 +1196,18 @@
             border-color: rgba(16, 185, 129, 0.5) !important;
         }
 
+        /* Card photos are zoomed from their bottom edge (10% on upcoming-launch and launch-site cards, 6% on past
+           launches), so they overhang the card at the top and both sides - and that overhang showed through the
+           card's rounded edges as a colored line under the green hover glow. The overhang is cut off the photo
+           itself (clip-path works in the photo's own unzoomed size: 0.1/1.1 top, 0.05/1.1 each side, plus a hair).
+           A photo framed differently gets its own cut inline (cardImgPosStyle). */
+        .mission-card > img.scale-\[1\.1\].origin-bottom {
+            clip-path: inset(9.39% 4.85% 0 4.85%);
+        }
+        .mission-card > img.scale-\[1\.06\].origin-bottom {
+            clip-path: inset(5.96% 3.13% 0 3.13%);
+        }
+
         /* Mobile carousel: keep the first/last upcoming card fully visible.
            scroll-snap alone targets the content edge and ignores padding unless
            scroll-padding is set — same fix already used on #past-launches-grid. */
@@ -15988,15 +16000,16 @@
         const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', '50% 60%'] };
         function cardImgPosStyle(src) {
             const pos = CARD_IMG_POS[String(src || '').split('?')[0].split('/').pop()];
-            if (!pos) return '';
-            const [objectPos, origin] = Array.isArray(pos) ? pos : [pos];
-            if (!origin) return `style="object-position: ${objectPos};"`;
-            // zoomed from above the bottom edge, the photo also grows past the card's bottom (14 px at 60%) - and that
-            // sliver showed through the card's rounded bottom edge as a yellow line under the green hover glow. The
-            // sliver is cut off the photo itself (clip-path is in the photo's own, unzoomed, coordinates: /1.1)
-            const oy = parseFloat(origin.split(' ')[1]) / 100;
-            const cut = Math.max(0, 0.1 * (1 - oy) / 1.1 * 100 + 0.3).toFixed(2);
-            return `style="object-position: ${objectPos}; transform-origin: ${origin}; clip-path: inset(0 0 ${cut}% 0);"`;
+            const [objectPos, origin] = !pos ? [] : Array.isArray(pos) ? pos : [pos];
+            // The card's 10% zoom makes the photo overhang the card on every side it grows past (the sides always, the
+            // bottom too when it isn't zoomed from the bottom edge), and the overhang showed through the card's rounded
+            // edge as a colored line under the green hover glow (yellow ground on the Falcon 9 photo). The overhang is
+            // cut off the photo itself; clip-path is in the photo's own, unzoomed, coordinates (hence /1.1), plus a
+            // hair so the cut sits just inside the card's edge.
+            const oy = origin ? parseFloat(origin.split(' ')[1]) / 100 : 1;
+            const pct = f => (Math.max(0, f / 1.1 * 100) + (f > 0 ? 0.3 : 0)).toFixed(2) + '%';
+            const clip = `clip-path: inset(${pct(0.1 * oy)} ${pct(0.05)} ${pct(0.1 * (1 - oy))} ${pct(0.05)});`;
+            return `style="${objectPos ? `object-position: ${objectPos}; ` : ''}${origin ? `transform-origin: ${origin}; ` : ''}${clip}"`;
         }
 
         const FALLBACK_IMAGES = {
