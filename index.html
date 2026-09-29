@@ -7827,6 +7827,7 @@
             });
 
             if (typeof syncModalLiveButtonLabel === 'function') syncModalLiveButtonLabel();
+            if (typeof syncHeroLiveButtonLabel === 'function') syncHeroLiveButtonLabel();
 
             // Placeholder is an attribute, not textContent — Google Translate still likes to
             // rewrite it ("patches" → "תיקונים") even with translate="no" on the input, so
@@ -11686,8 +11687,8 @@
                                 <i class="fa-solid fa-bell"></i>
                             </button>
 
-                            <button type="button" id="hero-watch-live-btn"
-                                class="hidden group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 text-white text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
+                            <button type="button" id="hero-watch-live-btn" translate="no"
+                                class="notranslate hidden group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 text-white text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
                                 <i id="hero-watch-live-icon" class="fa-solid fa-play text-[10px] animate-pulse"></i>
                                 <span id="hero-watch-live-label">WATCH LIVE</span>
                             </button>
@@ -22260,22 +22261,126 @@
             // widths ("קופץ"/"רוקד" - reported live). Skipping the DOM write entirely once
             // nothing about the button's own state has actually changed leaves Google's
             // translation alone indefinitely instead of repeatedly re-triggering the race.
-            const dedupeKey = nextLaunch.id + ':' + isEligible;
+            // The button is always there while a flight is in the hero, so people know ahead of time that the
+            // broadcast will play on the site: a quiet grey "Watch live" (a tap explains, with a reminder / calendar
+            // shortcut) that turns into the red WATCH LIVE about an hour before liftoff, in the same spot.
+            const state = isEligible ? 'live' : 'soon';
+            const dedupeKey = nextLaunch.id + ':' + state;
             if (watchLiveBtn.dataset.renderedFor === dedupeKey) return;
             watchLiveBtn.dataset.renderedFor = dedupeKey;
+            heroLiveButtonState = state;
+            closeHeroLivePopover();
 
-            if (isEligible) {
-                watchLiveBtn.classList.remove('hidden');
+            if (state === 'live') {
+                watchLiveBtn.className = HERO_LIVE_BTN_CLASS_LIVE;
                 if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
-                if (watchLiveLabel) watchLiveLabel.innerText = 'WATCH LIVE';
                 watchLiveBtn.onclick = function () {
                     openMissionModal(nextLaunch);
                     const modalLiveBtn = document.getElementById('modal-watch-live-btn');
                     if (modalLiveBtn) modalLiveBtn.click();
                 };
             } else {
-                watchLiveBtn.classList.add('hidden');
+                watchLiveBtn.className = HERO_LIVE_BTN_CLASS_SOON;
+                if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-tower-broadcast text-red-400 text-[11px] sm:text-xs';
+                watchLiveBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    if (document.getElementById('hero-live-popover')) closeHeroLivePopover();
+                    else openHeroLivePopover(nextLaunch, watchLiveBtn);
+                };
             }
+            syncHeroLiveButtonLabel();
+        }
+
+        const HERO_LIVE_BTN_CLASS_LIVE = 'notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 text-white text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0';
+        // same look as "View Brief" beside it: nothing to watch yet, so nothing red or pulsing
+        const HERO_LIVE_BTN_CLASS_SOON = 'notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0';
+        let heroLiveButtonState = null;
+        const HERO_LIVE_I18N = {
+            en: { info: "SpaceX's official broadcast will play right here on the site. About an hour before liftoff this button turns red - tap it to watch.", remind: "Remind me", remindOn: "Reminder set", calendar: "Add to calendar" },
+            he: { info: "השידור הרשמי של SpaceX ייפתח כאן, בתוך האתר. כשעה לפני השיגור הכפתור הזה יהפוך לאדום - לחצו עליו כדי לצפות.", remind: "תזכיר לי", remindOn: "התזכורת פעילה", calendar: "הוסף ליומן" },
+            es: { info: "La transmisión oficial de SpaceX se verá aquí mismo, en el sitio. Una hora antes del despegue este botón se pondrá rojo: tócalo para verla.", remind: "Recordarme", remindOn: "Recordatorio activo", calendar: "Añadir al calendario" },
+            fr: { info: "La diffusion officielle de SpaceX sera visible ici même, sur le site. Environ une heure avant le décollage, ce bouton passe au rouge : touchez-le pour regarder.", remind: "Me rappeler", remindOn: "Rappel activé", calendar: "Ajouter au calendrier" },
+            de: { info: "Die offizielle Übertragung von SpaceX läuft direkt hier auf der Seite. Etwa eine Stunde vor dem Start wird dieser Button rot - antippen zum Ansehen.", remind: "Erinnern", remindOn: "Erinnerung aktiv", calendar: "Zum Kalender" },
+            ru: { info: "Официальная трансляция SpaceX будет прямо здесь, на сайте. Примерно за час до старта эта кнопка станет красной - нажмите, чтобы смотреть.", remind: "Напомнить", remindOn: "Напоминание включено", calendar: "В календарь" },
+            zh: { info: "SpaceX 官方直播将直接在本站播放。发射前约一小时，此按钮会变成红色——点击即可观看。", remind: "提醒我", remindOn: "已设置提醒", calendar: "添加到日历" },
+            it: { info: "La diretta ufficiale di SpaceX sarà trasmessa proprio qui sul sito. Circa un'ora prima del lancio questo pulsante diventa rosso: toccalo per guardare.", remind: "Ricordamelo", remindOn: "Promemoria attivo", calendar: "Aggiungi al calendario" },
+            cs: { info: "Oficiální přenos SpaceX poběží přímo tady na webu. Zhruba hodinu před startem toto tlačítko zčervená - klepněte na něj a sledujte.", remind: "Připomenout", remindOn: "Připomenutí nastaveno", calendar: "Přidat do kalendáře" },
+            sv: { info: "SpaceX officiella sändning visas direkt här på sajten. Ungefär en timme före uppskjutningen blir den här knappen röd - tryck på den för att titta.", remind: "Påminn mig", remindOn: "Påminnelse satt", calendar: "Lägg till i kalendern" },
+            nl: { info: "De officiële uitzending van SpaceX is hier op de site te zien. Ongeveer een uur voor de lancering wordt deze knop rood - tik erop om te kijken.", remind: "Herinner me", remindOn: "Herinnering ingesteld", calendar: "Aan agenda toevoegen" },
+            da: { info: "SpaceX' officielle udsendelse vises direkte her på siden. Omkring en time før opsendelsen bliver denne knap rød - tryk på den for at se med.", remind: "Påmind mig", remindOn: "Påmindelse sat", calendar: "Føj til kalender" },
+            pt: { info: "A transmissão oficial da SpaceX passa aqui mesmo, no site. Cerca de uma hora antes do lançamento este botão fica vermelho: toque nele para assistir.", remind: "Lembrar-me", remindOn: "Lembrete ativo", calendar: "Adicionar ao calendário" },
+            pl: { info: "Oficjalna transmisja SpaceX będzie dostępna tutaj, na stronie. Około godziny przed startem ten przycisk zmieni kolor na czerwony - dotknij go, aby oglądać.", remind: "Przypomnij mi", remindOn: "Przypomnienie ustawione", calendar: "Dodaj do kalendarza" },
+            hi: { info: "SpaceX का आधिकारिक प्रसारण यहीं इस साइट पर चलेगा। लॉन्च से लगभग एक घंटा पहले यह बटन लाल हो जाएगा - देखने के लिए इसे दबाएँ।", remind: "मुझे याद दिलाएँ", remindOn: "रिमाइंडर सेट है", calendar: "कैलेंडर में जोड़ें" },
+            ar: { info: "سيُعرض البث الرسمي لـ SpaceX هنا مباشرة على الموقع. قبل الإطلاق بنحو ساعة يتحول هذا الزر إلى الأحمر - اضغط عليه للمشاهدة.", remind: "ذكّرني", remindOn: "تم ضبط التذكير", calendar: "أضف إلى التقويم" },
+            tr: { info: "SpaceX'in resmi yayını doğrudan burada, sitede oynatılacak. Fırlatmadan yaklaşık bir saat önce bu düğme kırmızıya döner - izlemek için dokunun.", remind: "Hatırlat", remindOn: "Hatırlatıcı kuruldu", calendar: "Takvime ekle" },
+        };
+        function heroLiveDict() {
+            let key = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (key === 'iw') key = 'he';
+            return { key, d: HERO_LIVE_I18N[key] || HERO_LIVE_I18N.en };
+        }
+        function syncHeroLiveButtonLabel() {
+            const label = document.getElementById('hero-watch-live-label');
+            if (!label || !heroLiveButtonState) return;
+            // one label in both states ("Watch live"): only the color says whether it is on yet
+            const { key } = heroLiveDict();
+            const text = (MODAL_LIVE_BTN_I18N[key] || MODAL_LIVE_BTN_I18N.en).watch;
+            if (label.textContent !== text) label.textContent = text;
+        }
+        function closeHeroLivePopover() {
+            const pop = document.getElementById('hero-live-popover');
+            if (pop) pop.remove();
+            document.removeEventListener('pointerdown', heroLivePopoverOutside, true);
+            document.removeEventListener('keydown', heroLivePopoverKey, true);
+            window.removeEventListener('scroll', closeHeroLivePopover, true);
+            window.removeEventListener('resize', closeHeroLivePopover);
+        }
+        function heroLivePopoverOutside(e) {
+            const pop = document.getElementById('hero-live-popover'), btn = document.getElementById('hero-watch-live-btn');
+            if (pop && !pop.contains(e.target) && !(btn && btn.contains(e.target))) closeHeroLivePopover();
+        }
+        function heroLivePopoverKey(e) { if (e.key === 'Escape') closeHeroLivePopover(); }
+        // fixed on <body>: #hero-banner clips its overflow, which would cut the card off at the hero's edge
+        function openHeroLivePopover(m, anchor) {
+            closeHeroLivePopover();
+            const { key, d } = heroLiveDict();
+            const reminded = typeof remindedMissions !== 'undefined' && remindedMissions.includes(m.id);
+            const pop = document.createElement('div');
+            pop.id = 'hero-live-popover';
+            pop.setAttribute('translate', 'no');
+            pop.dir = (key === 'he' || key === 'ar') ? 'rtl' : 'ltr';
+            pop.className = 'notranslate fixed bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl p-4 text-zinc-300';
+            pop.style.width = 'min(320px, calc(100vw - 32px))';
+            pop.style.zIndex = '95';   // above the page, under the modals (z-100+)
+            const btnCls = 'flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors duration-150';
+            pop.innerHTML = `<div class="flex items-start gap-2.5"><i class="fa-solid fa-tower-broadcast text-red-400 mt-1 shrink-0"></i><p class="text-sm leading-snug">${d.info}</p></div>`
+                + `<div class="flex gap-2 mt-3">`
+                + (reminded
+                    ? `<span class="${btnCls} bg-emerald-500/15 border-emerald-500/40 text-emerald-400"><i class="fa-solid fa-check"></i>${d.remindOn}</span>`
+                    : `<button type="button" data-act="remind" class="${btnCls} bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border-zinc-700 md:hover:border-emerald-500"><i class="fa-solid fa-bell"></i>${d.remind}</button>`)
+                + `<button type="button" data-act="cal" class="${btnCls} bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border-zinc-700 md:hover:border-emerald-500"><i class="fa-solid fa-calendar-plus"></i>${d.calendar}</button>`
+                + `</div>`;
+            document.body.appendChild(pop);
+            const r = anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+            let top = r.bottom + 8;
+            if (top + h > innerHeight - 8 && r.top - h - 8 > 8) top = r.top - h - 8;
+            const left = Math.min(Math.max(16, r.left + r.width / 2 - w / 2), innerWidth - w - 16);
+            pop.style.top = top + 'px';
+            pop.style.left = left + 'px';
+            pop.addEventListener('click', e => {
+                const act = e.target.closest('[data-act]');
+                if (!act) return;
+                // the hero's own bell: same reminder, same permission prompt, and the bell updates with it
+                if (act.dataset.act === 'remind') { const bell = document.getElementById('hero-remind-btn'); if (bell) bell.click(); }
+                else if (act.dataset.act === 'cal' && typeof saveToCalendar === 'function') saveToCalendar(m);
+                closeHeroLivePopover();
+            });
+            setTimeout(() => {
+                document.addEventListener('pointerdown', heroLivePopoverOutside, true);
+                document.addEventListener('keydown', heroLivePopoverKey, true);
+                window.addEventListener('scroll', closeHeroLivePopover, true);
+                window.addEventListener('resize', closeHeroLivePopover);
+            }, 0);
         }
 
         // #hero-window is notranslate (see its own HTML) - like every other notranslate label in
