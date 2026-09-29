@@ -15990,7 +15990,13 @@
             const pos = CARD_IMG_POS[String(src || '').split('?')[0].split('/').pop()];
             if (!pos) return '';
             const [objectPos, origin] = Array.isArray(pos) ? pos : [pos];
-            return `style="object-position: ${objectPos};${origin ? ` transform-origin: ${origin};` : ''}"`;
+            if (!origin) return `style="object-position: ${objectPos};"`;
+            // zoomed from above the bottom edge, the photo also grows past the card's bottom (14 px at 60%) - and that
+            // sliver showed through the card's rounded bottom edge as a yellow line under the green hover glow. The
+            // sliver is cut off the photo itself (clip-path is in the photo's own, unzoomed, coordinates: /1.1)
+            const oy = parseFloat(origin.split(' ')[1]) / 100;
+            const cut = Math.max(0, 0.1 * (1 - oy) / 1.1 * 100 + 0.3).toFixed(2);
+            return `style="object-position: ${objectPos}; transform-origin: ${origin}; clip-path: inset(0 0 ${cut}% 0);"`;
         }
 
         const FALLBACK_IMAGES = {
