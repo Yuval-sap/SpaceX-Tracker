@@ -12986,7 +12986,7 @@
          VEHICLE_GALLERY. z-[260]: above the dossier (z-200). -->
     <div id="vehicle-gallery-modal" onclick="if (event.target.id === 'vehicle-gallery-modal') closeVehicleGallery()"
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[260]">
-        <div class="relative max-w-3xl w-full">
+        <div id="vehicle-gallery-box" class="relative max-w-3xl w-full">
             <button onclick="closeVehicleGallery()"
                 class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
                 title="Close">
@@ -12995,8 +12995,8 @@
             <div class="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
                 <div id="vehicle-gallery-stage" class="relative w-full aspect-[3/2] bg-black flex items-center justify-center overflow-hidden">
                     <i id="vehicle-gallery-spinner" class="hidden fa-solid fa-spinner fa-spin text-zinc-600 text-2xl"></i>
-                    <img id="vehicle-gallery-photo" src="" alt="" class="hidden w-full h-full object-contain">
-                    <video id="vehicle-gallery-video" class="hidden w-full h-full object-contain" controls playsinline preload="metadata"></video>
+                    <img id="vehicle-gallery-photo" src="" alt="" class="hidden w-full h-full object-cover">
+                    <video id="vehicle-gallery-video" class="hidden w-full h-full object-cover" controls playsinline preload="metadata"></video>
                     <p id="vehicle-gallery-empty" class="hidden text-sm text-zinc-500 notranslate" translate="no"></p>
                     <button type="button" id="vehicle-gallery-prev" onclick="stepVehicleGallery(-1)" aria-label="Previous"
                         class="hidden absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 items-center justify-center bg-black/60 border border-zinc-600 rounded-full text-zinc-200">
@@ -26470,16 +26470,29 @@ setTimeout(() => {
             if (counter) counter.textContent = (vehicleGalleryIndex + 1) + ' / ' + photos.length;
             if (video && /\.(mp4|webm)$/i.test(photos[vehicleGalleryIndex])) {
                 if (spinner) spinner.classList.add('hidden');
+                video.onloadedmetadata = () => fitVehicleGalleryStage(video.videoWidth, video.videoHeight);
                 if (video.getAttribute('src') !== photos[vehicleGalleryIndex]) video.src = photos[vehicleGalleryIndex];
+                else if (video.videoWidth) fitVehicleGalleryStage(video.videoWidth, video.videoHeight);
                 video.classList.remove('hidden');
                 return;
             }
             if (spinner) { spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl'; }
-            img.onload = () => { img.classList.remove('hidden'); if (spinner) spinner.classList.add('hidden'); };
+            img.onload = () => { fitVehicleGalleryStage(img.naturalWidth, img.naturalHeight); img.classList.remove('hidden'); if (spinner) spinner.classList.add('hidden'); };
             img.onerror = () => { if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl'; };
             img.src = photos[vehicleGalleryIndex];
             img.alt = titleEl ? titleEl.textContent : '';
             if (counter) counter.textContent = (vehicleGalleryIndex + 1) + ' / ' + photos.length;
+        }
+        // The photo fills the whole frame: the frame takes each photo's own shape (3:2, 16:9, portrait, square)
+        // instead of a fixed 3:2 box with black bars. A tall photo narrows the whole card so it still fits the
+        // screen's height (with room for the title bar under it) - nothing of the photo is cropped away.
+        function fitVehicleGalleryStage(w, h) {
+            const stage = document.getElementById('vehicle-gallery-stage');
+            const box = document.getElementById('vehicle-gallery-box');
+            if (!stage || !box || !w || !h) return;
+            const r = w / h;
+            stage.style.aspectRatio = String(r);
+            box.style.maxWidth = `min(48rem, calc((100dvh - 150px) * ${r.toFixed(4)}))`;
         }
         function openVehicleGallery() {
             vehicleGalleryIndex = 0;
