@@ -26453,7 +26453,13 @@ setTimeout(() => {
                 if (b) { b.classList.toggle('hidden', !multi); b.classList.toggle('flex', multi); }
             });
             const titleEl = document.getElementById('vehicle-gallery-title');
-            if (titleEl) titleEl.textContent = (ROCKET_DATABASE[type] || {}).name || '';
+            // written only when the vehicle changes, and localized right away: rewriting the English name on every
+            // photo put "Starship" back in English each time, until the page's 500 ms Starship sweep translated it again
+            if (titleEl && titleEl.dataset.forType !== type) {
+                titleEl.textContent = (ROCKET_DATABASE[type] || {}).name || '';
+                titleEl.dataset.forType = type;
+                if (typeof localizeStarshipTerm === 'function') localizeStarshipTerm(titleEl);
+            }
             const video = document.getElementById('vehicle-gallery-video');
             if (video) { video.pause(); video.classList.add('hidden'); }
             if (!photos.length) {
