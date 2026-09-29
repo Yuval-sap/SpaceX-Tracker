@@ -3111,11 +3111,13 @@
         @media (min-width: 768px) {
 
             body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover,
+            body.light-theme #hero-watch-live-btn.md\:hover\:bg-emerald-500:hover,
             body.light-theme #hero-remind-btn.md\:hover\:bg-emerald-500:hover {
                 background-color: #047857 !important;
             }
 
             body.light-theme #hero-details-btn.md\:hover\:border-emerald-500:hover,
+            body.light-theme #hero-watch-live-btn.md\:hover\:border-emerald-500:hover,
             body.light-theme #hero-remind-btn.md\:hover\:border-emerald-500:hover {
                 border-color: #047857 !important;
             }
@@ -3124,7 +3126,8 @@
                own hover background here goes dark green (#047857 above), but the icon's default
                hover rule (.md:group-hover:text-black) still turns it black, which is invisible
                against a dark green background. White instead keeps it visible on-theme. */
-            body.light-theme #hero-details-btn:hover .fa-circle-info {
+            body.light-theme #hero-details-btn:hover .fa-circle-info,
+            body.light-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #ffffff !important;
             }
         }
@@ -3328,7 +3331,8 @@
            md: to match the icon's own md:group-hover:text-black breakpoint (no hover state below
            768px to begin with, touch devices don't have real :hover). */
         @media (min-width: 768px) {
-            body.mars-theme #hero-details-btn:hover .fa-circle-info {
+            body.mars-theme #hero-details-btn:hover .fa-circle-info,
+            body.mars-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #7a2e0f !important;
             }
         }
@@ -3741,7 +3745,8 @@
            shade of this theme's own blue instead of the default flat black on hover, so the
            "View Brief" button's (i) icon stays on-theme against its own hover background. */
         @media (min-width: 768px) {
-            body.moon-theme #hero-details-btn:hover .fa-circle-info {
+            body.moon-theme #hero-details-btn:hover .fa-circle-info,
+            body.moon-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #0a4a75 !important;
             }
         }
@@ -22281,7 +22286,7 @@
                 };
             } else {
                 watchLiveBtn.className = HERO_LIVE_BTN_CLASS_SOON;
-                if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-tower-broadcast text-red-400 text-[11px] sm:text-xs';
+                if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-tower-broadcast text-red-400 text-[11px] sm:text-xs md:group-hover:text-black transition-colors duration-150';
                 watchLiveBtn.onclick = function (e) {
                     e.stopPropagation();
                     if (document.getElementById('hero-live-popover')) closeHeroLivePopover();
@@ -22292,8 +22297,8 @@
         }
 
         const HERO_LIVE_BTN_CLASS_LIVE = 'notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 text-white text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0';
-        // same look as "View Brief" beside it: nothing to watch yet, so nothing red or pulsing
-        const HERO_LIVE_BTN_CLASS_SOON = 'notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0';
+        // same look (and hover, in every theme) as "View Brief" beside it: nothing to watch yet, so nothing red or pulsing
+        const HERO_LIVE_BTN_CLASS_SOON = 'notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0';
         let heroLiveButtonState = null;
         const HERO_LIVE_I18N = {
             en: { info: "SpaceX's official broadcast will play right here on the site. About an hour before liftoff this button turns red - tap it to watch.", remind: "Remind me", remindOn: "Reminder set", calendar: "Add to calendar" },
