@@ -22405,10 +22405,20 @@
             if (!heroWindowEl) return;
             const key = (lang || 'en').split('-')[0];
             const dict = LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en;
-            const winText = windowStart === windowEnd
-                ? `${windowStart} (${dict.instantLaunchWindow || LAUNCH_LABEL_I18N.en.instantLaunchWindow})`
-                : `${windowStart} - ${windowEnd}`;
-            heroWindowEl.innerText = winText;
+            if (windowStart !== windowEnd) {
+                // a time range reads left to right in every language
+                heroWindowEl.dir = 'ltr';
+                heroWindowEl.innerText = `${windowStart} - ${windowEnd}`;
+                return;
+            }
+            // time + "(Instantaneous Window)": in Hebrew/Arabic the time comes first on the right and the
+            // parenthesis follows it to the left, so the line itself runs right to left (the time stays LTR inside)
+            const rtl = key === 'he' || key === 'iw' || key === 'ar';
+            heroWindowEl.dir = rtl ? 'rtl' : 'ltr';
+            const timeEl = document.createElement('span');
+            timeEl.dir = 'ltr';
+            timeEl.textContent = windowStart;
+            heroWindowEl.replaceChildren(timeEl, ` (${dict.instantLaunchWindow || LAUNCH_LABEL_I18N.en.instantLaunchWindow})`);
         }
 
         function setupHeroBanner() {
