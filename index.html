@@ -14108,7 +14108,10 @@
           var names = state.competitors.map(providerDisplayName);
           // "vs." is kept English everywhere on purpose, same reasoning as YTD/1Y/3Y/5Y -
           // a near-universally borrowed comparison shorthand rather than site UI copy.
-          title.textContent = 'SpaceX vs. ' + (names.length ? names.join(', ') : d.theField) + ' — ' + modeLabel;
+          // "SpaceX" and "vs." are two separate left-to-right isolates (U+2066..U+2069), so a right-to-left line (Hebrew,
+          // Arabic) orders them like its own words - SpaceX first on the right, then vs., then China. As one Latin run
+          // they stayed "SpaceX vs." glued left to right, and the bare period jumped ("vs SpaceX. סין").
+          title.textContent = '\u2066SpaceX\u2069 \u2066vs.\u2069 ' + (names.length ? names.join(', ') : d.theField) + ' — ' + modeLabel;
           note.textContent = windowNote(state.windowYears) + liveTag;
         } else {
           title.textContent = 'SpaceX — ' + modeLabel;
