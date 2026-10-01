@@ -20175,6 +20175,12 @@
             return found;
         }
 
+        // lldev.thespacedevs.com (the backup Launch Library server) links its images on thespacedevs' "-dev" storage
+        // bucket, which lacks newer files the "-prod" bucket has at the very same path - Sergey Teteryatnikov's
+        // photo (uploaded 2026) 404'd on "-dev" and the crew card showed only his name. Always the "-prod" copy.
+        function preferProdImageBucket(url) {
+            return typeof url === 'string' ? url.replace('://thespacedevs-dev.', '://thespacedevs-prod.') : url;
+        }
         function mapLaunchToSchema(launch, id) {
             const vehicleName = typeof launch.rocket === 'string' ? launch.rocket : (launch.rocket?.configuration?.full_name || "SpaceX Rocket");
 
@@ -20360,7 +20366,7 @@
             // with the "-prod" bucket the real site's own image links use - confirmed directly:
             // a mission whose "-dev" URL 404'd loaded fine from the identical path on "-prod".
             // Same file, same path, just the more complete bucket - safe to always prefer it.
-            if (patchUrl) patchUrl = patchUrl.replace('thespacedevs-dev.', 'thespacedevs-prod.');
+            if (patchUrl) patchUrl = preferProdImageBucket(patchUrl);
             const patchCacheKey = normalizePatchCacheKey(launch.name);
             if (patchUrl) {
                 // Launch Library always wins, including over a Wikipedia stand-in we
@@ -20499,6 +20505,7 @@
                     let cImage = (c.astronaut && c.astronaut.profile_image) ? c.astronaut.profile_image :
                         (c.astronaut && c.astronaut.profile_image_thumbnail) ? c.astronaut.profile_image_thumbnail :
                             "https://www.spacex.com/static/images/astronauts/eva_suit.jpg";
+                    cImage = preferProdImageBucket(cImage);   // same "-dev" bucket gap as the patch URLs (see there)
 
                     return aName ? { name: aName, role: cRole, agency: cAgency, bio: cBio, image: cImage } : null;
                 }).filter(Boolean);
@@ -20576,7 +20583,7 @@
             } else if (isCrewMission) {
                 // אם ה-API חזר ריק, נבדוק אם אי פעם בעבר שמרנו את הצוות הזה
                 if (crewCache[crewCacheKey] && crewCache[crewCacheKey].length > 0) {
-                    crewArr = crewCache[crewCacheKey];
+                    crewArr = crewCache[crewCacheKey].map(c => c && c.image ? { ...c, image: preferProdImageBucket(c.image) } : c);
                 }
             }
             // אם עדיין crewArr ריק (כלומר ה-API ריק ומעולם לא שמרנו אותו) - המקטע פשוט לא ירונדר ב-HTML.
@@ -20627,7 +20634,7 @@
             // The programmes themselves, for the Program tile and card (renderModalProgram)
             let programs = Array.isArray(launch.program) ? launch.program.filter(p => p && p.name).map(p => ({
                 id: String(p.id), name: p.name.replace(/^\s*SpaceX\s+/i, '').trim() || p.name, description: p.description || '',
-                image: p.image_url || '', start: (p.start_date || '').slice(0, 10),
+                image: preferProdImageBucket(p.image_url || ''), start: (p.start_date || '').slice(0, 10),
             })) : [];
 
             // Catches a real, separately-observed gap: even a genuine, un-degraded LL2 response
