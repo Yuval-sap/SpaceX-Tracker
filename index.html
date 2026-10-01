@@ -6177,6 +6177,19 @@
             const f = Date.parse((fresh && fresh.last_updated) || ''), c = Date.parse(cached.last_updated || '');
             return !isNaN(f) && !isNaN(c) && c > f ? cached : fresh;
         }
+        // The newest copy of each launch this page has seen, by id - in memory, so it holds even when the saved copy on
+        // the device is older (or could not be saved at all, e.g. storage full). Without it, a refresh that restored a
+        // half from the saved copy, or got only the backup server's stale copy, took the page back to a launch it had
+        // already seen finish.
+        const latestLaunchCopyById = new Map();
+        function keepNewestLaunchCopies(launches) {
+            return (launches || []).map(m => {
+                if (!m || m.id == null) return m;
+                const best = newerLaunchCopy(m, latestLaunchCopyById.get(String(m.id)));
+                latestLaunchCopyById.set(String(m.id), best);
+                return best;
+            });
+        }
 
         let realMissionTimelineFetchGen = 0;
         function fetchRealMissionTimeline() {
@@ -19625,16 +19638,25 @@
                 // De-duplicated by id: when BOTH halves are restored from the same cache, a
                 // just-launched mission now legitimately matches the upcoming filter (above) and
                 // the previous one, and would otherwise be processed twice.
+                // Of the two copies, the more recently updated one (newerLaunchCopy), not simply the first: a
+                // "previous"-only refresh restores the upcoming half from this device's saved copy, and a saved copy
+                // from before the outcome came in ("Go for Launch") beat the fresh "Launch Successful" one - the hero
+                // moved on to the next launch, then jumped back to the one that had already flown (Crew-13).
                 const combinedData = [];
-                const seenLaunchIds = new Set();
+                const indexByLaunchId = new Map();
                 [...(upcomingRaw || []), ...(previousRaw || [])].forEach(m => {
                     const key = m && m.id;
                     if (key != null) {
-                        if (seenLaunchIds.has(key)) return;
-                        seenLaunchIds.add(key);
+                        if (indexByLaunchId.has(key)) {
+                            const i = indexByLaunchId.get(key);
+                            combinedData[i] = newerLaunchCopy(combinedData[i], m);   // the first one unless m is newer, as before
+                            return;
+                        }
+                        indexByLaunchId.set(key, combinedData.length);
                     }
                     combinedData.push(m);
                 });
+                combinedData.splice(0, combinedData.length, ...keepNewestLaunchCopies(combinedData));
 
                 if (combinedData.length > 0) {
                     // Render first, persist second - and persisting can never undo the render.
@@ -19663,7 +19685,7 @@
                 const cachedData = localStorage.getItem(CACHE_KEY);
                 if (cachedData) {
                     try {
-                        processLaunchData(JSON.parse(cachedData));
+                        processLaunchData(keepNewestLaunchCopies(JSON.parse(cachedData)));
                     } catch (e) {
                         processLaunchData([]);
                     }
@@ -27885,7 +27907,7 @@ setTimeout(() => {
                 try { parsedCachedLaunches = JSON.parse(cachedLaunchData); } catch (e) { }
             }
             if (parsedCachedLaunches && (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS) {
-                processLaunchData(parsedCachedLaunches);
+                processLaunchData(keepNewestLaunchCopies(parsedCachedLaunches));
                 // The 2-minute skip avoids a duplicate API hit after a reload. It must
                 // not freeze a truncated past list (one 100-result page that ends in
                 // January) — that still needs a previous-launches backfill so visitors
@@ -27916,7 +27938,7 @@ setTimeout(() => {
                 // this page's first live check finishes, a hero launch whose T-0 has passed with no live
                 // answer since shows "updating status" instead (see the hero countdown's update()).
                 awaitingFirstLiveCheck = true;
-                processLaunchData(parsedCachedLaunches);
+                processLaunchData(keepNewestLaunchCopies(parsedCachedLaunches));
                 const cachedPastNeedsVideoRecheck = (rawPastMissions || []).some(m => {
                     if (m.youtubeId) return false;
                     const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
