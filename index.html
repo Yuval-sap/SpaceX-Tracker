@@ -1839,6 +1839,10 @@
         body.light-theme #news-ticker-wrap::before {
             opacity: 0.1;
         }
+        /* No CRT scanlines on the ticker: it takes the sticky <nav>'s own see-through, blurred background instead
+           (the same bg-zinc-950/70 + backdrop-blur-lg classes in its markup, so every theme's remap of them applies
+           to both bars alike) and the two read as one strip */
+        #news-ticker-wrap::before { display: none; }
 
         #news-ticker-track {
             animation: ticker-scroll-ltr 60s linear infinite;
@@ -11421,7 +11425,7 @@
     <div class="stars-container" id="stars-background"></div>
 
     <div id="news-ticker-wrap" dir="ltr"
-        class="hidden bg-zinc-950 border-b border-emerald-500/20 overflow-hidden relative transition-colors duration-500">
+        class="hidden bg-zinc-950/70 backdrop-blur-lg border-b border-emerald-500/20 overflow-hidden relative transition-colors duration-500">
         <div class="max-w-screen-2xl mx-auto flex items-center">
             <!-- opens #news-list-modal: every headline in the ticker as a list, newest first -->
             <div id="news-ticker-label-wrap" role="button" tabindex="0" onclick="openNewsListModal()" onkeydown="activateOnEnterOrSpace(event)"
