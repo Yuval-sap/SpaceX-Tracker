@@ -23994,7 +23994,10 @@ setTimeout(() => {
                     videoUnconfirmedOverlay.classList.add('hidden');
                     videoUnconfirmedOverlay.classList.remove('flex');
                 }
-                if (videoBtnWrap && videoBtnWrap.dataset.archiveEligible === '1') {
+                // not while the live row itself is still up (see setThreeUp(true) below) - closing the live player
+                // otherwise brought back the "Watch the Launch" row right under it
+                const liveRowShown = !document.getElementById('modal-live-btn-wrap')?.classList.contains('hidden');
+                if (videoBtnWrap && videoBtnWrap.dataset.archiveEligible === '1' && !liveRowShown) {
                     videoBtnWrap.classList.remove('hidden');
                     const btnRow = document.getElementById('modal-video-btn-row');
                     if (btnRow) btnRow.classList.remove('hidden');
@@ -24045,6 +24048,10 @@ setTimeout(() => {
             }
 
             setThreeUp(true);
+            // A flight already counted as past while the hero still shows it (the live button stays for as long as it
+            // is in the hero) also has Launch Library's video - openMissionModal's "Watch the Launch" row came up too,
+            // two red buttons for the same broadcast (Crew-13). The live row alone until the flight leaves the hero.
+            if (videoBtnWrap) videoBtnWrap.classList.add('hidden');
         }
 
         // Back navigation for the mission modal: a mission opened from inside another window (the program card's
