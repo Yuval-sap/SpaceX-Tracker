@@ -19729,12 +19729,12 @@
                 // every 5 min to T+30) came to 17 in the hour around liftoff from a single open tab, so the
                 // requests from about T+5 on were rate-limited - exactly when the API turns the flight's status
                 // into "Launch Successful" - and the page fell back to the backup server's stale copy. These
-                // come to at most 14 in any hour.
-                if (diffMs <= 1 * 60 * 1000 && diffMs >= -2 * 60 * 1000) {
-                    // T-1min through T+2min - the busiest window, closest to and just after liftoff.
+                // come to at most 13 in any hour, leaving room for the requests a page load makes.
+                if (diffMs <= 1 * 60 * 1000 && diffMs >= -1 * 60 * 1000) {
+                    // T-1min through T+1min - the busiest window, closest to and just after liftoff.
                     intervalMs = 1 * 60 * 1000;
-                } else if (diffMs < -2 * 60 * 1000 && diffMs >= -30 * 60 * 1000) {
-                    // T+2min through T+30min - cooldown tier before returning to the default cadence.
+                } else if (diffMs < -1 * 60 * 1000 && diffMs >= -30 * 60 * 1000) {
+                    // T+1min through T+30min - cooldown tier before returning to the default cadence.
                     intervalMs = 6 * 60 * 1000;
                 } else if (diffMs > 1 * 60 * 1000 && diffMs <= 60 * 60 * 1000) {
                     // T-1h through T-1min.
