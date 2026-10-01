@@ -19850,6 +19850,34 @@
                 s.includes('in progress') || s.includes('completed');
         }
 
+        // Which flight of its capsule each Dragon mission is. Launch Library only gives a capsule's
+        // flights_count - how many times it has flown as of TODAY, not counting a flight still
+        // ahead of it - so with the missions sorted by date: walking back through the flown ones,
+        // the newest is flight #flights_count and each older one is one less; walking forward
+        // through the upcoming ones, the first is #flights_count + 1 and so on. Nothing in between
+        // is missing: every later flight of a capsule that flew inside the past-launches window
+        // is inside it too. Missions from the HISTORICAL_RAW_LAUNCHES snapshot already carry their
+        // number (spacecraft.flight_number) and are left alone.
+        function numberDragonFlights(missions) {
+            // by the API's status, not the clock - a scrubbed mission whose date has passed hasn't flown
+            const flown = m => apiStatusMeansActuallyFlying(m.status);
+            const laterFlown = {};
+            for (let i = missions.length - 1; i >= 0; i--) {
+                const m = missions[i];
+                if (!m || !m.dragonFlightsCount || !m.shipSerial || !flown(m)) continue;
+                const later = laterFlown[m.shipSerial] || 0;
+                if (!m.shipFlightNum && m.dragonFlightsCount - later > 0) m.shipFlightNum = m.dragonFlightsCount - later;
+                laterFlown[m.shipSerial] = later + 1;
+            }
+            const earlierUpcoming = {};
+            missions.forEach(m => {
+                if (!m || !m.dragonFlightsCount || !m.shipSerial || flown(m)) return;
+                const earlier = earlierUpcoming[m.shipSerial] || 0;
+                if (!m.shipFlightNum) m.shipFlightNum = m.dragonFlightsCount + 1 + earlier;
+                earlierUpcoming[m.shipSerial] = earlier + 1;
+            });
+        }
+
         function processLaunchData(combinedRawData) {
             let combinedRawMissions = [];
             let seenIds = new Set();
@@ -19893,6 +19921,7 @@
             });
 
             combinedRawMissions.sort((a, b) => new Date(a.date) - new Date(b.date));
+            numberDragonFlights(combinedRawMissions);
 
             const now = new Date();
 
@@ -20483,6 +20512,7 @@
             let shipName = null;
             let shipSerial = null;
             let shipFlightNum = null;
+            let dragonFlightsCount = null; // see the Dragon branch below / numberDragonFlights()
             let shipLabel = null; // "Ship 40" - kept as its own field (see the notranslate
             // wrapper at the modal-vehicle display site) so it can be rendered separately from
             // the translated "(Flight N)" part, built at display time via
@@ -20501,6 +20531,20 @@
                     // is already correct and ready for whenever that starts happening.
                     if (spacecraftInfo.flights_count) shipFlightNum = spacecraftInfo.flights_count;
                     shipLabel = shipName || `Ship ${shipSerial.replace(/^S/i, '')}`;
+                } else if (/^C\d/i.test(spacecraftInfo.serial_number) && !spacecraftInfo.is_placeholder) {
+                    // Dragon capsule (C-prefix). The API's own name is already the right label -
+                    // "Crew Dragon Endeavour" for the named crew capsules, "Cargo Dragon C209" for
+                    // the unnamed cargo ones. Placeholder entries ("Crew Dragon", serial "TBD")
+                    // never reach here - the serial test already rejects them, is_placeholder is
+                    // belt-and-braces. Unlike a Ship, a capsule's flights_count is its running total
+                    // TODAY, not as of this launch (Endeavour's Crew-8 card would read "Flight 6"),
+                    // so the flight number is only taken from flight_number - set per launch in the
+                    // HISTORICAL_RAW_LAUNCHES snapshot - or worked out by numberDragonFlights().
+                    shipName = spacecraftInfo.name || null;
+                    shipSerial = spacecraftInfo.serial_number;
+                    shipLabel = shipName || shipSerial;
+                    if (spacecraftInfo.flight_number) shipFlightNum = spacecraftInfo.flight_number;
+                    else if (spacecraftInfo.flights_count) dragonFlightsCount = spacecraftInfo.flights_count;
                 }
             }
 
@@ -20697,6 +20741,7 @@
                 shipName: shipName,
                 shipSerial: shipSerial,
                 shipFlightNum: shipFlightNum,
+                dragonFlightsCount: dragonFlightsCount,
                 shipLabel: shipLabel,
                 landingAttempt: landingAttempt,
                 landingSuccess: landingSuccess,
@@ -24038,12 +24083,20 @@ setTimeout(() => {
                 // fragment's own internal script direction resolve correctly.
                 let vehicleHtml = `<span class="notranslate" translate="no" style="white-space:nowrap; unicode-bidi:isolate; margin-inline-end: 0.3em;">${escapeHtml(m.vehicle)}</span>`;
                 if (m.shipLabel) {
-                    vehicleHtml += ` • <span class="notranslate" translate="no" style="white-space:nowrap; margin-inline: 0.3em; unicode-bidi:isolate;">${escapeHtml(m.shipLabel)}</span>`;
+                    let flightHtml = '';
                     if (m.shipFlightNum) {
                         const flKey = (document.documentElement.lang || 'en').split('-')[0];
                         const flDict = LAUNCH_LABEL_I18N[flKey] || LAUNCH_LABEL_I18N.en;
                         const flTemplate = flDict.flightNumberLabel || LAUNCH_LABEL_I18N.en.flightNumberLabel;
-                        vehicleHtml += ` <span style="unicode-bidi:isolate;">(${escapeHtml(flTemplate.replace('{n}', m.shipFlightNum))})</span>`;
+                        flightHtml = ` <span style="unicode-bidi:isolate; white-space:nowrap;">(${escapeHtml(flTemplate.replace('{n}', m.shipFlightNum))})</span>`;
+                    }
+                    if (/^C\d/i.test(m.shipSerial || '')) {
+                        // A Dragon capsule's name ("Crew Dragon Endeavour") is far longer than "Ship 40" -
+                        // kept on the same line as one nowrap run it was wider than its quarter-width tile
+                        // and ran over the Launch Site value next to it. Its own line instead, free to wrap.
+                        vehicleHtml += `<span style="display:block; unicode-bidi:isolate;"><span class="notranslate" translate="no" style="unicode-bidi:isolate;">${escapeHtml(m.shipLabel)}</span>${flightHtml}</span>`;
+                    } else {
+                        vehicleHtml += ` • <span class="notranslate" translate="no" style="white-space:nowrap; margin-inline: 0.3em; unicode-bidi:isolate;">${escapeHtml(m.shipLabel)}</span>${flightHtml}`;
                     }
                 }
                 vehicleEl.innerHTML = vehicleHtml;
