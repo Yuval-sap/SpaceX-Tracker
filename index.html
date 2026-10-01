@@ -4640,6 +4640,52 @@
         body.moon-theme #orbit-ring-GEO:not(.orbit-active) { stroke: #71869f !important; opacity: 0.75 !important; }
         body.moon-theme #orbit-label-GEO:not(.orbit-active) { fill: #a5b6cc !important; }
 
+        /* Orbit cards below the dossier: each one is a button that lights its own ring up in the diagram
+           (selectOrbitCard). The picked card and its ring glow in the theme's own accent - dark green by day,
+           light green at night, Mars orange, Moon blue - the same accents as the news list's hover. */
+        #orbit-modal { --orbit-accent: #34d399; --orbit-accent-soft: rgba(52, 211, 153, 0.35); }
+        body.light-theme #orbit-modal { --orbit-accent: #047857; --orbit-accent-soft: rgba(4, 120, 87, 0.3); }
+        body.mars-theme #orbit-modal { --orbit-accent: #ff6b35; --orbit-accent-soft: rgba(255, 107, 53, 0.35); }
+        body.moon-theme #orbit-modal { --orbit-accent: #3fa9f5; --orbit-accent-soft: rgba(63, 169, 245, 0.35); }
+        #orbit-other-cards .orbit-card {
+            cursor: pointer;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @media (hover: hover) {
+            #orbit-other-cards .orbit-card:hover { border-color: var(--orbit-accent-soft); }
+        }
+        #orbit-other-cards .orbit-card:focus-visible { outline: 2px solid var(--orbit-accent); outline-offset: 2px; }
+        #orbit-other-cards .orbit-card.orbit-card-selected {
+            border-color: var(--orbit-accent) !important;
+            box-shadow: 0 0 0 1px var(--orbit-accent), 0 0 18px 2px var(--orbit-accent-soft);
+        }
+        #orbit-other-cards .orbit-card.orbit-card-selected h4 { color: var(--orbit-accent) !important; }
+        /* The picked orbit's ring: drawn in the accent, a little thicker, glowing and gently pulsing. Beats both
+           the inline colours applyOrbitRingVisual writes and the per-theme dimmed-ring rules above. */
+        #orbit-modal svg .orbit-selected[id^="orbit-ring-"] {
+            stroke: var(--orbit-accent) !important;
+            stroke-width: 2.5px !important;
+            opacity: 1 !important;
+            filter: drop-shadow(0 0 5px var(--orbit-accent));
+            animation: orbit-selected-pulse 1.8s ease-in-out infinite;
+        }
+        #orbit-modal svg .orbit-selected[id^="orbit-dot-"] {
+            fill: var(--orbit-accent) !important;
+            filter: drop-shadow(0 0 5px var(--orbit-accent)) !important;
+        }
+        #orbit-modal svg .orbit-selected[id^="orbit-label-"] {
+            fill: var(--orbit-accent) !important;
+            font-weight: bold;
+        }
+        @keyframes orbit-selected-pulse {
+            0%, 100% { filter: drop-shadow(0 0 3px var(--orbit-accent)); }
+            50% { filter: drop-shadow(0 0 9px var(--orbit-accent)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #orbit-modal svg .orbit-selected[id^="orbit-ring-"] { animation: none; }
+        }
+
         /* Orbit modal hero (diagram area): visible space depth + theme accent glow behind
            the rings. Soft vignette edges keep it tied to the modal shell. A bottom ::after
            fade blends the hero into the modal body colour so the hard edge under the title
@@ -15054,6 +15100,38 @@
                         </circle>
                         <text id="orbit-label-GEO" x="200" y="22" text-anchor="middle" fill="#52525b" font-size="8"
                             letter-spacing="1">GEO</text>
+
+                        <!-- SSO and GTO: drawn only while they are the mission's orbit or picked in a card below
+                             (applyOrbitRingVisual), so the usual three-ring picture stays as it was.
+                             SSO is a Low Earth Orbit by altitude; what sets it apart is the near-polar tilt
+                             (~97-98 deg), so it is the LEO band seen edge-on over the poles: a narrow, slightly
+                             tilted ellipse just outside the LEO ring. -->
+                        <g id="orbit-group-SSO" visibility="hidden" transform="rotate(8 200 150)">
+                            <ellipse id="orbit-ring-SSO" cx="200" cy="150" rx="34" ry="64" fill="none" stroke="#71717a"
+                                stroke-width="1.5" opacity="0.55" />
+                            <circle id="orbit-dot-SSO" r="3.5" fill="#a1a1aa">
+                                <animateMotion dur="4s" repeatCount="indefinite"
+                                    path="M200,86 A34,64 0 1,1 200,214 A34,64 0 1,1 200,86" />
+                            </circle>
+                        </g>
+                        <text id="orbit-label-SSO" x="211" y="231" text-anchor="middle" fill="#71717a" font-size="10"
+                            letter-spacing="1" visibility="hidden">SSO</text>
+
+                        <!-- GTO: the transfer ellipse with the Earth at one focus - its low point on the LEO ring
+                             (left), its high point on the GEO ring (right). Dashed: a path the satellite leaves,
+                             not a place it stays. The dot moves fast near the Earth and slowly far out, as on a
+                             real elliptical orbit. -->
+                        <g id="orbit-group-GTO" visibility="hidden">
+                            <ellipse id="orbit-ring-GTO" cx="242.5" cy="150" rx="97.5" ry="87.75" fill="none"
+                                stroke="#3f3f46" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.6" />
+                            <circle id="orbit-dot-GTO" r="3" fill="#71717a">
+                                <animateMotion dur="12s" repeatCount="indefinite" calcMode="linear"
+                                    keyTimes="0;0.12;0.5;0.88;1" keyPoints="0;0.3;0.5;0.7;1"
+                                    path="M145,150 A97.5,87.75 0 1,1 340,150 A97.5,87.75 0 1,1 145,150" />
+                            </circle>
+                        </g>
+                        <text id="orbit-label-GTO" x="300" y="80" text-anchor="middle" fill="#52525b" font-size="9"
+                            letter-spacing="1" visibility="hidden">GTO</text>
                 </svg>
                 <!-- Bottom fade is handled by .orbit-hero-area::after (theme-matched to the
                      modal shell). Kept shorter/softer than the photo-backed .modal-hero-fade so
@@ -15103,16 +15181,28 @@
                         </p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
+                    <!-- The other four orbits. Each card is a button: it lights up its own ring in the diagram above
+                         and glows in the theme's colour (selectOrbitCard); a second tap turns it off. -->
+                    <div id="orbit-other-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="orbit-card bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl" role="button" tabindex="0" aria-pressed="false">
                             <h4 id="orbit-heading-a" translate="no" class="modal-subhead notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
                             </h4>
                             <p id="orbit-desc-a" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
-                        <div class="bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl">
+                        <div class="orbit-card bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl" role="button" tabindex="0" aria-pressed="false">
                             <h4 id="orbit-heading-b" translate="no" class="modal-subhead notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
                             </h4>
                             <p id="orbit-desc-b" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
+                        </div>
+                        <div class="orbit-card bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl" role="button" tabindex="0" aria-pressed="false">
+                            <h4 id="orbit-heading-c" translate="no" class="modal-subhead notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            </h4>
+                            <p id="orbit-desc-c" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
+                        </div>
+                        <div class="orbit-card bg-zinc-950/40 border border-zinc-850 p-3 sm:p-4 rounded-xl" role="button" tabindex="0" aria-pressed="false">
+                            <h4 id="orbit-heading-d" translate="no" class="modal-subhead notranslate font-space text-xs sm:text-sm font-bold text-zinc-400 mb-1">
+                            </h4>
+                            <p id="orbit-desc-d" translate="no" class="notranslate text-zinc-500 text-[11px] sm:text-xs leading-relaxed"></p>
                         </div>
                     </div>
                 </div>
@@ -20208,8 +20298,11 @@
                 (launch.mission.orbit.name || launch.mission.orbit.abbrev)) || '';
             const searchText = `${apiOrbitName} ${missionDesc || ''} ${nameLower || ''}`.toUpperCase();
 
+            // GTO and SSO have their own entries in the orbit diagram and dossier (ORBIT_INFO) - a GTO flight
+            // used to get GEO's figures (24 h, a fixed 35,786 km), which describe the orbit the satellite reaches
+            // on its own later, not the one SpaceX leaves it in
             if (/\bGTO\b|TRANSFER ORBIT/.test(searchText)) {
-                return { code: 'GEO', label: 'GTO (Geostationary Transfer Orbit)' };
+                return { code: 'GTO', label: 'GTO (Geostationary Transfer Orbit)' };
             }
             if (/\bGEO\b|GEOSTATIONARY|GEOSYNCHRONOUS/.test(searchText)) {
                 return { code: 'GEO', label: 'GEO (Geosynchronous Orbit)' };
@@ -20218,7 +20311,7 @@
                 return { code: 'MEO', label: 'MEO (Medium Earth Orbit)' };
             }
             if (/\bSSO\b|SUN[- ]SYNCHRONOUS/.test(searchText)) {
-                return { code: 'LEO', label: 'SSO (Sun-Synchronous Orbit)' };
+                return { code: 'SSO', label: 'SSO (Sun-Synchronous Orbit)' };
             }
             // ברירת מחדל: LEO, כי זה היעד של רוב שיגורי SpaceX (סטארלינק, דרגון וכו')
             return { code: 'LEO', label: 'LEO (Low Earth Orbit)' };
@@ -26938,8 +27031,27 @@ setTimeout(() => {
                 period: { amount: '~24', unitKey: 'hrs' },
                 description: 'At precisely 35,786 km, satellites match Earth\'s rotation perfectly, appearing "parked" over a single spot on the equator. Used for traditional TV, weather, and communications satellites, but suffers from high ping (latency) due to the huge distance.',
                 short: 'At exactly 35,786 km, satellites match Earth\'s rotation, appearing "parked" over one spot on the equator. Used for TV, weather, and comms — at the cost of higher latency.'
+            },
+            SSO: {
+                title: 'SSO (Sun-Synchronous Orbit)',
+                heading: 'Sun-Synchronous Orbit (SSO)',
+                altitude: { metric: { num: '500 - 800', unit: 'km' }, imperial: { num: '310 - 500', unit: 'mi' } },
+                velocity: { metric: '~27,000', imperial: '~17,000' },
+                period: { amount: '~95 - 100', unitKey: 'mins' },
+                description: 'A Low Earth Orbit by altitude (about 500 - 800 km), tilted about 97 - 98° so it passes over both poles and keeps the same angle to the Sun all year: the satellite crosses every spot on Earth at the same local time each day. That steady lighting makes it the orbit of choice for Earth-imaging and weather satellites - and for SpaceX\'s Transporter rideshare flights from Vandenberg.',
+                short: 'A Low Earth Orbit (about 500 - 800 km) tilted over the poles, passing over every spot on Earth at the same local time each day. Home to Earth-imaging and weather satellites and SpaceX\'s Transporter rideshares.'
+            },
+            GTO: {
+                title: 'GTO (Geostationary Transfer Orbit)',
+                heading: 'Geostationary Transfer Orbit (GTO)',
+                altitude: { metric: { num: '200 - 35,786', unit: 'km' }, imperial: { num: '124 - 22,236', unit: 'mi' } },
+                velocity: { metric: '~6,000 - 36,000', imperial: '~3,700 - 22,400' },
+                period: { amount: '~10.5', unitKey: 'hrs' },
+                description: 'A stretched transfer orbit, not a final destination: its low point is about 200 - 600 km up and its high point reaches geostationary altitude, 35,786 km. SpaceX releases the satellite here, and over the following days or weeks the satellite fires its own engine at the high point to round its orbit out into GEO. One loop takes about 10.5 hours; the speed swings from about 36,000 km/h at the low point to about 6,000 km/h at the high point.',
+                short: 'A stretched transfer orbit from about 200 - 600 km out to 35,786 km. SpaceX releases the satellite here, and the satellite then raises itself into GEO with its own engine. One loop takes about 10.5 hours.'
             }
         };
+        const ORBIT_CODES = ['LEO', 'SSO', 'MEO', 'GTO', 'GEO'];
 
         // הסגנון החזותי של כל טבעת ב-SVG: "dimmed" הוא הסגנון הקבוע-לעומק של אותה טבעת עצמה
         // (כפי שהיה מקורית בקובץ), ו-"active" הוא הסגנון האחיד (ירוק, זוהר) שמוצג על הטבעת
@@ -26947,13 +27059,24 @@ setTimeout(() => {
         const ORBIT_RING_DIMMED = {
             LEO: { stroke: '#71717a', width: '1.5', opacity: '0.55', dot: '#a1a1aa', labelSize: '10' },
             MEO: { stroke: '#52525b', width: '1.5', opacity: '0.5', dot: '#71717a', labelSize: '9' },
-            GEO: { stroke: '#3f3f46', width: '1', opacity: '0.4', dot: '#52525b', labelSize: '8' }
+            GEO: { stroke: '#3f3f46', width: '1', opacity: '0.4', dot: '#52525b', labelSize: '8' },
+            SSO: { stroke: '#71717a', width: '1.5', opacity: '0.55', dot: '#a1a1aa', labelSize: '10' },
+            GTO: { stroke: '#52525b', width: '1.5', opacity: '0.6', dot: '#71717a', labelSize: '9' }
         };
         const ORBIT_RING_ACTIVE = { stroke: '#10b981', width: '2', opacity: '0.8', dot: '#10b981', labelSize: '10' };
 
-        function applyOrbitRingVisual(code) {
-            ['LEO', 'MEO', 'GEO'].forEach(ring => {
+        // selected: the orbit whose card is picked below the dossier (selectOrbitCard), or null. Its ring gets the
+        // .orbit-selected glow in the theme's colour, on top of whatever it would show otherwise.
+        function applyOrbitRingVisual(code, selected) {
+            ORBIT_CODES.forEach(ring => {
                 const isActive = ring === code;
+                const isSelected = ring === selected;
+                // SSO and GTO only appear while they are the mission's orbit or the picked card
+                if (ring === 'SSO' || ring === 'GTO') {
+                    const show = isActive || isSelected ? 'visible' : 'hidden';
+                    ['orbit-group-', 'orbit-label-'].forEach(p => { const el = document.getElementById(p + ring); if (el) el.setAttribute('visibility', show); });
+                }
+                ['orbit-ring-', 'orbit-dot-', 'orbit-label-'].forEach(p => { const el = document.getElementById(p + ring); if (el) el.classList.toggle('orbit-selected', isSelected); });
                 const style = isActive ? ORBIT_RING_ACTIVE : ORBIT_RING_DIMMED[ring];
                 const ringEl = document.getElementById('orbit-ring-' + ring);
                 const dotEl = document.getElementById('orbit-dot-' + ring);
@@ -26991,7 +27114,8 @@ setTimeout(() => {
             const activeCode = ORBIT_INFO[code] ? code : 'LEO';
             const info = ORBIT_INFO[activeCode];
             const unit = window.currentUnitSystem === 'metric' ? 'metric' : 'imperial';
-            const others = ['LEO', 'MEO', 'GEO'].filter(c => c !== activeCode);
+            const others = ORBIT_CODES.filter(c => c !== activeCode);
+            if (window._orbitSelectedCode === activeCode) window._orbitSelectedCode = null;
             const specDict = getSpecDict(document.documentElement.lang);
 
             const titleEl = document.getElementById('orbit-modal-title');
@@ -27014,25 +27138,58 @@ setTimeout(() => {
             const descMain = document.getElementById('orbit-desc-main');
             if (descMain) descMain.innerText = info.description;
 
-            const infoA = ORBIT_INFO[others[0]];
-            const infoB = ORBIT_INFO[others[1]];
-            const headingA = document.getElementById('orbit-heading-a');
-            const descA = document.getElementById('orbit-desc-a');
-            const headingB = document.getElementById('orbit-heading-b');
-            const descB = document.getElementById('orbit-desc-b');
-            if (headingA && infoA) headingA.innerText = infoA.heading;
-            if (descA && infoA) descA.innerText = infoA.short;
-            if (headingB && infoB) headingB.innerText = infoB.heading;
-            if (descB && infoB) descB.innerText = infoB.short;
+            // the four other orbits, one per card (the card carries its orbit for selectOrbitCard)
+            const cardDescs = ['a', 'b', 'c', 'd'].map((k, i) => {
+                const other = ORBIT_INFO[others[i]];
+                const heading = document.getElementById('orbit-heading-' + k);
+                const desc = document.getElementById('orbit-desc-' + k);
+                const card = heading && heading.closest('.orbit-card');
+                if (card) card.dataset.orbit = others[i] || '';
+                if (heading && other) heading.innerText = other.heading;
+                if (desc && other) desc.innerText = other.short;
+                return desc;
+            });
 
-            translateModalDescriptions('orbit', [descMain, descA, descB], document.documentElement.lang);
+            translateModalDescriptions('orbit', [descMain, ...cardDescs], document.documentElement.lang);
 
-            applyOrbitRingVisual(activeCode);
+            applyOrbitSelection();
         }
+
+        // Picking a card lights its ring up in the diagram; picking it again clears it, picking another moves it.
+        function selectOrbitCard(code) {
+            window._orbitSelectedCode = (code && code !== window._orbitSelectedCode) ? code : null;
+            applyOrbitSelection();
+        }
+        function applyOrbitSelection() {
+            const activeCode = ORBIT_INFO[window.currentActiveOrbitCode] ? window.currentActiveOrbitCode : 'LEO';
+            const selected = window._orbitSelectedCode || null;
+            document.querySelectorAll('#orbit-other-cards .orbit-card').forEach(card => {
+                const on = !!selected && card.dataset.orbit === selected;
+                card.classList.toggle('orbit-card-selected', on);
+                card.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            applyOrbitRingVisual(activeCode, selected);
+        }
+        (function wireOrbitCards() {
+            const wrap = document.getElementById('orbit-other-cards');
+            if (!wrap) return;
+            wrap.addEventListener('click', e => {
+                const card = e.target.closest('.orbit-card');
+                if (card && card.dataset.orbit) selectOrbitCard(card.dataset.orbit);
+            });
+            wrap.addEventListener('keydown', e => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const card = e.target.closest('.orbit-card');
+                if (!card || !card.dataset.orbit) return;
+                e.preventDefault();
+                selectOrbitCard(card.dataset.orbit);
+            });
+        })();
 
         function openOrbitSpecs() {
             const modalEl = document.getElementById('orbit-modal');
             if (modalEl) {
+                window._orbitSelectedCode = null;   // every opening starts with only the mission's own ring lit
                 renderOrbitDossier(window.currentActiveOrbitCode || 'LEO');
 
                 modalEl.classList.remove('hidden');
@@ -27046,7 +27203,7 @@ setTimeout(() => {
                 // resync the animation timeline once it's shown again. Explicitly restarting
                 // them here makes the orbit rings begin rotating immediately on open instead
                 // of lagging behind by a second or more.
-                modalEl.querySelectorAll('animateTransform').forEach(anim => {
+                modalEl.querySelectorAll('animateTransform, animateMotion').forEach(anim => {
                     try { anim.beginElement(); } catch (e) { }
                 });
             }
