@@ -23987,15 +23987,16 @@ setTimeout(() => {
                 applyXId();
 
                 if (xId) {
-                    // X's broadcast player, in the site language; the YouTube player is stopped and hidden meanwhile
+                    // X's broadcast player, always in English: in Hebrew/Arabic X lays its own pre-show countdown out right
+                    // to left (seconds : minutes : hours : days), which read as reversed. The YouTube player is stopped
+                    // and hidden meanwhile.
                     stopYoutubePlayer('modal-video-iframe');
                     const ytEl = document.getElementById('modal-video-iframe');
                     if (ytEl) ytEl.style.display = 'none';
                     const xFrame = document.getElementById('modal-x-iframe');
                     videoSection.classList.add('x-live');
                     if (xFrame) {
-                        const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
-                        xFrame.src = `https://studio.x.com/embed/broadcast/${encodeURIComponent(xId)}?dnt=true&lang=${lk === 'iw' ? 'he' : lk}`;
+                        xFrame.src = `https://studio.x.com/embed/broadcast/${encodeURIComponent(xId)}?dnt=true&lang=en`;
                         xFrame.classList.remove('hidden');
                     }
                     if (videoUnconfirmedOverlay) {
