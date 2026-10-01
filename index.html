@@ -7417,7 +7417,18 @@
                 void el.offsetWidth; // force reflow so the next measurement is current
             };
             const cssSize = parseFloat(getComputedStyle(el).fontSize) || 40;
-            // One line, but not below a readable size. The satellite-deploy events of a rideshare flight are long
+            // Desktop: one line, shrunk as far as 12px - unchanged.
+            if (window.innerWidth >= 768) {
+                let size = cssSize;
+                let guard = 0;
+                while (textWidth() > avail - 2 && size > 12 && guard < 150) {
+                    size -= 1;
+                    setSize(size);
+                    guard++;
+                }
+                return;
+            }
+            // Mobile: one line, but not below a readable size. The satellite-deploy events of a rideshare flight are long
             // ("ASCENT Propulsion Dual Mode deploys, manifested by NASA"): on a phone even the old 12px floor was
             // wider than the card, and the headline ran past both edges of it.
             const oneLineFloor = 16;
