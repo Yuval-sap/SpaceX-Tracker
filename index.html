@@ -19709,12 +19709,8 @@
         // LL2 tier's 15 requests/hour cap even in the busiest tier (4 min = 15/hour exactly),
         // unlike an earlier version of this schedule that dropped to a 60-second window right
         // around T-0 and blew well past the hourly budget.
-        function updateRefreshSchedule() {
-            if (refreshIntervalId) {
-                clearTimeout(refreshIntervalId);
-                refreshIntervalId = null;
-            }
-
+        // How long until the next Launch Library refresh, by how close the next launch (dbMissions[0]) is
+        function refreshIntervalMsForNextLaunch() {
             let intervalMs = 10 * 60 * 1000; // default: no imminent launch, or none at all
 
             if (dbMissions.length > 0) {
@@ -19747,9 +19743,19 @@
                     intervalMs = 10 * 60 * 1000;
                 }
             }
+            return intervalMs;
+        }
 
-            nextLaunchRefreshDueMs = Date.now() + intervalMs;
-            refreshIntervalId = setTimeout(runLaunchDataRefreshCycle, intervalMs);
+        // lastFetchMs: when the data now on screen was fetched, if not just now - a page load showing data saved a
+        // few minutes ago counts its next refresh from then, not from the reload (see the reload grace at page load)
+        function updateRefreshSchedule(lastFetchMs) {
+            if (refreshIntervalId) {
+                clearTimeout(refreshIntervalId);
+                refreshIntervalId = null;
+            }
+            const intervalMs = refreshIntervalMsForNextLaunch();
+            nextLaunchRefreshDueMs = (lastFetchMs || Date.now()) + intervalMs;
+            refreshIntervalId = setTimeout(runLaunchDataRefreshCycle, Math.max(0, nextLaunchRefreshDueMs - Date.now()));
         }
 
         // The actual "fetch + reschedule" work for one refresh tick - factored out of
@@ -27906,9 +27912,22 @@ setTimeout(() => {
             if (cachedLaunchData) {
                 try { parsedCachedLaunches = JSON.parse(cachedLaunchData); } catch (e) { }
             }
-            if (parsedCachedLaunches && (Date.now() - cachedTimestamp) < RELOAD_CACHE_GRACE_MS) {
+            // The grace is as long as the refresh schedule's own interval for the next launch (6-10 minutes most of
+            // the time), not a flat 2 minutes: every reload past 2 minutes cost a request the schedule had not planned
+            // for, and a few of them in the hour around liftoff took a tab over Launch Library's 15 an hour. The
+            // saved data's timestamp is only written together with the data, so a device that cannot save it (storage
+            // full) never skips - its saved copy is stale.
+            let reloadGraceMs = RELOAD_CACHE_GRACE_MS;
+            if (parsedCachedLaunches && cachedTimestamp > 0) {
+                awaitingFirstLiveCheck = true;   // as below, until it is clear the saved data is recent
                 processLaunchData(keepNewestLaunchCopies(parsedCachedLaunches));
-                // The 2-minute skip avoids a duplicate API hit after a reload. It must
+                reloadGraceMs = Math.max(RELOAD_CACHE_GRACE_MS, refreshIntervalMsForNextLaunch());
+            }
+            const savedDataAgeMs = Date.now() - cachedTimestamp;
+            if (parsedCachedLaunches && cachedTimestamp > 0 && savedDataAgeMs >= 0 && savedDataAgeMs < reloadGraceMs) {
+                awaitingFirstLiveCheck = false;
+                updateRefreshSchedule(cachedTimestamp);   // the next refresh when it was due anyway
+                // The reload skip avoids a duplicate API hit after a reload. It must
                 // not freeze a truncated past list (one 100-result page that ends in
                 // January) — that still needs a previous-launches backfill so visitors
                 // do not have to clear site data by hand.
@@ -27938,7 +27957,7 @@ setTimeout(() => {
                 // this page's first live check finishes, a hero launch whose T-0 has passed with no live
                 // answer since shows "updating status" instead (see the hero countdown's update()).
                 awaitingFirstLiveCheck = true;
-                processLaunchData(keepNewestLaunchCopies(parsedCachedLaunches));
+                if (!(cachedTimestamp > 0)) processLaunchData(keepNewestLaunchCopies(parsedCachedLaunches));   // else rendered above
                 const cachedPastNeedsVideoRecheck = (rawPastMissions || []).some(m => {
                     if (m.youtubeId) return false;
                     const hoursSinceLaunch = (Date.now() - new Date(m.date).getTime()) / 3600000;
