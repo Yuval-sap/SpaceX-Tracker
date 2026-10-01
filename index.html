@@ -20287,6 +20287,20 @@
                 if (mx) { xBroadcastId = mx[1]; break; }
             }
 
+            // NASA's own YouTube coverage, when Launch Library lists it (crew flights and other NASA missions): NASA goes
+            // on air well before SpaceX - around two hours out for a crew launch - so the live player prefers it. Told
+            // apart by the entry's publisher (SpaceX's own crew webcasts carry "NASA" in their titles too).
+            let nasaYoutubeId = null, nasaStreamStart = null, nasaLive = false;
+            for (const v of vidList) {
+                if (!v || typeof v !== 'object') continue;
+                const pub = typeof v.publisher === 'string' ? v.publisher : ((v.publisher && v.publisher.name) || '');
+                if (!/^NASA\b/i.test(pub.trim())) continue;
+                const m = (v.url || '').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                if (!m) continue;
+                nasaYoutubeId = m[1]; nasaStreamStart = v.start_time || null; nasaLive = v.live === true;
+                break;
+            }
+
             // The Launch Library API marks each video entry with a "live" boolean when a
             // stream is actually airing right now — this is the real signal for whether a
             // broadcast exists, instead of guessing from a time window (SpaceX doesn't
@@ -20671,6 +20685,9 @@
                 hasLiveVideo: hasLiveVideo,
                 liveVideoUrl: liveVideoUrl,
                 xBroadcastId: xBroadcastId,
+                nasaYoutubeId: nasaYoutubeId,
+                nasaStreamStart: nasaStreamStart,
+                nasaLive: nasaLive,
                 youtubeId: youtubeId,
                 videoUrl: videoUrl,
                 booster: boosterStr,
@@ -22016,6 +22033,20 @@
 
         // Pulls an 11-char YouTube video ID out of a watch/embed/live/shorts/youtu.be URL, or
         // returns null if the URL isn't a YouTube link (e.g. an X/Twitter stream link).
+        // NASA's YouTube broadcast for this launch, once it is on air (or about to be): Launch Library's own "live"
+        // flag, else from 10 minutes before the stream's listed start, else - no start time listed - from 2.5 h before
+        // liftoff. Looked up on the latest copy of the mission, since the stream is often attached late.
+        function nasaLiveStreamFor(m) {
+            if (!m) return null;
+            const fresh = (typeof dbMissions !== 'undefined' ? dbMissions : []).concat(typeof rawPastMissions !== 'undefined' ? rawPastMissions : []).find(x => x && x.id === m.id) || m;
+            const id = fresh.nasaYoutubeId || m.nasaYoutubeId;
+            if (!id) return null;
+            if (fresh.nasaLive || m.nasaLive) return id;
+            const now = Date.now(), t0 = new Date(fresh.date || m.date).getTime();
+            const start = Date.parse(fresh.nasaStreamStart || m.nasaStreamStart || '');
+            if (!isNaN(start)) return now >= start - 10 * 60000 ? id : null;
+            return !isNaN(t0) && (t0 - now) / 60000 <= 150 ? id : null;
+        }
         function extractYoutubeId(url) {
             if (!url) return null;
             const match = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -22290,7 +22321,8 @@
             // The hero button shows for as long as the flight is in the hero - the hero itself decides when a flight has
             // ended (a Falcon flight about 90 min, Starship Flight 14 nearly 10 h), so no fixed cutoff after liftoff here
             const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60;
-            const isEligible = !!(heroYoutubeId || withinLiveWindow);
+            // NASA's own broadcast starts earlier (about 2 h out for a crew flight): red as soon as it is on
+            const isEligible = !!(heroYoutubeId || withinLiveWindow || nasaLiveStreamFor(nextLaunch));
 
             // This function is polled every 20s (see its setInterval caller) purely to re-check
             // the live-eligibility WINDOW as time passes - not to redraw an unchanged button.
@@ -23687,12 +23719,15 @@ setTimeout(() => {
             }
 
             const liveSrcUrl = m.hasLiveVideo ? (m.liveVideoUrl || m.liveUrl || "") : "";
-            const confirmedYoutubeId = liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null;
+            // NASA's own YouTube broadcast (crew and other NASA flights) takes the player whenever it is on air -
+            // ahead of SpaceX's on X, and in the hour or more before SpaceX's coverage even starts
+            const nasaLiveId = nasaLiveStreamFor(m);
+            const confirmedYoutubeId = nasaLiveId || (liveSrcUrl ? extractYoutubeId(liveSrcUrl) : null);
             // Widened to match renderHeroLiveButton's own window (was 25, that one was 15 -
             // both too narrow, see that function's comment).
             // No cutoff after liftoff for the flight the hero is showing (see renderHeroLiveButton); 3 h for any other
-            const withinLiveWindow = !isNaN(minutesToLaunch) && minutesToLaunch <= 60 &&
-                (minutesToLaunch >= -180 || m.id === currentHeroMissionId);
+            const withinLiveWindow = (!isNaN(minutesToLaunch) && minutesToLaunch <= 60 &&
+                (minutesToLaunch >= -180 || m.id === currentHeroMissionId)) || !!nasaLiveId;
 
             if (!confirmedYoutubeId && !withinLiveWindow) {
                 setThreeUp(false);
@@ -23725,7 +23760,7 @@ setTimeout(() => {
                 // the latest Launch Library data for this mission too - `m` is the copy the modal was opened with, from
                 // before a later refresh may have brought the broadcast in
                 const fresh = dbMissions.concat(rawPastMissions).find(x => x && x.id === m.id);
-                xId = m.xBroadcastId || (fresh && fresh.xBroadcastId)
+                xId = nasaLiveStreamFor(m) ? null : m.xBroadcastId || (fresh && fresh.xBroadcastId)
                     || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
                     || savedXBroadcastFor(m.patchTagName || m.name);
                 window._liveOnX = !!xId;
@@ -23770,14 +23805,16 @@ setTimeout(() => {
                     return;
                 }
 
-                if (confirmedYoutubeId) {
+                // NASA's broadcast checked again on opening: Launch Library often attaches it after the modal opened
+                const liveYoutubeId = nasaLiveStreamFor(m) || confirmedYoutubeId;
+                if (liveYoutubeId) {
                     // The API confirmed a specific, real SpaceX video - most precise, embed it
                     // directly, no overlay needed. Live coverage, not resumable - see
                     // loadYoutubeIntoPlayer's own comment for why (still routed through the
                     // Player API rather than a raw `.src =` write, since modal-video-iframe is a
                     // shared element with the archived-footage path above, which IS resumable
                     // and needs the API to stay the sole owner of this iframe once adopted).
-                    loadYoutubeIntoPlayer('modal-video-iframe', confirmedYoutubeId, { resumable: false });
+                    loadYoutubeIntoPlayer('modal-video-iframe', liveYoutubeId, { resumable: false });
                     if (videoUnconfirmedOverlay) {
                         videoUnconfirmedOverlay.classList.add('hidden');
                         videoUnconfirmedOverlay.classList.remove('flex');
