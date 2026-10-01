@@ -22078,17 +22078,96 @@
 
         // Pulls an 11-char YouTube video ID out of a watch/embed/live/shorts/youtu.be URL, or
         // returns null if the URL isn't a YouTube link (e.g. an X/Twitter stream link).
+        // NASA's broadcast for each mission, once seen - kept on this device for 12 hours, by mission id (the same id on
+        // both of Launch Library's servers). Whenever the main server rate-limits us the site falls back to its backup
+        // (lldev), whose copy of a launch often lacks NASA's broadcast: a reload that landed on that copy lost NASA's
+        // broadcast and the live player switched over to SpaceX's on X (Crew-13).
+        const NASA_BROADCASTS_KEY = 'nasaBroadcastsByMission';
+        function loadSavedNasaBroadcasts() {
+            try {
+                const all = JSON.parse(localStorage.getItem(NASA_BROADCASTS_KEY) || '{}') || {};
+                const now = Date.now();
+                Object.keys(all).forEach(k => { if (!all[k] || !all[k].id || now - (all[k].t || 0) > X_BROADCAST_KEEP_MS) delete all[k]; });
+                return all;
+            } catch (e) { return {}; }
+        }
+        function rememberNasaBroadcast(missionId, b) {
+            if (!missionId || !b || !b.id) return;
+            const all = loadSavedNasaBroadcasts();
+            const old = all[missionId];
+            if (old && old.id === b.id && (old.start || '') === (b.start || '') && !!old.live === !!b.live) return;   // called on every tick
+            all[missionId] = { id: b.id, start: b.start || '', live: !!b.live, t: Date.now() };
+            try { localStorage.setItem(NASA_BROADCASTS_KEY, JSON.stringify(all)); } catch (e) { }
+        }
+        function savedNasaBroadcastFor(missionId) {
+            if (!missionId) return null;
+            return loadSavedNasaBroadcasts()[missionId] || null;
+        }
+
+        // Neither copy of the mission listed NASA's broadcast and none was seen before: for a NASA mission, NASA's own
+        // YouTube channel is asked what it is broadcasting live right now. Only when a live player is wired for the
+        // mission, at most every 10 minutes per mission, from 2.5 h before liftoff to 3 h after - a search costs 100 of
+        // the key's 10,000 daily units. NASA keeps 24/7 station feeds live on the same channel, so the broadcast's
+        // title has to name this mission (youtubeTitleNamesMission).
+        const NASA_YT_CHANNEL_ID = 'UCLA_DiR1FfKNvjuUpBHmylQ';
+        const nasaYoutubeLookupAt = {};
+        function isNasaMission(m) {
+            return !!m && (m.missionAgencies || []).some(a => /^(NASA|National Aeronautics and Space Administration)$/i.test(String(a || '').trim()));
+        }
+        // "Falcon 9 | Crew-13" vs "NASA's SpaceX Crew-13 Launch to the Space Station": the whole name, or - names
+        // with a number (NASA writes "SpaceX CRS-34" for "Dragon CRS-2 SpX-34") - the name's last number together
+        // with one of its words
+        function youtubeTitleNamesMission(title, m) {
+            const name = String((m && (m.patchTagName || m.name)) || '').split('|').pop();
+            const t = ' ' + normalizeForMatch(title) + ' ';
+            const n = normalizeForMatch(name);
+            if (!n) return false;
+            if (t.includes(' ' + n + ' ')) return true;
+            const nums = n.match(/\b\d+\b/g);
+            if (!nums) return false;
+            const words = n.split(' ').filter(w => /^[a-z]{3,}$/.test(w) && !/^(nasa|spacex|falcon|heavy|dragon|launch|mission|block)$/.test(w));
+            return t.includes(' ' + nums[nums.length - 1] + ' ') && words.some(w => t.includes(' ' + w + ' '));
+        }
+        async function lookUpNasaLiveOnYoutube(m) {
+            if (!isNasaMission(m) || nasaLiveStreamFor(m)) return null;
+            const minutesToLaunch = (new Date(m.date).getTime() - Date.now()) / 60000;
+            if (isNaN(minutesToLaunch) || minutesToLaunch > 150 || minutesToLaunch < -180) return null;
+            if (Date.now() - (nasaYoutubeLookupAt[m.id] || 0) < 10 * 60000) return null;
+            nasaYoutubeLookupAt[m.id] = Date.now();
+            try {
+                const res = await fetchWithTimeout(
+                    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${NASA_YT_CHANNEL_ID}&eventType=live&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`,
+                    { timeout: 8000 }
+                );
+                if (!res.ok) return null;
+                const data = await res.json();
+                const hit = (data.items || []).find(it => it && it.id && it.id.videoId && it.snippet && youtubeTitleNamesMission(it.snippet.title, m));
+                if (!hit) return null;
+                rememberNasaBroadcast(m.id, { id: hit.id.videoId, live: true });
+                return hit.id.videoId;
+            } catch (e) { return null; }
+        }
+
         // NASA's YouTube broadcast for this launch, once it is on air (or about to be): Launch Library's own "live"
         // flag, else from 10 minutes before the stream's listed start, else - no start time listed - from 2.5 h before
         // liftoff. Looked up on the latest copy of the mission, since the stream is often attached late.
         function nasaLiveStreamFor(m) {
             if (!m) return null;
             const fresh = (typeof dbMissions !== 'undefined' ? dbMissions : []).concat(typeof rawPastMissions !== 'undefined' ? rawPastMissions : []).find(x => x && x.id === m.id) || m;
-            const id = fresh.nasaYoutubeId || m.nasaYoutubeId;
+            let id = fresh.nasaYoutubeId || m.nasaYoutubeId;
+            let live = !!(fresh.nasaLive || m.nasaLive);
+            let startIso = fresh.nasaStreamStart || m.nasaStreamStart || '';
+            if (id) {
+                rememberNasaBroadcast(m.id, { id, start: startIso });
+            } else {
+                // this copy of the mission came without it (see NASA_BROADCASTS_KEY) - the one seen before
+                const saved = savedNasaBroadcastFor(m.id);
+                if (saved) { id = saved.id; startIso = saved.start || ''; live = !!saved.live; }
+            }
             if (!id) return null;
-            if (fresh.nasaLive || m.nasaLive) return id;
+            if (live) return id;
             const now = Date.now(), t0 = new Date(fresh.date || m.date).getTime();
-            const start = Date.parse(fresh.nasaStreamStart || m.nasaStreamStart || '');
+            const start = Date.parse(startIso);
             if (!isNaN(start)) return now >= start - 10 * 60000 ? id : null;
             return !isNaN(t0) && (t0 - now) / 60000 <= 150 ? id : null;
         }
@@ -23811,7 +23890,11 @@ setTimeout(() => {
                 window._liveOnX = !!xId;
                 const liveYtIcon = document.getElementById('modal-live-yt-icon');
                 if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
-                if (xId && liveYtLink) liveYtLink.href = `https://x.com/i/broadcasts/${xId}`;
+                // back to YouTube too once NASA's broadcast turns up after X's (lookUpNasaLiveOnYoutube below)
+                const nasaNow = xId ? null : nasaLiveStreamFor(m);
+                if (liveYtLink) liveYtLink.href = xId ? `https://x.com/i/broadcasts/${xId}`
+                    : nasaNow ? `https://www.youtube.com/watch?v=${nasaNow}`
+                    : (confirmedYoutubeId ? `https://www.youtube.com/watch?v=${confirmedYoutubeId}` : (liveSrcUrl || youtubeOpenUrlFallback));
                 const liveYtLabel = document.getElementById('i18n-open-youtube-live');
                 if (liveYtLabel) {
                     const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
@@ -23923,6 +24006,17 @@ setTimeout(() => {
                     openLiveVideo();
                 }
             };
+            // NASA mission whose broadcast neither Launch Library copy listed: ask NASA's channel. When it is found, the
+            // player takes it - moved off X or the Spaceflight Now fallback if it is already open on one of them.
+            lookUpNasaLiveOnYoutube(m).then(nasaId => {
+                if (!nasaId || !window._openMissionObj || window._openMissionObj.id !== m.id) return;
+                applyXId();
+                syncModalLiveButtonLabel();
+                if (videoSection && !videoSection.classList.contains('hidden')) {
+                    stopXBroadcast();
+                    openLiveVideo();
+                }
+            });
             liveBtn.onclick = function () {
                 if (videoSection && !videoSection.classList.contains('hidden')) {
                     closeLiveVideo();
