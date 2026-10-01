@@ -27159,6 +27159,16 @@ setTimeout(() => {
         function selectOrbitCard(code) {
             window._orbitSelectedCode = (code && code !== window._orbitSelectedCode) ? code : null;
             applyOrbitSelection();
+            // Phones: the cards sit below the diagram, so the ring that just lit up is off screen - bring the diagram
+            // back into view. Only when a card is picked, not when it is turned off.
+            if (window._orbitSelectedCode && window.innerWidth < 768) {
+                const content = document.getElementById('orbit-modal-content');
+                const diagram = document.querySelector('#orbit-modal .orbit-hero-area');
+                if (content && diagram && diagram.getBoundingClientRect().top < content.getBoundingClientRect().top) {
+                    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    content.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+                }
+            }
         }
         function applyOrbitSelection() {
             const activeCode = ORBIT_INFO[window.currentActiveOrbitCode] ? window.currentActiveOrbitCode : 'LEO';
