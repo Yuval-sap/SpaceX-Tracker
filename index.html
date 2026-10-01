@@ -7389,7 +7389,7 @@
             // Clearing it first used to reset the headline to its full CSS size every tick while hidden, and coming
             // back to the Launches tab showed it huge, spilling past the card, until the next tick refitted it.
             if (!box.getClientRects().length) return;
-            el.style.removeProperty('font-size');
+            resetMissionStatusFit(el);
             if (!box.classList.contains('mission-status-mode')) return; // digits mode: leave as-is
             // Measured with a Range over the element's own contents, NOT scrollWidth: this
             // element is a centered flex row with no overflow clipping, so an oversized headline
@@ -7412,14 +7412,49 @@
                 - (parseFloat(boxCs.paddingLeft) || 0)
                 - (parseFloat(boxCs.paddingRight) || 0);
             if (!avail || avail <= 0) return;
-            let size = parseFloat(getComputedStyle(el).fontSize) || 40;
-            let guard = 0;
-            while (textWidth() > avail - 2 && size > 12 && guard < 150) {
-                size -= 1;
-                el.style.setProperty('font-size', size + 'px', 'important');
+            const setSize = (px) => {
+                el.style.setProperty('font-size', px + 'px', 'important');
                 void el.offsetWidth; // force reflow so the next measurement is current
+            };
+            const cssSize = parseFloat(getComputedStyle(el).fontSize) || 40;
+            // One line, but not below a readable size. The satellite-deploy events of a rideshare flight are long
+            // ("ASCENT Propulsion Dual Mode deploys, manifested by NASA"): on a phone even the old 12px floor was
+            // wider than the card, and the headline ran past both edges of it.
+            const oneLineFloor = 16;
+            let size = cssSize;
+            let guard = 0;
+            while (textWidth() > avail - 2 && size > oneLineFloor && guard < 150) {
+                size -= 1;
+                setSize(size);
                 guard++;
             }
+            if (textWidth() <= avail - 2) return;
+            // Too long for one line at a readable size: two lines, centred and balanced, at the largest size at
+            // which it takes no more than two (12px at the very least).
+            el.style.setProperty('white-space', 'normal', 'important');
+            el.style.setProperty('max-width', avail + 'px', 'important');
+            el.style.setProperty('text-align', 'center', 'important');
+            el.style.setProperty('text-wrap', 'balance');
+            const lineCount = () => {
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    return new Set(Array.from(range.getClientRects()).filter(r => r.width > 0).map(r => Math.round(r.top))).size;
+                } catch (e) { return 1; }
+            };
+            size = Math.round(cssSize * 0.85);
+            setSize(size);
+            guard = 0;
+            while ((lineCount() > 2 || textWidth() > avail - 2) && size > 12 && guard < 150) {
+                size -= 1;
+                setSize(size);
+                guard++;
+            }
+        }
+        // Undoes fitMissionStatusText's inline sizing and wrapping (leaving mission-status mode, or before refitting)
+        function resetMissionStatusFit(el) {
+            if (!el) return;
+            ['font-size', 'white-space', 'max-width', 'text-align', 'text-wrap'].forEach(p => el.style.removeProperty(p));
         }
         window.addEventListener('resize', fitMissionStatusText);
 
@@ -27541,7 +27576,7 @@ setTimeout(() => {
                 }
                 // Leaving mission-status mode: drop the shrink-to-fit size fitMissionStatusText
                 // may have written, so the countdown digits go back to their own CSS size.
-                if (!showMissionStatus && el) el.style.removeProperty('font-size');
+                if (!showMissionStatus && el) resetMissionStatusFit(el);
                 renderMissionStatusBreakdown(document.documentElement.lang, hasAsdsProfile);
                 if (showMissionStatus && typeof elapsedSec === 'number') {
                     updateMissionStatusBreakdownProgress(elapsedSec);
