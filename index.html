@@ -6164,6 +6164,19 @@
         }
         // the API has reported how a (non-Starship) flight ended - success or failure - so it can leave the hero
         const apiReportedOutcome = m => !!m && m.category !== 'starship' && (m.launchSuccess === true || m.launchSuccess === false);
+        // the source's copy of this launch was last updated before liftoff - it knows nothing of what happened since
+        function sourceSilentSinceLiftoff(m, launchMs) {
+            const u = Date.parse((m && m.sourceUpdatedAt) || '');
+            return !isNaN(u) && !isNaN(launchMs) && u < launchMs;
+        }
+        // Of two copies of the same launch (the main server's, cached on this device, and a backup server's from the
+        // latest fetch), the more recently updated one - a backup's stale copy must not replace a newer cached one.
+        // Without last_updated on both, the fresh copy wins, as before.
+        function newerLaunchCopy(fresh, cached) {
+            if (!cached) return fresh;
+            const f = Date.parse((fresh && fresh.last_updated) || ''), c = Date.parse(cached.last_updated || '');
+            return !isNaN(f) && !isNaN(c) && c > f ? cached : fresh;
+        }
 
         let realMissionTimelineFetchGen = 0;
         function fetchRealMissionTimeline() {
@@ -19389,7 +19402,8 @@
                 const t = launchNetMs(m);
                 if (t <= 0 || t >= nowMs || t < cutoff) return;
                 const key = m.id != null ? String(m.id) : ((m.name || '') + '@' + t);
-                if (overwrite || !byId.has(key)) byId.set(key, m);
+                if (overwrite) byId.set(key, newerLaunchCopy(m, byId.get(key)));
+                else if (!byId.has(key)) byId.set(key, m);
             };
             (cachedCombined || []).forEach(m => consider(m, false));
             (fresh || []).forEach(m => consider(m, true));
@@ -19563,6 +19577,12 @@
                     if (cachedUpcomingCount >= 3 && upcomingRaw.length < cachedUpcomingCount * 0.5) {
                         upcomingRaw = null;
                     }
+                }
+                // same rule as mergePreviousLaunches: a launch this device last saw newer than the copy just fetched
+                // (a backup server's stale one) keeps the newer copy
+                if (upcomingRaw !== null && cachedCombinedForSanityCheck) {
+                    const cachedById = new Map(cachedCombinedForSanityCheck.filter(m => m && m.id != null).map(m => [String(m.id), m]));
+                    upcomingRaw = upcomingRaw.map(m => (m && m.id != null) ? newerLaunchCopy(m, cachedById.get(String(m.id))) : m);
                 }
 
                 // "upcoming" and "previous" are fetched independently — it's possible for one
@@ -19973,6 +19993,13 @@
                     // Falcon 9 / Heavy: the API already says how it ended - no need to wait out the 75 minutes
                     isPast = true;
                 } else if (flyingNow && diff > flightWindowMs) {
+                    isPast = true;
+                } else if (unresolved && diff > flightWindowMs && sourceSilentSinceLiftoff(m, launchTime)) {
+                    // The source hasn't touched this launch since before liftoff, so its "Go for Launch" says nothing
+                    // about how it went - Launch Library's backup server (lldev, used whenever the main one rate-limits
+                    // us) still had Crew-13 as last updated nine days earlier. Waiting out the 24 h fallback below kept
+                    // it in the hero on that device for hours after the next launch had taken over everywhere else
+                    // (phone vs. computer). A scrub reported after T-0 updates the launch, so it never lands here.
                     isPast = true;
                 } else if (unresolved && diff > UNRESOLVED_PAST_FALLBACK_MS) {
                     // Deliberately oversized fallback (see comment above) - only for a status
@@ -20754,6 +20781,8 @@
                 landingSuccess: landingSuccess,
                 landingShipName: landingShipName,
                 launchSuccess: launchSuccess,
+                // when the source last touched this launch (Launch Library's last_updated) - see processLaunchData
+                sourceUpdatedAt: launch.last_updated || null,
                 crew: crewArr,
                 probability: prob,
                 updates: missionUpdates
@@ -22666,7 +22695,10 @@
             if (!nextLaunch && lastHeroInProgressMission) {
                 const sinceLaunchMs = Date.now() - new Date(lastHeroInProgressMission.date).getTime();
                 const graceMs = missionInFlightWindowMs(lastHeroInProgressMission);
-                if (sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs) {
+                // Not once the latest data reports how it ended - the remembered copy predates that, and an open tab kept
+                // the flight in the hero for the full window while a reloaded one (no memory) had already moved on
+                const latestCopy = rawPastMissions.find(x => x && x.id === lastHeroInProgressMission.id);
+                if (sinceLaunchMs >= 0 && sinceLaunchMs <= graceMs && !apiReportedOutcome(latestCopy)) {
                     nextLaunch = Object.assign({}, lastHeroInProgressMission, { status: 'In Progress' });
                     nextUpcoming = dbMissions.length > 0 ? dbMissions[0] : null;
                 }
