@@ -7909,13 +7909,13 @@
                     'i18n-filter-favorites': dict.filterFavorites,
                     // vehicle tabs: Falcon in Hebrew (as in the mission titles - localizeMissionName), Falcon
                     // left as the proper noun elsewhere; Starlink through its own fixed per-language term
-                    'i18n-filter-falcon': (key === 'he' || key === 'iw') ? 'פלקון 9' : 'Falcon 9',
-                    'i18n-filter-falcon-heavy': (key === 'he' || key === 'iw') ? 'פלקון כבד' : 'Falcon Heavy',
+                    'i18n-filter-falcon': vehicleName('f9', key),
+                    'i18n-filter-falcon-heavy': vehicleName('fh', key),
                     'i18n-filter-starlink': (() => { try { return STARLINK_I18N[key] || 'Starlink'; } catch (e) { return 'Starlink'; } })(),   // declared further down
                     'i18n-watch-launch': dict.watchLaunch || LAUNCH_LABEL_I18N.en.watchLaunch,
                     // Dragon's label in the rockets comparison: the site's Hebrew name for it (the Dragon filter tab's),
                     // the proper noun elsewhere - never Google, which renders it as the animal
-                    'i18n-scale-dragon': (key === 'he' || key === 'iw') ? 'דרגון' : 'Dragon',
+                    'i18n-scale-dragon': vehicleName('dragon', key),
                     'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
                     // "Open on X" while the live player plays SpaceX's X broadcast (wireModalLiveButton)
                     'i18n-open-youtube-live': window._liveOnX
@@ -8001,6 +8001,16 @@
             if (typeof syncModalLiveButtonLabel === 'function') syncModalLiveButtonLabel();
             if (typeof syncHeroLiveButtonLabel === 'function') syncHeroLiveButtonLabel();
 
+            // the capsule / ship flight count in the mission modal's vehicle line ("(טיסה 4)")
+            document.querySelectorAll('[data-ship-flight]').forEach(el => {
+                const wanted = '(' + (dict.flightNumberLabel || LAUNCH_LABEL_I18N.en.flightNumberLabel).replace('{n}', el.dataset.shipFlight) + ')';
+                if (el.textContent !== wanted) el.textContent = wanted;
+            });
+            document.querySelectorAll('[data-booster-tbd]').forEach(el => {
+                const wanted = localizeBoosterTbd(el.dataset.boosterTbd, key);
+                if (wanted !== null && el.innerText !== wanted) el.innerText = wanted;
+            });
+
             // Placeholder is an attribute, not textContent — Google Translate still likes to
             // rewrite it ("patches" → "תיקונים") even with translate="no" on the input, so
             // stamp our own wording every tick instead of only on language change.
@@ -8085,6 +8095,93 @@
         // satellite constellation. We can't pre-empt Google's word choice for arbitrary dynamic
         // sentences, so instead this runs a light find-and-replace over the rendered text after
         // translation, in the containers where mission descriptions appear.
+        // Falcon / Dragon names, one fixed form per language - the same idea as STARSHIP_I18N below.
+        // Before this each part of the site reached these names its own way (our own Hebrew labels,
+        // the Gemini/Google mission-name translations, the on-page widget, or nothing at all), so
+        // the same page mixed "פלקון 9" with "Falcon 9" and "דרגון" with "Crew Dragon" (reported
+        // live), and Russian mixed "Фалькон 9" with "Falcon 9". Latin-script languages keep the
+        // English names (how they are written there); the others get the forms below.
+        const VEHICLE_NAME_I18N = {
+            he: { f9: 'פלקון 9', fh: 'פלקון כבד', f1: 'פלקון 1', falcon: 'פלקון', crew: 'דרגון צוות', cargo: 'דרגון תובלה', dragon: 'דרגון', superHeavy: 'Super Heavy' },
+            ru: { f9: 'Фалкон 9', fh: 'Фалкон Хэви', f1: 'Фалкон 1', falcon: 'Фалкон', crew: 'Крю Драгон', cargo: 'Карго Драгон', dragon: 'Драгон', superHeavy: 'Super Heavy' },
+            zh: { f9: '猎鹰9号', fh: '猎鹰重型', f1: '猎鹰1号', falcon: '猎鹰', crew: '载人龙飞船', cargo: '货运龙飞船', dragon: '龙飞船', superHeavy: '超级重型' },
+            hi: { f9: 'फाल्कन 9', fh: 'फाल्कन हेवी', f1: 'फाल्कन 1', falcon: 'फाल्कन', crew: 'क्रू ड्रैगन', cargo: 'कार्गो ड्रैगन', dragon: 'ड्रैगन', superHeavy: 'सुपर हेवी' },
+            ar: { f9: 'فالكون 9', fh: 'فالكون هيفي', f1: 'فالكون 1', falcon: 'فالكون', crew: 'كرو دراغون', cargo: 'كارغو دراغون', dragon: 'دراغون', superHeavy: 'سوبر هيفي' },
+        };
+        const VEHICLE_NAME_EN = { f9: 'Falcon 9', fh: 'Falcon Heavy', f1: 'Falcon 1', falcon: 'Falcon', crew: 'Crew Dragon', cargo: 'Cargo Dragon', dragon: 'Dragon', superHeavy: 'Super Heavy' };
+        // Longest first, so "Crew Dragon" is never left as "Crew" + a localized "Dragon"
+        const VEHICLE_NAME_PATTERNS = [
+            ['crew', /\bCrew\s+Dragon\b/gi],
+            ['cargo', /\bCargo\s+Dragon\b/gi],
+            ['dragon', /\bDragon\b/g],
+            ['fh', /\bFalcon\s+Heavy\b/gi],
+            ['f9', /\bFalcon\s*-?\s*9\b/gi],
+            ['f1', /\bFalcon\s*-?\s*1\b/gi],
+            ['falcon', /(?<!Millennium\s)\bFalcon\b/g],
+        ];
+        const VEHICLE_NAME_ANY_RE = /\b(?:Dragon|Falcon)\b/;
+        // Other spellings the translators have produced for the same names (mission-purpose-gemini.json
+        // and Google), folded into the forms above
+        const VEHICLE_NAME_VARIANTS = {
+            he: [[/פלקון\s+הכבד/g, 'פלקון כבד']],
+            ru: [[/Фалькон/g, 'Фалкон'], [/Фалкон\s+Хеви/g, 'Фалкон Хэви']],
+            zh: [[/猎鹰\s*9\s*号/g, '猎鹰9号'], [/猎鹰\s*1\s*号/g, '猎鹰1号'], [/(龙飞船)\s*(?:载人|货运)?飞船/g, '$1']],
+            hi: [[/फ़ॉल्कन|फ़ाल्कन|फॉल्कन/g, 'फाल्कन']],
+            ar: [[/دراجون/g, 'دراغون']],
+        };
+        function vehicleNameKey(lang) {
+            const k = String(lang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return k === 'iw' ? 'he' : k;
+        }
+        function vehicleName(id, lang) {
+            const dict = VEHICLE_NAME_I18N[vehicleNameKey(lang)];
+            return (dict && dict[id]) || VEHICLE_NAME_EN[id];
+        }
+        function localizeVehicleNamesText(text, lang) {
+            const key = vehicleNameKey(lang);
+            const dict = VEHICLE_NAME_I18N[key];
+            if (!text || !dict) return text;
+            let out = String(text);
+            // Hebrew attaches its prefixes to a Hebrew word ("ה-Crew Dragon" -> "הדרגון צוות")
+            if (key === 'he') out = out.replace(/(^|[^\u0590-\u05FF])([ובהכלמש]{1,3})-(?=(?:Falcon|Crew\s+Dragon|Cargo\s+Dragon|Dragon)\b)/g, '$1$2');
+            VEHICLE_NAME_PATTERNS.forEach(([id, re]) => { out = out.replace(re, dict[id]); });
+            (VEHICLE_NAME_VARIANTS[key] || []).forEach(([re, to]) => { out = out.replace(re, to); });
+            return out;
+        }
+
+        // "Falcon 9 Booster (Not Yet Assigned)" and its Falcon Heavy / Super Heavy siblings
+        // (mapLaunchToSchema's placeholder while Launch Library has no booster yet) - the mission
+        // modal's booster line showed it in English in every language. {v} is the vehicle name.
+        const BOOSTER_TBD_I18N = {
+            en: { booster: '{v} Booster (Not Yet Assigned)', cores: '{v} Cores (Not Yet Assigned)' },
+            he: { booster: 'בוסטר {v} (טרם שובץ)', cores: 'ליבות {v} (טרם שובצו)' },
+            es: { booster: 'Propulsor {v} (aún no asignado)', cores: 'Núcleos {v} (aún no asignados)' },
+            fr: { booster: 'Booster {v} (pas encore attribué)', cores: 'Propulseurs {v} (pas encore attribués)' },
+            de: { booster: '{v}-Booster (noch nicht zugewiesen)', cores: '{v}-Kernstufen (noch nicht zugewiesen)' },
+            ru: { booster: 'Бустер {v} (ещё не назначен)', cores: 'Ступени {v} (ещё не назначены)' },
+            zh: { booster: '{v}助推器（尚未分配）', cores: '{v}芯级（尚未分配）' },
+            it: { booster: 'Booster {v} (non ancora assegnato)', cores: 'Core {v} (non ancora assegnati)' },
+            cs: { booster: 'Booster {v} (zatím nepřiřazen)', cores: 'Stupně {v} (zatím nepřiřazeny)' },
+            sv: { booster: '{v}-booster (ännu inte tilldelad)', cores: '{v}-kärnor (ännu inte tilldelade)' },
+            nl: { booster: '{v}-booster (nog niet toegewezen)', cores: '{v}-kernen (nog niet toegewezen)' },
+            da: { booster: '{v}-booster (endnu ikke tildelt)', cores: '{v}-kerner (endnu ikke tildelt)' },
+            pt: { booster: 'Propulsor {v} (ainda não atribuído)', cores: 'Núcleos {v} (ainda não atribuídos)' },
+            pl: { booster: 'Booster {v} (jeszcze nieprzydzielony)', cores: 'Rdzenie {v} (jeszcze nieprzydzielone)' },
+            hi: { booster: '{v} बूस्टर (अभी तय नहीं)', cores: '{v} कोर (अभी तय नहीं)' },
+            ar: { booster: 'معزز {v} (لم يُحدَّد بعد)', cores: 'معززات {v} (لم تُحدَّد بعد)' },
+            tr: { booster: '{v} iticisi (henüz atanmadı)', cores: '{v} çekirdekleri (henüz atanmadı)' },
+        };
+        // null when the text isn't one of the three placeholders (a real booster - left as before)
+        function localizeBoosterTbd(raw, lang) {
+            const m = /^(Falcon 9|Falcon Heavy|Super Heavy) (Booster|Cores) \(Not Yet Assigned\)$/.exec(String(raw || ''));
+            if (!m) return null;
+            const key = vehicleNameKey(lang);
+            const dict = BOOSTER_TBD_I18N[key] || BOOSTER_TBD_I18N.en;
+            const v = vehicleName(m[1] === 'Falcon 9' ? 'f9' : m[1] === 'Falcon Heavy' ? 'fh' : 'superHeavy', key);
+            // the "(not yet assigned)" part kept on one line when the narrow phone tile wraps the row
+            return (m[2] === 'Cores' ? dict.cores : dict.booster).replace('{v}', v).replace(/\([^)]*\)/, p => p.replace(/ /g, ' '));
+        }
+
         const PHRASE_FIXES_HE = [
             [/קבוצת\s*ה?כוכבים(?:\s+(?:ה)?לוויינים)?/g, 'מערך הלוויינים'],
             [/ספינ(?:ות|ה|ת)\s*(?:נמל\s*)?חלל\s*אוטונומי(?:ת|ות)/g, 'ספינות נחיתה אוטונומיות'],
@@ -8174,6 +8271,7 @@
         // inserted (and therefore before it is split) lets the word-order rules actually match.
         function fixMistranslatedPhrasesText(text, currentLang) {
             const key = (currentLang || '').split('-')[0];
+            if (text && key && key !== 'en') text = localizeVehicleNamesText(text, key);
             if (!text || (key !== 'he' && key !== 'iw')) return text;
             let out = text;
             PHRASE_FIXES_HE.forEach(([pattern, replacement]) => {
@@ -9057,6 +9155,9 @@
         // for at all).
         const BANDWAGON_MT_PLACEHOLDER = 'XBANDWAGONZQ9X';
         const TRANSPORTER_MT_PLACEHOLDER = 'XTRANSPORTERZQ9X';
+        // Falcon / Dragon too, so every language gets VEHICLE_NAME_I18N's form rather than whatever
+        // Google picks that time (it answered "Фалькон 9" for one name and left "Falcon 9" in the next)
+        const VEHICLE_MT_PLACEHOLDERS = { crew: 'XCREWDRAGONZQ9X', cargo: 'XCARGODRAGONZQ9X', dragon: 'XDRAGONZQ9X', fh: 'XFALCONHEAVYZQ9X', f9: 'XFALCONNINEZQ9X', f1: 'XFALCONONEZQ9X', falcon: 'XFALCONZQ9X' };
         // Same class of problem as Starship: Google's MT reads the surname "Roman" as the
         // adjective for ancient Rome. Longest phrase first so "Nancy Grace Roman Space
         // Telescope" is not left as a leftover "Space Telescope" after the shorter name swap.
@@ -9094,6 +9195,8 @@
             if (hasStarlink) textToSend = textToSend.replace(/\bstarlink\b/gi, STARLINK_MT_PLACEHOLDER);
             if (hasBandwagon) textToSend = textToSend.replace(/\bbandwagon\b/gi, BANDWAGON_MT_PLACEHOLDER);
             if (hasTransporter) textToSend = textToSend.replace(TRANSPORTER_NAME_RE, TRANSPORTER_MT_PLACEHOLDER);
+            const hasVehicle = VEHICLE_NAME_ANY_RE.test(textToSend);
+            if (hasVehicle) VEHICLE_NAME_PATTERNS.forEach(([id, re]) => { textToSend = textToSend.replace(re, VEHICLE_MT_PLACEHOLDERS[id]); });
             const googleLang = GOOGLE_TRANSLATE_LANG_MAP[langKey] || langKey;
             const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=' +
                 encodeURIComponent(googleLang) + '&dt=t&q=' + encodeURIComponent(textToSend);
@@ -9134,6 +9237,9 @@
                             translated = translated.replace(new RegExp(TRANSPORTER_MT_PLACEHOLDER, 'gi'), transporterTerm);
                         }
                         if (hasRoman) translated = restoreRomanTelescopeFromMt(translated, langKey);
+                        if (hasVehicle) Object.keys(VEHICLE_MT_PLACEHOLDERS).forEach(id => {
+                            translated = translated.replace(new RegExp(VEHICLE_MT_PLACEHOLDERS[id], 'gi'), VEHICLE_NAME_EN[id]);
+                        });
                         // Applied here, on the whole sentence, rather than only after insertion:
                         // once this text reaches the page it gets split across several text nodes by
                         // the Starship-term wrapping, and multi-word corrections can no longer match.
@@ -10822,13 +10928,11 @@
                     // not the word-by-word "סטארלינק קבוצה" that both the Gemini names cache and
                     // the Google fallback produce - and on the instant pass (raw English in),
                     // "Group" was simply left in English next to the already-localized brand.
-                    .replace(/סטארלינק\s+(?:Group|קבוצה)\s+/gi, 'קבוצת סטארלינק ')
-                    // Falcon in Hebrew, like the site's own Hebrew text ("פלקון 9", "פלקון כבד"): the
-                    // translators render "Falcon 9" but leave "Falcon Heavy" in English (reported live)
-                    .replace(/Falcon\s+Heavy/gi, 'פלקון כבד')
-                    .replace(/Falcon\s+9/gi, 'פלקון 9');
+                    .replace(/סטארלינק\s+(?:Group|קבוצה)\s+/gi, 'קבוצת סטארלינק ');
             }
-            return out;
+            // Falcon / Dragon through VEHICLE_NAME_I18N in every language (the translators rendered
+            // "Falcon 9" but left "Falcon Heavy" and "Dragon" in English - reported live)
+            return localizeVehicleNamesText(out, key);
         }
 
         // Renders a mission name into a notranslate element in two stages, the same instant-then-
@@ -10964,9 +11068,77 @@
             }), Promise.resolve()).then(() => ({ ok: allOk, superseded: _stripNamesGen !== myGen }));
         }
 
+        function localizeVehicleTerms(root) {
+            if (!root) return;
+            const key = vehicleNameKey();
+            root.querySelectorAll('.vehicle-term').forEach(el => {
+                const wanted = vehicleName(el.dataset.vterm, key);
+                if (el.textContent !== wanted) el.textContent = wanted;
+            });
+            const dict = VEHICLE_NAME_I18N[key];
+            if (!dict) return;   // Latin-script languages keep the English names
+            const variants = VEHICLE_NAME_VARIANTS[key] || [];
+            const hasVariant = (t) => variants.some(([re]) => { re.lastIndex = 0; return re.test(t); });
+            const text = root.textContent || '';
+            if (!VEHICLE_NAME_ANY_RE.test(text) && !hasVariant(text)) return;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    const t = node.nodeValue;
+                    if (!t || (!VEHICLE_NAME_ANY_RE.test(t) && !hasVariant(t))) return NodeFilter.FILTER_REJECT;
+                    const p = node.parentElement;
+                    // same exclusions as localizeStarshipTerm (see its comment)
+                    if (!p || p.closest('.vehicle-term') || p.closest('.starship-term') || p.closest('.lang-en-lock') || p.closest('.no-starship-protect') || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            let n;
+            while ((n = walker.nextNode())) nodes.push(n);
+            const splitRe = /(\s?(?:\bCrew\s+Dragon\b|\bCargo\s+Dragon\b|\bFalcon\s+Heavy\b|\bFalcon\s*-?\s*[19]\b|(?<!Millennium\s)\bFalcon\b|\bDragon\b)\s?)/;
+            nodes.forEach(node => {
+                let value = node.nodeValue;
+                variants.forEach(([re, to]) => { value = value.replace(re, to); });
+                if (!VEHICLE_NAME_ANY_RE.test(value)) { if (value !== node.nodeValue) node.nodeValue = value; return; }
+                // A sentence the on-page widget still has to translate (the hero title) must not be
+                // split by a protected span - the widget then left the rest of it in English. Wrapped
+                // only where the text is ours (translate="no") or is just the name on its own; the
+                // widget's own output (inside its <font> wrappers) is corrected in place instead.
+                const p = node.parentElement;
+                const ownText = p.closest('[translate="no"], .notranslate');
+                const nameOnly = VEHICLE_NAME_PATTERNS.some(([, re]) => { re.lastIndex = 0; const m = re.exec(value.trim()); return !!m && m[0] === value.trim(); });
+                if (!ownText && !nameOnly) {
+                    if (p.closest('font')) {
+                        const fixed = localizeVehicleNamesText(value, key);
+                        if (fixed !== node.nodeValue) node.nodeValue = fixed;
+                    }
+                    return;
+                }
+                if (key === 'he') value = value.replace(/(^|[^\u0590-\u05FF])([ובהכלמש]{1,3})-(?=(?:Falcon|Crew\s+Dragon|Cargo\s+Dragon|Dragon)\b)/g, '$1$2');
+                const frag = document.createDocumentFragment();
+                value.split(splitRe).forEach(part => {
+                    if (!part) return;
+                    const core = part.trim();
+                    const id = (VEHICLE_NAME_PATTERNS.find(([, re]) => { re.lastIndex = 0; const m = re.exec(core); return m && m[0] === core; }) || [])[0];
+                    if (!id || !splitRe.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+                    const hasBefore = /^\s/.test(part);
+                    const hasAfter = /\s$/.test(part);
+                    if (hasBefore) frag.appendChild(document.createTextNode(' '));
+                    const span = document.createElement('span');
+                    span.className = 'vehicle-term notranslate';
+                    span.setAttribute('translate', 'no');
+                    span.dataset.vterm = id;
+                    span.textContent = dict[id];
+                    frag.appendChild(span);
+                    if (hasAfter) frag.appendChild(document.createTextNode(' '));
+                });
+                node.parentNode.replaceChild(frag, node);
+            });
+        }
+
         function localizeStarshipTerm(root) {
             root = root || document.body;
             if (!root) return;
+            localizeVehicleTerms(root);
             const currentLang = (document.documentElement.lang || 'en').toLowerCase();
             let key = currentLang.split('-')[0];
             if (key === 'iw') key = 'he';
@@ -11120,6 +11292,14 @@
                     ['patch-lightbox', 'patch-lightbox-name', window.currentOpenPatchLightboxName],
                     ['patch-mission-modal', 'patch-mission-modal-name', window.currentOpenPatchMissionName]
                 ];
+                const heroNameEl2 = document.getElementById('hero-name');
+                if (heroNameEl2 && heroNameEl2.dataset.rawName) {
+                    const heroStamp = currentLang + '|' + heroNameEl2.dataset.rawName;
+                    if (heroNameEl2.dataset.renderedStamp !== heroStamp) {
+                        heroNameEl2.dataset.renderedStamp = heroStamp;
+                        renderLocalizedMissionName(heroNameEl2, heroNameEl2.dataset.rawName, currentLang);
+                    }
+                }
                 patchTargets.forEach(([modalId, nameId, rawName]) => {
                     if (!rawName) return;
                     const modalEl = document.getElementById(modalId);
@@ -12103,7 +12283,7 @@
                         <div id="year-count-breakdown"
                             class="hidden md:group-hover:flex absolute top-0 end-full me-2 md:top-auto md:end-auto md:me-0 md:bottom-full md:mb-2 md:left-1/2 md:-translate-x-1/2 flex-col gap-2 w-full py-3 px-3.5 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-lg shadow-xl z-[80]">
                             <div class="flex items-center justify-between gap-3 text-sm">
-                                <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span>Falcon 9</span></span>
+                                <span class="flex items-center gap-2 text-zinc-300 font-orbitron font-semibold"><i class="fa-solid fa-rocket text-emerald-400 text-xs"></i> <span class="vehicle-term notranslate" translate="no" data-vterm="f9">Falcon 9</span></span>
                                 <span id="year-count-falcon9" class="font-orbitron font-bold text-emerald-400 text-base">0</span>
                             </div>
                             <div class="flex items-center justify-between gap-3 text-sm">
@@ -14794,7 +14974,7 @@
                                 id="scale-box-falcon" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('falcon')">
                                 <img src="falcon9.png" alt="Falcon 9" class="h-[86px] w-auto object-contain object-bottom transition-all" id="scale-bar-falcon">
                                 <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">
-                                    Falcon 9</div>
+                                    <span class="vehicle-term notranslate" translate="no" data-vterm="f9">Falcon 9</span></div>
                                 <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-falcon" dir="auto"
                                     translate="no"></div>
                             </div>
@@ -14802,7 +14982,7 @@
                                 id="scale-box-heavy" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openRocketSpecs('falcon_heavy')">
                                 <img src="falcon-heavy.png" alt="Falcon Heavy" class="h-[86px] w-auto object-contain object-bottom transition-all" id="scale-bar-heavy">
                                 <div class="text-zinc-400 font-bold mt-2 hover:text-emerald-400 transition-colors">
-                                    Falcon Heavy</div>
+                                    <span class="vehicle-term notranslate" translate="no" data-vterm="fh">Falcon Heavy</span></div>
                                 <div class="text-zinc-500 text-xs mt-0.5 notranslate" id="scale-text-heavy" dir="auto"
                                     translate="no"></div>
                             </div>
@@ -22996,7 +23176,20 @@
             if (nextLaunch) {
     const heroNameEl = document.getElementById('hero-name');
     if (heroNameEl) {
-        heroNameEl.innerText = nextLaunch.name;
+        // Same path as the mission cards / modal title (Gemini's names, then our own fallback), not
+        // Google's on-page widget - left to the widget the hero could read differently from the very
+        // same mission's card ("Falcon 9" vs "פלקון 9"). Re-rendered only when the mission or the
+        // language changes: this runs on every data refresh, and each render repaints the instant
+        // version first (a flicker) and looks the name up again.
+        heroNameEl.setAttribute('translate', 'no');
+        heroNameEl.classList.add('notranslate');
+        const heroLang = (document.documentElement.lang || 'en').toLowerCase();
+        const heroStamp = heroLang + '|' + nextLaunch.name;
+        heroNameEl.dataset.rawName = nextLaunch.name;
+        if (heroNameEl.dataset.renderedStamp !== heroStamp) {
+            heroNameEl.dataset.renderedStamp = heroStamp;
+            renderLocalizedMissionName(heroNameEl, nextLaunch.name, heroLang);
+        }
         // Protect "Starship" synchronously - see the matching comment in openMissionModal().
         localizeStarshipTerm(heroNameEl);
         protectRomanTelescopeName(heroNameEl);
@@ -24457,20 +24650,32 @@ setTimeout(() => {
                 // "Starship V3 • Ship 39 (Flight 1)" into the wrong order. Isolating each fragment
                 // keeps them anchored in their authored (DOM) order while still letting each
                 // fragment's own internal script direction resolve correctly.
-                let vehicleHtml = `<span class="notranslate" translate="no" style="white-space:nowrap; unicode-bidi:isolate; margin-inline-end: 0.3em;">${escapeHtml(m.vehicle)}</span>`;
+                // A Dragon capsule goes on its own line below the rocket: "Falcon 9," then
+                // Crew Dragon "Grace" - the rocket followed by a comma, the capsule's own name in quotes
+                const hasCapsuleLine = !!m.shipLabel && /^C\d/i.test(m.shipSerial || '');
+                // "Block 5" taken off here rather than left to the page-wide "Block 5" observer, which
+                // deletes just those words and would leave "Falcon 9 ," with a space before the comma
+                const vehicleText = hasCapsuleLine ? String(m.vehicle || '').replace(/\s*Block\s*5\b/gi, '').trim() + ',' : m.vehicle;
+                let vehicleHtml = `<span class="notranslate" translate="no" style="white-space:nowrap; unicode-bidi:isolate; margin-inline-end: 0.3em;">${escapeHtml(vehicleText)}</span>`;
                 if (m.shipLabel) {
                     let flightHtml = '';
                     if (m.shipFlightNum) {
                         const flKey = (document.documentElement.lang || 'en').split('-')[0];
                         const flDict = LAUNCH_LABEL_I18N[flKey] || LAUNCH_LABEL_I18N.en;
                         const flTemplate = flDict.flightNumberLabel || LAUNCH_LABEL_I18N.en.flightNumberLabel;
-                        flightHtml = ` <span style="unicode-bidi:isolate; white-space:nowrap;">(${escapeHtml(flTemplate.replace('{n}', m.shipFlightNum))})</span>`;
+                        flightHtml = ` <span class="notranslate" translate="no" data-ship-flight="${escapeHtml(String(m.shipFlightNum))}" style="unicode-bidi:isolate; white-space:nowrap;">(${escapeHtml(flTemplate.replace('{n}', m.shipFlightNum))})</span>`;
                     }
-                    if (/^C\d/i.test(m.shipSerial || '')) {
+                    if (hasCapsuleLine) {
                         // A Dragon capsule's name ("Crew Dragon Endeavour") is far longer than "Ship 40" -
                         // kept on the same line as one nowrap run it was wider than its quarter-width tile
                         // and ran over the Launch Site value next to it. Its own line instead, free to wrap.
-                        vehicleHtml += `<span style="display:block; unicode-bidi:isolate;"><span class="notranslate" translate="no" style="unicode-bidi:isolate;">${escapeHtml(m.shipLabel)}</span>${flightHtml}</span>`;
+                        // The capsule's name in quotes, isolated so the quotes stay around the Latin name in
+                        // a right-to-left line; an unnamed cargo capsule's serial ("C211") gets none.
+                        const capsule = /^((?:Crew|Cargo)\s+Dragon|Dragon)\s+(.+)$/i.exec(m.shipLabel);
+                        const capsuleHtml = capsule && !/^C\d+$/i.test(capsule[2])
+                            ? `${escapeHtml(capsule[1])} <span dir="auto" style="unicode-bidi:isolate;">"${escapeHtml(capsule[2])}"</span>`
+                            : escapeHtml(m.shipLabel);
+                        vehicleHtml += `<span style="display:block; unicode-bidi:isolate;"><span class="notranslate" translate="no" style="unicode-bidi:isolate;">${capsuleHtml}</span>${flightHtml}</span>`;
                     } else {
                         vehicleHtml += ` • <span class="notranslate" translate="no" style="white-space:nowrap; margin-inline: 0.3em; unicode-bidi:isolate;">${escapeHtml(m.shipLabel)}</span>${flightHtml}`;
                     }
@@ -24489,7 +24694,20 @@ setTimeout(() => {
             if (modalOrbitEl) modalOrbitEl.innerText = m.orbitLabel || 'LEO (Low Earth Orbit)';
             window.currentActiveOrbitCode = m.orbitCode || 'LEO';
 
-            document.getElementById('modal-booster').innerText = m.booster || "Falcon 9 Core";
+            const modalBoosterEl = document.getElementById('modal-booster');
+            const boosterTbd = localizeBoosterTbd(m.booster, document.documentElement.lang);
+            if (boosterTbd !== null) {
+                // ours, not the widget's - kept in step with a language switch by the per-tick pass
+                modalBoosterEl.dataset.boosterTbd = m.booster;
+                modalBoosterEl.setAttribute('translate', 'no');
+                modalBoosterEl.classList.add('notranslate');
+                modalBoosterEl.innerText = boosterTbd;
+            } else {
+                delete modalBoosterEl.dataset.boosterTbd;
+                modalBoosterEl.removeAttribute('translate');
+                modalBoosterEl.classList.remove('notranslate');
+                modalBoosterEl.innerText = m.booster || "Falcon 9 Core";
+            }
             window.currentActiveLandingStr = m.landing || "Autonomous Spaceport Drone Ships (ASDS)";
             window.currentActiveLandingShipName = m.landingShipName || null;
             const modalLandingEl = document.getElementById('modal-landing');
