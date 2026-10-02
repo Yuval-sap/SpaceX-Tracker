@@ -652,6 +652,18 @@
                 white-space: nowrap;
             }
         }
+        /* English, the four-up row (not Starship's, above): "ORBIT DESTINATION" wrapped onto two lines in its
+           quarter-width tile while the tiles beside it had room to spare. The titles stay on one line, and a column
+           whose title needs more width takes it from the others (minmax(min-content) instead of Tailwind's
+           minmax(0) equal quarters). */
+        @media (min-width: 768px) {
+            html[lang="en"] #modal-vehicle-info-grid:not(.starship-row) .modal-subhead {
+                white-space: nowrap;
+            }
+            html[lang="en"] #modal-vehicle-info-grid:not(.starship-row) {
+                grid-template-columns: repeat(4, minmax(min-content, 1fr));
+            }
+        }
 
         /* News list (#news-list-modal): hovering a headline outlines it in the theme's accent - the same colour as
            the list's title (dark green by day, light green at night, Mars orange, Moon blue) - instead of shading it */
