@@ -14747,6 +14747,21 @@
                         </div>
                     </div>
 
+                    <!-- Past launches: the launch by the numbers, in place of the launch site's weather today, which says
+                         nothing about a flight that has already gone (renderLaunchStats). -->
+                    <div class="hidden bg-zinc-950 rounded-2xl p-4 flex-col border border-zinc-800/80 transition-colors duration-500 h-full"
+                        id="launch-stats-card">
+                        <div>
+                            <h5 class="modal-subhead modal-mini-heading text-xs font-bold font-space tracking-wider text-emerald-400 uppercase mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-simple"></i>
+                                <span id="launch-stats-title" class="notranslate" translate="no">LAUNCH BY THE NUMBERS</span>
+                            </h5>
+                            <p class="text-[11px] sm:text-xs text-zinc-500 notranslate" id="launch-stats-location"
+                                dir="ltr" translate="no">--</p>
+                        </div>
+                        <div id="launch-stats-grid" class="grid grid-cols-2 gap-x-4 gap-y-3 mt-3 flex-1 content-center"></div>
+                    </div>
+
                     <div class="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-4 transition-colors duration-500">
                         <h5 class="modal-subhead modal-mini-heading text-sm sm:text-base font-semibold font-space tracking-wider text-emerald-400 normal-case mb-3">
                             <i class="fa-solid fa-arrows-up-down"></i>
@@ -20628,6 +20643,7 @@
                 : "Falcon 9 Booster (Not Yet Assigned)";
             let boosterSerial = null;
             let boosterFlightNum = null;
+            let boosterTurnaroundDays = null;   // days since this booster's previous flight (the launch-stats card)
             let landingAttempt = null;
             let landingSuccess = null;
             let landingShipName = null;
@@ -20655,6 +20671,13 @@
                         : `Booster ${sn} (${flightSuffix} flight)`;
                     boosterSerial = sn.toUpperCase();
                     boosterFlightNum = flight;
+                    const prevFlightMs = Date.parse(stage.previous_flight_date || '');
+                    const thisFlightMs = Date.parse(launch.net || '');
+                    if (!isNaN(prevFlightMs) && !isNaN(thisFlightMs) && thisFlightMs > prevFlightMs) {
+                        boosterTurnaroundDays = Math.round((thisFlightMs - prevFlightMs) / 86400000);
+                    } else if (typeof stage.turnaround_time_days === 'number' && stage.turnaround_time_days > 0) {
+                        boosterTurnaroundDays = stage.turnaround_time_days;   // the HISTORICAL_RAW_LAUNCHES snapshot keeps only this
+                    }
                 }
 
                 if (stage.landing) {
@@ -20965,6 +20988,16 @@
                 landing: landingStr,
                 boosterSerial: boosterSerial,
                 boosterFlightNum: boosterFlightNum,
+                boosterTurnaroundDays: boosterTurnaroundDays,
+                // Launch Library's own running counts for this launch (SpaceX's, and this pad's - overall and in the
+                // launch's year) and the time since the pad's previous launch - the past-launch stats card
+                // (renderLaunchStats). Not in the HISTORICAL_RAW_LAUNCHES snapshot, so missions from it have none.
+                launchStats: {
+                    spacex: typeof launch.agency_launch_attempt_count === 'number' ? launch.agency_launch_attempt_count : null,
+                    spacexYear: typeof launch.agency_launch_attempt_count_year === 'number' ? launch.agency_launch_attempt_count_year : null,
+                    pad: typeof launch.pad_launch_attempt_count === 'number' ? launch.pad_launch_attempt_count : null,
+                    padTurnaround: launch.pad_turnaround || null,
+                },
                 shipName: shipName,
                 shipSerial: shipSerial,
                 shipFlightNum: shipFlightNum,
@@ -25417,6 +25450,7 @@ setTimeout(() => {
         // language's own labels, without re-fetching - called from applyLaunchLabelTranslations
         // on every language change.
         function refreshSiteWeatherLabels() {
+            if (window._launchStatsMission) renderLaunchStats(window._launchStatsMission);
             const card = document.getElementById('site-weather-card');
             const siteKey = card && card.dataset.siteKey;
             const locEl = document.getElementById('site-weather-location');
@@ -25489,13 +25523,88 @@ setTimeout(() => {
             }, 60 * 1000);
         }
 
+        // The past-launch stats card's own wording, hand-written for every language in the site's translate widget
+        // (captions under big numbers, so no plural forms are needed). {y}: the launch's year, {b}: the booster.
+        const LAUNCH_STATS_I18N = {
+            en: { title: 'LAUNCH BY THE NUMBERS', spacex: 'SpaceX launch, all-time', spacexYear: 'SpaceX launch of {y}', pad: 'Launch from this pad', padDays: "Days since this pad's previous launch", padHours: "Hours since this pad's previous launch", booster: 'Flight of booster {b}', boosterDays: "Days since this booster's previous flight" },
+            he: { title: 'השיגור במספרים', spacex: 'שיגור SpaceX מאז ומעולם', spacexYear: 'שיגור SpaceX של {y}', pad: 'שיגור מכן השיגור הזה', padDays: 'ימים מאז השיגור הקודם מהכן', padHours: 'שעות מאז השיגור הקודם מהכן', booster: 'טיסה של הבוסטר {b}', boosterDays: 'ימים מאז הטיסה הקודמת של הבוסטר' },
+            es: { title: 'EL LANZAMIENTO EN CIFRAS', spacex: 'Lanzamiento de SpaceX, en total', spacexYear: 'Lanzamiento de SpaceX de {y}', pad: 'Lanzamiento desde esta plataforma', padDays: 'Días desde el lanzamiento anterior de esta plataforma', padHours: 'Horas desde el lanzamiento anterior de esta plataforma', booster: 'Vuelo del propulsor {b}', boosterDays: 'Días desde el vuelo anterior del propulsor' },
+            fr: { title: 'LE LANCEMENT EN CHIFFRES', spacex: 'Lancement SpaceX, au total', spacexYear: 'Lancement SpaceX de {y}', pad: 'Lancement depuis ce pas de tir', padDays: 'Jours depuis le lancement précédent de ce pas de tir', padHours: 'Heures depuis le lancement précédent de ce pas de tir', booster: 'Vol du propulseur {b}', boosterDays: 'Jours depuis le vol précédent du propulseur' },
+            de: { title: 'DER START IN ZAHLEN', spacex: 'SpaceX-Start insgesamt', spacexYear: 'SpaceX-Start {y}', pad: 'Start von dieser Rampe', padDays: 'Tage seit dem letzten Start von dieser Rampe', padHours: 'Stunden seit dem letzten Start von dieser Rampe', booster: 'Flug des Boosters {b}', boosterDays: 'Tage seit dem letzten Flug des Boosters' },
+            ru: { title: 'ЗАПУСК В ЦИФРАХ', spacex: 'Запуск SpaceX за всё время', spacexYear: 'Запуск SpaceX в {y} году', pad: 'Запуск с этой площадки', padDays: 'Дней с предыдущего запуска с этой площадки', padHours: 'Часов с предыдущего запуска с этой площадки', booster: 'Полёт ускорителя {b}', boosterDays: 'Дней с предыдущего полёта ускорителя' },
+            zh: { title: '数字看发射', spacex: 'SpaceX 历史发射序号', spacexYear: 'SpaceX {y}年发射序号', pad: '该发射台发射序号', padDays: '距该发射台上次发射（天）', padHours: '距该发射台上次发射（小时）', booster: '助推器 {b} 的飞行次数', boosterDays: '距该助推器上次飞行（天）' },
+            it: { title: 'IL LANCIO IN NUMERI', spacex: 'Lancio SpaceX, in totale', spacexYear: 'Lancio SpaceX del {y}', pad: 'Lancio da questa rampa', padDays: 'Giorni dal lancio precedente da questa rampa', padHours: 'Ore dal lancio precedente da questa rampa', booster: 'Volo del booster {b}', boosterDays: 'Giorni dal volo precedente del booster' },
+            cs: { title: 'START V ČÍSLECH', spacex: 'Start SpaceX celkově', spacexYear: 'Start SpaceX v roce {y}', pad: 'Start z této rampy', padDays: 'Dní od předchozího startu z této rampy', padHours: 'Hodin od předchozího startu z této rampy', booster: 'Let boosteru {b}', boosterDays: 'Dní od předchozího letu boosteru' },
+            sv: { title: 'UPPSKJUTNINGEN I SIFFROR', spacex: 'SpaceX-uppskjutning totalt', spacexYear: 'SpaceX-uppskjutning {y}', pad: 'Uppskjutning från denna ramp', padDays: 'Dagar sedan rampens förra uppskjutning', padHours: 'Timmar sedan rampens förra uppskjutning', booster: 'Flygning för boostern {b}', boosterDays: 'Dagar sedan boosterns förra flygning' },
+            nl: { title: 'DE LANCERING IN CIJFERS', spacex: 'SpaceX-lancering, totaal', spacexYear: 'SpaceX-lancering van {y}', pad: 'Lancering vanaf dit platform', padDays: 'Dagen sinds de vorige lancering vanaf dit platform', padHours: 'Uren sinds de vorige lancering vanaf dit platform', booster: 'Vlucht van booster {b}', boosterDays: 'Dagen sinds de vorige vlucht van de booster' },
+            da: { title: 'OPSENDELSEN I TAL', spacex: 'SpaceX-opsendelse i alt', spacexYear: 'SpaceX-opsendelse i {y}', pad: 'Opsendelse fra denne rampe', padDays: 'Dage siden rampens forrige opsendelse', padHours: 'Timer siden rampens forrige opsendelse', booster: 'Flyvning for booster {b}', boosterDays: 'Dage siden boosterens forrige flyvning' },
+            pt: { title: 'O LANÇAMENTO EM NÚMEROS', spacex: 'Lançamento da SpaceX, no total', spacexYear: 'Lançamento da SpaceX de {y}', pad: 'Lançamento desta plataforma', padDays: 'Dias desde o lançamento anterior desta plataforma', padHours: 'Horas desde o lançamento anterior desta plataforma', booster: 'Voo do propulsor {b}', boosterDays: 'Dias desde o voo anterior do propulsor' },
+            pl: { title: 'START W LICZBACH', spacex: 'Start SpaceX łącznie', spacexYear: 'Start SpaceX w {y} r.', pad: 'Start z tej platformy', padDays: 'Dni od poprzedniego startu z tej platformy', padHours: 'Godziny od poprzedniego startu z tej platformy', booster: 'Lot boostera {b}', boosterDays: 'Dni od poprzedniego lotu boostera' },
+            hi: { title: 'आंकड़ों में प्रक्षेपण', spacex: 'SpaceX का कुल प्रक्षेपण क्रमांक', spacexYear: '{y} में SpaceX का प्रक्षेपण क्रमांक', pad: 'इस लॉन्च पैड से प्रक्षेपण क्रमांक', padDays: 'इस पैड के पिछले प्रक्षेपण से दिन', padHours: 'इस पैड के पिछले प्रक्षेपण से घंटे', booster: 'बूस्टर {b} की उड़ान', boosterDays: 'बूस्टर की पिछली उड़ान से दिन' },
+            ar: { title: 'الإطلاق بالأرقام', spacex: 'إطلاق SpaceX الإجمالي', spacexYear: 'إطلاق SpaceX لعام {y}', pad: 'الإطلاق من هذه المنصة', padDays: 'أيام منذ الإطلاق السابق من هذه المنصة', padHours: 'ساعات منذ الإطلاق السابق من هذه المنصة', booster: 'رحلة المعزز {b}', boosterDays: 'أيام منذ الرحلة السابقة للمعزز' },
+            tr: { title: 'SAYILARLA FIRLATMA', spacex: 'Toplam SpaceX fırlatması', spacexYear: '{y} yılı SpaceX fırlatması', pad: 'Bu rampadan fırlatma', padDays: 'Rampanın önceki fırlatmasından bu yana gün', padHours: 'Rampanın önceki fırlatmasından bu yana saat', booster: '{b} iticisinin uçuşu', boosterDays: 'İticinin önceki uçuşundan bu yana gün' }
+        };
+        function launchStatsDict(lang) {
+            const k = (lang || 'en').toLowerCase().split('-')[0];
+            return LAUNCH_STATS_I18N[k === 'iw' ? 'he' : k] || LAUNCH_STATS_I18N.en;
+        }
+        // ISO-8601 duration ("P17DT20H21M6S") -> milliseconds
+        function isoDurationMs(d) {
+            const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?)?$/.exec(String(d || ''));
+            if (!m) return NaN;
+            return (((+m[1] || 0) * 24 + (+m[2] || 0)) * 60 + (+m[3] || 0)) * 60000 + (+m[4] || 0) * 1000;
+        }
+        // Whether the card has anything to show: Launch Library's counts (missions from the HISTORICAL_RAW_LAUNCHES
+        // snapshot have none, and keep the weather card)
+        function hasLaunchStats(m) {
+            const st = m && m.launchStats;
+            return !!(st && (st.spacex || st.pad));
+        }
+        function renderLaunchStats(m) {
+            const grid = document.getElementById('launch-stats-grid');
+            if (!grid || !m) return;
+            const lang = document.documentElement.lang || 'en';
+            const d = launchStatsDict(lang);
+            const st = m.launchStats || {};
+            const year = new Date(m.date).getFullYear();
+            const fmt = n => Number(n).toLocaleString(lang === 'iw' ? 'he' : lang);
+            const tiles = [];
+            if (st.spacex) tiles.push(['#' + fmt(st.spacex), d.spacex]);
+            if (st.spacexYear && !isNaN(year)) tiles.push(['#' + fmt(st.spacexYear), d.spacexYear.replace('{y}', year)]);
+            if (st.pad) tiles.push(['#' + fmt(st.pad), d.pad]);
+            const padMs = isoDurationMs(st.padTurnaround);
+            if (padMs > 0) {
+                tiles.push(padMs >= 86400000 ? [fmt(Math.round(padMs / 86400000)), d.padDays] : [fmt(Math.max(1, Math.round(padMs / 3600000))), d.padHours]);
+            }
+            // Super Heavy's serial already reads "Booster 20" - the caption has its own word for booster
+            const boosterName = String(m.boosterSerial || '').replace(/^BOOSTER\s+/i, '');
+            if (m.boosterSerial && m.boosterFlightNum) tiles.push(['#' + fmt(m.boosterFlightNum), d.booster.replace('{b}', boosterName)]);
+            if (m.boosterSerial && m.boosterTurnaroundDays) tiles.push([fmt(m.boosterTurnaroundDays), d.boosterDays]);
+            grid.innerHTML = tiles.map(([num, cap]) =>
+                `<div class="min-w-0"><div class="text-2xl sm:text-3xl font-bold text-zinc-200 leading-none notranslate" dir="ltr" translate="no">${escapeHtml(num)}</div>`
+                + `<div class="text-[11px] sm:text-xs text-zinc-500 mt-1 leading-snug notranslate" translate="no">${escapeHtml(cap)}</div></div>`).join('');
+            const title = document.getElementById('launch-stats-title');
+            if (title) title.innerText = d.title;
+            const loc = document.getElementById('launch-stats-location');
+            if (loc) loc.innerText = getLocalizedLaunchSiteLabel(resolveSiteKey(m));
+        }
+
         function handleModalFeatures(m) {
             const label = document.getElementById('modal-pad-coordinate-label');
 
             const siteKey = resolveSiteKey(m);
 
             const weatherCard = document.getElementById('site-weather-card');
-            if (weatherCard) {
+            const statsCard = document.getElementById('launch-stats-card');
+            const showStats = !!(statsCard && window.currentActiveMissionIsPast && hasLaunchStats(m));
+            if (statsCard) {
+                statsCard.classList.toggle('hidden', !showStats);
+                statsCard.classList.toggle('flex', showStats);
+                window._launchStatsMission = showStats ? m : null;
+                if (showStats) renderLaunchStats(m);
+            }
+            if (weatherCard) weatherCard.classList.toggle('hidden', showStats);
+            if (weatherCard && !showStats) {
                 const probRow = document.getElementById('site-weather-prob-row');
                 if (probRow) probRow.classList.toggle('hidden', !!window.currentActiveMissionIsPast);
                 const weatherLocationEl = document.getElementById('site-weather-location');
