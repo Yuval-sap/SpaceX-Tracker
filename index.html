@@ -5704,6 +5704,38 @@
             return DATE_LOCALE_FOR_LANG[key] || 'en-US';
         }
 
+        // Launch dates on the cards / hero / booster flight history, in the site's language by us
+        // (same locales as above) rather than left in English for Google's widget - which also
+        // turned a card's "Oct 11 • 02:00 - 06:00" into a right-to-left line and so laid the time
+        // range out backwards ("06:00 - 02:00", reported live). Each date carries its timestamp and
+        // style, so the per-tick pass (applyLaunchLabelTranslations) re-renders it on a language switch.
+        const LAUNCH_DATE_STYLES = {
+            short: { month: 'short', day: 'numeric', zone: true },                   // upcoming cards
+            long: { month: 'long', day: 'numeric', year: 'numeric', zone: true },    // hero, past cards
+            history: { month: 'short', day: 'numeric', year: 'numeric' },            // booster flight history
+        };
+        function formatLaunchDate(iso, style, langAttr) {
+            const st = LAUNCH_DATE_STYLES[style] || LAUNCH_DATE_STYLES.long;
+            // a short month ("Oct 11") stays short in English only: the short Hebrew form ("11 באוק׳")
+            // reads worse than the full month these dates showed before ("11 באוקטובר")
+            const locale = dateLocaleForLang(langAttr);
+            const opts = { month: (st.month === 'short' && locale !== 'en-US') ? 'long' : st.month, day: st.day };
+            if (st.year) opts.year = st.year;
+            if (st.zone) opts.timeZone = userTimezone;
+            return new Date(iso).toLocaleDateString(locale, opts);
+        }
+        function launchDateHtml(iso, style, fallback) {
+            if (!iso || isNaN(new Date(iso))) return escapeHtml(fallback || '');
+            return `<span class="notranslate" translate="no" dir="auto" style="unicode-bidi:isolate" data-launch-date="${escapeHtml(String(iso))}" data-date-style="${style}" data-date-locale="${dateLocaleForLang()}">${escapeHtml(formatLaunchDate(iso, style))}</span>`;
+        }
+        // "02:00 - 06:00 (GMT+3)" as one left-to-right run, so a right-to-left line cannot reverse
+        // the range. A window with no time in it ("Targeted Timeline") is left as it was.
+        function timeWindowHtml(windowStr) {
+            const str = String(windowStr || '');
+            if (!/\d/.test(str)) return escapeHtml(str);
+            return `<span class="notranslate" translate="no" dir="ltr" style="unicode-bidi:isolate">${escapeHtml(str)}</span>`;
+        }
+
         const LAUNCH_LABEL_I18N = {
             en: { nextLaunch: "NEXT LAUNCH", upcomingLaunches: "Launches This Year", launchWindow: "LAUNCH WINDOW", heroWeather: "WEATHER", launchSite: "LAUNCH SITE", recoveryZone: "RECOVERY ZONE", recoveryZoneInfo: "RECOVERY ZONE INFORMATION", launchesSection: "Scheduled Launches", pastLaunchesSection: "Last Year's Launches", vehicleType: "VEHICLE TYPE", orbitDestination: "ORBIT DESTINATION", missionStatus: "MISSION STATUS", status: "STATUS", launchedAt: "Launched at:", instantLaunchWindow: "Instantaneous Window", firstStageBooster: "FIRST STAGE BOOSTER", asds: "Autonomous Spaceport Drone Ship (ASDS)", filterAll: "All", filterDragon: "Dragon/Crew", filterFavorites: "Watchlist", boosterTitle: "SpaceX's Top 10 Most-Flown Boosters", boosterSubtitle: "Falcon 9 & Super Heavy boosters, tracked from live mission data", boosterAnalyzing: "Analyzing booster flight data...", boosterNoData: "No booster flight data available yet.", flights: "Flights", boosterRank: "Rank", boosterCol: "Booster", spacexXLink: "Follow @SpaceX on X", systemsGo: "SYSTEMS GO", finalCountdown: "FINAL COUNTDOWN", watchLaunch: "Watch the Launch", openOnYoutube: "Open on YouTube", watchDetailsVideo: "Watch Launch Details and Video", viewMissionDetails: "View Mission Details →" , missionInProgress: "MISSION IN PROGRESS", holdDelayed: "HOLD / DELAYED", countdownToLaunch: "Countdown to launch", launchNow: "LIFTOFF", patchesTitle: "SpaceX Mission Patches", patchesSubtitle: "Tap a patch for mission details", patchesSearch: "Search tags...", launchesTab: 'Launch Station', moreInfoTab: 'Info Station', vehicleSpecDossier: "VEHICLE SPECIFICATION", spaceportDossier: "SPACEPORT FACILITY DOSSIER", orbitDossier: "ORBITAL MECHANICS DOSSIER", flightCrew: "Flight Crew", crewWord: "Crew", flightHistoryPartial: "Showing {shown} of {total} flights tracked by this app.", trackThisShip: "Track this ship live", recoveryFleetTitle: "SpaceX Recovery Fleet", recoveryFleetSubtitle: "Live positions of SpaceX's autonomous drone ships, via public AIS data", flightNumberLabel: "Flight {n}", weatherAtSite: "WEATHER AT LAUNCH SITE", fullLaunchDetails: "Full launch details" },
             he: { nextLaunch: "השיגור הבא", upcomingLaunches: "שיגורים מתחילת השנה", launchWindow: "חלון שיגור", heroWeather: "מזג אוויר", launchSite: "אתר השיגור", recoveryZone: "אזור נחיתה", recoveryZoneInfo: "פרטי אזור הנחיתה", launchesSection: "שיגורים מתוכננים", pastLaunchesSection: "שיגורי השנה האחרונה", vehicleType: "סוג הרקטה", orbitDestination: "יעד המסלול", missionStatus: "סטטוס המשימה", status: "סטטוס", launchedAt: "שוגר בשעה:", instantLaunchWindow: "חלון שיגור רגעי", firstStageBooster: "בוסטר השלב הראשון", asds: "ספינת נחיתה אוטונומית (ASDS)", filterAll: "הכל", filterDragon: "דרגון/צוות", filterFavorites: "רשימת מעקב", boosterTitle: "10 הבוסטרים המוטסים ביותר של SpaceX", boosterSubtitle: "בוסטרים של Falcon 9 ו-Super Heavy, מנתוני שיגורים חיים", boosterAnalyzing: "מנתח נתוני טיסות בוסטרים...", boosterNoData: "אין עדיין נתוני טיסות בוסטרים.", flights: "טיסות", boosterRank: "דירוג", boosterCol: "בוסטר", spacexXLink: "עקבו אחרי @SpaceX ב-X", systemsGo: "כל המערכות תקינות", finalCountdown: "ספירה לאחור סופית", watchLaunch: "צפה בשיגור", openOnYoutube: "פתח ב-YouTube", watchDetailsVideo: "צפה בפרטי השיגור ובסרטון", viewMissionDetails: "צפה בפרטי המשימה ←" , missionInProgress: "המשימה בעיצומה", holdDelayed: "השהיה / דחייה", countdownToLaunch: "ספירה לאחור לשיגור", launchNow: "המראה", patchesTitle: "תגי המשימה של SpaceX", patchesSubtitle: "הקישו על תג לפרטי המשימה", patchesSearch: "חיפוש תגים...", launchesTab: 'תחנת שיגור', moreInfoTab: 'תחנת מידע', vehicleSpecDossier: "מפרט הרקטה", spaceportDossier: "פרטי מתקן השיגור", orbitDossier: "נתוני מסלול הטיסה", flightCrew: "צוות הטיסה", crewWord: "צוות", flightHistoryPartial: "מוצגות {shown} מתוך {total} טיסות שהאתר עוקב אחריהן.", trackThisShip: "עקוב אחרי הספינה בזמן אמת", recoveryFleetTitle: "צי ההשבה של SpaceX", recoveryFleetSubtitle: "מיקומן בזמן אמת של ספינות הנחיתה האוטונומיות של SpaceX, באמצעות נתוני AIS ציבוריים", flightNumberLabel: "טיסה {n}", weatherAtSite: "מזג האוויר באתר השיגור", fullLaunchDetails: "לפרטי השיגור המלאים" },
@@ -8001,6 +8033,13 @@
             if (typeof syncModalLiveButtonLabel === 'function') syncModalLiveButtonLabel();
             if (typeof syncHeroLiveButtonLabel === 'function') syncHeroLiveButtonLabel();
 
+            // launch dates (launchDateHtml) in the language now showing
+            const dateLocaleNow = dateLocaleForLang(currentLang);
+            document.querySelectorAll('[data-launch-date]').forEach(el => {
+                if (el.dataset.dateLocale === dateLocaleNow) return;
+                el.dataset.dateLocale = dateLocaleNow;
+                el.textContent = formatLaunchDate(el.dataset.launchDate, el.dataset.dateStyle, currentLang);
+            });
             // the capsule / ship flight count in the mission modal's vehicle line ("(טיסה 4)")
             document.querySelectorAll('[data-ship-flight]').forEach(el => {
                 const wanted = '(' + (dict.flightNumberLabel || LAUNCH_LABEL_I18N.en.flightNumberLabel).replace('{n}', el.dataset.shipFlight) + ')';
@@ -11524,9 +11563,9 @@
                                 const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(net);
                                 tzCode = parts.find(p => p.type === 'timeZoneName')?.value || 'Local Time';
                             } catch (e) { }
-                            modalDateEl.innerText = `${datePart} • ${timePart} (${tzCode})`;
+                            modalDateEl.innerHTML = `<span dir="auto" style="unicode-bidi:isolate">${escapeHtml(datePart)}</span> • ${timeWindowHtml(`${timePart} (${tzCode})`)}`;
                         } else {
-                            modalDateEl.innerText = `${net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${window.currentActiveMissionWindow || ''}`;
+                            modalDateEl.innerHTML = `<span dir="auto" style="unicode-bidi:isolate">${escapeHtml(net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone }))}</span> • ${timeWindowHtml(window.currentActiveMissionWindow || '')}`;
                         }
                     } catch (e) { }
                 }
@@ -11539,8 +11578,7 @@
                 }
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
                 if (heroDetailsTextEl && window.currentActiveHeroSite) {
-                    const heroDateSpan = heroDetailsTextEl.textContent.split('•')[0].trim();
-                    heroDetailsTextEl.innerHTML = `<span dir="auto">${heroDateSpan}</span><span class="hero-sep" aria-hidden="true">•</span><span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
+                    heroDetailsTextEl.innerHTML = `${launchDateHtml(window.currentActiveHeroDate, 'long', 'TBD')}<span class="hero-sep" aria-hidden="true">•</span><span class="notranslate" translate="no">${localizeSiteStr(window.currentActiveHeroSite, currentLang)}</span>`;
                 }
                 // Same for the hero's launch-window line ("(Instant)"/"Instantaneous Window") -
                 // also notranslate, also JS-set-per-language only (see renderHeroWindowText's
@@ -19262,8 +19300,7 @@
             document.getElementById('flight-history-icon').className = 'fa-solid fa-rocket text-emerald-400 text-xl shrink-0';
             document.getElementById('flight-history-serial').textContent = serial;
             document.getElementById('flight-history-count').textContent = totalFlights;
-            document.getElementById('flight-history-first').textContent =
-                new Date(flights[0].date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+            document.getElementById('flight-history-first').innerHTML = launchDateHtml(flights[0].date, 'history');
 
             const noteEl = document.getElementById('flight-history-note');
             if (noteEl) {
@@ -19300,7 +19337,7 @@
                             </div>
                             <div class="min-w-0 flex-1">
                                 <div class="text-sm font-semibold text-zinc-200 truncate">${escapeHtml(m.name)}</div>
-                                <div class="text-[11px] text-zinc-500">${new Date(m.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                <div class="text-[11px] text-zinc-500">${launchDateHtml(m.date, 'history')}</div>
                             </div>
                             <i class="fa-solid fa-chevron-left text-zinc-600 text-xs shrink-0"></i>
                         </div>
@@ -19316,7 +19353,7 @@
                     <div class="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[11px] font-bold text-emerald-400 font-mono">${i + 1}</div>
                     <div class="min-w-0 flex-1">
                         <div class="text-sm font-semibold text-zinc-200 truncate">${escapeHtml(m.name)}</div>
-                        <div class="text-[11px] text-zinc-500">${new Date(m.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        <div class="text-[11px] text-zinc-500">${launchDateHtml(m.date, 'history')}</div>
                     </div>
                     <i class="fa-solid fa-chevron-left text-zinc-600 text-xs shrink-0"></i>
                 </div>
@@ -23221,12 +23258,10 @@ setTimeout(() => {
                 // after a slow network fetch, by which point layout had long since settled; the
                 // instant cache-render path now makes this whole sequence run within the same
                 // frame the page loads in, so the bad intermediate state became visible.
-                let dateStr = 'TBD';
-                try {
-                    dateStr = new Date(nextLaunch.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
-                } catch (e) { }
+                const heroDateHtml = launchDateHtml(nextLaunch.date, 'long', 'TBD');
 
                 window.currentActiveHeroSite = nextLaunch.site;
+                window.currentActiveHeroDate = nextLaunch.date;
                 // used only to find SpaceX's own post-launch timeline: the FULL API name, since the
                 // displayed one drops Starship's "(Starship Flight N)" - the only part that matches
                 // SpaceX's "Starship Flight N" / starship-flight-N
@@ -23237,7 +23272,7 @@ setTimeout(() => {
                     fetchRealMissionTimeline();
                 }
                 const heroDetailsTextEl = document.getElementById('hero-details-text');
-                if (heroDetailsTextEl) heroDetailsTextEl.innerHTML = `<span dir="auto">${dateStr}</span><span class="hero-sep" aria-hidden="true">•</span><span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
+                if (heroDetailsTextEl) heroDetailsTextEl.innerHTML = `${heroDateHtml}<span class="hero-sep" aria-hidden="true">•</span><span class="notranslate" translate="no">${localizeSiteStr(nextLaunch.site, document.documentElement.lang)}</span>`;
                 fetchLiveWeather(nextLaunch.siteLower, nextLaunch.probability);
 
                 window.currentActiveHeroWindowStart = nextLaunch.windowStart;
@@ -23512,10 +23547,7 @@ setTimeout(() => {
             }
 
             filteredMissions.forEach((m, idx) => {
-                let dateStr = 'Upcoming';
-                try {
-                    dateStr = new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: userTimezone });
-                } catch (e) { }
+                const dateHtml = launchDateHtml(m.date, 'short', 'Upcoming');
 
                 let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
                 let mStat = m.status.toLowerCase();
@@ -23562,7 +23594,7 @@ setTimeout(() => {
                     <div class="relative z-20 flex flex-col justify-end min-h-[356px] p-5 pb-1 md:pb-5 pt-[182px]">
                         <div>
                             <div class="notranslate mission-title-fit font-semibold text-base md:text-xl text-white mb-1.5 whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
-                            <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateStr} • ${m.window}</div>
+                            <div class="mission-card-date text-xs text-zinc-400 mb-2">${dateHtml} • ${timeWindowHtml(m.window)}</div>
                             <!-- min-h = exactly the 2 lines line-clamp-2 allows (text-sm's 1.25rem
                                  line-height x2), so a 1-line description still takes the same room
                                  as a full one - keeps the title, the divider and the whole bottom row
@@ -23665,10 +23697,7 @@ setTimeout(() => {
             }
 
             filteredPast.forEach((m, idx) => {
-                let dateStr = 'Recent';
-                try {
-                    dateStr = new Date(m.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: userTimezone });
-                } catch (e) { }
+                const dateHtml = launchDateHtml(m.date, 'long', 'Recent');
 
                 const isFav = favoriteMissions.includes(m.id);
                 // Hollow star (fa-regular) even when favorited, matching the "Watchlist"
@@ -23703,7 +23732,7 @@ setTimeout(() => {
                     <div class="relative z-20 flex flex-col justify-end min-h-[311px] p-5 pt-[182px]">
                         <div>
                             <div class="notranslate mission-title-fit font-semibold text-base md:text-xl mb-1 text-white whitespace-nowrap overflow-hidden" translate="no" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
-                            <div class="text-xs text-zinc-500 mb-3"><span dir="auto">${dateStr}</span><span class="notranslate mx-1" translate="no">•</span><span class="notranslate" translate="no" dir="${pastCardSiteDir}">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
+                            <div class="text-xs text-zinc-500 mb-3">${dateHtml}<span class="notranslate mx-1" translate="no">•</span><span class="notranslate" translate="no" dir="${pastCardSiteDir}">${localizeSiteStr(m.site, document.documentElement.lang)}</span></div>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-zinc-800/60">
                             <button class="text-sm text-left text-emerald-400 hover:underline font-medium notranslate" translate="no" data-i18n-past-details="1" data-has-video="${hasVideo ? '1' : '0'}">${detailsLabel}</button>
@@ -24606,11 +24635,11 @@ setTimeout(() => {
                         const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTimezone, timeZoneName: 'short' }).formatToParts(net);
                         tzCode = parts.find(p => p.type === 'timeZoneName')?.value || 'Local Time';
                     } catch (e) { }
-                    dateStr = `${datePart} • ${timePart} (${tzCode})`;
+                    dateStr = `<span dir="auto" style="unicode-bidi:isolate">${escapeHtml(datePart)}</span> • ${timeWindowHtml(`${timePart} (${tzCode})`)}`;
                 } else {
-                    dateStr = `${net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone })} • ${m.window}`;
+                    dateStr = `<span dir="auto" style="unicode-bidi:isolate">${escapeHtml(net.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: userTimezone }))}</span> • ${timeWindowHtml(m.window)}`;
                 }
-            } catch (e) { dateStr = m.window; }
+            } catch (e) { dateStr = timeWindowHtml(m.window); }
 
             // Raw inputs kept for the language-switch re-render below (Bulletproof Timer) -
             // #modal-date is notranslate now (see the HTML) so a language switch while the
@@ -24619,7 +24648,7 @@ setTimeout(() => {
             window.currentActiveMissionDate = m.date;
             window.currentActiveMissionIsPast = isPastMission;
             window.currentActiveMissionWindow = m.window;
-            document.getElementById('modal-date').innerText = dateStr;
+            document.getElementById('modal-date').innerHTML = dateStr;   // built from escaped parts above
             window.currentActiveMissionSite = m.site;
             document.getElementById('modal-site').innerText = localizeSiteStr(m.site, document.documentElement.lang);
             {
