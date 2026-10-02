@@ -4664,6 +4664,8 @@
         /* Orbit cards below the dossier: each one is a button that lights its own ring up in the diagram
            (selectOrbitCard). The picked card and its ring glow in the theme's own accent - dark green by day,
            light green at night, Mars orange, Moon blue - the same accents as the news list's hover. */
+        /* Launch-by-the-numbers card, night mode only: zinc-500 captions read too dark under the white numbers */
+        body:not(.light-theme):not(.mars-theme):not(.moon-theme) #launch-stats-grid .launch-stat-caption { color: #a1a1aa; }
         #orbit-modal { --orbit-accent: #34d399; --orbit-accent-soft: rgba(52, 211, 153, 0.35); }
         body.light-theme #orbit-modal { --orbit-accent: #047857; --orbit-accent-soft: rgba(4, 120, 87, 0.3); }
         body.mars-theme #orbit-modal { --orbit-accent: #ff6b35; --orbit-accent-soft: rgba(255, 107, 53, 0.35); }
@@ -25582,7 +25584,7 @@ setTimeout(() => {
             if (m.boosterSerial && m.boosterTurnaroundDays) tiles.push([fmt(m.boosterTurnaroundDays), d.boosterDays]);
             grid.innerHTML = tiles.map(([num, cap]) =>
                 `<div class="min-w-0"><div class="text-lg sm:text-xl font-bold text-zinc-200 leading-none notranslate" dir="ltr" translate="no">${escapeHtml(num)}</div>`
-                + `<div class="text-[11px] sm:text-xs text-zinc-500 mt-1 leading-snug notranslate" translate="no">${escapeHtml(cap)}</div></div>`).join('');
+                + `<div class="launch-stat-caption text-[11px] sm:text-xs text-zinc-500 mt-1 leading-snug notranslate" translate="no">${escapeHtml(cap)}</div></div>`).join('');
             const title = document.getElementById('launch-stats-title');
             if (title) title.innerText = d.title;
             const loc = document.getElementById('launch-stats-location');
