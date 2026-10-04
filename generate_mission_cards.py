@@ -454,7 +454,8 @@ def main():
     # homepage too and matches the conventional /sitemap.xml location search engines expect.
     sitemap_path = OUTPUT_DIR.parent / "sitemap.xml"
     sitemap_path.write_text(build_sitemap(written_safe_ids), encoding="utf-8")
-    print(f"Wrote sitemap.xml with {len(written_safe_ids) + 1} URLs to {sitemap_path}")
+    # the homepage + each mission's English page and its Hebrew copy
+    print(f"Wrote sitemap.xml with {2 * len(written_safe_ids) + 1} URLs to {sitemap_path}")
 
 
 if __name__ == "__main__":
