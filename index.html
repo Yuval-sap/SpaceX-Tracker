@@ -5785,6 +5785,394 @@
             to { transform: none; }
         }
 
+        /* ---------- The upcoming launches: a timeline of photo cards (see appDecorateUpcoming) ---------- */
+        html.in-app #missions-grid.app-list {
+            display: block;
+            position: relative;
+            overflow: visible;
+            scroll-snap-type: none;
+            padding: 0 0 0.5rem;
+            padding-inline-start: 2.1rem;
+        }
+        html.in-app #missions-grid.app-list::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: 0.95rem;
+            top: 0.6rem;
+            bottom: 0;
+            width: 2px;
+            border-radius: 2px;
+            background: linear-gradient(rgba(16, 185, 129, 0.9), rgba(16, 185, 129, 0));
+        }
+        html.in-app .app-day {
+            position: relative;
+            margin: 0.35rem 0 0.55rem;
+            font-size: 0.74rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #a1a1aa;
+        }
+        html.in-app .app-day::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: -1.42rem;
+            top: 50%;
+            width: 0.6rem;
+            height: 0.6rem;
+            margin-top: -0.3rem;
+            border-radius: 999px;
+            background: #09090b;
+            border: 2px solid #34d399;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+        }
+        html.in-app .app-day.is-today {
+            color: #34d399;
+        }
+        html.in-app #missions-grid.app-list .mission-card {
+            width: auto;
+            max-width: none;
+            margin-bottom: 0.85rem;
+            border-radius: 1.25rem;
+            border-color: rgba(255, 255, 255, 0.09);
+        }
+        html.in-app #missions-grid.app-list .mission-card > .z-20 {
+            min-height: 10rem;
+            padding: 3.4rem 0.95rem 0.85rem;
+            padding-inline-end: 7.6rem;
+        }
+        html.in-app #missions-grid.app-list .mission-title-fit {
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            font-size: 1rem;
+            line-height: 1.25;
+            margin-bottom: 0.3rem;
+        }
+        html.in-app #missions-grid.app-list .mission-card-date {
+            margin-bottom: 0;
+        }
+        html.in-app #missions-grid.app-list .mission-card-desc,
+        html.in-app #missions-grid.app-list .mission-card > .z-20 > div:last-child {
+            display: none;
+        }
+        html.in-app .app-card-top {
+            position: absolute;
+            z-index: 30;
+            top: 0.7rem;
+            inset-inline: 0.7rem;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        html.in-app .app-card-chips {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+        }
+        html.in-app .app-rocket-tag {
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+            color: #fff;
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+        }
+        html.in-app .app-card-chips .mission-status-badge {
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        html.in-app .app-card-actions {
+            display: flex;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+        html.in-app .app-card-actions button {
+            width: 2.1rem;
+            height: 2.1rem;
+            border-radius: 999px;
+        }
+        html.in-app .app-card-actions button:not([data-reminded="1"]) {
+            background: rgba(0, 0, 0, 0.55);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        html.in-app .app-card-actions button:not([data-reminded="1"]) i.text-zinc-400 {
+            color: #fff;
+        }
+        html.in-app .app-cd {
+            position: absolute;
+            z-index: 30;
+            bottom: 0.85rem;
+            inset-inline-end: 0.85rem;
+        }
+        html.in-app .app-cd-segs {
+            display: flex;
+            gap: 0.25rem;
+        }
+        html.in-app .app-cd-seg {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 2.05rem;
+            padding: 0.25rem 0.3rem 0.2rem;
+            border-radius: 0.6rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        html.in-app .app-cd-seg b {
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-feature-settings: "tnum";
+            font-size: 1rem;
+            line-height: 1.1;
+            color: #fbbf24;
+        }
+        html.in-app .app-cd-days b {
+            color: #fff;
+            font-size: 1.15rem;
+        }
+        html.in-app .app-cd-seg small {
+            font-size: 0.58rem;
+            color: #a1a1aa;
+            white-space: nowrap;
+        }
+        html.in-app .app-cd-live {
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #34d399;
+        }
+        html.in-app body.light-theme .app-day { color: #475569; }
+        html.in-app body.light-theme .app-day.is-today { color: #047857; }
+        html.in-app body.light-theme .app-day::before { background: #f1f5f9; border-color: #047857; box-shadow: none; }
+        html.in-app body.light-theme #missions-grid.app-list::before { background: linear-gradient(rgba(4, 120, 87, 0.7), rgba(4, 120, 87, 0)); }
+        html.in-app body.light-theme #missions-grid.app-list .mission-card { border-color: #e2e8f0; }
+        html.in-app body.light-theme .app-cd-seg { background: rgba(15, 23, 42, 0.05); border-color: rgba(15, 23, 42, 0.12); }
+        html.in-app body.light-theme .app-cd-seg b { color: #b45309; }
+        html.in-app body.light-theme .app-cd-days b { color: #0f172a; }
+        html.in-app body.light-theme .app-cd-seg small { color: #64748b; }
+        html.in-app body.light-theme .app-cd-live { color: #047857; }
+        html.in-app body.mars-theme .app-day.is-today { color: #ff8c5a; }
+        html.in-app body.mars-theme .app-day::before { background: #140806; border-color: #ff8c5a; box-shadow: 0 0 8px rgba(255, 107, 53, 0.8); }
+        html.in-app body.mars-theme #missions-grid.app-list::before { background: linear-gradient(rgba(255, 107, 53, 0.9), rgba(255, 107, 53, 0)); }
+        html.in-app body.moon-theme .app-day.is-today { color: #6abffb; }
+        html.in-app body.moon-theme .app-day::before { background: #080c14; border-color: #6abffb; box-shadow: 0 0 8px rgba(63, 169, 245, 0.8); }
+        html.in-app body.moon-theme #missions-grid.app-list::before { background: linear-gradient(rgba(63, 169, 245, 0.9), rgba(63, 169, 245, 0)); }
+
+        /* ---------- The past launches: rows by month, with the year's numbers on top (see appDecoratePast) ---------- */
+        html.in-app #app-past-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
+            margin: 0.25rem 0 1rem;
+        }
+        html.in-app #app-past-stats.hidden {
+            display: none;
+        }
+        html.in-app .app-stat {
+            padding: 0.7rem 0.4rem;
+            border-radius: 1rem;
+            text-align: center;
+            background: rgba(24, 24, 27, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        html.in-app .app-stat b {
+            display: block;
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 1.2rem;
+            color: #fff;
+        }
+        html.in-app .app-stat b.is-accent { color: #34d399; }
+        html.in-app .app-stat span {
+            display: block;
+            margin-top: 0.15rem;
+            font-size: 0.66rem;
+            line-height: 1.2;
+            color: #a1a1aa;
+        }
+        html.in-app #past-launches-grid.app-list {
+            display: block;
+            overflow: visible;
+            scroll-snap-type: none;
+            margin: 0;
+            padding: 0 0 0.5rem;
+        }
+        html.in-app .app-month {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.4rem;
+            padding: 0.55rem 0.85rem;
+            border-radius: 0.75rem;
+            background: rgba(24, 24, 27, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        html.in-app .app-month-count {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #71717a;
+        }
+        html.in-app .app-month-count i { font-size: 0.65rem; margin-inline-end: 0.15rem; }
+        html.in-app #past-launches-grid.app-list .mission-card {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            width: auto;
+            min-width: 0;
+            max-width: none;
+            padding: 0.75rem 0.35rem;
+            border: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 0;
+            background: transparent;
+            overflow: visible;
+        }
+        html.in-app #past-launches-grid.app-list .mission-card > img,
+        html.in-app #past-launches-grid.app-list .mission-card-fade,
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:nth-child(2) {
+            display: none;
+        }
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+            display: block;
+        }
+        html.in-app #past-launches-grid.app-list .mission-title-fit {
+            font-size: 0.92rem;
+            margin-bottom: 0.1rem;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) {
+            margin-bottom: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* the date is on the row's end already: the line under the name keeps the pad alone */
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) > span:not(:last-child) {
+            display: none;
+        }
+        html.in-app .app-patch {
+            position: relative;
+            flex-shrink: 0;
+            width: 3.1rem;
+            height: 3.1rem;
+            border-radius: 999px;
+            background: #18181b;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+        }
+        html.in-app .app-patch img {
+            width: 100%;
+            height: 100%;
+            border-radius: 999px;
+            object-fit: contain;
+            padding: 2px;
+        }
+        html.in-app .app-patch.is-photo img {
+            object-fit: cover;
+            padding: 0;
+        }
+        html.in-app .app-outcome {
+            position: absolute;
+            bottom: -0.2rem;
+            inset-inline-end: -0.2rem;
+            width: 1.15rem;
+            height: 1.15rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 2px solid #09090b;
+            font-size: 0.55rem;
+            color: #000;
+        }
+        html.in-app .app-outcome.is-ok { background: #10b981; }
+        html.in-app .app-outcome.is-fail { background: #ef4444; color: #fff; }
+        html.in-app .app-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-top: 0.35rem;
+        }
+        html.in-app .app-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.12rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.66rem;
+            background: rgba(255, 255, 255, 0.07);
+            color: #d4d4d8;
+            white-space: nowrap;
+        }
+        html.in-app .app-tag i { font-size: 0.6rem; }
+        html.in-app .app-tag.is-land { background: rgba(59, 130, 246, 0.14); color: #60a5fa; }
+        html.in-app .app-tag.is-crew { background: rgba(168, 85, 247, 0.14); color: #c084fc; }
+        html.in-app .app-tag.is-fail { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+        html.in-app .app-date {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.1rem;
+            width: 2.6rem;
+            font-size: 0.68rem;
+            color: #71717a;
+        }
+        html.in-app .app-date b {
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 1.1rem;
+            line-height: 1.1;
+            color: #e4e4e7;
+        }
+        html.in-app .app-date button {
+            margin-top: 0.3rem;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 999px;
+        }
+        html.in-app body.light-theme .app-stat,
+        html.in-app body.light-theme .app-month { background: #ffffff; border-color: #e2e8f0; color: #0f172a; }
+        html.in-app body.light-theme .app-stat b { color: #0f172a; }
+        html.in-app body.light-theme .app-stat b.is-accent { color: #047857; }
+        html.in-app body.light-theme .app-stat span,
+        html.in-app body.light-theme .app-month-count,
+        html.in-app body.light-theme .app-date { color: #64748b; }
+        html.in-app body.light-theme .app-date b { color: #0f172a; }
+        html.in-app body.light-theme #past-launches-grid.app-list .mission-card { border-bottom-color: #e2e8f0; }
+        html.in-app body.light-theme .app-patch { background: #ffffff; border-color: #e2e8f0; }
+        html.in-app body.light-theme .app-outcome { border-color: #f1f5f9; }
+        html.in-app body.light-theme .app-tag { background: rgba(15, 23, 42, 0.06); color: #334155; }
+        html.in-app body.light-theme .app-tag.is-land { background: rgba(37, 99, 235, 0.1); color: #1d4ed8; }
+        html.in-app body.light-theme .app-tag.is-crew { background: rgba(147, 51, 234, 0.1); color: #7e22ce; }
+        html.in-app body.light-theme .app-tag.is-fail { background: rgba(220, 38, 38, 0.1); color: #b91c1c; }
+        html.in-app body.mars-theme .app-stat,
+        html.in-app body.mars-theme .app-month { background: rgba(39, 21, 16, 0.85); border-color: rgba(140, 65, 35, 0.4); }
+        html.in-app body.mars-theme .app-stat b.is-accent { color: #ff8c5a; }
+        html.in-app body.moon-theme .app-stat,
+        html.in-app body.moon-theme .app-month { background: rgba(18, 24, 38, 0.85); border-color: rgba(80, 100, 140, 0.4); }
+        html.in-app body.moon-theme .app-stat b.is-accent { color: #6abffb; }
+
         /* pull down at the top of the page to refresh (see initAppPullToRefresh) */
         #app-ptr {
             display: none;
@@ -24542,6 +24930,8 @@ setTimeout(() => {
 
             applyCardDescriptionsTranslation(grid, filteredMissions, document.documentElement.lang);
             applyCardTitlesTranslation(grid, filteredMissions, document.documentElement.lang);
+            // the Android app's own layout of the list (does nothing in a browser)
+            if (typeof appDecorateUpcoming === 'function') appDecorateUpcoming(grid, filteredMissions);
 
             // Hidden placeholder applySearchFilter() reveals when the search box matches none
             // of these cards - kept separate from the "no missions in this category" message
@@ -24579,6 +24969,7 @@ setTimeout(() => {
                 } else {
                     pastGrid.innerHTML = `<div class="py-10 text-zinc-500 text-center w-full">No recent past launches found in the database.</div>`;
                 }
+                if (typeof appDecoratePast === 'function') appDecoratePast(pastGrid, filteredPast);
                 if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
                 return;
             }
@@ -24649,6 +25040,8 @@ setTimeout(() => {
             });
 
             applyCardTitlesTranslation(pastGrid, filteredPast, document.documentElement.lang);
+            // the Android app's own layout of the list (does nothing in a browser)
+            if (typeof appDecoratePast === 'function') appDecoratePast(pastGrid, filteredPast);
 
             const pastSearchEmptyMsg = document.createElement('div');
             pastSearchEmptyMsg.id = 'past-launches-grid-search-empty';
@@ -24865,6 +25258,7 @@ setTimeout(() => {
                     grid.querySelectorAll('.mission-card').forEach(card => card.classList.remove('hidden'));
                     if (empty) empty.classList.add('hidden');
                 });
+                if (typeof appSyncListGroups === 'function') appSyncListGroups();
                 if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
                 return;
             }
@@ -24913,6 +25307,7 @@ setTimeout(() => {
                 });
                 if (empty) empty.classList.toggle('hidden', cards.length === 0 || visibleCount > 0);
             });
+            if (typeof appSyncListGroups === 'function') appSyncListGroups();
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
         }
 
@@ -30180,8 +30575,287 @@ if (heroNameEl) {
             document.addEventListener('touchcancel', end);
         }
 
+        // ------------------------------------------------------------------ the app's launch lists
+        // The same cards the site builds (so translation, search, the watchlist star, the reminder bell and the
+        // mission window all keep working as they are), laid out for the app: upcoming launches down a timeline,
+        // one day at a time, as photo cards with a live countdown; past launches as rows by month, with the
+        // mission patch, the outcome and the landing - and the year's numbers above them.
+        const APP_LIST_I18N = {
+            en: { success: 'Success', landings: 'Landings', gap: 'Days between launches' },
+            he: { success: 'הצלחה', landings: 'נחיתות', gap: 'ימים בין שיגורים' },
+            es: { success: 'Éxito', landings: 'Aterrizajes', gap: 'Días entre lanzamientos' },
+            fr: { success: 'Réussite', landings: 'Atterrissages', gap: 'Jours entre lancements' },
+            de: { success: 'Erfolg', landings: 'Landungen', gap: 'Tage zwischen Starts' },
+            ru: { success: 'Успех', landings: 'Посадки', gap: 'Дней между пусками' },
+            zh: { success: '成功率', landings: '着陆', gap: '发射间隔天数' },
+            it: { success: 'Successo', landings: 'Atterraggi', gap: 'Giorni tra i lanci' },
+            cs: { success: 'Úspěšnost', landings: 'Přistání', gap: 'Dní mezi starty' },
+            sv: { success: 'Lyckade', landings: 'Landningar', gap: 'Dagar mellan uppskjutningar' },
+            nl: { success: 'Succes', landings: 'Landingen', gap: 'Dagen tussen lanceringen' },
+            da: { success: 'Succes', landings: 'Landinger', gap: 'Dage mellem opsendelser' },
+            pt: { success: 'Sucesso', landings: 'Aterragens', gap: 'Dias entre lançamentos' },
+            pl: { success: 'Sukces', landings: 'Lądowania', gap: 'Dni między startami' },
+            hi: { success: 'सफलता', landings: 'लैंडिंग', gap: 'लॉन्च के बीच दिन' },
+            ar: { success: 'النجاح', landings: 'الهبوط', gap: 'أيام بين عمليات الإطلاق' },
+            tr: { success: 'Başarı', landings: 'İnişler', gap: 'Fırlatmalar arası gün' },
+        };
+        APP_LIST_I18N.iw = APP_LIST_I18N.he;
+        // the site's language, as Intl wants it
+        function appLang() {
+            const l = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return l === 'iw' ? 'he' : l === 'zh' ? 'zh-CN' : l;
+        }
+        function appListDict() {
+            return APP_LIST_I18N[(document.documentElement.lang || 'en').toLowerCase().split('-')[0]] || APP_LIST_I18N.en;
+        }
+        // "6" and "days" apart (the number big, the word small), in the site's language
+        function appUnitParts(n, unit, display) {
+            try {
+                const parts = new Intl.NumberFormat(appLang(), { style: 'unit', unit, unitDisplay: display }).formatToParts(n);
+                return { num: parts.filter(p => p.type === 'integer').map(p => p.value).join('') || String(n), unit: parts.filter(p => p.type === 'unit').map(p => p.value).join(' ') };
+            } catch (e) {
+                return { num: String(n), unit: unit[0] };
+            }
+        }
+        function appDayKey(d) {
+            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        }
+        const APP_ROCKET_TAGS = {
+            falcon: ['FALCON 9', '#34d399'], falcon_heavy: ['FALCON HEAVY', '#34d399'], starlink: ['STARLINK', '#38bdf8'],
+            dragon: ['DRAGON', '#c084fc'], starship: ['STARSHIP', '#fb923c'],
+        };
+        function appEl(tag, cls, html) {
+            const el = document.createElement(tag);
+            if (cls) el.className = cls;
+            if (html != null) el.innerHTML = html;
+            el.setAttribute('translate', 'no');
+            el.classList.add('notranslate');
+            return el;
+        }
+
+        // the "today" / "tomorrow" / "Sunday, October 11" line over a day's launches
+        function appDayLabel(date) {
+            const lang = appLang();
+            const today = new Date();
+            const days = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()) - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
+            let weekday = '';
+            try { weekday = new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(date); } catch (e) { }
+            if (days === 0 || days === 1) {
+                let rel = '';
+                try { rel = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(days, 'day'); } catch (e) { }
+                if (rel) return `${rel.charAt(0).toLocaleUpperCase(lang) + rel.slice(1)} · ${weekday}`;
+            }
+            try { return new Intl.DateTimeFormat(lang, { weekday: 'long', day: 'numeric', month: 'long' }).format(date).replace(/,\s*/, ' · '); } catch (e) { return date.toDateString(); }
+        }
+
+        function appDecorateUpcoming(grid, missions) {
+            if (!document.documentElement.classList.contains('in-app') || !grid) return;
+            grid.classList.add('app-list');
+            const byId = new Map((missions || []).map(m => [String(m.id), m]));
+            let lastDay = null;
+            grid.querySelectorAll('.mission-card').forEach(card => {
+                const m = byId.get(String(card.dataset.missionId));
+                if (!m) return;
+                const date = new Date(m.date);
+                const key = isNaN(date) ? 'tbd' : appDayKey(date);
+                if (key !== lastDay) {
+                    lastDay = key;
+                    const day = appEl('div', 'app-day', '');
+                    if (!isNaN(date)) day.dataset.appDate = m.date;
+                    if (key === appDayKey(new Date())) day.classList.add('is-today');
+                    grid.insertBefore(day, card);
+                }
+                card.dataset.appDate = m.date;
+                const tag = APP_ROCKET_TAGS[m.category] || APP_ROCKET_TAGS.falcon;
+                const top = appEl('div', 'app-card-top');
+                const chips = appEl('div', 'app-card-chips', `<span class="app-rocket-tag" dir="ltr"><span style="color:${tag[1]}">●</span> ${tag[0]}</span>`);
+                const status = card.querySelector('.mission-status-badge.md\\:hidden');
+                if (status) chips.appendChild(status);
+                top.appendChild(chips);
+                const bell = card.querySelector('[data-reminder-bell]');
+                const actions = bell && bell.parentElement;
+                if (actions) {
+                    actions.classList.add('app-card-actions');
+                    top.appendChild(actions);
+                }
+                card.appendChild(top);
+                const cd = appEl('div', 'app-cd');
+                cd.dataset.appCd = m.id;
+                card.appendChild(cd);
+            });
+            appRelabelLists();
+            paintAppCountdowns();
+        }
+
+        // the cards' countdowns: hours, minutes and seconds on the last day, otherwise the days left
+        function paintAppCountdowns() {
+            const now = Date.now();
+            document.querySelectorAll('#missions-grid .app-cd').forEach(cd => {
+                const card = cd.closest('.mission-card');
+                if (!card || card.offsetParent === null) return;
+                const diff = new Date(card.dataset.appDate).getTime() - now;
+                let stamp, html;
+                if (!(diff > 0)) {
+                    // launched / on hold: the site's own word for it, from the card's original countdown
+                    const orig = card.querySelector('[id^="countdown-"]');
+                    stamp = 'x:' + (orig ? orig.textContent : '');
+                    html = `<span class="app-cd-live">${escapeHtml(orig ? orig.textContent : '')}</span>`;
+                } else if (diff < 86400000) {
+                    const h = Math.floor(diff / 3600000), mi = Math.floor(diff % 3600000 / 60000), s = Math.floor(diff % 60000 / 1000);
+                    stamp = `${h}:${mi}:${s}:${appLang()}`;
+                    const seg = (v, unit) => `<span class="app-cd-seg"><b>${String(v).padStart(2, '0')}</b><small>${escapeHtml(appUnitParts(v, unit, 'narrow').unit)}</small></span>`;
+                    html = `<span class="app-cd-segs" dir="ltr">${seg(h, 'hour')}${seg(mi, 'minute')}${seg(s, 'second')}</span>`;
+                } else {
+                    const days = Math.floor(diff / 86400000);
+                    stamp = `d${days}:${appLang()}`;
+                    const p = appUnitParts(days, 'day', 'long');
+                    html = `<span class="app-cd-seg app-cd-days"><b>${escapeHtml(p.num)}</b><small>${escapeHtml(p.unit)}</small></span>`;
+                }
+                if (cd.dataset.stamp === stamp) return;
+                cd.dataset.stamp = stamp;
+                cd.innerHTML = html;
+            });
+        }
+
+        function appDecoratePast(grid, missions) {
+            if (!document.documentElement.classList.contains('in-app') || !grid) return;
+            grid.classList.add('app-list');
+            const list = missions || [];
+            let stats = document.getElementById('app-past-stats');
+            if (!stats) {
+                stats = appEl('div', '');
+                stats.id = 'app-past-stats';
+                grid.parentNode.insertBefore(stats, grid);
+            }
+            appPastStatsList = list;
+
+            const byId = new Map(list.map(m => [String(m.id), m]));
+            let lastMonth = null;
+            const monthCounts = {};
+            list.forEach(m => {
+                const d = new Date(m.date);
+                if (!isNaN(d)) monthCounts[`${d.getFullYear()}-${d.getMonth()}`] = (monthCounts[`${d.getFullYear()}-${d.getMonth()}`] || 0) + 1;
+            });
+            grid.querySelectorAll('.mission-card').forEach(card => {
+                const m = byId.get(String(card.dataset.missionId));
+                if (!m) return;
+                const d = new Date(m.date);
+                const mKey = isNaN(d) ? 'x' : `${d.getFullYear()}-${d.getMonth()}`;
+                if (mKey !== lastMonth) {
+                    lastMonth = mKey;
+                    const head = appEl('div', 'app-month', `<span class="app-month-name"></span><span class="app-month-count"><i class="fa-solid fa-rocket"></i> ${monthCounts[mKey] || ''}</span>`);
+                    if (!isNaN(d)) head.dataset.appDate = m.date;
+                    grid.insertBefore(head, card);
+                }
+                appDecoratePastRow(card, m, d);
+            });
+            appRelabelLists();
+        }
+
+        // the numbers over the past launches: share of successful launches, landings, and the average gap between
+        // launches - of the launches the list shows (so a filter tab gives that rocket's own numbers)
+        let appPastStatsList = [];
+        function appRenderPastStats() {
+            const stats = document.getElementById('app-past-stats');
+            if (!stats) return;
+            const list = appPastStatsList;
+            const lang = appLang();
+            const dict = appListDict();
+            const judged = list.filter(m => m.launchSuccess === true || m.launchSuccess === false);
+            const successPct = judged.length ? Math.round(judged.filter(m => m.launchSuccess).length * 100 / judged.length) : null;
+            const landings = list.filter(m => m.landingSuccess === true).length;
+            const times = list.map(m => new Date(m.date).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b);
+            const gap = times.length > 1 ? (times[times.length - 1] - times[0]) / 86400000 / (times.length - 1) : null;
+            const fmt = (v, d) => v == null ? '–' : new Intl.NumberFormat(lang, { maximumFractionDigits: d, minimumFractionDigits: d }).format(v);
+            stats.innerHTML = list.length ? `
+                <div class="app-stat"><b class="is-accent">${successPct == null ? '–' : fmt(successPct, 0) + '%'}</b><span>${escapeHtml(dict.success)}</span></div>
+                <div class="app-stat"><b>${fmt(landings, 0)}</b><span>${escapeHtml(dict.landings)}</span></div>
+                <div class="app-stat"><b>${fmt(gap, 1)}</b><span>${escapeHtml(dict.gap)}</span></div>` : '';
+            stats.classList.toggle('hidden', !list.length);
+        }
+
+        // one past launch's row: the patch, the tags, the date
+        function appDecoratePastRow(card, m, d) {
+            // the mission patch (the launch photo when there's none), with the outcome on it
+            const patch = appEl('div', 'app-patch');
+            const img = document.createElement('img');
+            img.alt = '';
+            img.loading = 'lazy';
+            img.src = m.patch || m.image || '';
+            if (m.patch) img.onerror = function () { this.onerror = null; this.src = m.image || ''; this.parentElement.classList.add('is-photo'); };
+            else patch.classList.add('is-photo');
+            patch.appendChild(img);
+            if (m.launchSuccess === true) patch.insertAdjacentHTML('beforeend', '<span class="app-outcome is-ok"><i class="fa-solid fa-check"></i></span>');
+            else if (m.launchSuccess === false) patch.insertAdjacentHTML('beforeend', '<span class="app-outcome is-fail"><i class="fa-solid fa-xmark"></i></span>');
+            card.insertBefore(patch, card.firstChild);
+
+            // the tags: the landing, the booster and its flight, the crew
+            const tags = [];
+            if (m.landingAttempt) {
+                const place = m.landingShipName || String(m.landing || '').split('•').pop().trim();
+                const icon = m.landingShipName ? 'fa-ship' : 'fa-circle-down';
+                if (m.landingSuccess === false) tags.push(`<span class="app-tag is-fail"><i class="fa-solid fa-xmark"></i>${escapeHtml(place)}</span>`);
+                else if (m.landingSuccess === true) tags.push(`<span class="app-tag is-land"><i class="fa-solid ${icon}"></i>${escapeHtml(place)}</span>`);
+            }
+            if (m.boosterSerial) tags.push(`<span class="app-tag"><i class="fa-solid fa-fire-flame-curved"></i>${escapeHtml(m.boosterSerial)}${m.boosterFlightNum ? ' · ' + escapeHtml(String(m.boosterFlightNum)) : ''}</span>`);
+            let crew = [];
+            try { crew = Array.isArray(m.crew) ? m.crew : JSON.parse(m.crew || '[]'); } catch (e) { }
+            if (crew.length) tags.push(`<span class="app-tag is-crew"><i class="fa-solid fa-user-astronaut"></i>${crew.length}</span>`);
+            const body = card.querySelector('.z-20');
+            if (body && tags.length) body.appendChild(appEl('div', 'app-tags', tags.join('')));
+
+            // the date, big, at the row's end - and the watchlist star under it
+            const dateBox = appEl('div', 'app-date', '<b></b><span></span>');
+            if (!isNaN(d)) dateBox.dataset.appDate = m.date;
+            const star = card.querySelector('button[onclick^="toggleFavorite"]');
+            if (star) dateBox.appendChild(star);
+            card.appendChild(dateBox);
+        }
+
+        // the lists' words in the site's language: written when they're made, and again when the language changes
+        function appRelabelLists() {
+            if (!document.documentElement.classList.contains('in-app')) return;
+            const lang = appLang();
+            const fmt = (opts, d) => { try { return new Intl.DateTimeFormat(lang, opts).format(d); } catch (e) { return ''; } };
+            // a heading starts with a capital ("воскресенье" -> "Воскресенье")
+            const cap = s => s.charAt(0).toLocaleUpperCase(lang) + s.slice(1);
+            document.querySelectorAll('.app-day[data-app-date]').forEach(el => { el.textContent = cap(appDayLabel(new Date(el.dataset.appDate))); });
+            document.querySelectorAll('.app-month[data-app-date]').forEach(el => {
+                el.querySelector('.app-month-name').textContent = cap(fmt({ month: 'long', year: 'numeric' }, new Date(el.dataset.appDate)));
+            });
+            document.querySelectorAll('.app-date[data-app-date]').forEach(el => {
+                const d = new Date(el.dataset.appDate);
+                el.querySelector('b').textContent = fmt({ day: 'numeric' }, d);
+                el.querySelector('span').textContent = fmt({ month: 'short' }, d);
+            });
+            appRenderPastStats();
+            paintAppCountdowns();
+        }
+
+        // a search hides cards one by one: a day's / month's heading goes with the last of its cards
+        function appSyncListGroups() {
+            if (!document.documentElement.classList.contains('in-app')) return;
+            document.querySelectorAll('.app-list').forEach(grid => {
+                let head = null, any = false;
+                const close = () => { if (head) head.classList.toggle('hidden', !any); };
+                Array.from(grid.children).forEach(el => {
+                    if (el.classList.contains('app-day') || el.classList.contains('app-month')) {
+                        close();
+                        head = el;
+                        any = false;
+                    } else if (el.classList.contains('mission-card') && !el.classList.contains('hidden')) {
+                        any = true;
+                    }
+                });
+                close();
+            });
+        }
+
         function initAndroidAppShell() {
             if (!document.documentElement.classList.contains('in-app')) return;
+            setInterval(paintAppCountdowns, 1000);
+            // a new site language: the lists' own words follow it
+            new MutationObserver(appRelabelLists).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
             document.documentElement.setAttribute('data-main-tab', window.currentMainTab || 'launches');
             initAppSheets();
             initAppPullToRefresh();
