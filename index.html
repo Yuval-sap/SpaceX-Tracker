@@ -5748,29 +5748,23 @@
             to { transform: none; }
         }
 
-        /* ---------- The upcoming launches: a timeline of photo cards (see appDecorateUpcoming) ---------- */
+        /* ---------- The upcoming launches: photo cards by day, the screen's full width but a narrow margin
+           (see appDecorateUpcoming) ---------- */
         html.in-app #missions-grid.app-list {
             display: block;
-            position: relative;
             overflow: visible;
             scroll-snap-type: none;
-            margin: 0;
+            margin: 0 -0.5rem;
             padding: 0.25rem 0 0.5rem;
-            padding-inline-start: 2.1rem;
-        }
-        html.in-app #missions-grid.app-list::before {
-            content: "";
-            position: absolute;
-            inset-inline-start: 0.95rem;
-            top: 0.6rem;
-            bottom: 0;
-            width: 2px;
-            border-radius: 2px;
-            background: linear-gradient(rgba(16, 185, 129, 0.9), rgba(16, 185, 129, 0));
+            /* (the site's phone carousel pads this grid's sides with !important) */
+            padding-inline: 0 !important;
         }
         html.in-app .app-day {
-            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             margin: 0.35rem 0 0.55rem;
+            padding-inline: 0.35rem;
             font-size: 0.74rem;
             font-weight: 600;
             letter-spacing: 0.04em;
@@ -5778,12 +5772,9 @@
         }
         html.in-app .app-day::before {
             content: "";
-            position: absolute;
-            inset-inline-start: -1.42rem;
-            top: 50%;
+            flex-shrink: 0;
             width: 0.6rem;
             height: 0.6rem;
-            margin-top: -0.3rem;
             border-radius: 999px;
             background: #09090b;
             border: 2px solid #34d399;
@@ -5903,7 +5894,6 @@
         html.in-app body.light-theme .app-day { color: #475569; }
         html.in-app body.light-theme .app-day.is-today { color: #047857; }
         html.in-app body.light-theme .app-day::before { background: #f1f5f9; border-color: #047857; box-shadow: none; }
-        html.in-app body.light-theme #missions-grid.app-list::before { background: linear-gradient(rgba(4, 120, 87, 0.7), rgba(4, 120, 87, 0)); }
         html.in-app body.light-theme #missions-grid.app-list .mission-card { border-color: #e2e8f0; }
         html.in-app body.light-theme .app-cd-seg { background: rgba(15, 23, 42, 0.05); border-color: rgba(15, 23, 42, 0.12); }
         html.in-app body.light-theme .app-cd-seg b { color: #b45309; }
@@ -5912,18 +5902,16 @@
         html.in-app body.light-theme .app-cd-live { color: #047857; }
         html.in-app body.mars-theme .app-day.is-today { color: #ff8c5a; }
         html.in-app body.mars-theme .app-day::before { background: #140806; border-color: #ff8c5a; box-shadow: 0 0 8px rgba(255, 107, 53, 0.8); }
-        html.in-app body.mars-theme #missions-grid.app-list::before { background: linear-gradient(rgba(255, 107, 53, 0.9), rgba(255, 107, 53, 0)); }
         html.in-app body.moon-theme .app-day.is-today { color: #6abffb; }
         html.in-app body.moon-theme .app-day::before { background: #080c14; border-color: #6abffb; box-shadow: 0 0 8px rgba(63, 169, 245, 0.8); }
-        html.in-app body.moon-theme #missions-grid.app-list::before { background: linear-gradient(rgba(63, 169, 245, 0.9), rgba(63, 169, 245, 0)); }
 
-        /* ---------- The past launches: the same photo cards, on a gray timeline by month, with the list's numbers
-           on top (see appDecoratePast) ---------- */
+        /* ---------- The past launches: the same photo cards by month, with the list's numbers on top
+           (see appDecoratePast) ---------- */
         html.in-app #app-past-stats {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0.5rem;
-            margin: 0.25rem 0 1rem;
+            margin: 0.25rem -0.5rem 1rem;
         }
         html.in-app #app-past-stats.hidden {
             display: none;
@@ -5951,29 +5939,17 @@
         }
         html.in-app #past-launches-grid.app-list {
             display: block;
-            position: relative;
             overflow: visible;
             scroll-snap-type: none;
-            margin: 0;
+            margin: 0 -0.5rem;
             padding: 0 0 0.5rem;
-            padding-inline-start: 2.1rem;
-        }
-        html.in-app #past-launches-grid.app-list::before {
-            content: "";
-            position: absolute;
-            inset-inline-start: 0.95rem;
-            top: 0.6rem;
-            bottom: 0;
-            width: 2px;
-            border-radius: 2px;
-            background: linear-gradient(rgba(161, 161, 170, 0.7), rgba(161, 161, 170, 0));
         }
         html.in-app .app-month {
-            position: relative;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 0.5rem;
             margin: 0.35rem 0 0.55rem;
+            padding-inline: 0.35rem;
             font-size: 0.74rem;
             font-weight: 600;
             letter-spacing: 0.04em;
@@ -5981,15 +5957,15 @@
         }
         html.in-app .app-month::before {
             content: "";
-            position: absolute;
-            inset-inline-start: -1.42rem;
-            top: 50%;
+            flex-shrink: 0;
             width: 0.6rem;
             height: 0.6rem;
-            margin-top: -0.3rem;
             border-radius: 999px;
             background: #09090b;
             border: 2px solid #a1a1aa;
+        }
+        html.in-app .app-month-name {
+            flex: 1;
         }
         html.in-app .app-month-count {
             font-weight: 500;
@@ -6079,7 +6055,6 @@
         html.in-app body.light-theme .app-month { color: #475569; }
         html.in-app body.light-theme .app-month-count { color: #64748b; }
         html.in-app body.light-theme .app-month::before { background: #f1f5f9; border-color: #64748b; }
-        html.in-app body.light-theme #past-launches-grid.app-list::before { background: linear-gradient(rgba(100, 116, 139, 0.6), rgba(100, 116, 139, 0)); }
         html.in-app body.light-theme #past-launches-grid.app-list .mission-card { border-color: #e2e8f0; }
         html.in-app body.mars-theme .app-stat { background: rgba(39, 21, 16, 0.85); border-color: rgba(140, 65, 35, 0.4); }
         html.in-app body.mars-theme .app-stat b.is-accent { color: #ff8c5a; }
@@ -6271,6 +6246,10 @@
         /* a window slides on the graphics chip, not redrawn frame by frame */
         html.in-app .card-modal-scroll {
             will-change: transform;
+        }
+        /* the photo fills the whole card (the site's past-launch carousel trims its edges) */
+        html.in-app .app-list .mission-card > img {
+            clip-path: none;
         }
         /* the lists' cards off the screen aren't drawn until they're scrolled near (157 past launches) */
         html.in-app .app-list .mission-card {
