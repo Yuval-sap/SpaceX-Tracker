@@ -6247,6 +6247,23 @@
         html.in-app .card-modal-scroll {
             will-change: transform;
         }
+        /* the past launches' pages not reached yet (see appApplyPastPaging) */
+        html.in-app .app-list .mission-card.app-page-hidden {
+            display: none;
+        }
+        #app-past-more {
+            display: none;
+        }
+        html.in-app #app-past-more {
+            display: flex;
+            justify-content: center;
+            padding: 0.75rem 0 1.25rem;
+            font-size: 1.1rem;
+            color: #71717a;
+        }
+        html.in-app #app-past-more.hidden {
+            display: none;
+        }
         /* the photo fills the whole card (the site's past-launch carousel trims its edges) */
         html.in-app .app-list .mission-card > img {
             clip-path: none;
@@ -6255,6 +6272,90 @@
         html.in-app .app-list .mission-card {
             content-visibility: auto;
             contain-intrinsic-size: auto 9.5rem;
+        }
+
+        /* ---------- The Info tab (see initAppInfoTab): a sticky bar of its sections, one look for every section's
+           heading, the documentary row edge to edge ---------- */
+        #app-info-nav {
+            display: none;
+        }
+        html.in-app #app-info-nav {
+            display: flex;
+            gap: 0.4rem;
+            position: sticky;
+            top: 0;
+            z-index: 45;
+            margin: 0 -1rem;
+            padding: 0.55rem 1rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            background: #09090b;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        html.in-app #app-info-nav::-webkit-scrollbar {
+            display: none;
+        }
+        html.in-app .app-info-chip {
+            flex-shrink: 0;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
+            background: #18181b;
+            border: 1px solid #27272a;
+            color: #a1a1aa;
+            font-size: 0.74rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        html.in-app .app-info-chip.is-active {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.45);
+            color: #34d399;
+        }
+        html.in-app body.light-theme #app-info-nav { background: #f1f5f9; border-color: #e2e8f0; }
+        html.in-app body.light-theme .app-info-chip { background: #ffffff; border-color: #e2e8f0; color: #475569; }
+        html.in-app body.light-theme .app-info-chip.is-active { background: rgba(4, 120, 87, 0.1); border-color: rgba(4, 120, 87, 0.45); color: #047857; }
+        html.in-app body.mars-theme #app-info-nav { background: #140806; border-color: rgba(140, 65, 35, 0.35); }
+        html.in-app body.mars-theme .app-info-chip { background: #271510; border-color: rgba(140, 65, 35, 0.5); color: #c4a080; }
+        html.in-app body.mars-theme .app-info-chip.is-active { background: rgba(255, 107, 53, 0.15); border-color: rgba(255, 107, 53, 0.5); color: #ff8c5a; }
+        html.in-app body.moon-theme #app-info-nav { background: #080c14; border-color: rgba(80, 100, 140, 0.35); }
+        html.in-app body.moon-theme .app-info-chip { background: #121826; border-color: rgba(80, 100, 140, 0.5); color: #8fa3bc; }
+        html.in-app body.moon-theme .app-info-chip.is-active { background: rgba(63, 169, 245, 0.15); border-color: rgba(63, 169, 245, 0.5); color: #6abffb; }
+        /* the sections: an even gap instead of the dividing lines and their wide spacing */
+        html.in-app #tab-panel-more > .app-info-section {
+            margin-top: 2rem;
+            padding-top: 0;
+            border-top: 0;
+        }
+        html.in-app #tab-panel-more > .app-info-section.is-first {
+            margin-top: 0.9rem;
+        }
+        /* every heading: its icon in a tinted rounded square */
+        html.in-app h3.app-sec-title {
+            gap: 0.65rem;
+            font-size: 1.05rem;
+        }
+        html.in-app h3.app-sec-title > i:first-child {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.05rem;
+            height: 2.05rem;
+            border-radius: 0.65rem;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.06);
+            background: color-mix(in srgb, currentColor 16%, transparent);
+        }
+        /* the Starship documentary row edge to edge, the next episode peeking in */
+        html.in-app #documentary-strip {
+            margin-inline: -1rem;
+            padding-inline: 1rem;
+            scroll-padding-inline: 1rem;
+        }
+        /* the "scroll sideways" hints: a row cut at the screen's edge already says so (and the past launches are
+           a list here) */
+        html.in-app span:has(> i.fa-arrows-left-right) {
+            display: none !important;
         }
 
         /* pull down at the top of the page to refresh (see initAppPullToRefresh) */
@@ -30836,7 +30937,49 @@ if (heroNameEl) {
                 }
                 appDecoratePastRow(card, m, d);
             });
+            // a new filter tab starts again from the first page; any other re-render (a star, a reminder, fresh
+            // data) keeps as many as were already showing
+            if (appPastFilterKey !== currentFilter) {
+                appPastFilterKey = currentFilter;
+                appPastShown = APP_PAST_PAGE;
+            }
             appRelabelLists();
+            appSyncListGroups();
+        }
+
+        // The past launches a page at a time: the first APP_PAST_PAGE, then the next page each time the list's
+        // end scrolls near (a spinner marks it while more are left). A search shows all its matches at once.
+        const APP_PAST_PAGE = 12;
+        let appPastShown = APP_PAST_PAGE;
+        let appPastFilterKey = null;
+        let appPastObserver = null;
+        function appApplyPastPaging() {
+            const grid = document.getElementById('past-launches-grid');
+            if (!grid || !grid.classList.contains('app-list')) return;
+            const searchEl = document.getElementById('search-input');
+            const searching = !!(searchEl && searchEl.value.trim());
+            const cards = grid.querySelectorAll('.mission-card');
+            cards.forEach((card, i) => card.classList.toggle('app-page-hidden', !searching && i >= appPastShown));
+            const remaining = !searching && cards.length > appPastShown;
+            let more = document.getElementById('app-past-more');
+            if (!more) {
+                more = appEl('div', '', '<i class="fa-solid fa-spinner fa-spin"></i>');
+                more.id = 'app-past-more';
+            }
+            if (grid.nextElementSibling !== more) grid.after(more);
+            more.classList.toggle('hidden', !remaining);
+            if (!appPastObserver && 'IntersectionObserver' in window) {
+                appPastObserver = new IntersectionObserver(entries => {
+                    if (!entries.some(e => e.isIntersecting)) return;
+                    appPastShown += APP_PAST_PAGE;
+                    appSyncListGroups();
+                }, { rootMargin: '0px 0px 700px 0px' });
+            }
+            if (appPastObserver) {
+                appPastObserver.disconnect();
+                // observed again from scratch: if the end is still near after a page arrived, the next one follows
+                if (remaining) appPastObserver.observe(more);
+            }
         }
 
         // the numbers over the past launches: share of successful launches, landings, and the average gap between
@@ -30969,6 +31112,7 @@ if (heroNameEl) {
         // a search hides cards one by one: a day's / month's heading goes with the last of its cards
         function appSyncListGroups() {
             if (!document.documentElement.classList.contains('in-app')) return;
+            appApplyPastPaging();
             document.querySelectorAll('.app-list').forEach(grid => {
                 let head = null, any = false;
                 const close = () => { if (head) head.classList.toggle('hidden', !any); };
@@ -30977,7 +31121,7 @@ if (heroNameEl) {
                         close();
                         head = el;
                         any = false;
-                    } else if (el.classList.contains('mission-card') && !el.classList.contains('hidden')) {
+                    } else if (el.classList.contains('mission-card') && !el.classList.contains('hidden') && !el.classList.contains('app-page-hidden')) {
                         any = true;
                     }
                 });
@@ -30985,8 +31129,105 @@ if (heroNameEl) {
             });
         }
 
+        // The Info tab's sticky bar: a chip per section (tapped, the page scrolls to it), the one being read lit up.
+        // Starship / Starlink in the site's own spelling of them (STARSHIP_I18N / STARLINK_I18N); the rest, short
+        // names of our own.
+        const APP_INFO_SECTIONS = [
+            ['starship', '#tab-panel-more > div:first-child h3'], ['starlink', '#starlink-section-title'],
+            ['facts', '#i18n-nice-to-know-title'], ['milestones', '#i18n-milestones-title'], ['patches', '#i18n-patches-title'],
+            ['boosters', '#i18n-booster-title'], ['sites', '#i18n-launch-sites-title'], ['fleet', '#i18n-recovery-fleet-title'],
+            ['ai', '#i18n-ai-compute-title'],
+        ];
+        const APP_INFO_NAMES = {
+            en: { facts: 'Good to know', milestones: 'Milestones', patches: 'Mission patches', boosters: 'Boosters', sites: 'Launch sites', fleet: 'Fleet', ai: 'AI compute' },
+            he: { facts: 'טוב לדעת', milestones: 'אבני דרך', patches: 'תגי משימה', boosters: 'בוסטרים', sites: 'אתרי שיגור', fleet: 'צי ההשבה', ai: 'מחשוב AI' },
+            es: { facts: 'Curiosidades', milestones: 'Hitos', patches: 'Insignias', boosters: 'Propulsores', sites: 'Sitios de lanzamiento', fleet: 'Flota', ai: 'Cómputo IA' },
+            fr: { facts: 'Le saviez-vous', milestones: 'Jalons', patches: 'Écussons', boosters: 'Boosters', sites: 'Sites de lancement', fleet: 'Flotte', ai: 'Calcul IA' },
+            de: { facts: 'Wissenswertes', milestones: 'Meilensteine', patches: 'Missionsabzeichen', boosters: 'Booster', sites: 'Startplätze', fleet: 'Flotte', ai: 'KI-Rechenleistung' },
+            ru: { facts: 'Полезно знать', milestones: 'Вехи', patches: 'Нашивки', boosters: 'Бустеры', sites: 'Площадки', fleet: 'Флот', ai: 'ИИ-вычисления' },
+            zh: { facts: '小知识', milestones: '里程碑', patches: '任务徽章', boosters: '助推器', sites: '发射场', fleet: '回收船队', ai: 'AI 算力' },
+            it: { facts: 'Curiosità', milestones: 'Tappe', patches: 'Stemmi', boosters: 'Booster', sites: 'Siti di lancio', fleet: 'Flotta', ai: 'Calcolo IA' },
+            cs: { facts: 'Zajímavosti', milestones: 'Milníky', patches: 'Nášivky', boosters: 'Boostery', sites: 'Startoviště', fleet: 'Flotila', ai: 'AI výpočty' },
+            sv: { facts: 'Bra att veta', milestones: 'Milstolpar', patches: 'Märken', boosters: 'Boosters', sites: 'Uppskjutningsplatser', fleet: 'Flotta', ai: 'AI-beräkning' },
+            nl: { facts: 'Goed om te weten', milestones: 'Mijlpalen', patches: 'Emblemen', boosters: 'Boosters', sites: 'Lanceerplaatsen', fleet: 'Vloot', ai: 'AI-rekenkracht' },
+            da: { facts: 'Godt at vide', milestones: 'Milepæle', patches: 'Emblemer', boosters: 'Boostere', sites: 'Opsendelsessteder', fleet: 'Flåde', ai: 'AI-beregning' },
+            pt: { facts: 'Curiosidades', milestones: 'Marcos', patches: 'Emblemas', boosters: 'Propulsores', sites: 'Locais de lançamento', fleet: 'Frota', ai: 'Computação IA' },
+            pl: { facts: 'Warto wiedzieć', milestones: 'Kamienie milowe', patches: 'Naszywki', boosters: 'Boostery', sites: 'Miejsca startu', fleet: 'Flota', ai: 'Obliczenia AI' },
+            hi: { facts: 'जानने योग्य', milestones: 'उपलब्धियाँ', patches: 'मिशन पैच', boosters: 'बूस्टर', sites: 'लॉन्च साइट', fleet: 'बेड़ा', ai: 'AI कंप्यूटिंग' },
+            ar: { facts: 'معلومات مفيدة', milestones: 'محطات بارزة', patches: 'شارات المهام', boosters: 'المعززات', sites: 'مواقع الإطلاق', fleet: 'الأسطول', ai: 'حوسبة الذكاء الاصطناعي' },
+            tr: { facts: 'Bilmekte fayda var', milestones: 'Kilometre taşları', patches: 'Görev armaları', boosters: 'Güçlendiriciler', sites: 'Fırlatma alanları', fleet: 'Filo', ai: 'Yapay zekâ hesaplama' },
+        };
+        APP_INFO_NAMES.iw = APP_INFO_NAMES.he;
+        let appInfoItems = [];
+        function appInfoNavHeight() {
+            const nav = document.querySelector('body > nav');
+            return nav ? nav.getBoundingClientRect().height : 0;
+        }
+        function relabelAppInfoNav() {
+            const lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            const names = Object.assign({}, APP_INFO_NAMES[lang] || APP_INFO_NAMES.en, {
+                starship: STARSHIP_I18N[lang] || STARSHIP_I18N.en,
+                starlink: STARLINK_I18N[lang] || STARLINK_I18N.en,
+            });
+            appInfoItems.forEach(({ key, chip }) => { chip.textContent = names[key] || key; });
+        }
+        function syncAppInfoNav() {
+            const bar = document.getElementById('app-info-nav');
+            if (!bar || window.currentMainTab !== 'more') return;
+            const navH = appInfoNavHeight();
+            bar.style.top = navH + 'px';
+            const line = navH + bar.offsetHeight + 24;
+            let active = appInfoItems[0];
+            appInfoItems.forEach(it => { if (it.section.getBoundingClientRect().top <= line) active = it; });
+            appInfoItems.forEach(it => it.chip.classList.toggle('is-active', it === active));
+            if (active && bar.dataset.active !== active.key) {
+                bar.dataset.active = active.key;
+                // the lit chip kept in view inside the bar (sideways only)
+                const cr = active.chip.getBoundingClientRect(), br = bar.getBoundingClientRect();
+                if (cr.left < br.left + 8 || cr.right > br.right - 8) bar.scrollBy({ left: (cr.left + cr.width / 2) - (br.left + br.width / 2), behavior: 'smooth' });
+            }
+        }
+        function initAppInfoTab() {
+            const panel = document.getElementById('tab-panel-more');
+            if (!panel || document.getElementById('app-info-nav')) return;
+            const bar = appEl('div', '');
+            bar.id = 'app-info-nav';
+            APP_INFO_SECTIONS.forEach(([key, sel], i) => {
+                const title = document.querySelector(sel);
+                const section = title && title.closest('#tab-panel-more > div');
+                if (!section) return;
+                section.classList.add('app-info-section');
+                if (i === 0) section.classList.add('is-first');
+                const h3 = title.tagName === 'H3' ? title : title.closest('h3');
+                if (h3) h3.classList.add('app-sec-title');
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'app-info-chip';
+                chip.onclick = () => {
+                    appHaptic();
+                    const top = section.getBoundingClientRect().top + window.scrollY - appInfoNavHeight() - bar.offsetHeight - 12;
+                    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+                };
+                bar.appendChild(chip);
+                appInfoItems.push({ key, chip, section });
+            });
+            panel.insertBefore(bar, panel.firstChild);
+            relabelAppInfoNav();
+            let ticking = false;
+            window.addEventListener('scroll', () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => { ticking = false; syncAppInfoNav(); });
+            }, { passive: true });
+            new MutationObserver(relabelAppInfoNav).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+            // coming to the Info tab (its tab button, Back, a link from another window): lit up once it has settled
+            new MutationObserver(() => setTimeout(syncAppInfoNav, 400)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-main-tab'] });
+            syncAppInfoNav();
+        }
+
         function initAndroidAppShell() {
             if (!document.documentElement.classList.contains('in-app')) return;
+            initAppInfoTab();
             setInterval(paintAppCountdowns, 1000);
             // a new site language: the lists' own words follow it
             new MutationObserver(appRelabelLists).observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
