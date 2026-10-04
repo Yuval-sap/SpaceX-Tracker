@@ -16552,7 +16552,31 @@
             ar: {"remind": "ذكّرني", "cancel": "إلغاء التذكير", "unsupported": "جهازك أو متصفحك لا يدعم إشعارات المتصفح.", "set": "✅ تم ضبط التذكير لـ:\n{name}\n\nستصلك إشعارات قبل الإطلاق بـ {stages} — لكن فقط إذا بقي هذا الموقع مفتوحًا في متصفحك (في علامة تبويب أو في الخلفية) حتى ذلك الحين. إذا أغلقت المتصفح أو علامة التبويب، فافتح الموقع مجددًا قبل الإطلاق لإعادة تفعيل التذكيرات.", "tooClose": "الإطلاق قريب جدًا أو قد مضى — حُفظ التذكير، لكن لن يصلك تنبيه مسبق.", "denied": "❌ الإشعارات محظورة. اسمح بالإشعارات في إعدادات المتصفح لتلقي التذكيرات.", "cancelled": "❌ تم إلغاء التذكير لـ {name}.", "title": "SpaceX Tracker • تنبيه إطلاق", "body": "إطلاق {name} بعد {stage}!", "stages": ["24 ساعة", "12 ساعة", "ساعة واحدة", "10 دقائق"], "sep": "، "},
             tr: {"remind": "Hatırlat", "cancel": "Hatırlatıcıyı iptal et", "unsupported": "Cihazınız veya tarayıcınız tarayıcı bildirimlerini desteklemiyor.", "set": "✅ Hatırlatıcı ayarlandı:\n{name}\n\nFırlatıştan {stages} önce bildirim alacaksınız — ama yalnızca bu site o zamana kadar tarayıcınızda açık kalırsa (bir sekmede ya da arka planda). Tarayıcıyı veya sekmeyi kapatırsanız, hatırlatıcıların yeniden etkinleşmesi için fırlatıştan önce siteyi tekrar açın.", "tooClose": "Fırlatış çok yakın ya da çoktan gerçekleşti — hatırlatıcı kaydedildi, ancak önceden bildirim gelmeyecek.", "denied": "❌ Bildirimler engellendi. Hatırlatıcı almak için tarayıcı ayarlarından bildirimlere izin verin.", "cancelled": "❌ {name} için hatırlatıcı iptal edildi.", "title": "SpaceX Tracker • Fırlatış Uyarısı", "body": "{name} {stage} sonra fırlatılıyor!", "stages": ["24 saat", "12 saat", "1 saat", "10 dakika"], "sep": ", "},
         };
+        // the confirmation in the Android app, where the system shows the reminders even with the app closed
+        const REMINDER_SET_IN_APP_I18N = {
+            "en": "✅ Reminder set for:\n{name}\n\nYou'll be notified {stages} before launch - even when the app is closed.",
+            "he": "✅ תזכורת הוגדרה בהצלחה עבור:\n{name}\n\nתקבל התראות {stages} לפני השיגור — גם כשהאפליקציה סגורה.",
+            "es": "✅ Recordatorio configurado para:\n{name}\n\nRecibirás avisos {stages} antes del lanzamiento, incluso con la app cerrada.",
+            "fr": "✅ Rappel enregistré pour :\n{name}\n\nVous recevrez des notifications {stages} avant le lancement, même quand l'application est fermée.",
+            "de": "✅ Erinnerung eingerichtet für:\n{name}\n\nDu wirst {stages} vor dem Start benachrichtigt – auch wenn die App geschlossen ist.",
+            "ru": "✅ Напоминание установлено для:\n{name}\n\nВы получите уведомления за {stages} до старта — даже если приложение закрыто.",
+            "zh": "✅ 已为以下任务设置提醒：\n{name}\n\n您将在发射前 {stages} 收到通知——即使应用已关闭。",
+            "it": "✅ Promemoria impostato per:\n{name}\n\nRiceverai notifiche {stages} prima del lancio, anche con l'app chiusa.",
+            "cs": "✅ Připomenutí nastaveno pro:\n{name}\n\nOznámení dostanete {stages} před startem – i když je aplikace zavřená.",
+            "sv": "✅ Påminnelse inställd för:\n{name}\n\nDu får aviseringar {stages} före uppskjutningen – även när appen är stängd.",
+            "nl": "✅ Herinnering ingesteld voor:\n{name}\n\nJe krijgt meldingen {stages} voor de lancering – ook als de app gesloten is.",
+            "da": "✅ Påmindelse oprettet for:\n{name}\n\nDu får notifikationer {stages} før opsendelsen – også når appen er lukket.",
+            "pt": "✅ Lembrete definido para:\n{name}\n\nVai receber notificações {stages} antes do lançamento — mesmo com a app fechada.",
+            "pl": "✅ Ustawiono przypomnienie dla:\n{name}\n\nPowiadomienia dostaniesz {stages} przed startem – nawet gdy aplikacja jest zamknięta.",
+            "hi": "✅ इसके लिए रिमाइंडर सेट हो गया:\n{name}\n\nआपको लॉन्च से {stages} पहले सूचनाएँ मिलेंगी — ऐप बंद होने पर भी।",
+            "ar": "✅ تم ضبط التذكير لـ:\n{name}\n\nستصلك إشعارات قبل الإطلاق بـ {stages} — حتى عندما يكون التطبيق مغلقًا.",
+            "tr": "✅ Hatırlatıcı ayarlandı:\n{name}\n\nFırlatıştan {stages} önce bildirim alacaksınız — uygulama kapalıyken bile."
+        };
+        REMINDER_SET_IN_APP_I18N.iw = REMINDER_SET_IN_APP_I18N.he;
         REMINDER_I18N.iw = REMINDER_I18N.he;
+        function inAndroidApp() {
+            return !!(window.AndroidApp && typeof window.AndroidApp.scheduleReminders === 'function');
+        }
         function reminderDict(lang) {
             const key = String(lang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
             return REMINDER_I18N[key] || REMINDER_I18N.en;
@@ -16573,6 +16597,22 @@
 
         function armLaunchReminder(id, name, dateStr) {
             window._armedReminderTimers = window._armedReminderTimers || new Map();
+            if (inAndroidApp()) {
+                // the system's own alarms: they fire even with the app closed. Set again when the date or the
+                // site's language changes (the notification's text is written now, in the language showing).
+                const langNow = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                const armed = window._armedReminderTimers.get(id);
+                if (armed && armed.dateStr === dateStr && armed.lang === langNow) return;
+                const d = reminderDict();
+                const launchMs = new Date(dateStr).getTime();
+                const items = REMINDER_STAGES
+                    .map(stage => ({ at: launchMs - stage.minutesBefore * 60 * 1000, stage: stage.stage }))
+                    .filter(it => it.at > Date.now())
+                    .map(it => ({ at: it.at, title: d.title, body: d.body.replace('{name}', reminderMissionName(name)).replace('{stage}', d.stages[it.stage] || '') }));
+                try { window.AndroidApp.scheduleReminders(String(id), JSON.stringify(items)); } catch (e) { }
+                window._armedReminderTimers.set(id, { dateStr, lang: langNow, timeoutIds: [] });
+                return;
+            }
             const existing = window._armedReminderTimers.get(id);
             if (existing && existing.dateStr === dateStr) return;
             if (existing) existing.timeoutIds.forEach(clearLongTimeout);
@@ -16610,6 +16650,40 @@
             }
 
             const index = remindedMissions.indexOf(id);
+            if (inAndroidApp()) {
+                const rd = reminderDict();
+                if (index === -1) {
+                    if (remindedMissions.includes(id)) return;
+                    remindedMissions.push(id);
+                    storeIdList('spacex_reminders', remindedMissions);
+                    const bellIcon = btn ? btn.querySelector('i') : null;
+                    if (bellIcon) {
+                        bellIcon.classList.remove('animate-bell-ring');
+                        void bellIcon.offsetWidth;
+                        bellIcon.classList.add('animate-bell-ring');
+                    }
+                    try { window.AndroidApp.requestNotificationPermission(); } catch (e) { }
+                    if (window._armedReminderTimers) window._armedReminderTimers.delete(id);
+                    armLaunchReminder(id, name, dateStr);
+                    const launchTimeMs = new Date(dateStr).getTime();
+                    const activeStages = REMINDER_STAGES.filter(s => (launchTimeMs - s.minutesBefore * 60 * 1000) - Date.now() > 0);
+                    if (activeStages.length > 0) {
+                        const setText = REMINDER_SET_IN_APP_I18N[(document.documentElement.lang || 'en').toLowerCase().split('-')[0]] || REMINDER_SET_IN_APP_I18N.en;
+                        alert(setText.replace('{name}', reminderMissionName(name)).replace('{stages}', activeStages.map(s => rd.stages[s.stage]).join(rd.sep)));
+                    } else {
+                        alert(rd.tooClose);
+                    }
+                } else {
+                    remindedMissions.splice(index, 1);
+                    storeIdList('spacex_reminders', remindedMissions);
+                    try { window.AndroidApp.cancelReminders(String(id)); } catch (e) { }
+                    if (window._armedReminderTimers) window._armedReminderTimers.delete(id);
+                    alert(rd.cancelled.replace('{name}', reminderMissionName(name)));
+                }
+                filterMissions();
+                setupHeroBanner();
+                return;
+            }
             if (index === -1) {
                 if (!("Notification" in window)) {
                     alert(reminderDict().unsupported);
@@ -21038,7 +21112,7 @@
             // survives while a tab is open, so this is what makes a reminder "stick" across
             // separate visits (as long as one happens before launch) instead of only working
             // if the original tab is never closed.
-            if (remindedMissions.length && "Notification" in window && Notification.permission === "granted") {
+            if (remindedMissions.length && (inAndroidApp() || ("Notification" in window && Notification.permission === "granted"))) {
                 dbMissions.forEach(m => {
                     if (remindedMissions.includes(m.id)) {
                         armLaunchReminder(m.id, m.name, m.date);
@@ -26990,6 +27064,10 @@ setTimeout(() => {
             // Without a share sheet (or when it can't open), the link is copied - through the same helper as the
             // desktop menu's "Copy link", which also works where navigator.clipboard doesn't exist - and the
             // confirmation is in the site's language. Closing the share sheet without sharing isn't an error.
+            // the Android app: the phone's own share sheet (a WebView has no navigator.share)
+            if (window.AndroidApp && typeof window.AndroidApp.share === 'function') {
+                try { window.AndroidApp.share(shareText); return; } catch (e) { }
+            }
             const copyInstead = () => copyDesktopShareClipboard(shareUrl, () => {
                 alert(getDesktopShareDict(document.documentElement.lang || 'en').copied);
             });
@@ -27074,6 +27152,13 @@ setTimeout(() => {
             // this is cheap to get right and avoids depending on that tolerance.
             const icsContent = icsLines.join('\r\n');
 
+            // the Android app: the file is handed to the calendar app (a WebView can't download)
+            if (window.AndroidApp && typeof window.AndroidApp.saveFile === 'function') {
+                try {
+                    window.AndroidApp.saveFile(btoa(unescape(encodeURIComponent(icsContent))), `spacex-${m.id}.ics`, 'text/calendar');
+                    return;
+                } catch (e) { }
+            }
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -27416,6 +27501,17 @@ setTimeout(() => {
                 // sending it to another app - one action covers both instead of needing two
                 // separate buttons. Desktop browsers largely don't support sharing files at all,
                 // so they fall through to a plain download below.
+                // the Android app: saved to the phone's pictures and opened (a WebView can't download or share files)
+                if (window.AndroidApp && typeof window.AndroidApp.saveFile === 'function') {
+                    const dataUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                    window.AndroidApp.saveFile(String(dataUrl).split(',')[1], filename, 'image/png');
+                    return;
+                }
                 const file = new File([blob], filename, { type: 'image/png' });
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
@@ -29621,8 +29717,9 @@ if (heroNameEl) {
         // everything in one press or occasionally leaving an inner modal open with its parent
         // gone. All nine already share the same `hidden`-class toggle convention (confirmed by
         // reading each close function), so a single generic loop covers all of them.
-        document.addEventListener('keydown', function (e) {
-            if (e.key !== 'Escape') return;
+        // Closes the top open window; true when one was open. Used by Escape, and by the Android app's Back button
+        // (window.appHandleBack, called by the app before it goes back a page or leaves).
+        function closeTopSiteWindow() {
             const modalCloseOrder = [
                 ['vehicle-gallery-modal', closeVehicleGallery],
                 ['starship-sim-modal', closeStarshipSim],
@@ -29648,10 +29745,34 @@ if (heroNameEl) {
                 const modal = document.getElementById(id);
                 if (modal && !modal.classList.contains('hidden')) {
                     closeFn();
-                    return;
+                    return true;
                 }
             }
+            return false;
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            closeTopSiteWindow();
         });
+        // the Android app's Back button: an open pop-up first (the hero's "watch live" box, the share menu, the
+        // Starlink business list), then the top window
+        window.appHandleBack = function () {
+            if (document.getElementById('hero-live-popover') && typeof closeHeroLivePopover === 'function') {
+                closeHeroLivePopover();
+                return true;
+            }
+            const shareMenu = document.getElementById('modal-desktop-share-menu');
+            if (shareMenu && !shareMenu.classList.contains('hidden') && typeof setDesktopShareMenuOpen === 'function') {
+                setDesktopShareMenuOpen(false);
+                return true;
+            }
+            const bizPopup = document.getElementById('starlink-biz-breakdown');
+            if (bizPopup && !bizPopup.classList.contains('hidden') && typeof setStarlinkBizBreakdownOpen === 'function') {
+                setStarlinkBizBreakdownOpen(false);
+                return true;
+            }
+            return closeTopSiteWindow();
+        };
 
         window.onload = init;
     </script>

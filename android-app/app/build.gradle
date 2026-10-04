@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The release signing key comes from the build machine (the GitHub Action decodes it from the repository's secrets) -
+// it is never stored in the repository. Without it the build is signed with Android's debug key (for testing only:
+// a debug build can't update an installed release build, and the other way round).
+def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+def hasReleaseKey = keystorePath != null && new File(keystorePath).exists()
+
+android {
+    namespace 'com.spacexfantracker.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.spacexfantracker.app'
+        minSdk 24
+        targetSdk 34
+        // above the PWABuilder build's 1, and growing with every build (the Action passes its run number)
+        versionCode((project.findProperty('versionCode') ?: '2') as int)
+        versionName project.findProperty('versionName') ?: '2.0'
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(keystorePath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // NotificationCompat (notifications on every Android version) and FileProvider (opening a saved poster /
+    // calendar file in another app)
+    implementation 'androidx.core:core:1.13.1'
+}
