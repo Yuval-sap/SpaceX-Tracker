@@ -8033,6 +8033,12 @@
             if (typeof syncModalLiveButtonLabel === 'function') syncModalLiveButtonLabel();
             if (typeof syncHeroLiveButtonLabel === 'function') syncHeroLiveButtonLabel();
 
+            document.querySelectorAll('[data-orbit-code]').forEach(el => {
+                const wanted = orbitLabel(el.dataset.orbitCode, currentLang);
+                const wantedDir = orbitTextIsRtl(currentLang) ? 'rtl' : 'ltr';
+                if (el.innerText !== wanted) el.innerText = wanted;
+                if (el.dir !== wantedDir) el.dir = wantedDir;
+            });
             // launch dates (launchDateHtml) in the language now showing
             const dateLocaleNow = dateLocaleForLang(currentLang);
             document.querySelectorAll('[data-launch-date]').forEach(el => {
@@ -24720,7 +24726,14 @@ setTimeout(() => {
             window.currentActiveVehicleStr = m.vehicle || "falcon 9";
 
             const modalOrbitEl = document.getElementById('modal-orbit');
-            if (modalOrbitEl) modalOrbitEl.innerText = m.orbitLabel || 'LEO (Low Earth Orbit)';
+            if (modalOrbitEl) {
+                // ours, in the site's language (orbitLabel); kept in step with a language switch by the per-tick
+                // pass. Right-to-left in Hebrew / Arabic so the abbreviation leads, as it does in English
+                const orbitCode = ORBIT_NAME_I18N.en[m.orbitCode] ? m.orbitCode : 'LEO';
+                modalOrbitEl.dataset.orbitCode = orbitCode;
+                modalOrbitEl.dir = orbitTextIsRtl() ? 'rtl' : 'ltr';
+                modalOrbitEl.innerText = orbitLabel(orbitCode);
+            }
             window.currentActiveOrbitCode = m.orbitCode || 'LEO';
 
             const modalBoosterEl = document.getElementById('modal-booster');
@@ -27389,6 +27402,47 @@ setTimeout(() => {
             window.currentOpenSiteType = null;
         }
 
+        // Orbit names in the site's language - the abbreviation stays as it is, the name in brackets is
+        // ours (not Google's): "LEO (מסלול הקפה נמוך)". Used by the mission modal's orbit tile and the
+        // orbit dossier (title, heading, the other orbits' cards); English keeps the dossier's own headings.
+        const ORBIT_NAME_I18N = {
+            en: { LEO: 'Low Earth Orbit', MEO: 'Medium Earth Orbit', GEO: 'Geosynchronous Orbit', SSO: 'Sun-Synchronous Orbit', GTO: 'Geostationary Transfer Orbit' },
+            he: { LEO: 'מסלול הקפה נמוך', MEO: 'מסלול הקפה בינוני', GEO: 'מסלול הקפה גיאו-סינכרוני', SSO: 'מסלול הקפה סינכרוני לשמש', GTO: 'מסלול העברה גאוסטציונרי' },
+            es: { LEO: 'Órbita terrestre baja', MEO: 'Órbita terrestre media', GEO: 'Órbita geosíncrona', SSO: 'Órbita heliosíncrona', GTO: 'Órbita de transferencia geoestacionaria' },
+            fr: { LEO: 'Orbite terrestre basse', MEO: 'Orbite terrestre moyenne', GEO: 'Orbite géosynchrone', SSO: 'Orbite héliosynchrone', GTO: 'Orbite de transfert géostationnaire' },
+            de: { LEO: 'Niedrige Erdumlaufbahn', MEO: 'Mittlere Erdumlaufbahn', GEO: 'Geosynchrone Umlaufbahn', SSO: 'Sonnensynchrone Umlaufbahn', GTO: 'Geostationäre Transferbahn' },
+            ru: { LEO: 'Низкая околоземная орбита', MEO: 'Средняя околоземная орбита', GEO: 'Геосинхронная орбита', SSO: 'Солнечно-синхронная орбита', GTO: 'Геопереходная орбита' },
+            zh: { LEO: '近地轨道', MEO: '中地球轨道', GEO: '地球同步轨道', SSO: '太阳同步轨道', GTO: '地球同步转移轨道' },
+            it: { LEO: 'Orbita terrestre bassa', MEO: 'Orbita terrestre media', GEO: 'Orbita geosincrona', SSO: 'Orbita eliosincrona', GTO: 'Orbita di trasferimento geostazionaria' },
+            cs: { LEO: 'Nízká oběžná dráha Země', MEO: 'Střední oběžná dráha Země', GEO: 'Geosynchronní dráha', SSO: 'Heliosynchronní dráha', GTO: 'Geostacionární přechodová dráha' },
+            sv: { LEO: 'Låg omloppsbana runt jorden', MEO: 'Medelhög omloppsbana runt jorden', GEO: 'Geosynkron omloppsbana', SSO: 'Solsynkron omloppsbana', GTO: 'Geostationär överföringsbana' },
+            nl: { LEO: 'Lage baan om de aarde', MEO: 'Middelhoge baan om de aarde', GEO: 'Geosynchrone baan', SSO: 'Zonsynchrone baan', GTO: 'Geostationaire overgangsbaan' },
+            da: { LEO: 'Lav jordbane', MEO: 'Mellemhøj jordbane', GEO: 'Geosynkron bane', SSO: 'Solsynkron bane', GTO: 'Geostationær overføringsbane' },
+            pt: { LEO: 'Órbita terrestre baixa', MEO: 'Órbita terrestre média', GEO: 'Órbita geossíncrona', SSO: 'Órbita heliossíncrona', GTO: 'Órbita de transferência geoestacionária' },
+            pl: { LEO: 'Niska orbita okołoziemska', MEO: 'Średnia orbita okołoziemska', GEO: 'Orbita geosynchroniczna', SSO: 'Orbita heliosynchroniczna', GTO: 'Geostacjonarna orbita transferowa' },
+            hi: { LEO: 'निम्न पृथ्वी कक्षा', MEO: 'मध्यम पृथ्वी कक्षा', GEO: 'भू-तुल्यकालिक कक्षा', SSO: 'सूर्य-तुल्यकालिक कक्षा', GTO: 'भूस्थिर स्थानांतरण कक्षा' },
+            ar: { LEO: 'المدار الأرضي المنخفض', MEO: 'المدار الأرضي المتوسط', GEO: 'المدار المتزامن مع الأرض', SSO: 'المدار المتزامن مع الشمس', GTO: 'مدار النقل الثابت بالنسبة للأرض' },
+            tr: { LEO: 'Alçak Dünya yörüngesi', MEO: 'Orta Dünya yörüngesi', GEO: 'Yer eşzamanlı yörünge', SSO: 'Güneş eşzamanlı yörünge', GTO: 'Yer durağan transfer yörüngesi' },
+        };
+        function orbitLangKey(lang) {
+            const k = String(lang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return k === 'iw' ? 'he' : k;
+        }
+        // "LEO (מסלול הקפה נמוך)"
+        function orbitLabel(code, lang) {
+            const names = ORBIT_NAME_I18N[orbitLangKey(lang)] || ORBIT_NAME_I18N.en;
+            return `${code} (${names[code] || ORBIT_NAME_I18N.en[code] || code})`;
+        }
+        // the dossier's headings: English keeps "Low Earth Orbit (LEO)", every other language the same
+        // abbreviation-first form as the title and the mission modal
+        function orbitHeading(code, lang) {
+            return orbitLangKey(lang) === 'en' && ORBIT_INFO[code] ? ORBIT_INFO[code].heading : orbitLabel(code, lang);
+        }
+        function orbitTextIsRtl(lang) {
+            const k = orbitLangKey(lang);
+            return k === 'he' || k === 'ar';
+        }
+
         // נתוני התצוגה של כל מסלול (סטטיסטיקות + טקסטים) — ה-key חייב להתאים לקוד שמחזיר
         // classifyOrbitDestination (LEO/MEO/GEO). "short" משמש לכרטיסייה הקטנה כשהמסלול
         // הזה אינו המסלול הפעיל של השיגור הנוכחי.
@@ -27508,7 +27562,7 @@ setTimeout(() => {
             const specDict = getSpecDict(document.documentElement.lang);
 
             const titleEl = document.getElementById('orbit-modal-title');
-            if (titleEl) titleEl.innerText = info.title;
+            if (titleEl) titleEl.innerText = orbitLabel(activeCode);
 
             const oa = document.getElementById('orbit-alt');
             if (oa) oa.innerText = `${info.altitude[unit].num} ${specDict[info.altitude[unit].unit]}`;
@@ -27522,7 +27576,7 @@ setTimeout(() => {
             const headingMain = document.getElementById('orbit-heading-main');
             if (headingMain) {
                 const span = headingMain.querySelector('span');
-                if (span) span.innerText = info.heading;
+                if (span) span.innerText = orbitHeading(activeCode);
             }
             const descMain = document.getElementById('orbit-desc-main');
             if (descMain) descMain.innerText = info.description;
@@ -27534,7 +27588,7 @@ setTimeout(() => {
                 const desc = document.getElementById('orbit-desc-' + k);
                 const card = heading && heading.closest('.orbit-card');
                 if (card) card.dataset.orbit = others[i] || '';
-                if (heading && other) heading.innerText = other.heading;
+                if (heading && other) heading.innerText = orbitHeading(others[i]);
                 if (desc && other) desc.innerText = other.short;
                 return desc;
             });
