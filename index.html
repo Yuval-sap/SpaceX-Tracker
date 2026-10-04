@@ -5800,8 +5800,12 @@
             border-color: rgba(255, 255, 255, 0.09);
         }
         html.in-app #missions-grid.app-list .mission-card > .z-20 {
-            min-height: 11rem;
-            padding: 3rem 0.95rem 3.9rem;
+            min-height: 10rem;
+            padding: 3.4rem 0.95rem 0.85rem;
+            padding-inline-end: 4.6rem;
+        }
+        html.in-app #missions-grid.app-list .mission-card.app-cd-wide > .z-20 {
+            padding-inline-end: 8.6rem;
         }
         html.in-app #missions-grid.app-list .mission-title-fit {
             white-space: normal;
@@ -6014,10 +6018,18 @@
             line-height: 1.25;
             margin-bottom: 0;
         }
-        /* the date is in the corner box, the pad isn't needed here: the line under the name and the "details"
-           row go */
-        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2),
+        /* under the name the launch site alone (the date is in the corner box); the "details" row goes */
         html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:nth-child(2) {
+            display: none;
+        }
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) {
+            margin-top: 0.2rem;
+            margin-bottom: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) > span:not(:last-child) {
             display: none;
         }
         html.in-app .app-card-top.is-split {
@@ -6057,28 +6069,6 @@
         html.in-app .app-outcome-chip i { font-size: 0.62rem; }
         html.in-app .app-outcome-chip.is-ok { background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.45); color: #34d399; }
         html.in-app .app-outcome-chip.is-fail { background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.45); color: #f87171; }
-        html.in-app .app-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.3rem;
-            margin-top: 0.4rem;
-        }
-        html.in-app .app-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            padding: 0.12rem 0.5rem;
-            border-radius: 999px;
-            font-size: 0.66rem;
-            background: rgba(0, 0, 0, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #e4e4e7;
-            white-space: nowrap;
-        }
-        html.in-app .app-tag i { font-size: 0.6rem; }
-        html.in-app .app-tag.is-land { color: #93c5fd; }
-        html.in-app .app-tag.is-crew { color: #d8b4fe; }
-        html.in-app .app-tag.is-fail { color: #fca5a5; }
         html.in-app .app-date.app-cd-seg small {
             font-size: 0.62rem;
         }
@@ -6091,10 +6081,6 @@
         html.in-app body.light-theme .app-month::before { background: #f1f5f9; border-color: #64748b; }
         html.in-app body.light-theme #past-launches-grid.app-list::before { background: linear-gradient(rgba(100, 116, 139, 0.6), rgba(100, 116, 139, 0)); }
         html.in-app body.light-theme #past-launches-grid.app-list .mission-card { border-color: #e2e8f0; }
-        html.in-app body.light-theme .app-tag { background: rgba(15, 23, 42, 0.06); border-color: rgba(15, 23, 42, 0.12); color: #334155; }
-        html.in-app body.light-theme .app-tag.is-land { color: #1d4ed8; }
-        html.in-app body.light-theme .app-tag.is-crew { color: #7e22ce; }
-        html.in-app body.light-theme .app-tag.is-fail { color: #b91c1c; }
         html.in-app body.mars-theme .app-stat { background: rgba(39, 21, 16, 0.85); border-color: rgba(140, 65, 35, 0.4); }
         html.in-app body.mars-theme .app-stat b.is-accent { color: #ff8c5a; }
         html.in-app body.mars-theme .app-month::before { background: #140806; }
@@ -30783,19 +30769,22 @@ if (heroNameEl) {
                     grid.insertBefore(day, card);
                 }
                 card.dataset.appDate = m.date;
-                // the status on top, at the end side (right, or left in a right-to-left language)
-                const top = appEl('div', 'app-card-top');
-                const status = card.querySelector('.mission-status-badge.md\\:hidden');
-                if (status) top.appendChild(status);
-                card.appendChild(top);
-                // the bottom row, at the end side: the watchlist star and the reminder bell, then the countdown
-                const bottom = appEl('div', 'app-card-bottom');
+                // on top: the watchlist star and the reminder bell at the start side, the status across from them at
+                // the end side (right, or left in a right-to-left language)
+                const top = appEl('div', 'app-card-top is-split');
                 const bell = card.querySelector('[data-reminder-bell]');
                 const actions = bell && bell.parentElement;
                 if (actions) {
                     actions.classList.add('app-card-actions');
-                    bottom.appendChild(actions);
+                    top.appendChild(actions);
+                } else {
+                    top.appendChild(appEl('span', ''));
                 }
+                const status = card.querySelector('.mission-status-badge.md\\:hidden');
+                if (status) top.appendChild(status);
+                card.appendChild(top);
+                // the countdown alone at the bottom's end side, beside the name
+                const bottom = appEl('div', 'app-card-bottom');
                 const cd = appEl('div', 'app-cd');
                 cd.dataset.appCd = m.id;
                 bottom.appendChild(cd);
@@ -30832,6 +30821,7 @@ if (heroNameEl) {
                 if (cd.dataset.stamp === stamp) return;
                 cd.dataset.stamp = stamp;
                 cd.innerHTML = html;
+                card.classList.toggle('app-cd-wide', !(diff >= 86400000));
             });
         }
 
@@ -30909,20 +30899,8 @@ if (heroNameEl) {
             else if (m.launchSuccess === false) top.appendChild(appEl('span', 'app-outcome-chip is-fail', '<i class="fa-solid fa-xmark"></i><span data-app-label="failure"></span>'));
             card.appendChild(top);
 
-            // the tags: the landing, the booster and its flight, the crew
-            const tags = [];
-            if (m.landingAttempt) {
-                const place = m.landingShipName || String(m.landing || '').split('•').pop().trim();
-                const icon = m.landingShipName ? 'fa-ship' : 'fa-circle-down';
-                if (m.landingSuccess === false) tags.push(`<span class="app-tag is-fail"><i class="fa-solid fa-xmark"></i>${escapeHtml(place)}</span>`);
-                else if (m.landingSuccess === true) tags.push(`<span class="app-tag is-land"><i class="fa-solid ${icon}"></i>${escapeHtml(place)}</span>`);
-            }
-            if (m.boosterSerial) tags.push(`<span class="app-tag"><i class="fa-solid fa-fire-flame-curved"></i>${escapeHtml(m.boosterSerial)}${m.boosterFlightNum ? ' · ' + escapeHtml(String(m.boosterFlightNum)) : ''}</span>`);
-            let crew = [];
-            try { crew = Array.isArray(m.crew) ? m.crew : JSON.parse(m.crew || '[]'); } catch (e) { }
-            if (crew.length) tags.push(`<span class="app-tag is-crew"><i class="fa-solid fa-user-astronaut"></i>${crew.length}</span>`);
-            const body = card.querySelector('.z-20');
-            if (body && tags.length) body.appendChild(appEl('div', 'app-tags', tags.join('')));
+            // the launch site under the name, in the site's language (appRelabelLists)
+            card.dataset.appSite = m.site || '';
 
             // the bottom row, at the end side - as on the upcoming cards: the watchlist star, then the date where
             // their countdown is
@@ -30954,6 +30932,13 @@ if (heroNameEl) {
                 const d = new Date(el.dataset.appDate);
                 el.querySelector('b').textContent = fmt({ day: 'numeric' }, d);
                 el.querySelector('small').textContent = fmt({ month: 'short' }, d);
+            });
+            document.querySelectorAll('#past-launches-grid .mission-card[data-app-site]').forEach(card => {
+                const line = card.querySelector('.z-20 > div:first-child > div:nth-child(2)');
+                const site = line && line.lastElementChild;
+                if (!site || typeof localizeSiteStr !== 'function') return;
+                site.textContent = localizeSiteStr(card.dataset.appSite, document.documentElement.lang);
+                site.setAttribute('dir', document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr');
             });
             const dict = appListDict();
             document.querySelectorAll('[data-app-label]').forEach(el => { el.textContent = dict[el.dataset.appLabel] || APP_LIST_I18N.en[el.dataset.appLabel] || ''; });
@@ -31025,7 +31010,7 @@ if (heroNameEl) {
             if (!document.documentElement.classList.contains('in-app')) return;
             setInterval(paintAppCountdowns, 1000);
             // a new site language: the lists' own words follow it
-            new MutationObserver(appRelabelLists).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+            new MutationObserver(appRelabelLists).observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
             document.documentElement.setAttribute('data-main-tab', window.currentMainTab || 'launches');
             initAppSheets();
             initAppPullToRefresh();
