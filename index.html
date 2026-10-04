@@ -5707,8 +5707,8 @@
             display: none;
         }
 
-        /* The card windows: sheets that slide up from the bottom, with a grab handle - pulled down to close (see
-           initAppSheets) */
+        /* The card windows: full screens, like an app's pages - they slide up from the bottom, and close with Back,
+           their X, or a pull down from their top (see initAppSheets) */
         html.in-app #mission-modal,
         html.in-app #rocket-modal,
         html.in-app #site-modal,
@@ -5736,49 +5736,14 @@
         html.in-app #preflight-status-modal-content,
         html.in-app #starlink-specs-modal-content {
             margin: 0;
-            max-height: calc(100% - 2.25rem);
-            border-bottom-width: 0;
-            border-radius: 1.5rem 1.5rem 0 0;
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            max-height: none;
+            border-width: 0;
+            border-radius: 0;
+            box-shadow: none;
             animation: app-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        html.in-app #mission-modal-content::before,
-        html.in-app #rocket-modal-content::before,
-        html.in-app #site-modal-content::before,
-        html.in-app #orbit-modal-content::before,
-        html.in-app #landing-modal-content::before,
-        html.in-app #astronaut-modal-content::before,
-        html.in-app #news-list-modal-content::before,
-        html.in-app #flight-history-modal-content::before,
-        html.in-app #program-modal-content::before,
-        html.in-app #preflight-status-modal-content::before,
-        html.in-app #starlink-specs-modal-content::before {
-            content: "";
-            position: sticky;
-            top: 0.45rem;
-            z-index: 60;
-            flex-shrink: 0;
-            align-self: center;
-            width: 2.6rem;
-            height: 0.3rem;
-            margin-bottom: -0.3rem;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.5);
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
-        }
-        /* the day theme's white sheets: a gray handle */
-        html.in-app body.light-theme #mission-modal-content::before,
-        html.in-app body.light-theme #rocket-modal-content::before,
-        html.in-app body.light-theme #site-modal-content::before,
-        html.in-app body.light-theme #orbit-modal-content::before,
-        html.in-app body.light-theme #landing-modal-content::before,
-        html.in-app body.light-theme #astronaut-modal-content::before,
-        html.in-app body.light-theme #news-list-modal-content::before,
-        html.in-app body.light-theme #flight-history-modal-content::before,
-        html.in-app body.light-theme #program-modal-content::before,
-        html.in-app body.light-theme #preflight-status-modal-content::before,
-        html.in-app body.light-theme #starlink-specs-modal-content::before {
-            background: rgba(100, 116, 139, 0.6);
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
         }
         @keyframes app-sheet-up {
             from { transform: translateY(100%); }
@@ -5791,7 +5756,8 @@
             position: relative;
             overflow: visible;
             scroll-snap-type: none;
-            padding: 0 0 0.5rem;
+            margin: 0;
+            padding: 0.25rem 0 0.5rem;
             padding-inline-start: 2.1rem;
         }
         html.in-app #missions-grid.app-list::before {
@@ -5836,9 +5802,8 @@
             border-color: rgba(255, 255, 255, 0.09);
         }
         html.in-app #missions-grid.app-list .mission-card > .z-20 {
-            min-height: 10rem;
-            padding: 3.4rem 0.95rem 0.85rem;
-            padding-inline-end: 7.6rem;
+            min-height: 11rem;
+            padding: 3rem 0.95rem 3.9rem;
         }
         html.in-app #missions-grid.app-list .mission-title-fit {
             white-space: normal;
@@ -5859,36 +5824,24 @@
         html.in-app .app-card-top {
             position: absolute;
             z-index: 30;
-            top: 0.7rem;
-            inset-inline: 0.7rem;
+            top: 0.75rem;
+            inset-inline: 0.75rem;
             display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.5rem;
+            justify-content: flex-end;
         }
-        html.in-app .app-card-chips {
+        html.in-app .app-card-top .mission-status-badge {
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        html.in-app .app-card-bottom {
+            position: absolute;
+            z-index: 30;
+            bottom: 0.8rem;
+            inset-inline: 0.85rem;
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
-            gap: 0.35rem;
-            min-width: 0;
-        }
-        html.in-app .app-rocket-tag {
-            padding: 0.2rem 0.55rem;
-            border-radius: 999px;
-            background: rgba(0, 0, 0, 0.55);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            -webkit-backdrop-filter: blur(6px);
-            backdrop-filter: blur(6px);
-            color: #fff;
-            font-size: 0.64rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            white-space: nowrap;
-        }
-        html.in-app .app-card-chips .mission-status-badge {
-            -webkit-backdrop-filter: blur(6px);
-            backdrop-filter: blur(6px);
+            justify-content: flex-end;
+            gap: 0.5rem;
         }
         html.in-app .app-card-actions {
             display: flex;
@@ -5911,10 +5864,7 @@
             color: #fff;
         }
         html.in-app .app-cd {
-            position: absolute;
-            z-index: 30;
-            bottom: 0.85rem;
-            inset-inline-end: 0.85rem;
+            flex-shrink: 0;
         }
         html.in-app .app-cd-segs {
             display: flex;
@@ -5971,7 +5921,8 @@
         html.in-app body.moon-theme .app-day::before { background: #080c14; border-color: #6abffb; box-shadow: 0 0 8px rgba(63, 169, 245, 0.8); }
         html.in-app body.moon-theme #missions-grid.app-list::before { background: linear-gradient(rgba(63, 169, 245, 0.9), rgba(63, 169, 245, 0)); }
 
-        /* ---------- The past launches: rows by month, with the year's numbers on top (see appDecoratePast) ---------- */
+        /* ---------- The past launches: the same photo cards, on a gray timeline by month, with the list's numbers
+           on top (see appDecoratePast) ---------- */
         html.in-app #app-past-stats {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6004,115 +5955,124 @@
         }
         html.in-app #past-launches-grid.app-list {
             display: block;
+            position: relative;
             overflow: visible;
             scroll-snap-type: none;
             margin: 0;
             padding: 0 0 0.5rem;
+            padding-inline-start: 2.1rem;
+        }
+        html.in-app #past-launches-grid.app-list::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: 0.95rem;
+            top: 0.6rem;
+            bottom: 0;
+            width: 2px;
+            border-radius: 2px;
+            background: linear-gradient(rgba(161, 161, 170, 0.7), rgba(161, 161, 170, 0));
         }
         html.in-app .app-month {
+            position: relative;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 0.4rem;
-            padding: 0.55rem 0.85rem;
-            border-radius: 0.75rem;
-            background: rgba(24, 24, 27, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            font-size: 0.8rem;
+            margin: 0.35rem 0 0.55rem;
+            font-size: 0.74rem;
             font-weight: 600;
-            color: #fff;
+            letter-spacing: 0.04em;
+            color: #a1a1aa;
+        }
+        html.in-app .app-month::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: -1.42rem;
+            top: 50%;
+            width: 0.6rem;
+            height: 0.6rem;
+            margin-top: -0.3rem;
+            border-radius: 999px;
+            background: #09090b;
+            border: 2px solid #a1a1aa;
         }
         html.in-app .app-month-count {
-            font-size: 0.72rem;
             font-weight: 500;
             color: #71717a;
         }
-        html.in-app .app-month-count i { font-size: 0.65rem; margin-inline-end: 0.15rem; }
+        html.in-app .app-month-count i { font-size: 0.62rem; margin-inline-end: 0.15rem; }
         html.in-app #past-launches-grid.app-list .mission-card {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
             width: auto;
             min-width: 0;
             max-width: none;
-            padding: 0.75rem 0.35rem;
-            border: 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 0;
-            background: transparent;
-            overflow: visible;
-        }
-        html.in-app #past-launches-grid.app-list .mission-card > img,
-        html.in-app #past-launches-grid.app-list .mission-card-fade,
-        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:nth-child(2) {
-            display: none;
+            margin-bottom: 0.75rem;
+            border-radius: 1.25rem;
+            border-color: rgba(255, 255, 255, 0.09);
         }
         html.in-app #past-launches-grid.app-list .mission-card > .z-20 {
-            flex: 1;
-            min-width: 0;
-            min-height: 0;
-            padding: 0;
-            display: block;
+            min-height: 9.25rem;
+            padding: 3.1rem 0.95rem 3.7rem;
         }
         html.in-app #past-launches-grid.app-list .mission-title-fit {
-            font-size: 0.92rem;
-            margin-bottom: 0.1rem;
             white-space: normal;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
-        }
-        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) {
+            font-size: 0.98rem;
+            line-height: 1.25;
             margin-bottom: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
-        /* the date is on the row's end already: the line under the name keeps the pad alone */
-        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) > span:not(:last-child) {
+        /* the date is in the corner box, the pad isn't needed here: the line under the name and the "details"
+           row go */
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2),
+        html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:nth-child(2) {
             display: none;
+        }
+        html.in-app .app-card-top.is-split {
+            justify-content: space-between;
+            align-items: center;
         }
         html.in-app .app-patch {
             position: relative;
             flex-shrink: 0;
-            width: 3.1rem;
-            height: 3.1rem;
+            width: 2.2rem;
+            height: 2.2rem;
             border-radius: 999px;
-            background: #18181b;
-            border: 2px solid rgba(255, 255, 255, 0.12);
+            background: rgba(0, 0, 0, 0.55);
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
         }
         html.in-app .app-patch img {
             width: 100%;
             height: 100%;
             border-radius: 999px;
             object-fit: contain;
-            padding: 2px;
+            padding: 1px;
         }
         html.in-app .app-patch.is-photo img {
             object-fit: cover;
             padding: 0;
         }
-        html.in-app .app-outcome {
-            position: absolute;
-            bottom: -0.2rem;
-            inset-inline-end: -0.2rem;
-            width: 1.15rem;
-            height: 1.15rem;
-            display: flex;
+        html.in-app .app-outcome-chip {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
+            gap: 0.3rem;
+            padding: 0.15rem 0.6rem;
             border-radius: 999px;
-            border: 2px solid #09090b;
-            font-size: 0.55rem;
-            color: #000;
+            font-size: 0.7rem;
+            font-weight: 700;
+            white-space: nowrap;
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
         }
-        html.in-app .app-outcome.is-ok { background: #10b981; }
-        html.in-app .app-outcome.is-fail { background: #ef4444; color: #fff; }
+        html.in-app .app-outcome-chip i { font-size: 0.62rem; }
+        html.in-app .app-outcome-chip.is-ok { background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.45); color: #34d399; }
+        html.in-app .app-outcome-chip.is-fail { background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.45); color: #f87171; }
         html.in-app .app-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 0.3rem;
-            margin-top: 0.35rem;
+            margin-top: 0.4rem;
         }
         html.in-app .app-tag {
             display: inline-flex;
@@ -6121,57 +6081,219 @@
             padding: 0.12rem 0.5rem;
             border-radius: 999px;
             font-size: 0.66rem;
-            background: rgba(255, 255, 255, 0.07);
-            color: #d4d4d8;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+            color: #e4e4e7;
             white-space: nowrap;
         }
         html.in-app .app-tag i { font-size: 0.6rem; }
-        html.in-app .app-tag.is-land { background: rgba(59, 130, 246, 0.14); color: #60a5fa; }
-        html.in-app .app-tag.is-crew { background: rgba(168, 85, 247, 0.14); color: #c084fc; }
-        html.in-app .app-tag.is-fail { background: rgba(239, 68, 68, 0.14); color: #f87171; }
-        html.in-app .app-date {
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.1rem;
-            width: 2.6rem;
-            font-size: 0.68rem;
-            color: #71717a;
+        html.in-app .app-tag.is-land { color: #93c5fd; }
+        html.in-app .app-tag.is-crew { color: #d8b4fe; }
+        html.in-app .app-tag.is-fail { color: #fca5a5; }
+        html.in-app .app-date.app-cd-seg small {
+            font-size: 0.62rem;
         }
-        html.in-app .app-date b {
-            font-family: 'Orbitron', 'Rubik', monospace;
-            font-size: 1.1rem;
-            line-height: 1.1;
-            color: #e4e4e7;
-        }
-        html.in-app .app-date button {
-            margin-top: 0.3rem;
-            width: 1.75rem;
-            height: 1.75rem;
-            border-radius: 999px;
-        }
-        html.in-app body.light-theme .app-stat,
-        html.in-app body.light-theme .app-month { background: #ffffff; border-color: #e2e8f0; color: #0f172a; }
+        html.in-app body.light-theme .app-stat { background: #ffffff; border-color: #e2e8f0; }
         html.in-app body.light-theme .app-stat b { color: #0f172a; }
         html.in-app body.light-theme .app-stat b.is-accent { color: #047857; }
-        html.in-app body.light-theme .app-stat span,
-        html.in-app body.light-theme .app-month-count,
-        html.in-app body.light-theme .app-date { color: #64748b; }
-        html.in-app body.light-theme .app-date b { color: #0f172a; }
-        html.in-app body.light-theme #past-launches-grid.app-list .mission-card { border-bottom-color: #e2e8f0; }
-        html.in-app body.light-theme .app-patch { background: #ffffff; border-color: #e2e8f0; }
-        html.in-app body.light-theme .app-outcome { border-color: #f1f5f9; }
-        html.in-app body.light-theme .app-tag { background: rgba(15, 23, 42, 0.06); color: #334155; }
-        html.in-app body.light-theme .app-tag.is-land { background: rgba(37, 99, 235, 0.1); color: #1d4ed8; }
-        html.in-app body.light-theme .app-tag.is-crew { background: rgba(147, 51, 234, 0.1); color: #7e22ce; }
-        html.in-app body.light-theme .app-tag.is-fail { background: rgba(220, 38, 38, 0.1); color: #b91c1c; }
-        html.in-app body.mars-theme .app-stat,
-        html.in-app body.mars-theme .app-month { background: rgba(39, 21, 16, 0.85); border-color: rgba(140, 65, 35, 0.4); }
+        html.in-app body.light-theme .app-stat span { color: #64748b; }
+        html.in-app body.light-theme .app-month { color: #475569; }
+        html.in-app body.light-theme .app-month-count { color: #64748b; }
+        html.in-app body.light-theme .app-month::before { background: #f1f5f9; border-color: #64748b; }
+        html.in-app body.light-theme #past-launches-grid.app-list::before { background: linear-gradient(rgba(100, 116, 139, 0.6), rgba(100, 116, 139, 0)); }
+        html.in-app body.light-theme #past-launches-grid.app-list .mission-card { border-color: #e2e8f0; }
+        html.in-app body.light-theme .app-tag { background: rgba(15, 23, 42, 0.06); border-color: rgba(15, 23, 42, 0.12); color: #334155; }
+        html.in-app body.light-theme .app-tag.is-land { color: #1d4ed8; }
+        html.in-app body.light-theme .app-tag.is-crew { color: #7e22ce; }
+        html.in-app body.light-theme .app-tag.is-fail { color: #b91c1c; }
+        html.in-app body.mars-theme .app-stat { background: rgba(39, 21, 16, 0.85); border-color: rgba(140, 65, 35, 0.4); }
         html.in-app body.mars-theme .app-stat b.is-accent { color: #ff8c5a; }
-        html.in-app body.moon-theme .app-stat,
-        html.in-app body.moon-theme .app-month { background: rgba(18, 24, 38, 0.85); border-color: rgba(80, 100, 140, 0.4); }
+        html.in-app body.mars-theme .app-month::before { background: #140806; }
+        html.in-app body.moon-theme .app-stat { background: rgba(18, 24, 38, 0.85); border-color: rgba(80, 100, 140, 0.4); }
         html.in-app body.moon-theme .app-stat b.is-accent { color: #6abffb; }
+        html.in-app body.moon-theme .app-month::before { background: #080c14; }
+
+        /* ---------- The next launch (the hero): a full-width opening screen (see appDecorateHero) ---------- */
+        html.in-app #hero-banner.app-hero {
+            margin: -1.5rem -1rem 1.75rem;
+            padding: 0 1rem 1.25rem;
+            border: 0;
+            border-radius: 0;
+            background: transparent !important;
+            box-shadow: none;
+        }
+        html.in-app #hero-banner.app-hero > div:first-child {
+            inset: 0 0 auto 0;
+            height: 25rem;
+            border-radius: 0;
+            -webkit-mask-image: linear-gradient(#000 40%, transparent 100%);
+            mask-image: linear-gradient(#000 40%, transparent 100%);
+        }
+        html.in-app #hero-banner.app-hero #hero-image {
+            opacity: 0.8;
+        }
+        html.in-app body.light-theme #hero-banner.app-hero #hero-image {
+            opacity: 0.45;
+        }
+        html.in-app #hero-banner.app-hero div:has(> #hero-name) {
+            padding-top: 12.5rem;
+        }
+        html.in-app #hero-banner.app-hero #hero-name {
+            text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+        }
+        html.in-app body.light-theme #hero-banner.app-hero #hero-name {
+            text-shadow: 0 1px 10px rgba(255, 255, 255, 0.8);
+        }
+        html.in-app #hero-banner.app-hero .milestones-title {
+            display: none;
+        }
+        html.in-app #app-hero-status {
+            position: absolute;
+            z-index: 20;
+            top: 1.15rem;
+            inset-inline-end: 1rem;
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        html.in-app #hero-banner.app-hero #countdown-box {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            padding: 0.5rem 0 0;
+        }
+        /* the countdown's four numbers in glass boxes, their letters under them (only while it's a countdown -
+           after liftoff the box shows the flight's status text, untouched) */
+        html.in-app #hero-banner.app-hero #hero-countdown:has(> span:nth-child(8)) {
+            display: grid !important;
+            grid-template-columns: repeat(4, 4.1rem);
+            grid-template-rows: auto auto;
+            grid-auto-flow: column;
+            justify-content: center;
+            column-gap: 0.5rem;
+        }
+        html.in-app #hero-banner.app-hero #hero-countdown:has(> span:nth-child(8)) > span {
+            margin: 0 !important;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        html.in-app #hero-banner.app-hero #hero-countdown:has(> span:nth-child(8)) > span:nth-child(odd) {
+            padding: 0.5rem 0 0.05rem;
+            border-bottom: 0;
+            border-radius: 0.95rem 0.95rem 0 0;
+            font-size: 1.85rem;
+            line-height: 1.1;
+            letter-spacing: 0;
+        }
+        html.in-app #hero-banner.app-hero #hero-countdown:has(> span:nth-child(8)) > span:nth-child(even) {
+            padding: 0 0 0.4rem;
+            border-top: 0;
+            border-radius: 0 0 0.95rem 0.95rem;
+            font-size: 0.72rem;
+            line-height: 1.2;
+        }
+        html.in-app body.light-theme #hero-banner.app-hero #hero-countdown:has(> span:nth-child(8)) > span {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: #e2e8f0;
+        }
+        /* weather | launch window: two tiles side by side */
+        html.in-app #hero-banner.app-hero #hero-launch-window-block > div:first-child {
+            display: none;
+        }
+        html.in-app #hero-banner.app-hero .hero-window-row {
+            flex-wrap: nowrap;
+            gap: 0.5rem;
+            margin-top: 0.9rem;
+        }
+        html.in-app #hero-banner.app-hero .hero-window-col {
+            flex: 1 1 0;
+            min-width: 0;
+            padding: 0.6rem 0.5rem;
+            border-radius: 1rem;
+            background: rgba(24, 24, 27, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        html.in-app body.light-theme #hero-banner.app-hero .hero-window-col { background: #ffffff; border-color: #e2e8f0; }
+        html.in-app body.mars-theme #hero-banner.app-hero .hero-window-col { background: rgba(39, 21, 16, 0.85); border-color: rgba(140, 65, 35, 0.4); }
+        html.in-app body.moon-theme #hero-banner.app-hero .hero-window-col { background: rgba(18, 24, 38, 0.85); border-color: rgba(80, 100, 140, 0.4); }
+        /* the buttons: round icons with a caption under each, like an app's actions */
+        html.in-app #hero-banner.app-hero div:has(> #hero-details-btn) {
+            flex-wrap: nowrap;
+            justify-content: space-around;
+            gap: 0.25rem;
+        }
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.4rem;
+            width: 4.6rem;
+            height: auto;
+            padding: 0;
+            border: 0 !important;
+            border-radius: 0;
+            background: transparent !important;
+            box-shadow: none;
+            color: #d4d4d8 !important;
+            font-size: 0.66rem;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: 0;
+            white-space: normal;
+            text-align: center;
+        }
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 3.1rem;
+            height: 3.1rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            font-size: 1.1rem;
+            color: #fff;
+            animation: none;
+        }
+        html.in-app #hero-banner.app-hero #hero-remind-btn[data-reminded="1"] > i {
+            background: #10b981;
+            border-color: #10b981;
+            color: #000;
+        }
+        html.in-app #hero-banner.app-hero #hero-watch-live-btn > i {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.55);
+            color: #f87171;
+        }
+        html.in-app #hero-banner.app-hero #hero-watch-live-btn.hidden {
+            display: none;
+        }
+        html.in-app #hero-banner.app-hero #hero-remind-btn::after {
+            content: attr(data-app-caption);
+        }
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+            color: #334155 !important;
+        }
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #app-hero-share) > i {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            color: #0f172a;
+        }
+        html.in-app body.light-theme #hero-banner.app-hero #hero-remind-btn[data-reminded="1"] > i {
+            background: #047857;
+            border-color: #047857;
+            color: #fff;
+        }
+        #app-hero-share {
+            display: none;
+        }
+        html.in-app #app-hero-share {
+            display: inline-flex;
+        }
 
         /* pull down at the top of the page to refresh (see initAppPullToRefresh) */
         #app-ptr {
@@ -24602,6 +24724,8 @@ setTimeout(() => {
                     heroBanner.classList.remove('hidden');
                 }
                 updateHeroCountdown(nextLaunch.date, nextLaunch.status, nextLaunch.category, nextLaunch.landing, nextLaunch.windowStartAt, nextLaunch.windowEndAt);
+                // the Android app's own look of the hero (does nothing in a browser)
+                if (typeof appDecorateHero === 'function') appDecorateHero(nextLaunch);
             } else {
                 heroBanner.classList.add('hidden');
                 heroBanner.classList.remove('hero-reveal');
@@ -30581,23 +30705,23 @@ if (heroNameEl) {
         // one day at a time, as photo cards with a live countdown; past launches as rows by month, with the
         // mission patch, the outcome and the landing - and the year's numbers above them.
         const APP_LIST_I18N = {
-            en: { success: 'Success', landings: 'Landings', gap: 'Days between launches' },
-            he: { success: 'הצלחה', landings: 'נחיתות', gap: 'ימים בין שיגורים' },
-            es: { success: 'Éxito', landings: 'Aterrizajes', gap: 'Días entre lanzamientos' },
-            fr: { success: 'Réussite', landings: 'Atterrissages', gap: 'Jours entre lancements' },
-            de: { success: 'Erfolg', landings: 'Landungen', gap: 'Tage zwischen Starts' },
-            ru: { success: 'Успех', landings: 'Посадки', gap: 'Дней между пусками' },
-            zh: { success: '成功率', landings: '着陆', gap: '发射间隔天数' },
-            it: { success: 'Successo', landings: 'Atterraggi', gap: 'Giorni tra i lanci' },
-            cs: { success: 'Úspěšnost', landings: 'Přistání', gap: 'Dní mezi starty' },
-            sv: { success: 'Lyckade', landings: 'Landningar', gap: 'Dagar mellan uppskjutningar' },
-            nl: { success: 'Succes', landings: 'Landingen', gap: 'Dagen tussen lanceringen' },
-            da: { success: 'Succes', landings: 'Landinger', gap: 'Dage mellem opsendelser' },
-            pt: { success: 'Sucesso', landings: 'Aterragens', gap: 'Dias entre lançamentos' },
-            pl: { success: 'Sukces', landings: 'Lądowania', gap: 'Dni między startami' },
-            hi: { success: 'सफलता', landings: 'लैंडिंग', gap: 'लॉन्च के बीच दिन' },
-            ar: { success: 'النجاح', landings: 'الهبوط', gap: 'أيام بين عمليات الإطلاق' },
-            tr: { success: 'Başarı', landings: 'İnişler', gap: 'Fırlatmalar arası gün' },
+            en: { success: 'Success', failure: 'Failure', landings: 'Landings', gap: 'Days between launches', remind: 'Remind me', share: 'Share' },
+            he: { success: 'הצלחה', failure: 'כישלון', landings: 'נחיתות', gap: 'ימים בין שיגורים', remind: 'תזכורת', share: 'שיתוף' },
+            es: { success: 'Éxito', failure: 'Fallo', landings: 'Aterrizajes', gap: 'Días entre lanzamientos', remind: 'Recordar', share: 'Compartir' },
+            fr: { success: 'Réussite', failure: 'Échec', landings: 'Atterrissages', gap: 'Jours entre lancements', remind: 'Rappel', share: 'Partager' },
+            de: { success: 'Erfolg', failure: 'Fehlschlag', landings: 'Landungen', gap: 'Tage zwischen Starts', remind: 'Erinnern', share: 'Teilen' },
+            ru: { success: 'Успех', failure: 'Авария', landings: 'Посадки', gap: 'Дней между пусками', remind: 'Напомнить', share: 'Поделиться' },
+            zh: { success: '成功率', failure: '失败', landings: '着陆', gap: '发射间隔天数', remind: '提醒', share: '分享' },
+            it: { success: 'Successo', failure: 'Fallimento', landings: 'Atterraggi', gap: 'Giorni tra i lanci', remind: 'Promemoria', share: 'Condividi' },
+            cs: { success: 'Úspěšnost', failure: 'Selhání', landings: 'Přistání', gap: 'Dní mezi starty', remind: 'Připomenout', share: 'Sdílet' },
+            sv: { success: 'Lyckade', failure: 'Misslyckad', landings: 'Landningar', gap: 'Dagar mellan uppskjutningar', remind: 'Påminn', share: 'Dela' },
+            nl: { success: 'Succes', failure: 'Mislukt', landings: 'Landingen', gap: 'Dagen tussen lanceringen', remind: 'Herinner', share: 'Delen' },
+            da: { success: 'Succes', failure: 'Fejlet', landings: 'Landinger', gap: 'Dage mellem opsendelser', remind: 'Påmind', share: 'Del' },
+            pt: { success: 'Sucesso', failure: 'Falha', landings: 'Aterragens', gap: 'Dias entre lançamentos', remind: 'Lembrar', share: 'Partilhar' },
+            pl: { success: 'Sukces', failure: 'Porażka', landings: 'Lądowania', gap: 'Dni między startami', remind: 'Przypomnij', share: 'Udostępnij' },
+            hi: { success: 'सफलता', failure: 'विफल', landings: 'लैंडिंग', gap: 'लॉन्च के बीच दिन', remind: 'रिमाइंडर', share: 'साझा करें' },
+            ar: { success: 'النجاح', failure: 'فشل', landings: 'الهبوط', gap: 'أيام بين عمليات الإطلاق', remind: 'تذكير', share: 'مشاركة' },
+            tr: { success: 'Başarı', failure: 'Başarısız', landings: 'İnişler', gap: 'Fırlatmalar arası gün', remind: 'Hatırlat', share: 'Paylaş' },
         };
         APP_LIST_I18N.iw = APP_LIST_I18N.he;
         // the site's language, as Intl wants it
@@ -30620,10 +30744,6 @@ if (heroNameEl) {
         function appDayKey(d) {
             return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
         }
-        const APP_ROCKET_TAGS = {
-            falcon: ['FALCON 9', '#34d399'], falcon_heavy: ['FALCON HEAVY', '#34d399'], starlink: ['STARLINK', '#38bdf8'],
-            dragon: ['DRAGON', '#c084fc'], starship: ['STARSHIP', '#fb923c'],
-        };
         function appEl(tag, cls, html) {
             const el = document.createElement(tag);
             if (cls) el.className = cls;
@@ -30666,22 +30786,23 @@ if (heroNameEl) {
                     grid.insertBefore(day, card);
                 }
                 card.dataset.appDate = m.date;
-                const tag = APP_ROCKET_TAGS[m.category] || APP_ROCKET_TAGS.falcon;
+                // the status on top, at the end side (right, or left in a right-to-left language)
                 const top = appEl('div', 'app-card-top');
-                const chips = appEl('div', 'app-card-chips', `<span class="app-rocket-tag" dir="ltr"><span style="color:${tag[1]}">●</span> ${tag[0]}</span>`);
                 const status = card.querySelector('.mission-status-badge.md\\:hidden');
-                if (status) chips.appendChild(status);
-                top.appendChild(chips);
+                if (status) top.appendChild(status);
+                card.appendChild(top);
+                // the bottom row, at the end side: the watchlist star and the reminder bell, then the countdown
+                const bottom = appEl('div', 'app-card-bottom');
                 const bell = card.querySelector('[data-reminder-bell]');
                 const actions = bell && bell.parentElement;
                 if (actions) {
                     actions.classList.add('app-card-actions');
-                    top.appendChild(actions);
+                    bottom.appendChild(actions);
                 }
-                card.appendChild(top);
                 const cd = appEl('div', 'app-cd');
                 cd.dataset.appCd = m.id;
-                card.appendChild(cd);
+                bottom.appendChild(cd);
+                card.appendChild(bottom);
             });
             appRelabelLists();
             paintAppCountdowns();
@@ -30776,7 +30897,8 @@ if (heroNameEl) {
 
         // one past launch's row: the patch, the tags, the date
         function appDecoratePastRow(card, m, d) {
-            // the mission patch (the launch photo when there's none), with the outcome on it
+            // on top: the mission patch (the launch photo when there's none), and the outcome at the end side
+            const top = appEl('div', 'app-card-top is-split');
             const patch = appEl('div', 'app-patch');
             const img = document.createElement('img');
             img.alt = '';
@@ -30785,9 +30907,10 @@ if (heroNameEl) {
             if (m.patch) img.onerror = function () { this.onerror = null; this.src = m.image || ''; this.parentElement.classList.add('is-photo'); };
             else patch.classList.add('is-photo');
             patch.appendChild(img);
-            if (m.launchSuccess === true) patch.insertAdjacentHTML('beforeend', '<span class="app-outcome is-ok"><i class="fa-solid fa-check"></i></span>');
-            else if (m.launchSuccess === false) patch.insertAdjacentHTML('beforeend', '<span class="app-outcome is-fail"><i class="fa-solid fa-xmark"></i></span>');
-            card.insertBefore(patch, card.firstChild);
+            top.appendChild(patch);
+            if (m.launchSuccess === true) top.appendChild(appEl('span', 'app-outcome-chip is-ok', '<i class="fa-solid fa-check"></i><span data-app-label="success"></span>'));
+            else if (m.launchSuccess === false) top.appendChild(appEl('span', 'app-outcome-chip is-fail', '<i class="fa-solid fa-xmark"></i><span data-app-label="failure"></span>'));
+            card.appendChild(top);
 
             // the tags: the landing, the booster and its flight, the crew
             const tags = [];
@@ -30804,12 +30927,19 @@ if (heroNameEl) {
             const body = card.querySelector('.z-20');
             if (body && tags.length) body.appendChild(appEl('div', 'app-tags', tags.join('')));
 
-            // the date, big, at the row's end - and the watchlist star under it
-            const dateBox = appEl('div', 'app-date', '<b></b><span></span>');
-            if (!isNaN(d)) dateBox.dataset.appDate = m.date;
+            // the bottom row, at the end side - as on the upcoming cards: the watchlist star, then the date where
+            // their countdown is
+            const bottom = appEl('div', 'app-card-bottom');
             const star = card.querySelector('button[onclick^="toggleFavorite"]');
-            if (star) dateBox.appendChild(star);
-            card.appendChild(dateBox);
+            if (star) {
+                const actions = appEl('div', 'app-card-actions');
+                actions.appendChild(star);
+                bottom.appendChild(actions);
+            }
+            const dateBox = appEl('span', 'app-cd-seg app-cd-days app-date', '<b></b><small></small>');
+            if (!isNaN(d)) dateBox.dataset.appDate = m.date;
+            bottom.appendChild(dateBox);
+            card.appendChild(bottom);
         }
 
         // the lists' words in the site's language: written when they're made, and again when the language changes
@@ -30826,10 +30956,53 @@ if (heroNameEl) {
             document.querySelectorAll('.app-date[data-app-date]').forEach(el => {
                 const d = new Date(el.dataset.appDate);
                 el.querySelector('b').textContent = fmt({ day: 'numeric' }, d);
-                el.querySelector('span').textContent = fmt({ month: 'short' }, d);
+                el.querySelector('small').textContent = fmt({ month: 'short' }, d);
             });
+            const dict = appListDict();
+            document.querySelectorAll('[data-app-label]').forEach(el => { el.textContent = dict[el.dataset.appLabel] || APP_LIST_I18N.en[el.dataset.appLabel] || ''; });
+            const remindBtn = document.getElementById('hero-remind-btn');
+            if (remindBtn && remindBtn.closest('.app-hero')) remindBtn.dataset.appCaption = dict.remind;
             appRenderPastStats();
             paintAppCountdowns();
+        }
+
+        // The next launch as the app's opening screen (CSS: #hero-banner.app-hero): the status on top, a share
+        // button beside the others, and the bell's caption. Run on every setupHeroBanner (the hero's mission can change).
+        function appDecorateHero(m) {
+            if (!document.documentElement.classList.contains('in-app') || !m) return;
+            const hero = document.getElementById('hero-banner');
+            if (!hero) return;
+            hero.classList.add('app-hero');
+            window._appHeroMission = m;
+            // the status, colored like the cards' own badge
+            let status = document.getElementById('app-hero-status');
+            if (!status) {
+                status = appEl('div', '');
+                status.id = 'app-hero-status';
+                status.setAttribute('lang', 'en');
+                hero.appendChild(status);
+            }
+            const st = String(m.status || '').toLowerCase();
+            let color = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+            if (st.includes('confirmed') || st.includes('tbc')) color = 'bg-zinc-800 text-zinc-400 border-emerald-500/30';
+            else if (st.includes('tbd') || st.includes('determined')) color = 'bg-zinc-800 text-zinc-400 border-zinc-700/50';
+            else if (st.includes('hold') || st.includes('review') || st.includes('delay')) color = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+            status.className = `notranslate font-orbitron px-2.5 py-0.5 text-[11px] leading-[16px] whitespace-nowrap font-bold border rounded-full ${color}`;
+            status.textContent = m.status || '';
+            status.classList.toggle('hidden', !m.status);
+            // share, after the other buttons
+            const live = document.getElementById('hero-watch-live-btn');
+            if (live && !document.getElementById('app-hero-share')) {
+                const share = document.createElement('button');
+                share.type = 'button';
+                share.id = 'app-hero-share';
+                share.className = 'notranslate shrink-0';
+                share.setAttribute('translate', 'no');
+                share.innerHTML = '<i class="fa-solid fa-share-nodes"></i><span data-app-label="share"></span>';
+                share.onclick = () => { if (window._appHeroMission) shareMission(window._appHeroMission); };
+                live.parentElement.appendChild(share);
+            }
+            appRelabelLists();
         }
 
         // a search hides cards one by one: a day's / month's heading goes with the last of its cards
