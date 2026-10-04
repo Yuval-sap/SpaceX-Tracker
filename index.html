@@ -160,6 +160,12 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // The Android app (android-app/ in this repo) puts window.AndroidApp in place before the page's own scripts
+        // run - so its own look (the html.in-app rules at the end of the main <style>) is there from the first paint.
+        // No browser ever has it: the site on a computer or a phone's browser is untouched.
+        if (window.AndroidApp) document.documentElement.classList.add('in-app');
+    </script>
     <title>SpaceX Launch Tracker • Mission Control</title>
 
     <!-- Basic SEO -->
@@ -5607,6 +5613,224 @@
             #launch-cadence-modal .lc-divider { display: none; }
             #launch-cadence-modal .lc-toggle-link { margin-inline-start: 0; width: 100%; justify-content: center; }
             #launch-cadence-modal .lc-legend { gap: 10px 14px; }
+        }
+
+        /* ==================================================
+           THE ANDROID APP ONLY (html.in-app - set at the top of <head> when the app's window.AndroidApp is there).
+           None of this reaches the site in any browser, on a computer or a phone.
+           ================================================== */
+        /* no browser habits: text selection / the link menu on a long press, the blue flash on a tap, the bounce
+           at the end of a scroll */
+        html.in-app,
+        html.in-app body {
+            overscroll-behavior-y: none;
+        }
+        html.in-app body {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            /* room for the bottom tab bar */
+            padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+        }
+        html.in-app input,
+        html.in-app textarea {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        html.in-app * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        html.in-app img {
+            -webkit-user-drag: none;
+        }
+
+        /* The two main tabs: the app's bottom navigation bar (icon over label, the active one's icon on a pill) */
+        html.in-app #main-tabs-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 90;
+            margin: 0;
+            padding: 0;
+        }
+        html.in-app #main-tabs {
+            gap: 0;
+            padding: 0.3rem 0.5rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+            border-radius: 0;
+            border-width: 1px 0 0;
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+        }
+        html.in-app .main-tab-btn {
+            flex-direction: column;
+            gap: 0.2rem;
+            min-height: 3.4rem;
+            padding: 0.2rem 0.5rem;
+            border: 0 !important;
+            border-radius: 0;
+            background: transparent !important;
+            letter-spacing: 0.04em;
+        }
+        html.in-app .main-tab-btn i {
+            width: 3.6rem;
+            height: 1.85rem;
+            line-height: 1.85rem;
+            border-radius: 999px;
+            text-align: center;
+            font-size: 1.05rem;
+            opacity: 1;
+            transition: background-color 0.25s ease, transform 0.25s ease;
+        }
+        html.in-app .main-tab-btn.is-active i {
+            background: rgba(16, 185, 129, 0.16);
+        }
+        html.in-app body.light-theme .main-tab-btn.is-active i {
+            background: rgba(4, 120, 87, 0.14);
+        }
+        html.in-app body.mars-theme .main-tab-btn.is-active i {
+            background: rgba(255, 107, 53, 0.18);
+        }
+        html.in-app body.moon-theme .main-tab-btn.is-active i {
+            background: rgba(63, 169, 245, 0.18);
+        }
+        html.in-app .main-tab-btn:active i {
+            transform: scale(0.92);
+        }
+        html.in-app #i18n-tab-launches,
+        html.in-app #i18n-tab-more {
+            font-size: 0.68rem;
+        }
+
+        /* The footer (support, follow, copyright) at the end of the Info tab only - not under the launch list */
+        html.in-app:not([data-main-tab="more"]) body > footer {
+            display: none;
+        }
+
+        /* The card windows: sheets that slide up from the bottom, with a grab handle - pulled down to close (see
+           initAppSheets) */
+        html.in-app #mission-modal,
+        html.in-app #rocket-modal,
+        html.in-app #site-modal,
+        html.in-app #orbit-modal,
+        html.in-app #landing-modal,
+        html.in-app #astronaut-modal,
+        html.in-app #news-list-modal,
+        html.in-app #flight-history-modal,
+        html.in-app #program-modal,
+        html.in-app #preflight-status-modal,
+        html.in-app #starlink-specs-modal {
+            align-items: flex-end;
+            padding: 0;
+            overflow: hidden;
+        }
+        html.in-app #mission-modal-content,
+        html.in-app #rocket-modal-content,
+        html.in-app #site-modal-content,
+        html.in-app #orbit-modal-content,
+        html.in-app #landing-modal-content,
+        html.in-app #astronaut-modal-content,
+        html.in-app #news-list-modal-content,
+        html.in-app #flight-history-modal-content,
+        html.in-app #program-modal-content,
+        html.in-app #preflight-status-modal-content,
+        html.in-app #starlink-specs-modal-content {
+            margin: 0;
+            max-height: calc(100% - 2.25rem);
+            border-bottom-width: 0;
+            border-radius: 1.5rem 1.5rem 0 0;
+            animation: app-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        html.in-app #mission-modal-content::before,
+        html.in-app #rocket-modal-content::before,
+        html.in-app #site-modal-content::before,
+        html.in-app #orbit-modal-content::before,
+        html.in-app #landing-modal-content::before,
+        html.in-app #astronaut-modal-content::before,
+        html.in-app #news-list-modal-content::before,
+        html.in-app #flight-history-modal-content::before,
+        html.in-app #program-modal-content::before,
+        html.in-app #preflight-status-modal-content::before,
+        html.in-app #starlink-specs-modal-content::before {
+            content: "";
+            position: sticky;
+            top: 0.45rem;
+            z-index: 60;
+            flex-shrink: 0;
+            align-self: center;
+            width: 2.6rem;
+            height: 0.3rem;
+            margin-bottom: -0.3rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+        }
+        /* the day theme's white sheets: a gray handle */
+        html.in-app body.light-theme #mission-modal-content::before,
+        html.in-app body.light-theme #rocket-modal-content::before,
+        html.in-app body.light-theme #site-modal-content::before,
+        html.in-app body.light-theme #orbit-modal-content::before,
+        html.in-app body.light-theme #landing-modal-content::before,
+        html.in-app body.light-theme #astronaut-modal-content::before,
+        html.in-app body.light-theme #news-list-modal-content::before,
+        html.in-app body.light-theme #flight-history-modal-content::before,
+        html.in-app body.light-theme #program-modal-content::before,
+        html.in-app body.light-theme #preflight-status-modal-content::before,
+        html.in-app body.light-theme #starlink-specs-modal-content::before {
+            background: rgba(100, 116, 139, 0.6);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+        }
+        @keyframes app-sheet-up {
+            from { transform: translateY(100%); }
+            to { transform: none; }
+        }
+
+        /* pull down at the top of the page to refresh (see initAppPullToRefresh) */
+        #app-ptr {
+            display: none;
+        }
+        html.in-app #app-ptr {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 50%;
+            z-index: 59;
+            width: 2.5rem;
+            height: 2.5rem;
+            margin-left: -1.25rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #18181b;
+            border: 1px solid rgba(63, 63, 70, 0.9);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+            color: #34d399;
+            font-size: 1rem;
+            opacity: 0;
+            transform: translateY(-3rem);
+            pointer-events: none;
+        }
+        html.in-app body.light-theme #app-ptr {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+            color: #047857;
+        }
+        html.in-app body.mars-theme #app-ptr {
+            background: #271510;
+            border-color: rgba(140, 65, 35, 0.55);
+            color: #ff8c5a;
+        }
+        html.in-app body.moon-theme #app-ptr {
+            background: #121826;
+            border-color: rgba(80, 100, 140, 0.5);
+            color: #6abffb;
+        }
+        html.in-app #app-ptr.is-refreshing i {
+            animation: app-ptr-spin 0.8s linear infinite;
+        }
+        @keyframes app-ptr-spin {
+            to { transform: rotate(360deg); }
         }
 
     </style>
@@ -29537,6 +29761,8 @@ if (heroNameEl) {
             window._tabTransitionInProgress = true;
 
             window.currentMainTab = tab;
+            // the Android app shows its footer on the Info tab only (see html.in-app ... footer)
+            document.documentElement.setAttribute('data-main-tab', tab);
             const isLaunches = tab === 'launches';
             const incoming = isLaunches ? panelLaunches : panelMore;
             const outgoing = isLaunches ? panelMore : panelLaunches;
@@ -29583,6 +29809,8 @@ if (heroNameEl) {
                 // Hide outgoing, show incoming at opacity 0, then fade/slide in
                 outgoing.classList.add('hidden');
                 incoming.classList.remove('hidden');
+                // the Android app: back where this tab was left, like an app's bottom tabs (saved below)
+                if (inAppTabs) window.scrollTo(0, (window._appTabScroll && window._appTabScroll[tab]) || 0);
                 // The status headline may have changed while the Launches tab was hidden - fit it as the panel comes
                 // back. Only AFTER .tab-panel-preenter is on: measuring the panel before that fixed its starting
                 // opacity at 1, and the Launches tab lost its fade-in (02281ef).
@@ -29603,9 +29831,16 @@ if (heroNameEl) {
             // On mobile use instant jump only if not touch-locked; otherwise skip to avoid the
             // "thrown back to top" fight during normal browsing.
             const isMobileViewport = window.innerWidth < 640;
-            try {
-                window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
-            } catch (e) { /* ignore */ }
+            // The Android app keeps each tab's own place instead: saved here, restored as the tab comes back (finishSwap)
+            const inAppTabs = document.documentElement.classList.contains('in-app');
+            if (inAppTabs) {
+                window._appTabScroll = window._appTabScroll || {};
+                window._appTabScroll[isLaunches ? 'more' : 'launches'] = window.scrollY;
+            } else {
+                try {
+                    window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
+                } catch (e) { /* ignore */ }
+            }
 
             if (instant || outgoing.classList.contains('hidden')) {
                 // First paint / already hidden — swap without exit animation
@@ -29719,8 +29954,10 @@ if (heroNameEl) {
         // reading each close function), so a single generic loop covers all of them.
         // Closes the top open window; true when one was open. Used by Escape, and by the Android app's Back button
         // (window.appHandleBack, called by the app before it goes back a page or leaves).
-        function closeTopSiteWindow() {
-            const modalCloseOrder = [
+        // the site's windows, top-most first, each with its close function (Escape, the app's Back button, a sheet
+        // pulled down in the app)
+        function siteWindowClosers() {
+            return [
                 ['vehicle-gallery-modal', closeVehicleGallery],
                 ['starship-sim-modal', closeStarshipSim],
                 ['launch-cadence-modal', closeLaunchCadenceModal],
@@ -29741,7 +29978,9 @@ if (heroNameEl) {
                 ['rocket-modal', closeRocketModal],
                 ['mission-modal', closeModal],
             ];
-            for (const [id, closeFn] of modalCloseOrder) {
+        }
+        function closeTopSiteWindow() {
+            for (const [id, closeFn] of siteWindowClosers()) {
                 const modal = document.getElementById(id);
                 if (modal && !modal.classList.contains('hidden')) {
                     closeFn();
@@ -29771,8 +30010,205 @@ if (heroNameEl) {
                 setStarlinkBizBreakdownOpen(false);
                 return true;
             }
-            return closeTopSiteWindow();
+            if (closeTopSiteWindow()) return true;
+            // then from the Info tab back to the launches (the app's first tab), and only then out of the app
+            if (window.currentMainTab === 'more') {
+                switchMainTab('launches');
+                return true;
+            }
+            return false;
         };
+
+        // ------------------------------------------------------------------ the Android app's own feel
+        // Only inside the app (html.in-app, see the top of <head>). The newer app methods (setBarColors, haptic) are
+        // checked for one by one - an app installed before them still works with everything else.
+        const APP_SHEET_IDS = ['mission-modal', 'rocket-modal', 'site-modal', 'orbit-modal', 'landing-modal', 'astronaut-modal', 'news-list-modal', 'flight-history-modal', 'program-modal', 'preflight-status-modal', 'starlink-specs-modal'];
+
+        // a light tap of the phone's vibration
+        function appHaptic() {
+            try { if (window.AndroidApp && typeof window.AndroidApp.haptic === 'function') window.AndroidApp.haptic(); } catch (e) { }
+        }
+
+        // The phone's own bars take the site's colors: the top one the theme's color (the same <meta name="theme-color">
+        // the site already sets for each theme), the bottom one the tab bar's - repainted on every theme change.
+        function appCssColorToHex(color) {
+            const m = String(color || '').match(/rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/);
+            if (!m) return /^#[0-9a-f]{6}$/i.test(color) ? color : null;
+            return '#' + [m[1], m[2], m[3]].map(v => (+v).toString(16).padStart(2, '0')).join('');
+        }
+        function syncAppBarColors() {
+            if (!window.AndroidApp || typeof window.AndroidApp.setBarColors !== 'function') return;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const top = appCssColorToHex(meta ? meta.getAttribute('content') : '') || '#09090b';
+            const tabs = document.getElementById('main-tabs');
+            const bottom = (tabs && appCssColorToHex(getComputedStyle(tabs).backgroundColor)) || top;
+            if (syncAppBarColors.last === top + bottom) return;
+            syncAppBarColors.last = top + bottom;
+            try { window.AndroidApp.setBarColors(top, bottom); } catch (e) { }
+        }
+
+        // A card window that's a sheet: dragged down from its top (its own scroll at the very top) it follows the
+        // finger, and let go far or fast enough it slides away and closes - like the Back button (closeTopSiteWindow's
+        // own list, so a mission opened from another mission goes back to that one).
+        function initAppSheets() {
+            APP_SHEET_IDS.forEach(id => {
+                const sheet = document.getElementById(id + '-content');
+                if (!sheet) return;
+                let startX = 0, startY = null, startT = 0, dy = 0, dragging = false;
+                const settle = (to, then) => {
+                    sheet.style.transition = 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)';
+                    sheet.style.transform = to;
+                    setTimeout(() => {
+                        sheet.style.transition = '';
+                        if (then) then();
+                    }, 230);
+                };
+                sheet.addEventListener('touchstart', e => {
+                    dragging = false;
+                    dy = 0;
+                    startY = (e.touches.length === 1 && sheet.scrollTop <= 0) ? e.touches[0].clientY : null;
+                    if (startY === null) return;
+                    startX = e.touches[0].clientX;
+                    startT = Date.now();
+                }, { passive: true });
+                sheet.addEventListener('touchmove', e => {
+                    if (startY === null) return;
+                    const d = e.touches[0].clientY - startY;
+                    const dx = e.touches[0].clientX - startX;
+                    if (!dragging) {
+                        // sideways, or up (an ordinary scroll of the sheet): not a drag
+                        if (d < 0 || Math.abs(dx) > Math.abs(d)) {
+                            if (Math.abs(d) > 6 || Math.abs(dx) > 6) startY = null;
+                            return;
+                        }
+                        if (d < 8 || sheet.scrollTop > 0) return;
+                        dragging = true;
+                        sheet.style.transition = 'none';
+                        sheet.style.animation = 'none';
+                    }
+                    e.preventDefault();
+                    dy = Math.max(0, d - 8);
+                    sheet.style.transform = `translateY(${dy}px)`;
+                }, { passive: false });
+                const end = () => {
+                    if (!dragging) { startY = null; return; }
+                    dragging = false;
+                    startY = null;
+                    const fast = dy > 40 && dy / Math.max(1, Date.now() - startT) > 0.6;
+                    if (dy > Math.min(140, sheet.offsetHeight * 0.3) || fast) {
+                        appHaptic();
+                        settle('translateY(100%)', () => {
+                            const entry = siteWindowClosers().find(([wid]) => wid === id);
+                            if (entry) entry[1]();
+                            sheet.style.transform = '';
+                            sheet.style.animation = '';
+                        });
+                    } else {
+                        settle('', () => { sheet.style.animation = ''; });
+                    }
+                };
+                sheet.addEventListener('touchend', end);
+                sheet.addEventListener('touchcancel', end);
+            });
+        }
+
+        // Pull down at the very top of the page (no window open) to load everything fresh: a round button follows
+        // the finger down from under the top bar, and let go past the line it spins and the page reloads.
+        function initAppPullToRefresh() {
+            const ptr = document.createElement('div');
+            ptr.id = 'app-ptr';
+            ptr.setAttribute('aria-hidden', 'true');
+            ptr.innerHTML = '<i class="fa-solid fa-arrow-rotate-right"></i>';
+            document.body.appendChild(ptr);
+            const icon = ptr.firstChild;
+            const PULL_MAX = 110, PULL_FIRE = 72;
+            let startX = 0, startY = null, pull = 0, active = false, armed = false, refreshing = false;
+            const navBottom = () => {
+                const nav = document.querySelector('body > nav');
+                return nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+            };
+            const show = (y, animate) => {
+                ptr.style.transition = animate ? 'transform 0.25s ease, opacity 0.25s ease' : 'none';
+                ptr.style.top = navBottom() + 'px';
+                ptr.style.transform = `translateY(${y - 48}px)`;
+                ptr.style.opacity = y <= 0 ? '0' : String(Math.min(1, y / PULL_FIRE));
+            };
+            const windowOpen = () => (window._openModalCount || 0) > 0
+                || siteWindowClosers().some(([wid]) => { const el = document.getElementById(wid); return el && !el.classList.contains('hidden'); });
+            document.addEventListener('touchstart', e => {
+                if (refreshing || e.touches.length !== 1 || window.scrollY > 0 || windowOpen()) { startY = null; return; }
+                if (e.target.closest && e.target.closest('#main-tabs-bar, #mode-menu, iframe')) { startY = null; return; }
+                startY = e.touches[0].clientY;
+                startX = e.touches[0].clientX;
+                active = false;
+                pull = 0;
+            }, { passive: true });
+            document.addEventListener('touchmove', e => {
+                if (startY === null) return;
+                const d = e.touches[0].clientY - startY;
+                const dx = e.touches[0].clientX - startX;
+                if (!active) {
+                    if (d < 0 || Math.abs(dx) > Math.abs(d)) {
+                        if (Math.abs(d) > 6 || Math.abs(dx) > 6) startY = null;
+                        return;
+                    }
+                    if (d < 10 || window.scrollY > 0) return;
+                    active = true;
+                    armed = false;
+                }
+                pull = Math.min(PULL_MAX, (d - 10) * 0.55);
+                show(pull, false);
+                icon.style.transform = `rotate(${pull * 3.2}deg)`;
+                if (pull >= PULL_FIRE && !armed) { armed = true; appHaptic(); }
+                if (pull < PULL_FIRE) armed = false;
+            }, { passive: true });
+            const end = () => {
+                if (startY === null || !active) { startY = null; return; }
+                startY = null;
+                active = false;
+                if (pull >= PULL_FIRE) {
+                    refreshing = true;
+                    show(PULL_FIRE, true);
+                    icon.style.transform = '';
+                    ptr.classList.add('is-refreshing');
+                    setTimeout(() => location.reload(), 350);
+                } else {
+                    show(0, true);
+                }
+            };
+            document.addEventListener('touchend', end);
+            document.addEventListener('touchcancel', end);
+        }
+
+        function initAndroidAppShell() {
+            if (!document.documentElement.classList.contains('in-app')) return;
+            document.documentElement.setAttribute('data-main-tab', window.currentMainTab || 'launches');
+            initAppSheets();
+            initAppPullToRefresh();
+            // a light tap on the tabs, a reminder bell and the theme choice; the tab that's already showing, tapped
+            // again, goes back to its top
+            document.addEventListener('click', e => {
+                const el = e.target.closest && e.target.closest('.main-tab-btn, [data-reminder-bell], .mode-option');
+                if (!el) return;
+                appHaptic();
+                if (el.classList.contains('main-tab-btn') && el.dataset.tab === window.currentMainTab) {
+                    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (err) { window.scrollTo(0, 0); }
+                }
+            }, true);
+            syncAppBarColors();
+            const meta = document.querySelector('meta[name="theme-color"]');
+            // again once the theme's color fade (up to half a second) is over, for the tab bar's final color
+            let repaintTimer = null;
+            const repaint = () => {
+                syncAppBarColors();
+                clearTimeout(repaintTimer);
+                repaintTimer = setTimeout(syncAppBarColors, 650);
+            };
+            if (meta) new MutationObserver(repaint).observe(meta, { attributes: true, attributeFilter: ['content'] });
+            new MutationObserver(repaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAndroidAppShell);
+        else initAndroidAppShell();
 
         window.onload = init;
     </script>

@@ -3,23 +3,36 @@ package com.spacexfantracker.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.MediaStore;
+import android.text.TextUtils;
 import android.util.Base64;
+import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -27,10 +40,14 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import org.json.JSONArray;
 
@@ -46,16 +63,31 @@ import java.io.OutputStream;
  *  - launch reminders as system alarms + notifications, which arrive even when the app is closed
  *  - the share sheet, and saving a poster / calendar file (a WebView has neither navigator.share nor downloads)
  *  - the phone's Back button closes the site's open window first
+ *  - the phone's top and bottom bars in the site theme's colors, a light vibration on the site's main buttons
+ *
+ * And of its own: a splash screen (the logo) while the site loads, the site's messages as the phone's own dialogs,
+ * and a "no connection" screen that reloads by itself once the phone is back online.
  */
 public class MainActivity extends Activity {
     static final String SITE_URL = "https://spacexfantracker.com/";
     private static final String SITE_HOST = "spacexfantracker.com";
     private static final int REQUEST_NOTIFICATIONS = 1;
+    // the splash stays at least this long (no flash of the logo on a fast load), and at most this long
+    private static final long SPLASH_MIN_MS = 700;
+    private static final long SPLASH_MAX_MS = 8000;
 
     private WebView webView;
     private FrameLayout root;
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
+    private View splash;
+    private long splashShownAt;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    // the site theme's colors for the phone's bars (setBarColors) - the app's own dark until the site sends them
+    private int barTop = Color.parseColor("#09090B");
+    private int barBottom = Color.parseColor("#09090B");
+    private String offlineUrl;   // the page that failed to load while the phone was offline, loaded again once it's back
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override
@@ -67,8 +99,14 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(Color.parseColor("#09090B"));
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#09090B"));
+        // an app's scrolling: no glow at the ends, no scroll bars
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setVerticalScrollBarEnabled(false);
+        webView.setHorizontalScrollBarEnabled(false);
         root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (savedInstanceState == null) showSplash();
         setContentView(root);
+        watchNetwork();
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
@@ -133,6 +171,13 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (networkCallback != null) {
+            try {
+                ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(networkCallback);
+            } catch (Exception ignored) { }
+            networkCallback = null;
+        }
         if (webView != null) {
             webView.destroy();
             webView = null;
@@ -163,6 +208,108 @@ public class MainActivity extends Activity {
         } catch (PackageManager.NameNotFoundException e) {
             return "?";
         }
+    }
+
+    // ------------------------------------------------------------------ the splash screen
+    // The logo on black over the page while it loads - the same black the system shows as the app opens, so the two
+    // read as one screen. Gone (faded) once the site has painted, or after SPLASH_MAX_MS whatever happens.
+
+    private void showSplash() {
+        FrameLayout s = new FrameLayout(this);
+        s.setBackgroundColor(Color.BLACK);
+        s.setClickable(true);   // the page under it can't be tapped yet
+        int logoSize = dp(200);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.mipmap.ic_launcher_foreground);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        s.addView(logo, new FrameLayout.LayoutParams(logoSize, logoSize, Gravity.CENTER));
+        ProgressBar spinner = new ProgressBar(this);
+        spinner.setIndeterminate(true);
+        spinner.setIndeterminateTintList(ColorStateList.valueOf(Color.parseColor("#10B981")));
+        FrameLayout.LayoutParams spinnerLp = new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+        spinnerLp.bottomMargin = dp(72);
+        s.addView(spinner, spinnerLp);
+        root.addView(s, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        logo.setAlpha(0f);
+        logo.setScaleX(0.92f);
+        logo.setScaleY(0.92f);
+        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(350).start();
+        splash = s;
+        splashShownAt = SystemClock.uptimeMillis();
+        setBars(Color.BLACK, Color.BLACK);
+        handler.postDelayed(this::hideSplash, SPLASH_MAX_MS);
+    }
+
+    private void hideSplash() {
+        if (splash == null) return;
+        long wait = SPLASH_MIN_MS - (SystemClock.uptimeMillis() - splashShownAt);
+        if (wait > 0) {
+            handler.postDelayed(this::hideSplash, wait);
+            return;
+        }
+        View s = splash;
+        splash = null;
+        handler.removeCallbacksAndMessages(null);
+        setBars(barTop, barBottom);
+        s.animate().alpha(0f).setDuration(260).withEndAction(() -> root.removeView(s)).start();
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    // ------------------------------------------------------------------ the phone's bars
+
+    /** the top (status) and bottom (navigation) bars' colors, with dark or light icons on them to match */
+    private void setBars(int top, int bottom) {
+        Window w = getWindow();
+        w.setStatusBarColor(top);
+        w.setNavigationBarColor(bottom);
+        WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(w, w.getDecorView());
+        bars.setAppearanceLightStatusBars(Color.luminance(top) > 0.5f);
+        bars.setAppearanceLightNavigationBars(Color.luminance(bottom) > 0.5f);
+    }
+
+    // ------------------------------------------------------------------ offline
+
+    /** Back online after a page failed to load: that page again, by itself */
+    private void watchNetwork() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    runOnUiThread(() -> {
+                        if (offlineUrl == null || webView == null) return;
+                        String url = offlineUrl;
+                        offlineUrl = null;
+                        webView.loadUrl(url);
+                    });
+                }
+            };
+            cm.registerDefaultNetworkCallback(networkCallback);
+        } catch (Exception e) {
+            networkCallback = null;
+        }
+    }
+
+    private String offlinePage(String retryUrl) {
+        String safeUrl = TextUtils.htmlEncode(retryUrl);
+        return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>html,body{margin:0;height:100%;background:#09090b;color:#e4e4e7;font-family:sans-serif;"
+                + "-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}"
+                + "body{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 32px;box-sizing:border-box}"
+                + ".ic{width:88px;height:88px;border-radius:50%;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;margin-bottom:24px}"
+                + "h1{font-size:20px;margin:0 0 10px;font-weight:700}p{font-size:15px;line-height:1.5;color:#a1a1aa;margin:0 0 28px;max-width:320px}"
+                + "a{color:#000;background:#10b981;padding:13px 32px;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px}"
+                + "</style></head><body dir='auto'>"
+                + "<div class='ic'><svg width='44' height='44' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                + "<path d='M2 2l20 20'/><path d='M8.5 16.5a5 5 0 0 1 7 0'/><path d='M2 8.82a15 15 0 0 1 4.17-2.65'/>"
+                + "<path d='M10.66 5c4.01-.36 8.14.9 11.34 3.76'/><path d='M16.85 11.25a10 10 0 0 1 2.22 1.68'/><path d='M5 13a10 10 0 0 1 5.24-2.76'/>"
+                + "<path d='M12 20h.01'/></svg></div>"
+                + "<h1>" + TextUtils.htmlEncode(getString(R.string.offline_title)) + "</h1>"
+                + "<p>" + TextUtils.htmlEncode(getString(R.string.offline_text)) + "</p>"
+                + "<a href='" + safeUrl + "'>" + TextUtils.htmlEncode(getString(R.string.offline_retry)) + "</a></body></html>";
     }
 
     private void hideFullscreen() {
@@ -203,20 +350,46 @@ public class MainActivity extends Activity {
             return true;
         }
 
+        // the site has painted: the splash can go
+        @Override
+        public void onPageCommitVisible(WebView view, String url) {
+            hideSplash();
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            hideSplash();
+        }
+
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (!request.isForMainFrame()) return;
-            String html = "<html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head>"
-                    + "<body style='background:#09090b;color:#e4e4e7;font-family:sans-serif;display:flex;flex-direction:column;"
-                    + "align-items:center;justify-content:center;height:100vh;margin:0;text-align:center'>"
-                    + "<div style='font-size:20px;margin-bottom:20px'>" + getString(R.string.offline_title) + "</div>"
-                    + "<a href='" + SITE_URL + "' style='color:#000;background:#10b981;padding:12px 28px;border-radius:14px;"
-                    + "text-decoration:none;font-weight:bold'>" + getString(R.string.offline_retry) + "</a></body></html>";
-            view.loadDataWithBaseURL(SITE_URL, html, "text/html", "utf-8", SITE_URL);
+            String failed = request.getUrl() != null && isSiteHost(request.getUrl().getHost()) ? request.getUrl().toString() : SITE_URL;
+            offlineUrl = failed;
+            barTop = barBottom = Color.parseColor("#09090B");
+            if (splash == null) setBars(barTop, barBottom);
+            view.loadDataWithBaseURL(SITE_URL, offlinePage(failed), "text/html", "utf-8", null);
+            hideSplash();
         }
     }
 
     private class ChromeClient extends WebChromeClient {
+        // the site's messages (a reminder set, a copied link...) as the phone's own dialog - not a web page's box
+        // titled with the site's address
+        @Override
+        public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+            if (isFinishing()) {
+                result.cancel();
+                return true;
+            }
+            new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, (d, w) -> result.confirm())
+                    .setOnCancelListener(d -> result.cancel())
+                    .show();
+            return true;
+        }
+
         // a video player's full-screen button
         @Override
         public void onShowCustomView(View view, CustomViewCallback callback) {
@@ -321,6 +494,29 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String version() {
             return appVersion();
+        }
+
+        /** the site theme's colors ("#rrggbb") for the phone's top and bottom bars - see the site's syncAppBarColors */
+        @JavascriptInterface
+        public void setBarColors(String top, String bottom) {
+            runOnUiThread(() -> {
+                try {
+                    barTop = Color.parseColor(top);
+                    barBottom = Color.parseColor(bottom);
+                } catch (Exception e) {
+                    return;
+                }
+                if (splash == null) setBars(barTop, barBottom);
+            });
+        }
+
+        /** a light tap of the vibration (only if the phone's touch vibration is on) */
+        @JavascriptInterface
+        public void haptic() {
+            runOnUiThread(() -> {
+                if (webView != null) webView.performHapticFeedback(Build.VERSION.SDK_INT >= 23
+                        ? HapticFeedbackConstants.CONTEXT_CLICK : HapticFeedbackConstants.VIRTUAL_KEY);
+            });
         }
     }
 }
