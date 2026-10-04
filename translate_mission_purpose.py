@@ -199,10 +199,69 @@ Rules:
 - For "Starlink" use exactly: {starlink_terms}
 - For "Falcon Heavy" use exactly: {falcon_heavy_terms}
 - Do not add labels, markdown, or commentary.
-
+{examples_block}
 Names:
 {names_block}
 """
+
+# Translation memory for NAME_PROMPT. Each name was translated on its own, whenever it first
+# appeared, so the same term could come out differently from one name to the next - "SDA Tranche 1
+# Transport Layer A" kept "Tranche" in Hebrew while "SDA Tranche 2 Transport Layer D", translated
+# later, got "טראנץ'" (reported live). Instead of fixing terms one by one, every batch is shown
+# how the site already translated the most similar names, and told to word the same terms the same way.
+NAME_EXAMPLES_INTRO = """
+Translations this site ALREADY shows for related names. Word the same terms exactly the same way
+in your translations (a term kept in English there stays in English; a term translated there is
+translated the same way), so names read consistently across the site:
+"""
+# Words too common to say two names are related (every name has a rocket, most have numbers)
+NAME_EXAMPLE_STOPWORDS = {"falcon", "heavy", "starship", "flight", "mission", "and", "the", "of", "x"}
+MAX_EXAMPLES_PER_NAME = 3
+MAX_EXAMPLES_PER_BATCH = 24
+
+
+def name_tokens(name: str) -> set:
+    return {t for t in re.findall(r"[a-z][a-z0-9]+", name.lower()) if t not in NAME_EXAMPLE_STOPWORDS}
+
+
+def pick_name_examples(names: list, names_store: dict) -> list:
+    """[(english, {lang: translation})] - the stored names that share the rarest words with the
+    names about to be translated. Only entries that know their English original ("en") can be matched."""
+    known = [(e["en"], e) for e in names_store.values()
+             if isinstance(e, dict) and isinstance(e.get("en"), str) and e["en"] not in names]
+    if not known:
+        return []
+    doc_freq = {}
+    known_tokens = []
+    for en, entry in known:
+        toks = name_tokens(en)
+        known_tokens.append(toks)
+        for t in toks:
+            doc_freq[t] = doc_freq.get(t, 0) + 1
+    picked = []
+    seen = set()
+    for name in names:
+        toks = name_tokens(name)
+        scored = []
+        for (en, entry), ktoks in zip(known, known_tokens):
+            shared = toks & ktoks
+            if shared:
+                scored.append((sum(1.0 / doc_freq[t] for t in shared), en, entry))
+        scored.sort(key=lambda x: -x[0])
+        for _, en, entry in scored[:MAX_EXAMPLES_PER_NAME]:
+            if en not in seen:
+                seen.add(en)
+                picked.append((en, entry))
+    return picked[:MAX_EXAMPLES_PER_BATCH]
+
+
+def name_examples_block(examples: list, langs: list) -> str:
+    lines = []
+    for en, entry in examples:
+        shown = [f"{lang}: {entry[lang]}" for lang in langs if isinstance(entry.get(lang), str) and entry[lang].strip()]
+        if shown:
+            lines.append(f"- {en}\n  " + "\n  ".join(shown))
+    return (NAME_EXAMPLES_INTRO + "\n".join(lines) + "\n") if lines else ""
 
 
 # Official update-log entries for a launch (Launch Library's launch.updates[].comment - terse
@@ -555,7 +614,7 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
     raise RuntimeError(last_error)
 
 
-def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
+def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: list = None) -> dict:
     """Returns {lang: {original_name: translated_name}} for whichever languages came back as a
     correctly-sized array - see NAME_PROMPT's own comment for why this is array-of-translations
     (index-matched to the input order) rather than an object keyed by the original name: the
@@ -574,6 +633,7 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list) -> dict:
             starship_terms=starship_terms,
             starlink_terms=starlink_terms,
             falcon_heavy_terms=falcon_heavy_terms,
+            examples_block=name_examples_block(examples or [], langs),
             names_block=names_block,
         )}]}],
         "generationConfig": {
@@ -1198,6 +1258,8 @@ def main() -> int:
         existing_name_entry = names_store.get(name_hash(raw_name))
         if not isinstance(existing_name_entry, dict):
             existing_name_entry = {}
+        elif existing_name_entry.get("en") != raw_name:
+            existing_name_entry["en"] = raw_name   # see pick_name_examples
         if name_langs_complete(existing_name_entry, list(LANG_NAMES)):
             name_reused += 1
             continue
@@ -1219,13 +1281,15 @@ def main() -> int:
         for n in chunk:
             existing = names_store.get(name_hash(n))
             merged_by_name[n] = dict(existing) if isinstance(existing, dict) else {}
+            merged_by_name[n]["en"] = n
+        chunk_examples = pick_name_examples(chunk, names_store)
 
         for batch in LANG_BATCHES:
             names_needing_batch = [n for n in chunk if not name_langs_complete(merged_by_name[n], batch)]
             if not names_needing_batch:
                 continue
             try:
-                result = call_gemini_name_batch(api_key, names_needing_batch, batch)
+                result = call_gemini_name_batch(api_key, names_needing_batch, batch, chunk_examples)
                 for lang, name_map in result.items():
                     for n, translated_name in name_map.items():
                         if n in merged_by_name:
