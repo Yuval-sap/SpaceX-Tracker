@@ -4689,7 +4689,11 @@
         /* The orbit diagram and its title stay in view while the dossier below scrolls, so a picked card's ring
            can be seen lighting up. Its own glow (background-image) is kept; the base colour is the modal's, so
            the text scrolling underneath doesn't show through. */
-        #orbit-modal .orbit-hero-area { position: sticky; top: 0; z-index: 30; background-color: inherit; }
+        /* Only on screens tall enough to leave room under it: on a phone held sideways the diagram alone is taller
+           than the whole modal, so pinned it hid everything below it - there it scrolls with the page as before. */
+        @media (min-height: 640px) {
+            #orbit-modal .orbit-hero-area { position: sticky; top: 0; z-index: 30; background-color: inherit; }
+        }
         #orbit-other-cards .orbit-card.orbit-card-selected {
             border-color: var(--orbit-accent) !important;
             box-shadow: 0 0 0 1px var(--orbit-accent), 0 0 18px 2px var(--orbit-accent-soft);
@@ -6301,6 +6305,97 @@
                 latestLaunchCopyById.set(String(m.id), best);
                 return best;
             });
+        }
+
+        // The launches saved on the device (spacex_launches_cache) without what this site never reads: Launch
+        // Library's detailed launches are ~24KB each - mostly agency / manufacturer / program write-ups, its own
+        // timeline, rocket specs - and a year of them (~170) came to ~4MB, at the edge of what a phone lets a site
+        // keep, so phones failed to save them. Everything mapLaunchToSchema and the merge code read is kept (every
+        // top-level value as it is; inside the nested objects, the fields listed below). Only the saved copy is
+        // trimmed - the launches in memory stay as received.
+        function pickLaunchFields(obj, keys) {
+            if (!obj || typeof obj !== 'object') return obj;
+            const out = {};
+            keys.forEach(k => { if (obj[k] !== undefined) out[k] = obj[k]; });
+            return out;
+        }
+        function slimLaunchForCache(l) {
+            if (!l || typeof l !== 'object' || Array.isArray(l)) return l;
+            const out = Object.assign({}, l);
+            delete out.timeline;   // Launch Library's own event timeline - the site reads SpaceX's (fetchRealMissionTimeline)
+            delete out.infoURLs;
+            delete out.info_urls;
+            if (out.launch_service_provider && typeof out.launch_service_provider === 'object') {
+                out.launch_service_provider = pickLaunchFields(out.launch_service_provider, ['id', 'name', 'abbrev', 'type', 'country_code']);
+            }
+            if (out.mission && typeof out.mission === 'object') {
+                out.mission = Object.assign({}, out.mission);
+                if (Array.isArray(out.mission.agencies)) {
+                    out.mission.agencies = out.mission.agencies.map(a => pickLaunchFields(a, ['id', 'name', 'abbrev', 'type']));
+                }
+            }
+            if (Array.isArray(out.program)) {
+                out.program = out.program.map(p => pickLaunchFields(p, ['id', 'name', 'description', 'image_url', 'start_date']));
+            }
+            if (out.pad && typeof out.pad === 'object') {
+                const pad = pickLaunchFields(out.pad, ['id', 'name', 'latitude', 'longitude', 'location']);
+                if (pad.location && typeof pad.location === 'object') pad.location = pickLaunchFields(pad.location, ['id', 'name', 'country_code']);
+                out.pad = pad;
+            }
+            if (Array.isArray(out.updates)) {
+                out.updates = out.updates.map(u => pickLaunchFields(u, ['id', 'comment', 'created_on', 'info_url']));
+            }
+            ['vidURLs', 'vid_urls'].forEach(key => {
+                if (Array.isArray(out[key])) {
+                    out[key] = out[key].map(v => (v && typeof v === 'object')
+                        ? pickLaunchFields(v, ['url', 'priority', 'publisher', 'live', 'start_time', 'end_time', 'title', 'type'])
+                        : v);
+                }
+            });
+            if (Array.isArray(out.mission_patches)) {
+                out.mission_patches = out.mission_patches.map(p => pickLaunchFields(p, ['id', 'name', 'priority', 'image_url']));
+            }
+            if (out.rocket && typeof out.rocket === 'object') {
+                const r = Object.assign({}, out.rocket);
+                if (r.configuration && typeof r.configuration === 'object') {
+                    r.configuration = pickLaunchFields(r.configuration, ['id', 'name', 'full_name', 'family', 'variant']);
+                }
+                if (Array.isArray(r.launcher_stage)) {
+                    r.launcher_stage = r.launcher_stage.map(st => {
+                        if (!st || typeof st !== 'object') return st;
+                        const o = pickLaunchFields(st, ['id', 'type', 'reused', 'launcher_flight_number', 'previous_flight_date', 'turnaround_time_days', 'launcher', 'landing']);
+                        if (o.launcher && typeof o.launcher === 'object') o.launcher = pickLaunchFields(o.launcher, ['id', 'serial_number', 'flights', 'flight_proven']);
+                        if (o.landing && typeof o.landing === 'object') {
+                            const ld = pickLaunchFields(o.landing, ['id', 'attempt', 'success', 'location', 'type']);
+                            if (ld.location && typeof ld.location === 'object') ld.location = pickLaunchFields(ld.location, ['id', 'name', 'abbrev']);
+                            if (ld.type && typeof ld.type === 'object') ld.type = pickLaunchFields(ld.type, ['id', 'name', 'abbrev']);
+                            o.landing = ld;
+                        }
+                        return o;
+                    });
+                }
+                if (r.spacecraft_stage && typeof r.spacecraft_stage === 'object') {
+                    const sc = pickLaunchFields(r.spacecraft_stage, ['id', 'spacecraft', 'launch_crew']);
+                    if (sc.spacecraft && typeof sc.spacecraft === 'object') {
+                        sc.spacecraft = pickLaunchFields(sc.spacecraft, ['id', 'name', 'serial_number', 'is_placeholder', 'flights_count', 'flight_number']);
+                    }
+                    if (Array.isArray(sc.launch_crew)) {
+                        sc.launch_crew = sc.launch_crew.map(c => {
+                            if (!c || typeof c !== 'object') return c;
+                            const o = pickLaunchFields(c, ['id', 'role', 'astronaut']);
+                            if (o.astronaut && typeof o.astronaut === 'object') {
+                                const a = pickLaunchFields(o.astronaut, ['id', 'name', 'bio', 'profile_image', 'profile_image_thumbnail', 'agency']);
+                                if (a.agency && typeof a.agency === 'object') a.agency = pickLaunchFields(a.agency, ['id', 'name', 'abbrev']);
+                                o.astronaut = a;
+                            }
+                            return o;
+                        });
+                    }
+                    r.spacecraft_stage = sc;
+                }
+                out.rocket = r;
+            }
+            return out;
         }
 
         let realMissionTimelineFetchGen = 0;
@@ -12238,8 +12333,11 @@
         </div>
 
         <div class="mb-4">
-            <div class="flex justify-between items-center mb-3">
-                <div>
+            <!-- flex-wrap: where the title and the Launch Cadence button don't both fit on a phone (the button's
+                 longer labels - "Ritmo de Lanzamientos", "Cadence de Lancement"...), the button drops to its own
+                 line at the row's end instead of pushing the page wider than the screen. Fits as before otherwise. -->
+            <div class="flex flex-wrap justify-between items-center gap-x-3 gap-y-2 mb-3">
+                <div class="min-w-0 max-w-full">
                     <h3
                         class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-2 text-white transition-colors duration-500">
                         <i class="fa-solid fa-rocket text-emerald-400 text-base shrink-0"></i> <span id="i18n-launches-section"
@@ -12252,7 +12350,7 @@
                      row's own title - lg:hidden companion to the desktop button beside
                      #year-count-box further down, so exactly one of the two ever shows. -->
                 <button type="button" onclick="openLaunchCadenceModal()"
-                    class="flex lg:hidden items-center gap-1.5 bg-zinc-900 border border-zinc-800/80 rounded-xl px-3 py-2 text-emerald-400 shrink-0 transition-colors duration-500 hover:border-emerald-500/50">
+                    class="flex lg:hidden items-center gap-1.5 bg-zinc-900 border border-zinc-800/80 rounded-xl px-3 py-2 text-emerald-400 shrink-0 ms-auto transition-colors duration-500 hover:border-emerald-500/50">
                     <i class="fa-solid fa-chart-line text-sm"></i>
                     <span id="launch-cadence-btn-label-mobile" class="text-xs font-bold uppercase notranslate" translate="no" lang="en">Launch Cadence</span>
                 </button>
@@ -20285,7 +20383,7 @@
                     // hand, so it's now isolated in its own try/catch after the render.
                     processLaunchData(combinedData);
                     try {
-                        localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData));
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(combinedData.map(slimLaunchForCache)));
                         localStorage.setItem(CACHE_KEY + '_timestamp', Date.now().toString());
                     } catch (e) { }
                 } else {
