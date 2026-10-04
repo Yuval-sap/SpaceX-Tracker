@@ -1,4 +1,4 @@
-// Cloudflare Worker for spacexfantracker.com - three jobs:
+// Cloudflare Worker for spacexfantracker.com - four jobs:
 //
 // 1. GET /metar?ids=KVBG  - live surface observations (METAR / SPECI) for the stations next to SpaceX's
 //    launch sites, for the site's weather boxes (index.html, fetchSiteObservation).
@@ -10,18 +10,28 @@
 // 2. GET /news  - the headlines for the site's news ticker (index.html, loadNewsTicker), read from the same
 //    five RSS feeds the page used to read through rss2json, each with its translation into the site's
 //    languages by Gemini. A headline is translated once and kept for good (KV); a new one is sent to Gemini in
-//    the background, at most one request every 10 minutes (a few headlines a day - well inside the free tier),
+//    the background, at most one request every 3 minutes (a few headlines a day - well inside the free tier),
 //    and until then goes out untranslated, so the page lets Google Translate handle it meanwhile.
 //
 // 3. POST /updates  {texts: [...]}  - Gemini translations of Starship "Pre-Launch Updates" log lines (index.html,
 //    renderModalUpdates). The GitHub job translates them every 4 hours; a line it hasn't reached yet used to go to
 //    Google Translate meanwhile ("FAA launch license acquired" -> "רישיון השיגור של FAA נרכש"). The page now asks
 //    here first: a line is translated once, right then, and kept for good (KV); Gemini is asked at most once every
-//    20 seconds, and only for lines of the kind the log has (short, a handful at a time).
+//    20 seconds, and only for lines of the kind the log has (short, a handful at a time). Only the site's own
+//    pages may ask (Origin check), so nobody else can fill the KV or use up the Gemini quota through it.
+//
+// 4. GET /yt-live?channel=<id>  - the live videos now on air on one of the two YouTube channels the site watches
+//    during a launch (Spaceflight Now, NASA). YouTube's search costs 100 of the 10,000 daily quota units, and every
+//    visitor's page used to search by itself every 20 seconds - a few viewers during a launch used up the whole day.
+//    Here one answer per channel is kept for 60 seconds for everyone (at most ~1,440 searches a day per channel
+//    even if the page is open all day - and in practice only around launches).
 //
 // Needs (Cloudflare dashboard -> this worker -> Settings):
 //   - KV namespace binding  NEWS_KV   (Storage & databases -> KV -> create one, then bind it here)
 //   - Secret                GEMINI_API_KEY  (same key as the GitHub Actions secret)
+//   - Secret                YOUTUBE_API_KEY (for /yt-live; without it /yt-live answers 503 and the page asks YouTube itself) -
+//                           the same key as in index.html; the site's address is sent as the Referer, which is what the
+//                           key's "Websites" restriction in Google Cloud Console checks
 // Without them /news still works, just with no translations.
 
 const STATIONS = new Set([
@@ -32,6 +42,8 @@ const STATIONS = new Set([
 ]);
 const METAR_CACHE_SECONDS = 120;
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+// pages allowed to use POST /updates (the site, its GitHub Pages address, and a local copy while developing)
+const SITE_ORIGINS = /^https:\/\/(?:www\.)?spacexfantracker\.com$|^https:\/\/yuval-sap\.github\.io$|^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i;
 
 export default {
   async fetch(request, env, ctx) {
@@ -40,7 +52,11 @@ export default {
     if (url.pathname === '/metar') return metar(url, ctx);
     if (url.pathname === '/news') return news(url, env, ctx);
     if (url.pathname === '/news/status') return newsStatus(env);
-    if (url.pathname === '/updates' && request.method === 'POST') return updates(request, env);
+    if (url.pathname === '/updates' && request.method === 'POST') {
+      if (!SITE_ORIGINS.test(request.headers.get('Origin') || '')) return json({ error: 'forbidden' }, 403);
+      return updates(request, env);
+    }
+    if (url.pathname === '/yt-live') return ytLive(url, env, ctx);
     return new Response('Not found', { status: 404, headers: CORS });
   },
 };
@@ -169,19 +185,25 @@ async function newsStatus(env) {
   const out = { kvBound: !!kv, geminiKeySet: !!env.GEMINI_API_KEY };
   if (kv) {
     out.nextGeminiAt = new Date(Number(await kv.get('meta:next-gemini-at-v2')) || 0).toISOString();
-    out.lastAttempt = await kv.get('meta:last-attempt', 'json');
     out.attempts = await kv.get('meta:attempts', 'json');
+    out.lastAttempt = (out.attempts || [])[0] || null;
   }
   return json(out, 200, { 'Cache-Control': 'no-store' });
 }
-// (KV's free tier allows 1,000 writes a day: one log entry per model tried, a round of news translation is ~10 writes)
-async function noteAttempt(kv, result) {
+// KV's free tier allows 1,000 writes a day. The models tried in one round are collected and written as ONE log
+// entry at the end of the round (it used to be two writes per model tried - with headlines that kept failing, a
+// round every 3 minutes, that alone could pass the daily limit).
+function newAttemptLog() { return []; }
+async function noteAttempt(kv, result, round) {
+  const entry = { at: new Date().toISOString(), ...result };
+  if (round) { round.push(entry); return; }
+  await writeAttempts(kv, [entry]);
+}
+async function writeAttempts(kv, entries) {
+  if (!entries || !entries.length) return;
   try {
-    const entry = { at: new Date().toISOString(), ...result };
-    await kv.put('meta:last-attempt', JSON.stringify(entry));
     const log = (await kv.get('meta:attempts', 'json')) || [];
-    log.unshift(entry);
-    await kv.put('meta:attempts', JSON.stringify(log.slice(0, 12)));
+    await kv.put('meta:attempts', JSON.stringify([...entries.slice().reverse(), ...log].slice(0, 12)));
   } catch (e) { }
 }
 
@@ -211,11 +233,27 @@ async function hash(s) {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Two visitors arriving together would both read the same 'next-gemini-at' before either had written it (KV has no
+// atomic update), and both send the round to Gemini. Requests that land on the same worker instance - nearly all of
+// them at this traffic - are held off here, in memory, before KV is even read.
+let geminiRoundBusyUntil = 0;
 async function translateLater(items, env) {
   const kv = env.NEWS_KV, now = Date.now();
+  if (now < geminiRoundBusyUntil) return;
+  geminiRoundBusyUntil = now + GEMINI_MIN_GAP_MS;
   const last = Number(await kv.get('meta:next-gemini-at-v2')) || 0;
-  if (now < last) return;                                       // one request per 10 minutes at most
+  if (now < last) { geminiRoundBusyUntil = last; return; }      // one request per 3 minutes at most
   await kv.put('meta:next-gemini-at-v2', String(now + GEMINI_MIN_GAP_MS));
+  const round = newAttemptLog();
+  try {
+    const ok = await translateRound(items, env, kv, now, round);
+    // a round that got nothing (errors, overloaded models) waits 15 minutes, not 3 - fewer KV writes while it lasts
+    if (!ok && !round.quotaHit) await kv.put('meta:next-gemini-at-v2', String(now + 15 * 60 * 1000));
+  } finally {
+    await writeAttempts(kv, round);
+  }
+}
+async function translateRound(items, env, kv, now, round) {
   const langs = Object.keys(LANGS);
   const prompt = `You translate short news headlines about spaceflight (SpaceX, NASA, ESA, Blue Origin and the space industry) from English for a news ticker on a rocket-launch tracking website.
 
@@ -242,19 +280,19 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
     let r;
     try {
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body, signal: AbortSignal.timeout(25000) });
-    } catch (e) { await noteAttempt(kv, { model, error: (e.name === 'TimeoutError' ? 'timeout: ' : 'network: ') + e.message }); return; }
+    } catch (e) { await noteAttempt(kv, { model, error: (e.name === 'TimeoutError' ? 'timeout: ' : 'network: ') + e.message }, round); return false; }
     const errText = r.ok ? '' : (await r.text()).slice(0, 300);
-    if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }   // model not available on this key - next one
-    if (r.status === 429) { quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }); continue; }   // this model's quota is used up - next one
+    if (r.status === 404 || r.status === 400) { await noteAttempt(kv, { model, status: r.status, error: errText }, round); continue; }   // model not available on this key - next one
+    if (r.status === 429) { quotaHit = true; round.quotaHit = true; await noteAttempt(kv, { model, status: 429, error: errText }, round); continue; }   // this model's quota is used up - next one
     // overloaded / server error (503 'high demand', 500...): a temporary problem with this model - next one
-    if (r.status >= 500) { await noteAttempt(kv, { model, status: r.status, error: errText }); continue; }
-    if (!r.ok) { await noteAttempt(kv, { model, status: r.status, error: errText }); return; }
+    if (r.status >= 500) { await noteAttempt(kv, { model, status: r.status, error: errText }, round); continue; }
+    if (!r.ok) { await noteAttempt(kv, { model, status: r.status, error: errText }, round); return false; }
     let parsed;
     try {
       const data = await r.json();
       const text = (((data.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '';
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
-    } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }); return; }
+    } catch (e) { await noteAttempt(kv, { model, error: 'unreadable answer: ' + e.message }, round); return false; }
     await Promise.all(items.map(async (it, i) => {
       const h = await hash(it.title), k = 't3:' + h, t = Object.assign({}, it.old ? {} : (it.t || {}));
       let rejected = false;
@@ -269,11 +307,51 @@ ${items.map((it, i) => `${i + 1}. ${it.title}`).join('\n')}`;
       if (rejected || it.retry) await kv.put('r3:' + h, '1');
     }));
     await caches.default.delete(new Request('https://cache.internal/news-v3'));   // next request picks them up
-    await noteAttempt(kv, { model, ok: true, titles: items.length });
-    return;
+    await noteAttempt(kv, { model, ok: true, titles: items.length }, round);
+    return true;
   }
   // no model had quota left: try again in an hour
   if (quotaHit) await kv.put('meta:next-gemini-at-v2', String(now + 60 * 60 * 1000));
+  return false;
+}
+
+// ------------------------------------------------------------------ live video on YouTube
+const YT_CHANNELS = new Set([
+  'UCoLdERT4-TJ82PJOHSrsZLQ',   // Spaceflight Now
+  'UCLA_DiR1FfKNvjuUpBHmylQ',   // NASA
+]);
+const YT_LIVE_CACHE_SECONDS = 60;
+async function ytLive(url, env, ctx) {
+  const channel = url.searchParams.get('channel') || '';
+  if (!YT_CHANNELS.has(channel)) return json({ error: 'unknown channel' }, 400);
+  if (!env.YOUTUBE_API_KEY) return json({ error: 'not configured' }, 503);
+  const cache = caches.default, key = new Request('https://cache.internal/yt-live-v1/' + channel);
+  const hit = await cache.match(key);
+  if (hit) {
+    const out = new Response(hit.body, hit);
+    for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
+    return out;
+  }
+  let r;
+  try {
+    // The site's key is limited (Google Cloud Console) to requests from the site's own address, which Google
+    // reads from the Referer header - a request from here has none, so it says so itself
+    r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channel}&eventType=live&type=video&maxResults=10&key=${env.YOUTUBE_API_KEY}`,
+      { headers: { Referer: env.YOUTUBE_REFERER || 'https://spacexfantracker.com/' } });
+  } catch (e) {
+    return json({ error: 'upstream unreachable' }, 502);
+  }
+  if (!r.ok) return json({ error: 'upstream ' + r.status }, 502);
+  let data;
+  try { data = await r.json(); } catch (e) { return json({ error: 'unreadable answer' }, 502); }
+  const items = (data.items || [])
+    .filter(it => it && it.id && it.id.videoId)
+    .map(it => ({ videoId: it.id.videoId, title: (it.snippet && it.snippet.title) || '' }));
+  const res = new Response(JSON.stringify({ at: new Date().toISOString(), items }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${YT_LIVE_CACHE_SECONDS}` } });
+  ctx.waitUntil(cache.put(key, res.clone()));
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
+  return out;
 }
 
 // ------------------------------------------------------------------ pre-launch updates
@@ -307,6 +385,14 @@ async function translateUpdates(texts, env) {
   const kv = env.NEWS_KV, now = Date.now();
   if (now < (Number(await kv.get('meta:upd-next-gemini-at')) || 0)) return null;
   await kv.put('meta:upd-next-gemini-at', String(now + UPDATE_GEMINI_GAP_MS));
+  const round = newAttemptLog();
+  try {
+    return await translateUpdatesRound(texts, env, kv, round);
+  } finally {
+    await writeAttempts(kv, round);
+  }
+}
+async function translateUpdatesRound(texts, env, kv, round) {
   const langs = Object.keys(LANGS);
   // same rules as the GitHub job's UPDATE_PROMPT (translate_mission_purpose.py)
   const prompt = `You translate short official status-update log entries for a SpaceX rocket launch, from English into several languages, for a chronological update feed on a launch-tracking website.
@@ -331,9 +417,9 @@ ${texts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
     let r;
     try {
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body });
-    } catch (e) { await noteAttempt(kv, { job: 'updates', model, error: 'network: ' + e.message }); return null; }
+    } catch (e) { await noteAttempt(kv, { job: 'updates', model, error: 'network: ' + e.message }, round); return null; }
     if (!r.ok) {
-      await noteAttempt(kv, { job: 'updates', model, status: r.status, error: (await r.text()).slice(0, 300) });
+      await noteAttempt(kv, { job: 'updates', model, status: r.status, error: (await r.text()).slice(0, 300) }, round);
       if (r.status === 429 || r.status === 404 || r.status === 400 || r.status >= 500) continue;   // next model
       return null;
     }
@@ -342,8 +428,8 @@ ${texts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
       const data = await r.json();
       const text = (((data.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '';
       parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ''));
-    } catch (e) { await noteAttempt(kv, { job: 'updates', model, error: 'unreadable answer: ' + e.message }); return null; }
-    await noteAttempt(kv, { job: 'updates', model, ok: true, texts: texts.length });
+    } catch (e) { await noteAttempt(kv, { job: 'updates', model, error: 'unreadable answer: ' + e.message }, round); return null; }
+    await noteAttempt(kv, { job: 'updates', model, ok: true, texts: texts.length }, round);
     return texts.map((_, i) => {
       const t = {};
       for (const l of langs) {

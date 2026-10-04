@@ -5683,14 +5683,10 @@
                 renderOrbitDossier(window.currentActiveOrbitCode || 'LEO');
             }
 
-            if (!document.getElementById('rocket-modal').classList.contains('hidden')) {
-                let type = 'falcon';
-                if (window.currentActiveVehicleStr.toLowerCase().includes('starship')) type = 'starship';
-                else if (window.currentActiveVehicleStr.toLowerCase().includes('heavy')) type = 'falcon_heavy';
-
-                if (!document.getElementById('rocket-modal').classList.contains('hidden')) {
-                    openRocketSpecs(type);
-                }
+            // the vehicle whose dossier is open (it can be any of the four - the scale comparator opens
+            // Dragon / Heavy / Starship from a Falcon 9 mission too), not the mission's own vehicle
+            if (!document.getElementById('rocket-modal').classList.contains('hidden') && window.currentOpenRocketType) {
+                openRocketSpecs(window.currentOpenRocketType);
             }
         }
 
@@ -6034,6 +6030,13 @@
         // this feature did not exist.
         const SPACEX_UPCOMING_TILES_URL = 'https://content.spacex.com/api/spacex-website/launches-page-tiles/upcoming';
         const SPACEX_MISSION_DETAIL_URL_BASE = 'https://content.spacex.com/api/spacex-website/missions/';
+        // SpaceX's CMS with a time limit (12 s): a request that hangs used to hold the whole lookup - and the next
+        // one, which waits on the generation counter - open with no end; now it fails like any other miss
+        function fetchSpacexCms(url) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 12000);
+            return fetch(url, { mode: 'cors', signal: controller.signal }).finally(() => clearTimeout(timer));
+        }
         const GENERIC_CMS_TITLE_CORES = /^(starlink|starship|falcon(?: 9| heavy)?|crew|transporter|starshield)$/;
         const GENERIC_CMS_SLUGS = /^(starlink|falcon|mission|spacex)$/;
         const MAX_CMS_SLUG_GUESSES = 5;
@@ -6115,11 +6118,10 @@
 
         // Manual, one-flight correction for when a flight runs off SpaceX's published timeline: the named event really
         // happened at `at` (UTC), so it and every later event move by the same amount. Drops out by itself at `expires`.
-        const TIMELINE_TIME_OVERRIDES = [
-            // Starship Flight 14 (2026-09-28): the deorbit burn ended well ahead of SpaceX's published time
-            { mission: /starship[\s-]*flight[\s-]*14\b/i, event: 'Deorbit burn shutdown', at: '2026-09-28T15:02:00Z', expires: '2026-09-29T12:00:00Z' },
-            { mission: /starship[\s-]*flight[\s-]*14\b/i, event: 'Starship is subsonic', at: '2026-09-28T15:55:45Z', expires: '2026-09-29T12:00:00Z' },
-        ];
+        // Entry form: { mission: /starship[\s-]*flight[\s-]*14\b/i, event: 'Deorbit burn shutdown',
+        //               at: '2026-09-28T15:02:00Z', expires: '2026-09-29T12:00:00Z' }
+        // (Flight 14's two corrections expired on 2026-09-29 and were removed.)
+        const TIMELINE_TIME_OVERRIDES = [];
         function applyTimelineTimeOverrides(entries, title, slug) {
             const t0 = new Date(window.currentActiveHeroLaunchAt || '').getTime();
             if (isNaN(t0)) return entries;
@@ -6205,7 +6207,7 @@
             const tryAt = (i) => {
                 if (gen !== realMissionTimelineFetchGen) return Promise.resolve();
                 if (i >= slugs.length) return Promise.resolve();
-                return fetch(SPACEX_MISSION_DETAIL_URL_BASE + encodeURIComponent(slugs[i]), { mode: 'cors' })
+                return fetchSpacexCms(SPACEX_MISSION_DETAIL_URL_BASE + encodeURIComponent(slugs[i]))
                     .then(res => {
                         if (!res.ok) return tryAt(i + 1);
                         return res.json().then(mission => {
@@ -6404,7 +6406,7 @@
             if (!heroName) return;
             const gen = ++realMissionTimelineFetchGen;
             const slugs = candidateSlugsFromMissionName(heroName);
-            fetch(SPACEX_UPCOMING_TILES_URL, { mode: 'cors' })
+            fetchSpacexCms(SPACEX_UPCOMING_TILES_URL)
                 .then(res => { if (!res.ok) return []; return res.json(); })
                 .catch(() => [])
                 .then(tiles => {
@@ -10099,9 +10101,9 @@
         }
         // from this site's own launch lists: SpaceX launches in this programme since the start of the year, and the next one
         function programLiveStats(p) {
-            const now = Date.now(), yearAgo = new Date(new Date().getFullYear(), 0, 1).getTime();
+            const now = Date.now(), yearStart = new Date(new Date().getFullYear(), 0, 1).getTime();
             const inProg = m => programsOfMission(m).some(q => sameProgram(q, p));
-            const past = (rawPastMissions || []).filter(m => { const t = Date.parse(m.date); return t >= yearAgo && t <= now && inProg(m); });
+            const past = (rawPastMissions || []).filter(m => { const t = Date.parse(m.date); return t >= yearStart && t <= now && inProg(m); });
             // the next one other than the mission whose card this is
             const self = window.currentActiveMissionForProgram && window.currentActiveMissionForProgram.id;
             const next = (dbMissions || []).filter(m => m.id !== self && Date.parse(m.date) > now && inProg(m)).sort((a, b) => Date.parse(a.date) - Date.parse(b.date))[0] || null;
@@ -10652,7 +10654,11 @@
             if (!modal || !img) return;
 
             img.classList.add('hidden');
-            if (spinner) spinner.classList.remove('hidden');
+            if (spinner) {
+                // back to the spinner - after an image that failed, the icon was still the "broken image" one
+                spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl';
+                spinner.classList.remove('hidden');
+            }
             img.onload = () => {
                 img.classList.remove('hidden');
                 if (spinner) spinner.classList.add('hidden');
@@ -10702,7 +10708,7 @@
         // t = modal title, s = the 5 section titles in order, r = all 34 rows flattened in
         // order as [label, v1.5, v2mini, v3]. "iw" duplicates "he" (legacy Hebrew code Google
         // Translate's own widget also uses - see includedLanguages above).
-        const STARLINK_SPECS_I18N = {"en":{"t":"Starlink Generations Compared","s":["General","Dimensions &amp; mass","Capacity","Propulsion &amp; power","Orbit"],"r":[["Status","Discontinued","In service","In service"],["Maiden flight","January 24, 2021","February 27, 2023","September 28, 2026"],["Launch vehicle","Falcon 9","Falcon 9","Starship"],["Satellites per launch","52","28","60"],["Launch mass","306 kg","800 kg","2,000 kg"],["Satellite bus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solar arrays","1","2","2"],["Solar array size","8.1 × 2.8 m","12.8 × 4.1 m per wing","4 segments of 19 m per array"],["Solar area","23 m²","105 m²","210 m²"],["Wingspan","11 m","30 m","55 m"],["Total area","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink beams","16","192","2,048"],["Uplink beams","8","144","2,048"],["User antennas","4 Ku arrays","5 Ku arrays","Wide Ku/Ka arrays"],["Backhaul antennas","Ka","Ka, E","Ka, E, V, W"],["RF backhaul capacity","20 Gbps","150 Gbps","1,200 Gbps"],["Laser terminals","3","3","6"],["Capacity per laser terminal","100 Gbps","200 Gbps","400 Gbps"],["Total laser capacity","300 Gbps","600 Gbps","2,400 Gbps"],["Propulsion fuel","Krypton","Argon","Argon"],["Thruster type","Hall-effect","Hall-effect","Hall-effect"],["Thrust","70 mN","170 mN","400 mN"],["Specific impulse","1,670 s","2,500 s","2,500 s"],["Thruster power","1.8 kW","4.2 kW","10 kW"],["Solar power","3 kW","14 kW","28 kW"],["Reaction wheels","4","4","4"],["Operational altitude","550 km","480 km","350 km"],["Orbital period","95 min","94 min","92 min"],["Design life","5 years","5 years","5 years"],["End of life","Atmospheric burn-up","Atmospheric burn-up","Atmospheric burn-up"],["Direct to Cell","No","DTC variant only","Enables Mobile Gen 2"],["Factory","Redmond, WA","Redmond, WA","Redmond, WA"]]},"he":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בשירות"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","28 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"iw":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בשירות"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","28 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"es":{"t":"Comparativa de generaciones de Starlink","s":["General","Dimensiones y masa","Capacidad","Propulsión y energía","Órbita"],"r":[["Estado","Retirado","En servicio","En servicio"],["Vuelo inaugural","24 de enero de 2021","27 de febrero de 2023","28 de septiembre de 2026"],["Vehículo de lanzamiento","Falcon 9","Falcon 9","Starship"],["Satélites por lanzamiento","52","28","60"],["Masa de lanzamiento","306 kg","800 kg","2,000 kg"],["Plataforma del satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Paneles solares","1","2","2"],["Tamaño del panel solar","8.1 × 2.8 m","12.8 × 4.1 m por ala","4 segmentos de 19 m por panel"],["Superficie solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Superficie total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Haces de downlink","16","192","2,048"],["Haces de uplink","8","144","2,048"],["Antenas de usuario","4 paneles Ku","5 paneles Ku","Paneles Ku/Ka amplios"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidad de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminales láser","3","3","6"],["Capacidad por terminal láser","100 Gbps","200 Gbps","400 Gbps"],["Capacidad láser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustible de propulsión","Kriptón","Argón","Argón"],["Tipo de propulsor","Efecto Hall","Efecto Hall","Efecto Hall"],["Empuje","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potencia del propulsor","1.8 kW","4.2 kW","10 kW"],["Potencia solar","3 kW","14 kW","28 kW"],["Ruedas de reacción","4","4","4"],["Altitud operativa","550 km","480 km","350 km"],["Periodo orbital","95 min","94 min","92 min"],["Vida útil","5 años","5 años","5 años"],["Fin de vida","Combustión en la atmósfera","Combustión en la atmósfera","Combustión en la atmósfera"],["Direct to Cell","No","Solo variante DTC","Habilita Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"fr":{"t":"Comparaison des générations Starlink","s":["Général","Dimensions et masse","Capacité","Propulsion et énergie","Orbite"],"r":[["État","Abandonné","En service","En service"],["Vol inaugural","24 janvier 2021","27 février 2023","28 septembre 2026"],["Lanceur","Falcon 9","Falcon 9","Starship"],["Satellites par lancement","52","28","60"],["Masse au lancement","306 kg","800 kg","2,000 kg"],["Plateforme du satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panneaux solaires","1","2","2"],["Taille des panneaux solaires","8.1 × 2.8 m","12.8 × 4.1 m par aile","4 segments de 19 m par panneau"],["Surface solaire","23 m²","105 m²","210 m²"],["Envergure","11 m","30 m","55 m"],["Surface totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Faisceaux downlink","16","192","2,048"],["Faisceaux uplink","8","144","2,048"],["Antennes utilisateur","4 panneaux Ku","5 panneaux Ku","Larges panneaux Ku/Ka"],["Antennes backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacité backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminaux laser","3","3","6"],["Capacité par terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacité laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Ergol de propulsion","Krypton","Argon","Argon"],["Type de propulseur","Effet Hall","Effet Hall","Effet Hall"],["Poussée","70 mN","170 mN","400 mN"],["Impulsion spécifique","1,670 s","2,500 s","2,500 s"],["Puissance du propulseur","1.8 kW","4.2 kW","10 kW"],["Puissance solaire","3 kW","14 kW","28 kW"],["Roues de réaction","4","4","4"],["Altitude opérationnelle","550 km","480 km","350 km"],["Période orbitale","95 min","94 min","92 min"],["Durée de vie","5 ans","5 ans","5 ans"],["Fin de vie","Combustion dans l'atmosphère","Combustion dans l'atmosphère","Combustion dans l'atmosphère"],["Direct to Cell","Non","Variante DTC uniquement","Permet Mobile Gen 2"],["Usine","Redmond, WA","Redmond, WA","Redmond, WA"]]},"de":{"t":"Starlink-Generationen im Vergleich","s":["Allgemein","Abmessungen &amp; Masse","Kapazität","Antrieb &amp; Energie","Umlaufbahn"],"r":[["Status","Eingestellt","Im Einsatz","Im Einsatz"],["Erstflug","24. Januar 2021","27. Februar 2023","28. September 2026"],["Trägerrakete","Falcon 9","Falcon 9","Starship"],["Satelliten pro Start","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitenbus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solarpaneele","1","2","2"],["Größe der Solarpaneele","8.1 × 2.8 m","12.8 × 4.1 m pro Flügel","4 Segmente à 19 m pro Panel"],["Solarfläche","23 m²","105 m²","210 m²"],["Spannweite","11 m","30 m","55 m"],["Gesamtfläche","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-Strahlen","16","192","2,048"],["Uplink-Strahlen","8","144","2,048"],["Nutzerantennen","4 Ku-Arrays","5 Ku-Arrays","Breite Ku/Ka-Arrays"],["Backhaul-Antennen","Ka","Ka, E","Ka, E, V, W"],["RF-Backhaul-Kapazität","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Kapazität pro Laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Gesamte Laserkapazität","300 Gbps","600 Gbps","2,400 Gbps"],["Antriebstreibstoff","Krypton","Argon","Argon"],["Triebwerkstyp","Hall-Effekt","Hall-Effekt","Hall-Effekt"],["Schub","70 mN","170 mN","400 mN"],["Spezifischer Impuls","1,670 s","2,500 s","2,500 s"],["Triebwerksleistung","1.8 kW","4.2 kW","10 kW"],["Solarleistung","3 kW","14 kW","28 kW"],["Reaktionsräder","4","4","4"],["Betriebshöhe","550 km","480 km","350 km"],["Umlaufzeit","95 min","94 min","92 min"],["Lebensdauer","5 Jahre","5 Jahre","5 Jahre"],["Lebensende","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre"],["Direct to Cell","Nein","Nur DTC-Variante","Ermöglicht Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ru":{"t":"Сравнение поколений спутников Starlink","s":["Общее","Размеры и масса","Пропускная способность","Двигатели и питание","Орбита"],"r":[["Статус","Снят с производства","В эксплуатации","В эксплуатации"],["Первый полёт","24 января 2021 г.","27 февраля 2023 г.","28 сентября 2026 г."],["Ракета-носитель","Falcon 9","Falcon 9","Starship"],["Спутников за запуск","52","28","60"],["Масса при запуске","306 кг","800 кг","2,000 кг"],["Платформа спутника","2.8 × 1.3 м","4.1 × 2.7 м","6.5 × 3.5 м"],["Солнечные батареи","1","2","2"],["Размер солнечной батареи","8.1 × 2.8 м","12.8 × 4.1 м на крыло","4 сегмента по 19 м на панель"],["Площадь солнечных батарей","23 м²","105 м²","210 м²"],["Размах","11 м","30 м","55 м"],["Общая площадь","26 м²","116 м²","240 м²"],["Downlink","24 Гбит/с","96 Гбит/с","1,024 Гбит/с"],["Uplink","4 Гбит/с","8 Гбит/с","160 Гбит/с"],["Лучи Downlink","16","192","2,048"],["Лучи Uplink","8","144","2,048"],["Пользовательские антенны","4 антенны Ku","5 антенн Ku","Широкие антенны Ku/Ka"],["Антенны backhaul","Ka","Ka, E","Ka, E, V, W"],["Пропускная способность RF backhaul","20 Гбит/с","150 Гбит/с","1,200 Гбит/с"],["Лазерные терминалы","3","3","6"],["Пропускная способность на терминал","100 Гбит/с","200 Гбит/с","400 Гбит/с"],["Суммарная лазерная пропускная способность","300 Гбит/с","600 Гбит/с","2,400 Гбит/с"],["Топливо двигателей","Криптон","Аргон","Аргон"],["Тип двигателя","Эффект Холла","Эффект Холла","Эффект Холла"],["Тяга","70 мН","170 мН","400 мН"],["Удельный импульс","1,670 с","2,500 с","2,500 с"],["Мощность двигателя","1.8 кВт","4.2 кВт","10 кВт"],["Солнечная мощность","3 кВт","14 кВт","28 кВт"],["Маховики","4","4","4"],["Рабочая высота","550 км","480 км","350 км"],["Период обращения","95 мин","94 мин","92 мин"],["Срок службы","5 лет","5 лет","5 лет"],["Окончание срока службы","Сгорание в атмосфере","Сгорание в атмосфере","Сгорание в атмосфере"],["Direct to Cell","Нет","Только вариант DTC","Обеспечивает Mobile Gen 2"],["Завод","Redmond, WA","Redmond, WA","Redmond, WA"]]},"zh":{"t":"Starlink 各代卫星对比","s":["概览","尺寸与质量","通信容量","推进与电力","轨道"],"r":[["状态","已停产","服役中","服役中"],["首飞","2021年1月24日","2023年2月27日","2026年9月28日"],["运载火箭","Falcon 9","Falcon 9","Starship"],["单次发射卫星数","52","28","60"],["发射质量","306 千克","800 千克","2,000 千克"],["卫星平台","2.8 × 1.3 米","4.1 × 2.7 米","6.5 × 3.5 米"],["太阳能帆板","1","2","2"],["太阳能帆板尺寸","8.1 × 2.8 米","12.8 × 4.1 米 每侧","每个阵列 4 段，每段 19 米"],["太阳能面积","23 平方米","105 平方米","210 平方米"],["翼展","11 米","30 米","55 米"],["总面积","26 平方米","116 平方米","240 平方米"],["Downlink","24 吉比特/秒","96 吉比特/秒","1,024 吉比特/秒"],["Uplink","4 吉比特/秒","8 吉比特/秒","160 吉比特/秒"],["下行波束数","16","192","2,048"],["上行波束数","8","144","2,048"],["用户天线","4 个 Ku 阵列","5 个 Ku 阵列","宽幅 Ku/Ka 阵列"],["回传天线","Ka","Ka, E","Ka, E, V, W"],["射频回传容量","20 吉比特/秒","150 吉比特/秒","1,200 吉比特/秒"],["激光终端数","3","3","6"],["单终端激光容量","100 吉比特/秒","200 吉比特/秒","400 吉比特/秒"],["总激光容量","300 吉比特/秒","600 吉比特/秒","2,400 吉比特/秒"],["推进剂","氪","氩","氩"],["推进器类型","霍尔效应","霍尔效应","霍尔效应"],["推力","70 毫牛","170 毫牛","400 毫牛"],["比冲","1,670 秒","2,500 秒","2,500 秒"],["推进器功率","1.8 千瓦","4.2 千瓦","10 千瓦"],["太阳能功率","3 千瓦","14 千瓦","28 千瓦"],["反作用轮","4","4","4"],["运行高度","550 千米","480 千米","350 千米"],["轨道周期","95 分钟","94 分钟","92 分钟"],["设计寿命","5 年","5 年","5 年"],["寿命终止方式","大气层烧毁","大气层烧毁","大气层烧毁"],["Direct to Cell","否","仅 DTC 版本","支持 Mobile Gen 2"],["工厂","Redmond, WA","Redmond, WA","Redmond, WA"]]},"it":{"t":"Confronto tra le generazioni Starlink","s":["Generale","Dimensioni e massa","Capacità","Propulsione ed energia","Orbita"],"r":[["Stato","Fuori produzione","In servizio","In servizio"],["Primo volo","24 gennaio 2021","27 febbraio 2023","28 settembre 2026"],["Vettore di lancio","Falcon 9","Falcon 9","Starship"],["Satelliti per lancio","52","28","60"],["Massa al lancio","306 kg","800 kg","2,000 kg"],["Piattaforma del satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Pannelli solari","1","2","2"],["Dimensione del pannello solare","8.1 × 2.8 m","12.8 × 4.1 m per ala","4 segmenti da 19 m per pannello"],["Superficie solare","23 m²","105 m²","210 m²"],["Apertura alare","11 m","30 m","55 m"],["Superficie totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Fasci downlink","16","192","2,048"],["Fasci uplink","8","144","2,048"],["Antenne utente","4 array Ku","5 array Ku","Ampi array Ku/Ka"],["Antenne di backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacità backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminali laser","3","3","6"],["Capacità per terminale laser","100 Gbps","200 Gbps","400 Gbps"],["Capacità laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Propellente","Cripto","Argon","Argon"],["Tipo di propulsore","Effetto Hall","Effetto Hall","Effetto Hall"],["Spinta","70 mN","170 mN","400 mN"],["Impulso specifico","1,670 s","2,500 s","2,500 s"],["Potenza del propulsore","1.8 kW","4.2 kW","10 kW"],["Potenza solare","3 kW","14 kW","28 kW"],["Ruote di reazione","4","4","4"],["Altitudine operativa","550 km","480 km","350 km"],["Periodo orbitale","95 min","94 min","92 min"],["Vita utile","5 anni","5 anni","5 anni"],["Fine vita","Combustione in atmosfera","Combustione in atmosfera","Combustione in atmosfera"],["Direct to Cell","No","Solo variante DTC","Abilita Mobile Gen 2"],["Fabbrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"cs":{"t":"Porovnání generací Starlink","s":["Obecné","Rozměry a hmotnost","Kapacita","Pohon a energie","Oběžná dráha"],"r":[["Stav","Vyřazeno","V provozu","V provozu"],["První let","24. ledna 2021","27. února 2023","28. září 2026"],["Nosná raketa","Falcon 9","Falcon 9","Starship"],["Satelitů na start","52","28","60"],["Startovní hmotnost","306 kg","800 kg","2,000 kg"],["Platforma satelitu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solární panely","1","2","2"],["Velikost solárního panelu","8.1 × 2.8 m","12.8 × 4.1 m na křídlo","4 segmenty po 19 m na panel"],["Plocha solárních panelů","23 m²","105 m²","210 m²"],["Rozpětí","11 m","30 m","55 m"],["Celková plocha","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Paprsky downlink","16","192","2,048"],["Paprsky uplink","8","144","2,048"],["Uživatelské antény","4 anténní pole Ku","5 anténních polí Ku","Široké anténní pole Ku/Ka"],["Antény backhaul","Ka","Ka, E","Ka, E, V, W"],["Kapacita RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Laserové terminály","3","3","6"],["Kapacita na laserový terminál","100 Gbps","200 Gbps","400 Gbps"],["Celková laserová kapacita","300 Gbps","600 Gbps","2,400 Gbps"],["Palivo pohonu","Krypton","Argon","Argon"],["Typ motoru","Hallův jev","Hallův jev","Hallův jev"],["Tah","70 mN","170 mN","400 mN"],["Specifický impuls","1,670 s","2,500 s","2,500 s"],["Výkon motoru","1.8 kW","4.2 kW","10 kW"],["Solární výkon","3 kW","14 kW","28 kW"],["Reakční kola","4","4","4"],["Provozní výška","550 km","480 km","350 km"],["Oběžná doba","95 min","94 min","92 min"],["Životnost","5 let","5 let","5 let"],["Konec životnosti","Shoření v atmosféře","Shoření v atmosféře","Shoření v atmosféře"],["Direct to Cell","Ne","Pouze varianta DTC","Umožňuje Mobile Gen 2"],["Továrna","Redmond, WA","Redmond, WA","Redmond, WA"]]},"sv":{"t":"Jämförelse av Starlink-generationer","s":["Allmänt","Mått och massa","Kapacitet","Framdrivning och kraft","Bana"],"r":[["Status","Utgången","I drift","I drift"],["Jungfrutur","24 januari 2021","27 februari 2023","28 september 2026"],["Bärraket","Falcon 9","Falcon 9","Starship"],["Satelliter per uppskjutning","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellitplattform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelens storlek","8.1 × 2.8 m","12.8 × 4.1 m per vinge","4 segment på 19 m per panel"],["Solpanelsyta","23 m²","105 m²","210 m²"],["Vingspann","11 m","30 m","55 m"],["Total yta","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-strålar","16","192","2,048"],["Uplink-strålar","8","144","2,048"],["Användarantenner","4 Ku-antenner","5 Ku-antenner","Breda Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Total laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Framdrivningsbränsle","Krypton","Argon","Argon"],["Motortyp","Halleffekt","Halleffekt","Halleffekt"],["Dragkraft","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Operativ höjd","550 km","480 km","350 km"],["Omloppstid","95 min","94 min","92 min"],["Livslängd","5 år","5 år","5 år"],["Livets slut","Förbränning i atmosfären","Förbränning i atmosfären","Förbränning i atmosfären"],["Direct to Cell","Nej","Endast DTC-variant","Möjliggör Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"nl":{"t":"Starlink-generaties vergeleken","s":["Algemeen","Afmetingen en massa","Capaciteit","Voortstuwing en energie","Baan"],"r":[["Status","Uit productie","In dienst","In dienst"],["Eerste vlucht","24 januari 2021","27 februari 2023","28 september 2026"],["Draagraket","Falcon 9","Falcon 9","Starship"],["Satellieten per lancering","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellietplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Zonnepanelen","1","2","2"],["Grootte zonnepaneel","8.1 × 2.8 m","12.8 × 4.1 m per vleugel","4 segmenten van 19 m per paneel"],["Zonnepaneeloppervlak","23 m²","105 m²","210 m²"],["Spanwijdte","11 m","30 m","55 m"],["Totale oppervlakte","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-bundels","16","192","2,048"],["Uplink-bundels","8","144","2,048"],["Gebruikersantennes","4 Ku-arrays","5 Ku-arrays","Brede Ku/Ka-arrays"],["Backhaul-antennes","Ka","Ka, E","Ka, E, V, W"],["RF-backhaulcapaciteit","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Capaciteit per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Totale lasercapaciteit","300 Gbps","600 Gbps","2,400 Gbps"],["Stuwstof","Krypton","Argon","Argon"],["Type stuwraket","Halleffect","Halleffect","Halleffect"],["Stuwkracht","70 mN","170 mN","400 mN"],["Specifieke impuls","1,670 s","2,500 s","2,500 s"],["Stuwraketvermogen","1.8 kW","4.2 kW","10 kW"],["Zonnevermogen","3 kW","14 kW","28 kW"],["Reactiewielen","4","4","4"],["Operationele hoogte","550 km","480 km","350 km"],["Omlooptijd","95 min","94 min","92 min"],["Levensduur","5 jaar","5 jaar","5 jaar"],["Einde levensduur","Verbranding in de atmosfeer","Verbranding in de atmosfeer","Verbranding in de atmosfeer"],["Direct to Cell","Nee","Alleen DTC-variant","Maakt Mobile Gen 2 mogelijk"],["Fabriek","Redmond, WA","Redmond, WA","Redmond, WA"]]},"da":{"t":"Sammenligning af Starlink-generationer","s":["Generelt","Mål og masse","Kapacitet","Fremdrift og strøm","Bane"],"r":[["Status","Udgået","I drift","I drift"],["Jomfruflyvning","24. januar 2021","27. februar 2023","28. september 2026"],["Bærerraket","Falcon 9","Falcon 9","Starship"],["Satellitter pr. opsendelse","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelstørrelse","8.1 × 2.8 m","12.8 × 4.1 m pr. vinge","4 segmenter på 19 m pr. panel"],["Solpanelareal","23 m²","105 m²","210 m²"],["Vingefang","11 m","30 m","55 m"],["Samlet areal","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-stråler","16","192","2,048"],["Uplink-stråler","8","144","2,048"],["Brugerantenner","4 Ku-antenner","5 Ku-antenner","Brede Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet pr. laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Samlet laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Fremdriftsbrændstof","Krypton","Argon","Argon"],["Motortype","Halleffekt","Halleffekt","Halleffekt"],["Skub","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Driftshøjde","550 km","480 km","350 km"],["Omløbstid","95 min","94 min","92 min"],["Levetid","5 år","5 år","5 år"],["Levetidens afslutning","Forbrænding i atmosfæren","Forbrænding i atmosfæren","Forbrænding i atmosfæren"],["Direct to Cell","Nej","Kun DTC-variant","Muliggør Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pt":{"t":"Comparação das gerações Starlink","s":["Geral","Dimensões e massa","Capacidade","Propulsão e energia","Órbita"],"r":[["Estado","Descontinuado","Em serviço","Em serviço"],["Voo inaugural","24 de janeiro de 2021","27 de fevereiro de 2023","28 de setembro de 2026"],["Veículo de lançamento","Falcon 9","Falcon 9","Starship"],["Satélites por lançamento","52","28","60"],["Massa de lançamento","306 kg","800 kg","2,000 kg"],["Plataforma do satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Painéis solares","1","2","2"],["Tamanho do painel solar","8.1 × 2.8 m","12.8 × 4.1 m por asa","4 segmentos de 19 m por painel"],["Área solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Área total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Feixes de downlink","16","192","2,048"],["Feixes de uplink","8","144","2,048"],["Antenas de utilizador","4 painéis Ku","5 painéis Ku","Painéis Ku/Ka amplos"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidade de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminais laser","3","3","6"],["Capacidade por terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacidade laser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustível de propulsão","Crípton","Árgon","Árgon"],["Tipo de propulsor","Efeito Hall","Efeito Hall","Efeito Hall"],["Empuxo","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potência do propulsor","1.8 kW","4.2 kW","10 kW"],["Potência solar","3 kW","14 kW","28 kW"],["Rodas de reação","4","4","4"],["Altitude operacional","550 km","480 km","350 km"],["Período orbital","95 min","94 min","92 min"],["Vida útil","5 anos","5 anos","5 anos"],["Fim de vida","Combustão na atmosfera","Combustão na atmosfera","Combustão na atmosfera"],["Direct to Cell","Não","Apenas variante DTC","Habilita o Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pl":{"t":"Porównanie generacji Starlink","s":["Ogólne","Wymiary i masa","Przepustowość","Napęd i zasilanie","Orbita"],"r":[["Status","Wycofany","W eksploatacji","W eksploatacji"],["Pierwszy lot","24 stycznia 2021","27 lutego 2023","28 września 2026"],["Rakieta nośna","Falcon 9","Falcon 9","Starship"],["Satelitów na start","52","28","60"],["Masa startowa","306 kg","800 kg","2,000 kg"],["Platforma satelity","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panele słoneczne","1","2","2"],["Rozmiar panelu słonecznego","8.1 × 2.8 m","12.8 × 4.1 m na skrzydło","4 segmenty po 19 m na panel"],["Powierzchnia paneli słonecznych","23 m²","105 m²","210 m²"],["Rozpiętość","11 m","30 m","55 m"],["Powierzchnia całkowita","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Wiązki downlink","16","192","2,048"],["Wiązki uplink","8","144","2,048"],["Anteny użytkownika","4 anteny Ku","5 anten Ku","Szerokie anteny Ku/Ka"],["Anteny backhaul","Ka","Ka, E","Ka, E, V, W"],["Przepustowość RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Terminale laserowe","3","3","6"],["Przepustowość na terminal laserowy","100 Gbps","200 Gbps","400 Gbps"],["Łączna przepustowość laserowa","300 Gbps","600 Gbps","2,400 Gbps"],["Paliwo napędowe","Krypton","Argon","Argon"],["Typ silnika","Efekt Halla","Efekt Halla","Efekt Halla"],["Ciąg","70 mN","170 mN","400 mN"],["Impuls właściwy","1,670 s","2,500 s","2,500 s"],["Moc silnika","1.8 kW","4.2 kW","10 kW"],["Moc paneli słonecznych","3 kW","14 kW","28 kW"],["Koła reakcyjne","4","4","4"],["Wysokość operacyjna","550 km","480 km","350 km"],["Okres orbitalny","95 min","94 min","92 min"],["Żywotność","5 lat","5 lat","5 lat"],["Koniec eksploatacji","Spłonięcie w atmosferze","Spłonięcie w atmosferze","Spłonięcie w atmosferze"],["Direct to Cell","Nie","Tylko wariant DTC","Umożliwia Mobile Gen 2"],["Fabryka","Redmond, WA","Redmond, WA","Redmond, WA"]]},"hi":{"t":"Starlink पीढ़ियों की तुलना","s":["सामान्य","आकार और द्रव्यमान","क्षमता","प्रणोदन और शक्ति","कक्षा"],"r":[["स्थिति","बंद कर दिया गया","सेवा में","सेवा में"],["पहली उड़ान","24 जनवरी 2021","27 फ़रवरी 2023","28 सितंबर 2026"],["प्रक्षेपण यान","Falcon 9","Falcon 9","Starship"],["प्रति प्रक्षेपण उपग्रह","52","28","60"],["प्रक्षेपण द्रव्यमान","306 kg","800 kg","2,000 kg"],["उपग्रह बस","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["सोलर ऐरे","1","2","2"],["सोलर ऐरे का आकार","8.1 × 2.8 m","12.8 × 4.1 m प्रति पंख","प्रति ऐरे 19 मी के 4 खंड"],["सोलर क्षेत्रफल","23 m²","105 m²","210 m²"],["विंगस्पैन","11 m","30 m","55 m"],["कुल क्षेत्रफल","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["डाउनलिंक बीम","16","192","2,048"],["अपलिंक बीम","8","144","2,048"],["उपयोगकर्ता एंटेना","4 Ku एरे","5 Ku एरे","विस्तृत Ku/Ka एरे"],["बैकहॉल एंटेना","Ka","Ka, E","Ka, E, V, W"],["RF बैकहॉल क्षमता","20 Gbps","150 Gbps","1,200 Gbps"],["लेज़र टर्मिनल","3","3","6"],["प्रति लेज़र टर्मिनल क्षमता","100 Gbps","200 Gbps","400 Gbps"],["कुल लेज़र क्षमता","300 Gbps","600 Gbps","2,400 Gbps"],["प्रणोदन ईंधन","क्रिप्टॉन","आर्गन","आर्गन"],["थ्रस्टर प्रकार","हॉल-प्रभाव","हॉल-प्रभाव","हॉल-प्रभाव"],["थ्रस्ट","70 mN","170 mN","400 mN"],["विशिष्ट आवेग","1,670 s","2,500 s","2,500 s"],["थ्रस्टर शक्ति","1.8 kW","4.2 kW","10 kW"],["सोलर शक्ति","3 kW","14 kW","28 kW"],["रिएक्शन व्हील","4","4","4"],["परिचालन ऊँचाई","550 km","480 km","350 km"],["कक्षीय अवधि","95 min","94 min","92 min"],["डिज़ाइन जीवन","5 वर्ष","5 वर्ष","5 वर्ष"],["जीवन का अंत","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट"],["Direct to Cell","नहीं","केवल DTC संस्करण","Mobile Gen 2 को सक्षम करता है"],["फैक्ट्री","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ar":{"t":"مقارنة أجيال أقمار Starlink","s":["عام","الأبعاد والكتلة","السعة","الدفع والطاقة","المدار"],"r":[["الحالة","أُوقف الإنتاج","في الخدمة","في الخدمة"],["الرحلة الأولى","24 يناير 2021","27 فبراير 2023","28 سبتمبر 2026"],["مركبة الإطلاق","Falcon 9","Falcon 9","Starship"],["الأقمار لكل عملية إطلاق","52","28","60"],["كتلة الإطلاق","306 كجم","800 كجم","2,000 كجم"],["منصة القمر الصناعي","2.8 × 1.3 م","4.1 × 2.7 م","6.5 × 3.5 م"],["الألواح الشمسية","1","2","2"],["حجم اللوح الشمسي","8.1 × 2.8 م","12.8 × 4.1 م لكل جناح","4 أقسام بطول 19 م لكل مصفوفة"],["مساحة الألواح الشمسية","23 م²","105 م²","210 م²"],["امتداد الجناحين","11 م","30 م","55 م"],["المساحة الإجمالية","26 م²","116 م²","240 م²"],["Downlink","24 جيجابت/ثانية","96 جيجابت/ثانية","1,024 جيجابت/ثانية"],["Uplink","4 جيجابت/ثانية","8 جيجابت/ثانية","160 جيجابت/ثانية"],["حزم الإرسال الهابط","16","192","2,048"],["حزم الإرسال الصاعد","8","144","2,048"],["هوائيات المستخدم","4 مصفوفات Ku","5 مصفوفات Ku","مصفوفات Ku/Ka عريضة"],["هوائيات الوصلة الخلفية","Ka","Ka, E","Ka, E, V, W"],["سعة الوصلة الخلفية اللاسلكية","20 جيجابت/ثانية","150 جيجابت/ثانية","1,200 جيجابت/ثانية"],["محطات الليزر","3","3","6"],["السعة لكل محطة ليزر","100 جيجابت/ثانية","200 جيجابت/ثانية","400 جيجابت/ثانية"],["إجمالي سعة الليزر","300 جيجابت/ثانية","600 جيجابت/ثانية","2,400 جيجابت/ثانية"],["وقود الدفع","الكريبتون","الأرجون","الأرجون"],["نوع الدافع","تأثير هول","تأثير هول","تأثير هول"],["قوة الدفع","70 ملي نيوتن","170 ملي نيوتن","400 ملي نيوتن"],["الدفع النوعي","1,670 ثانية","2,500 ثانية","2,500 ثانية"],["قدرة الدافع","1.8 كيلوواط","4.2 كيلوواط","10 كيلوواط"],["القدرة الشمسية","3 كيلوواط","14 كيلوواط","28 كيلوواط"],["عجلات التفاعل","4","4","4"],["الارتفاع التشغيلي","550 كم","480 كم","350 كم"],["الفترة المدارية","95 دقيقة","94 دقيقة","92 دقيقة"],["عمر التصميم","5 سنوات","5 سنوات","5 سنوات"],["نهاية العمر","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي"],["Direct to Cell","لا","طراز DTC فقط","يُمكّن Mobile Gen 2"],["المصنع","Redmond, WA","Redmond, WA","Redmond, WA"]]},"tr":{"t":"Starlink Nesilleri Karşılaştırması","s":["Genel","Boyutlar ve Kütle","Kapasite","Tahrik ve Güç","Yörünge"],"r":[["Durum","Üretimi durduruldu","Hizmette","Hizmette"],["İlk uçuş","24 Ocak 2021","27 Şubat 2023","28 Eylül 2026"],["Fırlatma aracı","Falcon 9","Falcon 9","Starship"],["Fırlatma başına uydu","52","28","60"],["Fırlatma kütlesi","306 kg","800 kg","2,000 kg"],["Uydu platformu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Güneş panelleri","1","2","2"],["Güneş paneli boyutu","8.1 × 2.8 m","12.8 × 4.1 m kanat başına","dizi başına 19 m'lik 4 segment"],["Güneş paneli alanı","23 m²","105 m²","210 m²"],["Kanat açıklığı","11 m","30 m","55 m"],["Toplam alan","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["İniş bağlantısı ışın sayısı","16","192","2,048"],["Çıkış bağlantısı ışın sayısı","8","144","2,048"],["Kullanıcı antenleri","4 Ku dizisi","5 Ku dizisi","Geniş Ku/Ka dizileri"],["Geri taşıma antenleri","Ka","Ka, E","Ka, E, V, W"],["RF geri taşıma kapasitesi","20 Gbps","150 Gbps","1,200 Gbps"],["Lazer terminalleri","3","3","6"],["Lazer terminali başına kapasite","100 Gbps","200 Gbps","400 Gbps"],["Toplam lazer kapasitesi","300 Gbps","600 Gbps","2,400 Gbps"],["İtki yakıtı","Kripton","Argon","Argon"],["İtici tipi","Hall etkisi","Hall etkisi","Hall etkisi"],["İtki","70 mN","170 mN","400 mN"],["Özgül itki","1,670 s","2,500 s","2,500 s"],["İtici gücü","1.8 kW","4.2 kW","10 kW"],["Güneş enerjisi gücü","3 kW","14 kW","28 kW"],["Reaksiyon çarkları","4","4","4"],["Operasyonel irtifa","550 km","480 km","350 km"],["Yörünge periyodu","95 min","94 min","92 min"],["Tasarım ömrü","5 yıl","5 yıl","5 yıl"],["Ömür sonu","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma"],["Direct to Cell","Hayır","Yalnızca DTC modeli","Mobile Gen 2'yi mümkün kılar"],["Fabrika","Redmond, WA","Redmond, WA","Redmond, WA"]]}};
+        const STARLINK_SPECS_I18N = {"en":{"t":"Starlink Generations Compared","s":["General","Dimensions & mass","Capacity","Propulsion & power","Orbit"],"r":[["Status","Discontinued","In service","In service"],["Maiden flight","January 24, 2021","February 27, 2023","September 28, 2026"],["Launch vehicle","Falcon 9","Falcon 9","Starship"],["Satellites per launch","52","28","60"],["Launch mass","306 kg","800 kg","2,000 kg"],["Satellite bus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solar arrays","1","2","2"],["Solar array size","8.1 × 2.8 m","12.8 × 4.1 m per wing","4 segments of 19 m per array"],["Solar area","23 m²","105 m²","210 m²"],["Wingspan","11 m","30 m","55 m"],["Total area","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink beams","16","192","2,048"],["Uplink beams","8","144","2,048"],["User antennas","4 Ku arrays","5 Ku arrays","Wide Ku/Ka arrays"],["Backhaul antennas","Ka","Ka, E","Ka, E, V, W"],["RF backhaul capacity","20 Gbps","150 Gbps","1,200 Gbps"],["Laser terminals","3","3","6"],["Capacity per laser terminal","100 Gbps","200 Gbps","400 Gbps"],["Total laser capacity","300 Gbps","600 Gbps","2,400 Gbps"],["Propulsion fuel","Krypton","Argon","Argon"],["Thruster type","Hall-effect","Hall-effect","Hall-effect"],["Thrust","70 mN","170 mN","400 mN"],["Specific impulse","1,670 s","2,500 s","2,500 s"],["Thruster power","1.8 kW","4.2 kW","10 kW"],["Solar power","3 kW","14 kW","28 kW"],["Reaction wheels","4","4","4"],["Operational altitude","550 km","480 km","350 km"],["Orbital period","95 min","94 min","92 min"],["Design life","5 years","5 years","5 years"],["End of life","Atmospheric burn-up","Atmospheric burn-up","Atmospheric burn-up"],["Direct to Cell","No","DTC variant only","Enables Mobile Gen 2"],["Factory","Redmond, WA","Redmond, WA","Redmond, WA"]]},"he":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בשירות"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","28 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"iw":{"t":"השוואה בין דורות הלוויינים של סטארלינק","s":["כללי","מידות ומסה","קיבולת","הנעה וחשמל","מסלול"],"r":[["סטטוס","הוצא מייצור","בשירות","בשירות"],["טיסת בכורה","24 בינואר 2021","27 בפברואר 2023","28 בספטמבר 2026"],["משגר","Falcon 9","Falcon 9","Starship"],["לוויינים לשיגור","52","28","60"],["מסת שיגור","306 ק״ג","800 ק״ג","2,000 ק״ג"],["גוף הלוויין","2.8 × 1.3 מ׳","4.1 × 2.7 מ׳","6.5 × 3.5 מ׳"],["מערכים סולאריים","1","2","2"],["גודל מערך סולארי","8.1 × 2.8 מ׳","12.8 × 4.1 מ׳ לכל כנף","4 מקטעים של 19 מ׳ לכל מערך"],["שטח סולארי","23 מ״ר","105 מ״ר","210 מ״ר"],["מוטת כנפיים","11 מ׳","30 מ׳","55 מ׳"],["שטח כולל","26 מ״ר","116 מ״ר","240 מ״ר"],["Downlink","24 ג'יגה-ביט לשנייה","96 ג'יגה-ביט לשנייה","1,024 ג'יגה-ביט לשנייה"],["Uplink","4 ג'יגה-ביט לשנייה","8 ג'יגה-ביט לשנייה","160 ג'יגה-ביט לשנייה"],["קרני downlink","16","192","2,048"],["קרני uplink","8","144","2,048"],["אנטנות משתמש","4 מערכי Ku","5 מערכי Ku","מערכי Ku/Ka רחבים"],["אנטנות backhaul","Ka","Ka, E","Ka, E, V, W"],["קיבולת RF backhaul","20 ג'יגה-ביט לשנייה","150 ג'יגה-ביט לשנייה","1,200 ג'יגה-ביט לשנייה"],["מסופי לייזר","3","3","6"],["קיבולת לייזר למסוף","100 ג'יגה-ביט לשנייה","200 ג'יגה-ביט לשנייה","400 ג'יגה-ביט לשנייה"],["קיבולת לייזר כוללת","300 ג'יגה-ביט לשנייה","600 ג'יגה-ביט לשנייה","2,400 ג'יגה-ביט לשנייה"],["דלק הנעה","קריפטון","ארגון","ארגון"],["סוג מנוע","Hall-effect","Hall-effect","Hall-effect"],["דחף","70 מילי-ניוטון","170 מילי-ניוטון","400 מילי-ניוטון"],["דחף סגולי","1,670 שנ׳","2,500 שנ׳","2,500 שנ׳"],["הספק מנוע","1.8 קילוואט","4.2 קילוואט","10 קילוואט"],["הספק סולארי","3 קילוואט","14 קילוואט","28 קילוואט"],["גלגלי תגובה","4","4","4"],["גובה תפעולי","550 ק״מ","480 ק״מ","350 ק״מ"],["זמן הקפה","95 דק׳","94 דק׳","92 דק׳"],["חיי שירות","5 שנים","5 שנים","5 שנים"],["סוף חיים","שריפה באטמוספרה","שריפה באטמוספרה","שריפה באטמוספרה"],["Direct to Cell","לא","רק בגרסת DTC","מאפשר את Mobile Gen 2"],["מפעל","Redmond, WA","Redmond, WA","Redmond, WA"]]},"es":{"t":"Comparativa de generaciones de Starlink","s":["General","Dimensiones y masa","Capacidad","Propulsión y energía","Órbita"],"r":[["Estado","Retirado","En servicio","En servicio"],["Vuelo inaugural","24 de enero de 2021","27 de febrero de 2023","28 de septiembre de 2026"],["Vehículo de lanzamiento","Falcon 9","Falcon 9","Starship"],["Satélites por lanzamiento","52","28","60"],["Masa de lanzamiento","306 kg","800 kg","2,000 kg"],["Plataforma del satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Paneles solares","1","2","2"],["Tamaño del panel solar","8.1 × 2.8 m","12.8 × 4.1 m por ala","4 segmentos de 19 m por panel"],["Superficie solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Superficie total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Haces de downlink","16","192","2,048"],["Haces de uplink","8","144","2,048"],["Antenas de usuario","4 paneles Ku","5 paneles Ku","Paneles Ku/Ka amplios"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidad de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminales láser","3","3","6"],["Capacidad por terminal láser","100 Gbps","200 Gbps","400 Gbps"],["Capacidad láser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustible de propulsión","Kriptón","Argón","Argón"],["Tipo de propulsor","Efecto Hall","Efecto Hall","Efecto Hall"],["Empuje","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potencia del propulsor","1.8 kW","4.2 kW","10 kW"],["Potencia solar","3 kW","14 kW","28 kW"],["Ruedas de reacción","4","4","4"],["Altitud operativa","550 km","480 km","350 km"],["Periodo orbital","95 min","94 min","92 min"],["Vida útil","5 años","5 años","5 años"],["Fin de vida","Combustión en la atmósfera","Combustión en la atmósfera","Combustión en la atmósfera"],["Direct to Cell","No","Solo variante DTC","Habilita Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"fr":{"t":"Comparaison des générations Starlink","s":["Général","Dimensions et masse","Capacité","Propulsion et énergie","Orbite"],"r":[["État","Abandonné","En service","En service"],["Vol inaugural","24 janvier 2021","27 février 2023","28 septembre 2026"],["Lanceur","Falcon 9","Falcon 9","Starship"],["Satellites par lancement","52","28","60"],["Masse au lancement","306 kg","800 kg","2,000 kg"],["Plateforme du satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panneaux solaires","1","2","2"],["Taille des panneaux solaires","8.1 × 2.8 m","12.8 × 4.1 m par aile","4 segments de 19 m par panneau"],["Surface solaire","23 m²","105 m²","210 m²"],["Envergure","11 m","30 m","55 m"],["Surface totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Faisceaux downlink","16","192","2,048"],["Faisceaux uplink","8","144","2,048"],["Antennes utilisateur","4 panneaux Ku","5 panneaux Ku","Larges panneaux Ku/Ka"],["Antennes backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacité backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminaux laser","3","3","6"],["Capacité par terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacité laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Ergol de propulsion","Krypton","Argon","Argon"],["Type de propulseur","Effet Hall","Effet Hall","Effet Hall"],["Poussée","70 mN","170 mN","400 mN"],["Impulsion spécifique","1,670 s","2,500 s","2,500 s"],["Puissance du propulseur","1.8 kW","4.2 kW","10 kW"],["Puissance solaire","3 kW","14 kW","28 kW"],["Roues de réaction","4","4","4"],["Altitude opérationnelle","550 km","480 km","350 km"],["Période orbitale","95 min","94 min","92 min"],["Durée de vie","5 ans","5 ans","5 ans"],["Fin de vie","Combustion dans l'atmosphère","Combustion dans l'atmosphère","Combustion dans l'atmosphère"],["Direct to Cell","Non","Variante DTC uniquement","Permet Mobile Gen 2"],["Usine","Redmond, WA","Redmond, WA","Redmond, WA"]]},"de":{"t":"Starlink-Generationen im Vergleich","s":["Allgemein","Abmessungen & Masse","Kapazität","Antrieb & Energie","Umlaufbahn"],"r":[["Status","Eingestellt","Im Einsatz","Im Einsatz"],["Erstflug","24. Januar 2021","27. Februar 2023","28. September 2026"],["Trägerrakete","Falcon 9","Falcon 9","Starship"],["Satelliten pro Start","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitenbus","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solarpaneele","1","2","2"],["Größe der Solarpaneele","8.1 × 2.8 m","12.8 × 4.1 m pro Flügel","4 Segmente à 19 m pro Panel"],["Solarfläche","23 m²","105 m²","210 m²"],["Spannweite","11 m","30 m","55 m"],["Gesamtfläche","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-Strahlen","16","192","2,048"],["Uplink-Strahlen","8","144","2,048"],["Nutzerantennen","4 Ku-Arrays","5 Ku-Arrays","Breite Ku/Ka-Arrays"],["Backhaul-Antennen","Ka","Ka, E","Ka, E, V, W"],["RF-Backhaul-Kapazität","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Kapazität pro Laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Gesamte Laserkapazität","300 Gbps","600 Gbps","2,400 Gbps"],["Antriebstreibstoff","Krypton","Argon","Argon"],["Triebwerkstyp","Hall-Effekt","Hall-Effekt","Hall-Effekt"],["Schub","70 mN","170 mN","400 mN"],["Spezifischer Impuls","1,670 s","2,500 s","2,500 s"],["Triebwerksleistung","1.8 kW","4.2 kW","10 kW"],["Solarleistung","3 kW","14 kW","28 kW"],["Reaktionsräder","4","4","4"],["Betriebshöhe","550 km","480 km","350 km"],["Umlaufzeit","95 min","94 min","92 min"],["Lebensdauer","5 Jahre","5 Jahre","5 Jahre"],["Lebensende","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre","Verglühen in der Atmosphäre"],["Direct to Cell","Nein","Nur DTC-Variante","Ermöglicht Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ru":{"t":"Сравнение поколений спутников Starlink","s":["Общее","Размеры и масса","Пропускная способность","Двигатели и питание","Орбита"],"r":[["Статус","Снят с производства","В эксплуатации","В эксплуатации"],["Первый полёт","24 января 2021 г.","27 февраля 2023 г.","28 сентября 2026 г."],["Ракета-носитель","Falcon 9","Falcon 9","Starship"],["Спутников за запуск","52","28","60"],["Масса при запуске","306 кг","800 кг","2,000 кг"],["Платформа спутника","2.8 × 1.3 м","4.1 × 2.7 м","6.5 × 3.5 м"],["Солнечные батареи","1","2","2"],["Размер солнечной батареи","8.1 × 2.8 м","12.8 × 4.1 м на крыло","4 сегмента по 19 м на панель"],["Площадь солнечных батарей","23 м²","105 м²","210 м²"],["Размах","11 м","30 м","55 м"],["Общая площадь","26 м²","116 м²","240 м²"],["Downlink","24 Гбит/с","96 Гбит/с","1,024 Гбит/с"],["Uplink","4 Гбит/с","8 Гбит/с","160 Гбит/с"],["Лучи Downlink","16","192","2,048"],["Лучи Uplink","8","144","2,048"],["Пользовательские антенны","4 антенны Ku","5 антенн Ku","Широкие антенны Ku/Ka"],["Антенны backhaul","Ka","Ka, E","Ka, E, V, W"],["Пропускная способность RF backhaul","20 Гбит/с","150 Гбит/с","1,200 Гбит/с"],["Лазерные терминалы","3","3","6"],["Пропускная способность на терминал","100 Гбит/с","200 Гбит/с","400 Гбит/с"],["Суммарная лазерная пропускная способность","300 Гбит/с","600 Гбит/с","2,400 Гбит/с"],["Топливо двигателей","Криптон","Аргон","Аргон"],["Тип двигателя","Эффект Холла","Эффект Холла","Эффект Холла"],["Тяга","70 мН","170 мН","400 мН"],["Удельный импульс","1,670 с","2,500 с","2,500 с"],["Мощность двигателя","1.8 кВт","4.2 кВт","10 кВт"],["Солнечная мощность","3 кВт","14 кВт","28 кВт"],["Маховики","4","4","4"],["Рабочая высота","550 км","480 км","350 км"],["Период обращения","95 мин","94 мин","92 мин"],["Срок службы","5 лет","5 лет","5 лет"],["Окончание срока службы","Сгорание в атмосфере","Сгорание в атмосфере","Сгорание в атмосфере"],["Direct to Cell","Нет","Только вариант DTC","Обеспечивает Mobile Gen 2"],["Завод","Redmond, WA","Redmond, WA","Redmond, WA"]]},"zh":{"t":"Starlink 各代卫星对比","s":["概览","尺寸与质量","通信容量","推进与电力","轨道"],"r":[["状态","已停产","服役中","服役中"],["首飞","2021年1月24日","2023年2月27日","2026年9月28日"],["运载火箭","Falcon 9","Falcon 9","Starship"],["单次发射卫星数","52","28","60"],["发射质量","306 千克","800 千克","2,000 千克"],["卫星平台","2.8 × 1.3 米","4.1 × 2.7 米","6.5 × 3.5 米"],["太阳能帆板","1","2","2"],["太阳能帆板尺寸","8.1 × 2.8 米","12.8 × 4.1 米 每侧","每个阵列 4 段，每段 19 米"],["太阳能面积","23 平方米","105 平方米","210 平方米"],["翼展","11 米","30 米","55 米"],["总面积","26 平方米","116 平方米","240 平方米"],["Downlink","24 吉比特/秒","96 吉比特/秒","1,024 吉比特/秒"],["Uplink","4 吉比特/秒","8 吉比特/秒","160 吉比特/秒"],["下行波束数","16","192","2,048"],["上行波束数","8","144","2,048"],["用户天线","4 个 Ku 阵列","5 个 Ku 阵列","宽幅 Ku/Ka 阵列"],["回传天线","Ka","Ka, E","Ka, E, V, W"],["射频回传容量","20 吉比特/秒","150 吉比特/秒","1,200 吉比特/秒"],["激光终端数","3","3","6"],["单终端激光容量","100 吉比特/秒","200 吉比特/秒","400 吉比特/秒"],["总激光容量","300 吉比特/秒","600 吉比特/秒","2,400 吉比特/秒"],["推进剂","氪","氩","氩"],["推进器类型","霍尔效应","霍尔效应","霍尔效应"],["推力","70 毫牛","170 毫牛","400 毫牛"],["比冲","1,670 秒","2,500 秒","2,500 秒"],["推进器功率","1.8 千瓦","4.2 千瓦","10 千瓦"],["太阳能功率","3 千瓦","14 千瓦","28 千瓦"],["反作用轮","4","4","4"],["运行高度","550 千米","480 千米","350 千米"],["轨道周期","95 分钟","94 分钟","92 分钟"],["设计寿命","5 年","5 年","5 年"],["寿命终止方式","大气层烧毁","大气层烧毁","大气层烧毁"],["Direct to Cell","否","仅 DTC 版本","支持 Mobile Gen 2"],["工厂","Redmond, WA","Redmond, WA","Redmond, WA"]]},"it":{"t":"Confronto tra le generazioni Starlink","s":["Generale","Dimensioni e massa","Capacità","Propulsione ed energia","Orbita"],"r":[["Stato","Fuori produzione","In servizio","In servizio"],["Primo volo","24 gennaio 2021","27 febbraio 2023","28 settembre 2026"],["Vettore di lancio","Falcon 9","Falcon 9","Starship"],["Satelliti per lancio","52","28","60"],["Massa al lancio","306 kg","800 kg","2,000 kg"],["Piattaforma del satellite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Pannelli solari","1","2","2"],["Dimensione del pannello solare","8.1 × 2.8 m","12.8 × 4.1 m per ala","4 segmenti da 19 m per pannello"],["Superficie solare","23 m²","105 m²","210 m²"],["Apertura alare","11 m","30 m","55 m"],["Superficie totale","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Fasci downlink","16","192","2,048"],["Fasci uplink","8","144","2,048"],["Antenne utente","4 array Ku","5 array Ku","Ampi array Ku/Ka"],["Antenne di backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacità backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminali laser","3","3","6"],["Capacità per terminale laser","100 Gbps","200 Gbps","400 Gbps"],["Capacità laser totale","300 Gbps","600 Gbps","2,400 Gbps"],["Propellente","Cripto","Argon","Argon"],["Tipo di propulsore","Effetto Hall","Effetto Hall","Effetto Hall"],["Spinta","70 mN","170 mN","400 mN"],["Impulso specifico","1,670 s","2,500 s","2,500 s"],["Potenza del propulsore","1.8 kW","4.2 kW","10 kW"],["Potenza solare","3 kW","14 kW","28 kW"],["Ruote di reazione","4","4","4"],["Altitudine operativa","550 km","480 km","350 km"],["Periodo orbitale","95 min","94 min","92 min"],["Vita utile","5 anni","5 anni","5 anni"],["Fine vita","Combustione in atmosfera","Combustione in atmosfera","Combustione in atmosfera"],["Direct to Cell","No","Solo variante DTC","Abilita Mobile Gen 2"],["Fabbrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"cs":{"t":"Porovnání generací Starlink","s":["Obecné","Rozměry a hmotnost","Kapacita","Pohon a energie","Oběžná dráha"],"r":[["Stav","Vyřazeno","V provozu","V provozu"],["První let","24. ledna 2021","27. února 2023","28. září 2026"],["Nosná raketa","Falcon 9","Falcon 9","Starship"],["Satelitů na start","52","28","60"],["Startovní hmotnost","306 kg","800 kg","2,000 kg"],["Platforma satelitu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solární panely","1","2","2"],["Velikost solárního panelu","8.1 × 2.8 m","12.8 × 4.1 m na křídlo","4 segmenty po 19 m na panel"],["Plocha solárních panelů","23 m²","105 m²","210 m²"],["Rozpětí","11 m","30 m","55 m"],["Celková plocha","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Paprsky downlink","16","192","2,048"],["Paprsky uplink","8","144","2,048"],["Uživatelské antény","4 anténní pole Ku","5 anténních polí Ku","Široké anténní pole Ku/Ka"],["Antény backhaul","Ka","Ka, E","Ka, E, V, W"],["Kapacita RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Laserové terminály","3","3","6"],["Kapacita na laserový terminál","100 Gbps","200 Gbps","400 Gbps"],["Celková laserová kapacita","300 Gbps","600 Gbps","2,400 Gbps"],["Palivo pohonu","Krypton","Argon","Argon"],["Typ motoru","Hallův jev","Hallův jev","Hallův jev"],["Tah","70 mN","170 mN","400 mN"],["Specifický impuls","1,670 s","2,500 s","2,500 s"],["Výkon motoru","1.8 kW","4.2 kW","10 kW"],["Solární výkon","3 kW","14 kW","28 kW"],["Reakční kola","4","4","4"],["Provozní výška","550 km","480 km","350 km"],["Oběžná doba","95 min","94 min","92 min"],["Životnost","5 let","5 let","5 let"],["Konec životnosti","Shoření v atmosféře","Shoření v atmosféře","Shoření v atmosféře"],["Direct to Cell","Ne","Pouze varianta DTC","Umožňuje Mobile Gen 2"],["Továrna","Redmond, WA","Redmond, WA","Redmond, WA"]]},"sv":{"t":"Jämförelse av Starlink-generationer","s":["Allmänt","Mått och massa","Kapacitet","Framdrivning och kraft","Bana"],"r":[["Status","Utgången","I drift","I drift"],["Jungfrutur","24 januari 2021","27 februari 2023","28 september 2026"],["Bärraket","Falcon 9","Falcon 9","Starship"],["Satelliter per uppskjutning","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellitplattform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelens storlek","8.1 × 2.8 m","12.8 × 4.1 m per vinge","4 segment på 19 m per panel"],["Solpanelsyta","23 m²","105 m²","210 m²"],["Vingspann","11 m","30 m","55 m"],["Total yta","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-strålar","16","192","2,048"],["Uplink-strålar","8","144","2,048"],["Användarantenner","4 Ku-antenner","5 Ku-antenner","Breda Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Total laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Framdrivningsbränsle","Krypton","Argon","Argon"],["Motortyp","Halleffekt","Halleffekt","Halleffekt"],["Dragkraft","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Operativ höjd","550 km","480 km","350 km"],["Omloppstid","95 min","94 min","92 min"],["Livslängd","5 år","5 år","5 år"],["Livets slut","Förbränning i atmosfären","Förbränning i atmosfären","Förbränning i atmosfären"],["Direct to Cell","Nej","Endast DTC-variant","Möjliggör Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"nl":{"t":"Starlink-generaties vergeleken","s":["Algemeen","Afmetingen en massa","Capaciteit","Voortstuwing en energie","Baan"],"r":[["Status","Uit productie","In dienst","In dienst"],["Eerste vlucht","24 januari 2021","27 februari 2023","28 september 2026"],["Draagraket","Falcon 9","Falcon 9","Starship"],["Satellieten per lancering","52","28","60"],["Startmassa","306 kg","800 kg","2,000 kg"],["Satellietplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Zonnepanelen","1","2","2"],["Grootte zonnepaneel","8.1 × 2.8 m","12.8 × 4.1 m per vleugel","4 segmenten van 19 m per paneel"],["Zonnepaneeloppervlak","23 m²","105 m²","210 m²"],["Spanwijdte","11 m","30 m","55 m"],["Totale oppervlakte","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-bundels","16","192","2,048"],["Uplink-bundels","8","144","2,048"],["Gebruikersantennes","4 Ku-arrays","5 Ku-arrays","Brede Ku/Ka-arrays"],["Backhaul-antennes","Ka","Ka, E","Ka, E, V, W"],["RF-backhaulcapaciteit","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminals","3","3","6"],["Capaciteit per laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Totale lasercapaciteit","300 Gbps","600 Gbps","2,400 Gbps"],["Stuwstof","Krypton","Argon","Argon"],["Type stuwraket","Halleffect","Halleffect","Halleffect"],["Stuwkracht","70 mN","170 mN","400 mN"],["Specifieke impuls","1,670 s","2,500 s","2,500 s"],["Stuwraketvermogen","1.8 kW","4.2 kW","10 kW"],["Zonnevermogen","3 kW","14 kW","28 kW"],["Reactiewielen","4","4","4"],["Operationele hoogte","550 km","480 km","350 km"],["Omlooptijd","95 min","94 min","92 min"],["Levensduur","5 jaar","5 jaar","5 jaar"],["Einde levensduur","Verbranding in de atmosfeer","Verbranding in de atmosfeer","Verbranding in de atmosfeer"],["Direct to Cell","Nee","Alleen DTC-variant","Maakt Mobile Gen 2 mogelijk"],["Fabriek","Redmond, WA","Redmond, WA","Redmond, WA"]]},"da":{"t":"Sammenligning af Starlink-generationer","s":["Generelt","Mål og masse","Kapacitet","Fremdrift og strøm","Bane"],"r":[["Status","Udgået","I drift","I drift"],["Jomfruflyvning","24. januar 2021","27. februar 2023","28. september 2026"],["Bærerraket","Falcon 9","Falcon 9","Starship"],["Satellitter pr. opsendelse","52","28","60"],["Startmasse","306 kg","800 kg","2,000 kg"],["Satellitplatform","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Solpaneler","1","2","2"],["Solpanelstørrelse","8.1 × 2.8 m","12.8 × 4.1 m pr. vinge","4 segmenter på 19 m pr. panel"],["Solpanelareal","23 m²","105 m²","210 m²"],["Vingefang","11 m","30 m","55 m"],["Samlet areal","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Downlink-stråler","16","192","2,048"],["Uplink-stråler","8","144","2,048"],["Brugerantenner","4 Ku-antenner","5 Ku-antenner","Brede Ku/Ka-antenner"],["Backhaul-antenner","Ka","Ka, E","Ka, E, V, W"],["RF-backhaul-kapacitet","20 Gbps","150 Gbps","1,200 Gbps"],["Laserterminaler","3","3","6"],["Kapacitet pr. laserterminal","100 Gbps","200 Gbps","400 Gbps"],["Samlet laserkapacitet","300 Gbps","600 Gbps","2,400 Gbps"],["Fremdriftsbrændstof","Krypton","Argon","Argon"],["Motortype","Halleffekt","Halleffekt","Halleffekt"],["Skub","70 mN","170 mN","400 mN"],["Specifik impuls","1,670 s","2,500 s","2,500 s"],["Motoreffekt","1.8 kW","4.2 kW","10 kW"],["Soleffekt","3 kW","14 kW","28 kW"],["Reaktionshjul","4","4","4"],["Driftshøjde","550 km","480 km","350 km"],["Omløbstid","95 min","94 min","92 min"],["Levetid","5 år","5 år","5 år"],["Levetidens afslutning","Forbrænding i atmosfæren","Forbrænding i atmosfæren","Forbrænding i atmosfæren"],["Direct to Cell","Nej","Kun DTC-variant","Muliggør Mobile Gen 2"],["Fabrik","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pt":{"t":"Comparação das gerações Starlink","s":["Geral","Dimensões e massa","Capacidade","Propulsão e energia","Órbita"],"r":[["Estado","Descontinuado","Em serviço","Em serviço"],["Voo inaugural","24 de janeiro de 2021","27 de fevereiro de 2023","28 de setembro de 2026"],["Veículo de lançamento","Falcon 9","Falcon 9","Starship"],["Satélites por lançamento","52","28","60"],["Massa de lançamento","306 kg","800 kg","2,000 kg"],["Plataforma do satélite","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Painéis solares","1","2","2"],["Tamanho do painel solar","8.1 × 2.8 m","12.8 × 4.1 m por asa","4 segmentos de 19 m por painel"],["Área solar","23 m²","105 m²","210 m²"],["Envergadura","11 m","30 m","55 m"],["Área total","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Feixes de downlink","16","192","2,048"],["Feixes de uplink","8","144","2,048"],["Antenas de utilizador","4 painéis Ku","5 painéis Ku","Painéis Ku/Ka amplos"],["Antenas de backhaul","Ka","Ka, E","Ka, E, V, W"],["Capacidade de backhaul RF","20 Gbps","150 Gbps","1,200 Gbps"],["Terminais laser","3","3","6"],["Capacidade por terminal laser","100 Gbps","200 Gbps","400 Gbps"],["Capacidade laser total","300 Gbps","600 Gbps","2,400 Gbps"],["Combustível de propulsão","Crípton","Árgon","Árgon"],["Tipo de propulsor","Efeito Hall","Efeito Hall","Efeito Hall"],["Empuxo","70 mN","170 mN","400 mN"],["Impulso específico","1,670 s","2,500 s","2,500 s"],["Potência do propulsor","1.8 kW","4.2 kW","10 kW"],["Potência solar","3 kW","14 kW","28 kW"],["Rodas de reação","4","4","4"],["Altitude operacional","550 km","480 km","350 km"],["Período orbital","95 min","94 min","92 min"],["Vida útil","5 anos","5 anos","5 anos"],["Fim de vida","Combustão na atmosfera","Combustão na atmosfera","Combustão na atmosfera"],["Direct to Cell","Não","Apenas variante DTC","Habilita o Mobile Gen 2"],["Fábrica","Redmond, WA","Redmond, WA","Redmond, WA"]]},"pl":{"t":"Porównanie generacji Starlink","s":["Ogólne","Wymiary i masa","Przepustowość","Napęd i zasilanie","Orbita"],"r":[["Status","Wycofany","W eksploatacji","W eksploatacji"],["Pierwszy lot","24 stycznia 2021","27 lutego 2023","28 września 2026"],["Rakieta nośna","Falcon 9","Falcon 9","Starship"],["Satelitów na start","52","28","60"],["Masa startowa","306 kg","800 kg","2,000 kg"],["Platforma satelity","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Panele słoneczne","1","2","2"],["Rozmiar panelu słonecznego","8.1 × 2.8 m","12.8 × 4.1 m na skrzydło","4 segmenty po 19 m na panel"],["Powierzchnia paneli słonecznych","23 m²","105 m²","210 m²"],["Rozpiętość","11 m","30 m","55 m"],["Powierzchnia całkowita","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["Wiązki downlink","16","192","2,048"],["Wiązki uplink","8","144","2,048"],["Anteny użytkownika","4 anteny Ku","5 anten Ku","Szerokie anteny Ku/Ka"],["Anteny backhaul","Ka","Ka, E","Ka, E, V, W"],["Przepustowość RF backhaul","20 Gbps","150 Gbps","1,200 Gbps"],["Terminale laserowe","3","3","6"],["Przepustowość na terminal laserowy","100 Gbps","200 Gbps","400 Gbps"],["Łączna przepustowość laserowa","300 Gbps","600 Gbps","2,400 Gbps"],["Paliwo napędowe","Krypton","Argon","Argon"],["Typ silnika","Efekt Halla","Efekt Halla","Efekt Halla"],["Ciąg","70 mN","170 mN","400 mN"],["Impuls właściwy","1,670 s","2,500 s","2,500 s"],["Moc silnika","1.8 kW","4.2 kW","10 kW"],["Moc paneli słonecznych","3 kW","14 kW","28 kW"],["Koła reakcyjne","4","4","4"],["Wysokość operacyjna","550 km","480 km","350 km"],["Okres orbitalny","95 min","94 min","92 min"],["Żywotność","5 lat","5 lat","5 lat"],["Koniec eksploatacji","Spłonięcie w atmosferze","Spłonięcie w atmosferze","Spłonięcie w atmosferze"],["Direct to Cell","Nie","Tylko wariant DTC","Umożliwia Mobile Gen 2"],["Fabryka","Redmond, WA","Redmond, WA","Redmond, WA"]]},"hi":{"t":"Starlink पीढ़ियों की तुलना","s":["सामान्य","आकार और द्रव्यमान","क्षमता","प्रणोदन और शक्ति","कक्षा"],"r":[["स्थिति","बंद कर दिया गया","सेवा में","सेवा में"],["पहली उड़ान","24 जनवरी 2021","27 फ़रवरी 2023","28 सितंबर 2026"],["प्रक्षेपण यान","Falcon 9","Falcon 9","Starship"],["प्रति प्रक्षेपण उपग्रह","52","28","60"],["प्रक्षेपण द्रव्यमान","306 kg","800 kg","2,000 kg"],["उपग्रह बस","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["सोलर ऐरे","1","2","2"],["सोलर ऐरे का आकार","8.1 × 2.8 m","12.8 × 4.1 m प्रति पंख","प्रति ऐरे 19 मी के 4 खंड"],["सोलर क्षेत्रफल","23 m²","105 m²","210 m²"],["विंगस्पैन","11 m","30 m","55 m"],["कुल क्षेत्रफल","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["डाउनलिंक बीम","16","192","2,048"],["अपलिंक बीम","8","144","2,048"],["उपयोगकर्ता एंटेना","4 Ku एरे","5 Ku एरे","विस्तृत Ku/Ka एरे"],["बैकहॉल एंटेना","Ka","Ka, E","Ka, E, V, W"],["RF बैकहॉल क्षमता","20 Gbps","150 Gbps","1,200 Gbps"],["लेज़र टर्मिनल","3","3","6"],["प्रति लेज़र टर्मिनल क्षमता","100 Gbps","200 Gbps","400 Gbps"],["कुल लेज़र क्षमता","300 Gbps","600 Gbps","2,400 Gbps"],["प्रणोदन ईंधन","क्रिप्टॉन","आर्गन","आर्गन"],["थ्रस्टर प्रकार","हॉल-प्रभाव","हॉल-प्रभाव","हॉल-प्रभाव"],["थ्रस्ट","70 mN","170 mN","400 mN"],["विशिष्ट आवेग","1,670 s","2,500 s","2,500 s"],["थ्रस्टर शक्ति","1.8 kW","4.2 kW","10 kW"],["सोलर शक्ति","3 kW","14 kW","28 kW"],["रिएक्शन व्हील","4","4","4"],["परिचालन ऊँचाई","550 km","480 km","350 km"],["कक्षीय अवधि","95 min","94 min","92 min"],["डिज़ाइन जीवन","5 वर्ष","5 वर्ष","5 वर्ष"],["जीवन का अंत","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट","वायुमंडल में जलकर नष्ट"],["Direct to Cell","नहीं","केवल DTC संस्करण","Mobile Gen 2 को सक्षम करता है"],["फैक्ट्री","Redmond, WA","Redmond, WA","Redmond, WA"]]},"ar":{"t":"مقارنة أجيال أقمار Starlink","s":["عام","الأبعاد والكتلة","السعة","الدفع والطاقة","المدار"],"r":[["الحالة","أُوقف الإنتاج","في الخدمة","في الخدمة"],["الرحلة الأولى","24 يناير 2021","27 فبراير 2023","28 سبتمبر 2026"],["مركبة الإطلاق","Falcon 9","Falcon 9","Starship"],["الأقمار لكل عملية إطلاق","52","28","60"],["كتلة الإطلاق","306 كجم","800 كجم","2,000 كجم"],["منصة القمر الصناعي","2.8 × 1.3 م","4.1 × 2.7 م","6.5 × 3.5 م"],["الألواح الشمسية","1","2","2"],["حجم اللوح الشمسي","8.1 × 2.8 م","12.8 × 4.1 م لكل جناح","4 أقسام بطول 19 م لكل مصفوفة"],["مساحة الألواح الشمسية","23 م²","105 م²","210 م²"],["امتداد الجناحين","11 م","30 م","55 م"],["المساحة الإجمالية","26 م²","116 م²","240 م²"],["Downlink","24 جيجابت/ثانية","96 جيجابت/ثانية","1,024 جيجابت/ثانية"],["Uplink","4 جيجابت/ثانية","8 جيجابت/ثانية","160 جيجابت/ثانية"],["حزم الإرسال الهابط","16","192","2,048"],["حزم الإرسال الصاعد","8","144","2,048"],["هوائيات المستخدم","4 مصفوفات Ku","5 مصفوفات Ku","مصفوفات Ku/Ka عريضة"],["هوائيات الوصلة الخلفية","Ka","Ka, E","Ka, E, V, W"],["سعة الوصلة الخلفية اللاسلكية","20 جيجابت/ثانية","150 جيجابت/ثانية","1,200 جيجابت/ثانية"],["محطات الليزر","3","3","6"],["السعة لكل محطة ليزر","100 جيجابت/ثانية","200 جيجابت/ثانية","400 جيجابت/ثانية"],["إجمالي سعة الليزر","300 جيجابت/ثانية","600 جيجابت/ثانية","2,400 جيجابت/ثانية"],["وقود الدفع","الكريبتون","الأرجون","الأرجون"],["نوع الدافع","تأثير هول","تأثير هول","تأثير هول"],["قوة الدفع","70 ملي نيوتن","170 ملي نيوتن","400 ملي نيوتن"],["الدفع النوعي","1,670 ثانية","2,500 ثانية","2,500 ثانية"],["قدرة الدافع","1.8 كيلوواط","4.2 كيلوواط","10 كيلوواط"],["القدرة الشمسية","3 كيلوواط","14 كيلوواط","28 كيلوواط"],["عجلات التفاعل","4","4","4"],["الارتفاع التشغيلي","550 كم","480 كم","350 كم"],["الفترة المدارية","95 دقيقة","94 دقيقة","92 دقيقة"],["عمر التصميم","5 سنوات","5 سنوات","5 سنوات"],["نهاية العمر","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي","احتراق في الغلاف الجوي"],["Direct to Cell","لا","طراز DTC فقط","يُمكّن Mobile Gen 2"],["المصنع","Redmond, WA","Redmond, WA","Redmond, WA"]]},"tr":{"t":"Starlink Nesilleri Karşılaştırması","s":["Genel","Boyutlar ve Kütle","Kapasite","Tahrik ve Güç","Yörünge"],"r":[["Durum","Üretimi durduruldu","Hizmette","Hizmette"],["İlk uçuş","24 Ocak 2021","27 Şubat 2023","28 Eylül 2026"],["Fırlatma aracı","Falcon 9","Falcon 9","Starship"],["Fırlatma başına uydu","52","28","60"],["Fırlatma kütlesi","306 kg","800 kg","2,000 kg"],["Uydu platformu","2.8 × 1.3 m","4.1 × 2.7 m","6.5 × 3.5 m"],["Güneş panelleri","1","2","2"],["Güneş paneli boyutu","8.1 × 2.8 m","12.8 × 4.1 m kanat başına","dizi başına 19 m'lik 4 segment"],["Güneş paneli alanı","23 m²","105 m²","210 m²"],["Kanat açıklığı","11 m","30 m","55 m"],["Toplam alan","26 m²","116 m²","240 m²"],["Downlink","24 Gbps","96 Gbps","1,024 Gbps"],["Uplink","4 Gbps","8 Gbps","160 Gbps"],["İniş bağlantısı ışın sayısı","16","192","2,048"],["Çıkış bağlantısı ışın sayısı","8","144","2,048"],["Kullanıcı antenleri","4 Ku dizisi","5 Ku dizisi","Geniş Ku/Ka dizileri"],["Geri taşıma antenleri","Ka","Ka, E","Ka, E, V, W"],["RF geri taşıma kapasitesi","20 Gbps","150 Gbps","1,200 Gbps"],["Lazer terminalleri","3","3","6"],["Lazer terminali başına kapasite","100 Gbps","200 Gbps","400 Gbps"],["Toplam lazer kapasitesi","300 Gbps","600 Gbps","2,400 Gbps"],["İtki yakıtı","Kripton","Argon","Argon"],["İtici tipi","Hall etkisi","Hall etkisi","Hall etkisi"],["İtki","70 mN","170 mN","400 mN"],["Özgül itki","1,670 s","2,500 s","2,500 s"],["İtici gücü","1.8 kW","4.2 kW","10 kW"],["Güneş enerjisi gücü","3 kW","14 kW","28 kW"],["Reaksiyon çarkları","4","4","4"],["Operasyonel irtifa","550 km","480 km","350 km"],["Yörünge periyodu","95 min","94 min","92 min"],["Tasarım ömrü","5 yıl","5 yıl","5 yıl"],["Ömür sonu","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma","Atmosferde yanarak yok olma"],["Direct to Cell","Hayır","Yalnızca DTC modeli","Mobile Gen 2'yi mümkün kılar"],["Fabrika","Redmond, WA","Redmond, WA","Redmond, WA"]]}};
         // How many rows each of the 5 sections has, in order - used to recover each flattened
         // row's (section, row-within-section) pair, matching how the DOM ids were generated.
         const STARLINK_SPECS_SECTION_ROW_COUNTS = [4, 7, 10, 7, 6];
@@ -10754,7 +10760,11 @@
             }
 
             img.classList.add('hidden');
-            if (spinner) spinner.classList.remove('hidden');
+            if (spinner) {
+                // back to the spinner - after an image that failed, the icon was still the "broken image" one
+                spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl';
+                spinner.classList.remove('hidden');
+            }
             img.onload = () => {
                 img.classList.remove('hidden');
                 if (spinner) spinner.classList.add('hidden');
@@ -11546,6 +11556,7 @@
             }
             if (lastAppliedSpecLang !== currentLang.split('-')[0]) {
                 lastAppliedSpecLang = currentLang.split('-')[0];
+                if (typeof relocalizeCrewGridRoles === 'function') relocalizeCrewGridRoles(currentLang);
                 // updateUnitsDisplay() only runs when metric/imperial actually flips (see
                 // where it's called below), so switching between two metric languages (e.g.
                 // Hebrew to Russian) wouldn't otherwise refresh the Rocket Scale Comparator's
@@ -13985,6 +13996,19 @@
         return Math.ceil((((t - yearStart) / 86400000) + 1) / 7);
       }
       var TODAY_WEEK = isoWeekOfDate(TODAY);
+      // "Today" was fixed when the page loaded, so a page left open past midnight (or into a new year) kept
+      // counting up to the old date - and the once-a-day data kept the old day's numbers. Re-read on every
+      // open and every data refresh; true when the day changed since the last time.
+      var lcDayKey = null;
+      function refreshLaunchCadenceToday() {
+        TODAY = new Date();
+        CURRENT_YEAR = TODAY.getFullYear();
+        TODAY_WEEK = isoWeekOfDate(TODAY);
+        var key = TODAY.toISOString().slice(0, 10);
+        var changed = lcDayKey !== null && lcDayKey !== key;
+        lcDayKey = key;
+        return changed;
+      }
 
       // The CURRENT year is classified live from Launch Library 2 (see the standalone
       // draft's own comment history for why this is ONE shared query, cached once per
@@ -14001,18 +14025,39 @@
         return Math.max(0, Math.min(WEEKS - 1, Math.floor(daysSinceJan1 / 7)));
       }
 
+      // The list this reads (mode=list) gives the provider only as "lsp_name" and the place as a "location" string -
+      // there is no launch_service_provider object in it, so reading only that object (as this did) matched nothing,
+      // every answer looked empty, and the chart never had live numbers. Same rules in update_launch_cadence.py.
+      var CHINA_PROVIDERS = /china aerospace|cas space|china rocket|landspace|expace|galactic energy|orienspace|space pioneer|ispace|deep blue/;
       function classifyLiveProvider(launch) {
         var lsp = launch && launch.launch_service_provider;
-        var name = ((lsp && lsp.name) || '').toLowerCase();
+        var name = (((lsp && lsp.name) || (launch && launch.lsp_name)) || '').toLowerCase();
         var country = (lsp && lsp.country_code) || '';
+        var location = String((launch && (typeof launch.location === 'string' ? launch.location : launch.location && launch.location.name)) || '');
         if (name.indexOf('spacex') >= 0) return 'spacex';
         if (name.indexOf('united launch alliance') >= 0) return 'ula';
         if (name.indexOf('blue origin') >= 0) return 'blue';
         if (name.indexOf('rocket lab') >= 0) return 'rlab';
-        if (name.indexOf('arianespace') >= 0) return 'europe';
-        if (name.indexOf('roscosmos') >= 0) return 'russia';
-        if (country === 'CHN') return 'china';
+        if (name.indexOf('arianespace') >= 0 || name.indexOf('avio') >= 0) return 'europe';     // Vega C is flown by Avio now
+        if (/roscosmos|russian|khrunichev|energiya/.test(name)) return 'russia';               // every Russian operator, like the yearly totals
+        if (country === 'CHN' || CHINA_PROVIDERS.test(name) || /People's Republic of China|Haiyang/i.test(location)) return 'china';
         return null;
+      }
+
+      // this year's launches as collected once for everyone by the GitHub job (update_launch_cadence.py): the
+      // file's [date, provider] pairs, or null when it's missing, from another year, or more than 36 hours old
+      async function loadLaunchCadenceFile() {
+        try {
+          var controller = new AbortController();
+          var timeout = setTimeout(function () { controller.abort(); }, 8000);
+          var res = await fetch('launch-cadence.json', { cache: 'no-cache', signal: controller.signal });
+          clearTimeout(timeout);
+          if (!res.ok) return null;
+          var data = await res.json();
+          var age = Date.now() - Date.parse(data && data.updatedAt);
+          if (!data || data.year !== CURRENT_YEAR || !(age < 36 * 3600 * 1000) || !Array.isArray(data.launches)) return null;
+          return data.launches;
+        } catch (e) { return null; }
       }
 
       function todayDateKey() { return TODAY.toISOString().slice(0, 10); }
@@ -14075,6 +14120,7 @@
       // and re-renders if the chart has already been opened this session, independent of
       // whether it's currently visible or of the once-a-day LL2 cycle for the other providers.
       window.syncLaunchCadenceSpacexData = function () {
+        refreshLaunchCadenceToday();
         applyLiveBuckets({ spacex: computeSpacexPerWeekFromLocalData() });
         if (lcInitialized) render();
       };
@@ -14085,6 +14131,24 @@
         // numbers in either path are simply never used.
         var cached = loadLiveCache();
         if (cached) { applyLiveBuckets(cached); window.syncLaunchCadenceSpacexData(); return; }
+        // the site's own copy first - Launch Library itself only when that copy is missing or out of date
+        var fromFile = await loadLaunchCadenceFile();
+        if (fromFile) {
+          var fileBuckets = { spacex: new Array(WEEKS).fill(0), ula: new Array(WEEKS).fill(0), blue: new Array(WEEKS).fill(0), rlab: new Array(WEEKS).fill(0), china: new Array(WEEKS).fill(0), europe: new Array(WEEKS).fill(0), russia: new Array(WEEKS).fill(0) };
+          fromFile.forEach(function (row) {
+            var d = new Date(row && row[0]);
+            var key = row && row[1];
+            if (!fileBuckets[key] || isNaN(d.getTime()) || d.getFullYear() !== CURRENT_YEAR || d > TODAY) return;
+            fileBuckets[key][weekIndexOfDate(d)]++;
+          });
+          if (looksLikeValidBuckets(fileBuckets)) {
+            saveLiveCache(fileBuckets);
+            applyLiveBuckets(fileBuckets);
+            applyLiveBuckets({ spacex: computeSpacexPerWeekFromLocalData() });
+            render();
+            return;
+          }
+        }
         try {
           var yearStart = new Date(CURRENT_YEAR, 0, 1).toISOString();
           var url = 'https://ll.thespacedevs.com/2.2.0/launch/previous/?net__gte=' + yearStart +
@@ -14647,7 +14711,16 @@
       }
 
       window.openLaunchCadenceModal = function () {
+        var newDay = refreshLaunchCadenceToday();
+        var wasInitialized = lcInitialized;
         ensureLaunchCadenceInit();
+        if (newDay && wasInitialized) {
+          // a new day (or year) since the chart's data was read - read it again for this one
+          liveData = {};
+          liveDataFailed = false;
+          applyLiveBuckets({ spacex: computeSpacexPerWeekFromLocalData() });
+          fetchLiveLaunchDataOncePerDay();
+        }
         resetLaunchCadenceState();
         var modal = document.getElementById('launch-cadence-modal');
         modal.classList.remove('hidden'); modal.classList.add('flex');
@@ -15850,8 +15923,6 @@
             userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jerusalem';
         } catch (e) { }
 
-        console.warn = function () { };
-
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -15910,8 +15981,19 @@
         // Launches" grid without assuming it's always dbMissions[0].
         let currentHeroMissionId = null;
         let heroLiveCheckIntervalId = null;
-        let favoriteMissions = JSON.parse(localStorage.getItem('spacex_favorites') || '[]');
-        let remindedMissions = JSON.parse(localStorage.getItem('spacex_reminders') || '[]');
+        // A saved list that can't be read (damaged value, or storage blocked by the browser) starts empty
+        // instead of stopping the whole script here
+        function readStoredIdList(key) {
+            try {
+                const v = JSON.parse(localStorage.getItem(key) || '[]');
+                return Array.isArray(v) ? v : [];
+            } catch (e) { return []; }
+        }
+        function storeIdList(key, list) {
+            try { localStorage.setItem(key, JSON.stringify(list)); } catch (e) { /* full or blocked - kept for this visit only */ }
+        }
+        let favoriteMissions = readStoredIdList('spacex_favorites');
+        let remindedMissions = readStoredIdList('spacex_reminders');
 
         // ---- Unified visual modes: day | night | mars | moon ----
         // Exclusive classes (never stacked). sessionStorage key: spacex-visual-mode.
@@ -16328,12 +16410,27 @@
         // fire the "10 minutes to launch" notification right away for anything ~25+ days out.
         // This chains safe-sized waits until we're within range, then does the real, precise wait.
         const MAX_SAFE_TIMEOUT = 20 * 24 * 60 * 60 * 1000; // 20 days, comfortably under the 32-bit cap
+        // Returns a handle (not a timer id): each 20-day hop starts a new timer, and the handle always
+        // holds the current one, so clearLongTimeout() stops the chain wherever it is - a plain
+        // clearTimeout() of the first id would miss every hop after the first.
         function scheduleLongTimeout(callback, delay) {
             if (delay <= 0) return null;
-            if (delay <= MAX_SAFE_TIMEOUT) {
-                return setTimeout(callback, delay);
-            }
-            return setTimeout(() => scheduleLongTimeout(callback, delay - MAX_SAFE_TIMEOUT), MAX_SAFE_TIMEOUT);
+            const handle = { id: null, cancelled: false };
+            const step = (remaining) => {
+                if (handle.cancelled) return;
+                if (remaining <= MAX_SAFE_TIMEOUT) {
+                    handle.id = setTimeout(() => { if (!handle.cancelled) callback(); }, remaining);
+                } else {
+                    handle.id = setTimeout(() => step(remaining - MAX_SAFE_TIMEOUT), MAX_SAFE_TIMEOUT);
+                }
+            };
+            step(delay);
+            return handle;
+        }
+        function clearLongTimeout(handle) {
+            if (!handle) return;
+            handle.cancelled = true;
+            clearTimeout(handle.id);
         }
 
         // stageLabel is the human-readable "in X" phrase for whichever stage just fired (see
@@ -16341,19 +16438,28 @@
         // same function serves every stage (24h/12h/1h/10min) with correct wording each time.
         function fireLaunchReminderNotification(name, stageLabel) {
             const body = `${name} is lifting off in ${stageLabel}!`;
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification("SpaceX Tracker • Launch Warning", {
+            // Android Chrome has no page-level Notification (`new Notification()` throws there), so the
+            // service worker shows it whenever one is registered - not only once it controls the page,
+            // which it doesn't yet on the very first visit. The page's own Notification is the fallback.
+            const showFromPage = () => {
+                try {
+                    new Notification("SpaceX Tracker • Launch Warning", {
+                        body,
+                        icon: "https://www.spacex.com/static/images/share.jpg"
+                    });
+                } catch (e) { /* no way to show it on this browser */ }
+            };
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (!registration || typeof registration.showNotification !== 'function') { showFromPage(); return; }
+                    return registration.showNotification("SpaceX Tracker • Launch Warning", {
                         body,
                         icon: "https://www.spacex.com/static/images/share.jpg",
                         vibrate: [200, 100, 200]
                     });
-                });
+                }).catch(showFromPage);
             } else {
-                new Notification("SpaceX Tracker • Launch Warning", {
-                    body,
-                    icon: "https://www.spacex.com/static/images/share.jpg"
-                });
+                showFromPage();
             }
         }
 
@@ -16390,7 +16496,7 @@
             window._armedReminderTimers = window._armedReminderTimers || new Map();
             const existing = window._armedReminderTimers.get(id);
             if (existing && existing.dateStr === dateStr) return;
-            if (existing) existing.timeoutIds.forEach(clearTimeout);
+            if (existing) existing.timeoutIds.forEach(clearLongTimeout);
 
             const launchTime = new Date(dateStr).getTime();
             const timeoutIds = [];
@@ -16442,7 +16548,7 @@
                         // re-arming the reminder every refresh even after the user cancelled it.
                         if (remindedMissions.includes(id)) return;
                         remindedMissions.push(id);
-                        localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
+                        storeIdList('spacex_reminders', remindedMissions);
 
                         // Small "ring" so pressing the bell reads as an action taken, not just
                         // a color swap. The alert() below blocks synchronously, which gives the
@@ -16479,13 +16585,13 @@
                 });
             } else {
                 remindedMissions.splice(index, 1);
-                localStorage.setItem('spacex_reminders', JSON.stringify(remindedMissions));
+                storeIdList('spacex_reminders', remindedMissions);
                 // Cancel any still-pending notification timers for this mission - otherwise
                 // un-reminding wouldn't actually stop the remaining staged notifications from
                 // firing. timeoutIds (plural) - one per still-future stage (24h/12h/1h/10min),
                 // all need clearing, not just one.
                 if (window._armedReminderTimers && window._armedReminderTimers.has(id)) {
-                    window._armedReminderTimers.get(id).timeoutIds.forEach(clearTimeout);
+                    window._armedReminderTimers.get(id).timeoutIds.forEach(clearLongTimeout);
                     window._armedReminderTimers.delete(id);
                 }
                 alert(`❌ התזכורת עבור ${name} בוטלה.`);
@@ -16532,7 +16638,7 @@
                     }
                 }
             }
-            localStorage.setItem('spacex_favorites', JSON.stringify(favoriteMissions));
+            storeIdList('spacex_favorites', favoriteMissions);
         }
 
         // Per-photo framing on the launch cards: the Crew Dragon pad shot has the rocket right in the
@@ -17194,7 +17300,8 @@
             "Starlink's Direct to Cell satellites work like cell towers in space, letting ordinary phones send text messages without any special antenna.",
             "On the CRS-33 mission in 2025, a Cargo Dragon carried a 'boost trunk' and used its own engines to raise the space station's orbit.",
             "NASA chose SpaceX to build the vehicle that will bring the International Space Station down from orbit at the end of its life — a spacecraft based on Dragon.",
-            "NASA's Europa Clipper — the largest spacecraft NASA has ever built for a planetary mission — launched on a Falcon Heavy in October 2024, bound for Jupiter's moon Europa."
+            "NASA's Europa Clipper — the largest spacecraft NASA has ever built for a planetary mission — launched on a Falcon Heavy in October 2024, bound for Jupiter's moon Europa.",
+            "Fastest ride to the space station: on October 1, 2026, Crew Dragon took the four Crew-13 astronauts from liftoff to docking with the ISS in just 7 hours and 55 minutes — the quickest launch-to-docking of any U.S. spacecraft in the station's history."
         ];
 
         // Manual translations for the "Did You Know" facts (see masterFacts above), keyed by
@@ -17300,6 +17407,7 @@
                 "במשימה CRS-33 ב-2025 נשא דרגון תובלה 'תא מטען מאיץ' (boost trunk), והשתמש במנועים שלו כדי להגביה את מסלול תחנת החלל.",
                 "נאס״א בחרה ב-SpaceX לבנות את הרכב שיוריד את תחנת החלל הבינלאומית ממסלולה בסוף חייה — חללית המבוססת על הדרגון.",
                 "Europa Clipper — החללית הגדולה ביותר שנאס״א בנתה אי פעם למשימה פלנטרית — שוגרה על פלקון כבד באוקטובר 2024, בדרכה לאירופה, הירח של צדק.",
+                "המסע המהיר ביותר לתחנת החלל: ב-1 באוקטובר 2026 הביאה דרגון צוות את ארבעת האסטרונאוטים של צוות 13 מההמראה ועד העגינה בתחנת החלל הבינלאומית תוך 7 שעות ו-55 דקות בלבד — הזמן הקצר ביותר משיגור ועד עגינה של חללית אמריקאית בכל שנות התחנה."
             ],
         };
         FACTS_I18N.iw = FACTS_I18N.he;
@@ -17397,6 +17505,7 @@
             "En la misión CRS-33 de 2025, una Cargo Dragon llevó un 'boost trunk' y usó sus propios motores para elevar la órbita de la estación espacial.",
             "La NASA eligió a SpaceX para construir el vehículo que sacará de órbita la Estación Espacial Internacional al final de su vida útil: una nave basada en Dragon.",
             "Europa Clipper, la nave más grande que la NASA ha construido para una misión planetaria, despegó en un Falcon Heavy en octubre de 2024 rumbo a Europa, la luna de Júpiter.",
+            "El viaje más rápido a la estación espacial: el 1 de octubre de 2026, la Crew Dragon llevó a los cuatro astronautas de la Crew-13 del despegue al acoplamiento con la EEI en solo 7 horas y 55 minutos, el trayecto de lanzamiento a acoplamiento más rápido de una nave estadounidense en la historia de la estación."
         ];
 
         FACTS_I18N.fr = [
@@ -17492,6 +17601,7 @@
             "Lors de la mission CRS-33 en 2025, un Cargo Dragon emportait un « boost trunk » et a utilisé ses propres moteurs pour relever l'orbite de la station spatiale.",
             "La NASA a choisi SpaceX pour construire le véhicule qui fera sortir de son orbite la Station spatiale internationale en fin de vie — un vaisseau dérivé du Dragon.",
             "Europa Clipper, le plus grand vaisseau jamais construit par la NASA pour une mission planétaire, a décollé sur une Falcon Heavy en octobre 2024, en route vers Europe, la lune de Jupiter.",
+            "Le trajet le plus rapide vers la station spatiale : le 1er octobre 2026, Crew Dragon a emmené les quatre astronautes de Crew-13 du décollage à l'amarrage à l'ISS en seulement 7 heures et 55 minutes — le trajet lancement-amarrage le plus rapide d'un vaisseau américain dans l'histoire de la station."
         ];
 
         FACTS_I18N.de = [
@@ -17587,6 +17697,7 @@
             "Bei der Mission CRS-33 im Jahr 2025 trug ein Cargo Dragon einen „Boost Trunk“ und hob mit eigenen Triebwerken die Umlaufbahn der Raumstation an.",
             "Die NASA hat SpaceX beauftragt, das Fahrzeug zu bauen, das die Internationale Raumstation am Ende ihrer Lebensdauer aus dem Orbit holt – ein auf Dragon basierendes Raumschiff.",
             "Europa Clipper – das größte Raumfahrzeug, das die NASA je für eine Planetenmission gebaut hat – startete im Oktober 2024 auf einer Falcon Heavy zum Jupitermond Europa.",
+            "Die schnellste Reise zur Raumstation: Am 1. Oktober 2026 brachte Crew Dragon die vier Astronauten von Crew-13 in nur 7 Stunden und 55 Minuten vom Start bis zum Andocken an die ISS – schneller als jedes andere US-Raumschiff in der Geschichte der Station."
         ];
 
         FACTS_I18N.ru = [
@@ -17682,6 +17793,7 @@
             "В миссии CRS-33 в 2025 году Cargo Dragon нёс «разгонный отсек» (boost trunk) и с помощью собственных двигателей поднял орбиту космической станции.",
             "NASA выбрало SpaceX для создания аппарата, который в конце срока службы сведёт Международную космическую станцию с орбиты, — корабля на основе Dragon.",
             "Europa Clipper — крупнейший аппарат, когда-либо построенный NASA для планетной миссии, — стартовал на Falcon Heavy в октябре 2024 года к спутнику Юпитера Европе.",
+            "Самый быстрый полёт к космической станции: 1 октября 2026 года Крю Драгон доставил четырёх астронавтов Crew-13 от старта до стыковки с МКС всего за 7 часов 55 минут — быстрее, чем любой другой американский корабль за всю историю станции."
         ];
 
         FACTS_I18N.zh = [
@@ -17777,6 +17889,7 @@
             "在2025年的CRS-33任务中，货运龙飞船搭载了“助推舱段”（boost trunk），并用自身发动机提升了空间站的轨道。",
             "NASA选择SpaceX建造在国际空间站寿命结束时将其带离轨道的飞行器——一艘基于龙飞船的航天器。",
             "欧罗巴快船——NASA有史以来为行星任务建造的最大航天器——于2024年10月搭乘猎鹰重型火箭发射，前往木星的卫星欧罗巴。",
+            "飞往空间站最快的一次：2026年10月1日，载人龙飞船仅用7小时55分钟，就把Crew-13的四名宇航员从发射送到与国际空间站对接，创下空间站历史上美国航天器从发射到对接的最快纪录。"
         ];
 
         FACTS_I18N.it = [
@@ -17872,6 +17985,7 @@
             "Nella missione CRS-33 del 2025 una Cargo Dragon portava un 'boost trunk' e ha usato i propri motori per alzare l'orbita della stazione spaziale.",
             "La NASA ha scelto SpaceX per costruire il veicolo che a fine vita porterà fuori orbita la Stazione Spaziale Internazionale: una navicella basata su Dragon.",
             "Europa Clipper, la sonda più grande mai costruita dalla NASA per una missione planetaria, è partita su un Falcon Heavy nell'ottobre 2024 diretta verso Europa, la luna di Giove.",
+            "Il viaggio più veloce verso la stazione spaziale: il 1º ottobre 2026 Crew Dragon ha portato i quattro astronauti di Crew-13 dal lancio all'aggancio con la ISS in sole 7 ore e 55 minuti — il tragitto lancio-aggancio più rapido di un veicolo statunitense nella storia della stazione."
         ];
 
         FACTS_I18N.cs = [
@@ -17967,6 +18081,7 @@
             "Při misi CRS-33 v roce 2025 nesl Cargo Dragon „boost trunk“ a vlastními motory zvedl oběžnou dráhu vesmírné stanice.",
             "NASA vybrala SpaceX, aby postavila plavidlo, které na konci životnosti stáhne Mezinárodní vesmírnou stanici z oběžné dráhy – loď založenou na Dragonu.",
             "Europa Clipper – největší sonda, jakou kdy NASA postavila pro planetární misi – odstartovala v říjnu 2024 na raketě Falcon Heavy k Jupiterovu měsíci Europa.",
+            "Nejrychlejší cesta k vesmírné stanici: 1. října 2026 dopravila Crew Dragon čtyři astronauty mise Crew-13 od startu po připojení k ISS za pouhých 7 hodin a 55 minut — rychleji než kterákoli jiná americká loď v historii stanice."
         ];
 
         FACTS_I18N.sv = [
@@ -18062,6 +18177,7 @@
             "Under uppdraget CRS-33 år 2025 bar en Cargo Dragon en ”boost trunk” och använde sina egna motorer för att höja rymdstationens omloppsbana.",
             "NASA valde SpaceX att bygga farkosten som ska föra ner Internationella rymdstationen ur omloppsbanan när den tjänat ut – en farkost baserad på Dragon.",
             "Europa Clipper – den största rymdfarkost NASA någonsin byggt för ett planetuppdrag – sköts upp med en Falcon Heavy i oktober 2024 mot Jupiters måne Europa.",
+            "Den snabbaste resan till rymdstationen: den 1 oktober 2026 tog Crew Dragon de fyra astronauterna i Crew-13 från uppskjutning till dockning med ISS på bara 7 timmar och 55 minuter – snabbare än någon annan amerikansk farkost i stationens historia."
         ];
 
         FACTS_I18N.nl = [
@@ -18157,6 +18273,7 @@
             "Tijdens de missie CRS-33 in 2025 had een Cargo Dragon een 'boost trunk' bij zich en gebruikte hij zijn eigen motoren om de baan van het ruimtestation te verhogen.",
             "NASA koos SpaceX om het voertuig te bouwen dat het Internationaal Ruimtestation aan het einde van zijn leven uit zijn baan haalt – een ruimtevaartuig gebaseerd op Dragon.",
             "Europa Clipper – het grootste ruimtevaartuig dat NASA ooit voor een planetaire missie bouwde – werd in oktober 2024 met een Falcon Heavy gelanceerd, op weg naar Jupitermaan Europa.",
+            "De snelste reis naar het ruimtestation: op 1 oktober 2026 bracht Crew Dragon de vier astronauten van Crew-13 in slechts 7 uur en 55 minuten van lancering tot koppeling met het ISS – sneller dan enig ander Amerikaans ruimtevaartuig in de geschiedenis van het station."
         ];
 
         FACTS_I18N.da = [
@@ -18252,6 +18369,7 @@
             "På missionen CRS-33 i 2025 medbragte en Cargo Dragon en 'boost trunk' og brugte sine egne motorer til at hæve rumstationens bane.",
             "NASA valgte SpaceX til at bygge det fartøj, der skal bringe Den Internationale Rumstation ned fra kredsløb, når den er udtjent – et rumfartøj baseret på Dragon.",
             "Europa Clipper – det største rumfartøj, NASA nogensinde har bygget til en planetmission – blev opsendt med en Falcon Heavy i oktober 2024 mod Jupiters måne Europa.",
+            "Den hurtigste tur til rumstationen: Den 1. oktober 2026 bragte Crew Dragon de fire astronauter fra Crew-13 fra opsendelse til docking med ISS på kun 7 timer og 55 minutter – hurtigere end noget andet amerikansk rumfartøj i stationens historie."
         ];
 
         FACTS_I18N.pt = [
@@ -18347,6 +18465,7 @@
             "Na missão CRS-33, em 2025, uma Cargo Dragon levou um 'boost trunk' e usou os próprios motores para elevar a órbita da estação espacial.",
             "A NASA escolheu a SpaceX para construir o veículo que vai tirar a Estação Espacial Internacional de órbita no fim de sua vida útil — uma nave baseada na Dragon.",
             "A Europa Clipper — a maior nave que a NASA já construiu para uma missão planetária — foi lançada em um Falcon Heavy em outubro de 2024 rumo a Europa, a lua de Júpiter.",
+            "A viagem mais rápida até a estação espacial: em 1º de outubro de 2026, a Crew Dragon levou os quatro astronautas da Crew-13 do lançamento à acoplagem com a ISS em apenas 7 horas e 55 minutos — o trajeto de lançamento a acoplagem mais rápido de uma nave norte-americana na história da estação."
         ];
 
         FACTS_I18N.pl = [
@@ -18442,6 +18561,7 @@
             "Podczas misji CRS-33 w 2025 roku Cargo Dragon miał na pokładzie „boost trunk” i własnymi silnikami podniósł orbitę stacji kosmicznej.",
             "NASA wybrała SpaceX do budowy pojazdu, który pod koniec życia Międzynarodowej Stacji Kosmicznej sprowadzi ją z orbity – statku opartego na Dragonie.",
             "Europa Clipper – największa sonda, jaką NASA kiedykolwiek zbudowała na misję planetarną – wystartowała w październiku 2024 roku na rakiecie Falcon Heavy w kierunku Europy, księżyca Jowisza.",
+            "Najszybsza podróż na stację kosmiczną: 1 października 2026 roku Crew Dragon dowiózł czworo astronautów misji Crew-13 od startu do połączenia z ISS w zaledwie 7 godzin i 55 minut — szybciej niż jakikolwiek inny amerykański statek w historii stacji."
         ];
 
         FACTS_I18N.hi = [
@@ -18537,6 +18657,7 @@
             "2025 के CRS-33 मिशन में एक Cargo Dragon 'बूस्ट ट्रंक' लेकर गया और उसने अपने इंजनों से अंतरिक्ष स्टेशन की कक्षा ऊपर उठाई।",
             "NASA ने अंतर्राष्ट्रीय अंतरिक्ष स्टेशन को उसके जीवन के अंत में कक्षा से नीचे लाने वाला वाहन बनाने के लिए SpaceX को चुना — यह Dragon पर आधारित एक अंतरिक्ष यान है।",
             "यूरोपा क्लिपर — किसी ग्रह-मिशन के लिए NASA द्वारा बनाया गया अब तक का सबसे बड़ा अंतरिक्ष यान — अक्टूबर 2024 में Falcon Heavy से बृहस्पति के चंद्रमा यूरोपा की ओर लॉन्च हुआ।",
+            "अंतरिक्ष स्टेशन तक सबसे तेज़ सफ़र: 1 अक्टूबर 2026 को क्रू ड्रैगन ने Crew-13 के चार अंतरिक्ष यात्रियों को लॉन्च से अंतर्राष्ट्रीय अंतरिक्ष स्टेशन पर डॉकिंग तक सिर्फ़ 7 घंटे 55 मिनट में पहुँचा दिया — स्टेशन के इतिहास में किसी भी अमेरिकी अंतरिक्ष यान का सबसे तेज़ लॉन्च-से-डॉकिंग सफ़र।"
         ];
 
         FACTS_I18N.ar = [
@@ -18632,6 +18753,7 @@
             "في مهمة CRS-33 عام 2025، حملت مركبة Cargo Dragon 'صندوق دفع' (boost trunk) واستخدمت محركاتها الخاصة لرفع مدار محطة الفضاء.",
             "اختارت ناسا شركة SpaceX لبناء المركبة التي ستُنزل محطة الفضاء الدولية من مدارها في نهاية عمرها — وهي مركبة مبنية على دراغون.",
             "أُطلقت مركبة يوروبا كليبر — أكبر مركبة بنتها ناسا لمهمة كوكبية على الإطلاق — على صاروخ فالكون هيفي في أكتوبر 2024، متجهة إلى يوروبا، قمر المشتري.",
+            "أسرع رحلة إلى محطة الفضاء: في 1 أكتوبر 2026 نقلت كرو دراغون رواد الفضاء الأربعة في مهمة Crew-13 من الإقلاع حتى الالتحام بمحطة الفضاء الدولية في 7 ساعات و55 دقيقة فقط — وهو أسرع زمن من الإطلاق إلى الالتحام لمركبة أمريكية في تاريخ المحطة."
         ];
 
         FACTS_I18N.tr = [
@@ -18727,6 +18849,7 @@
             "2025'teki CRS-33 görevinde bir Cargo Dragon, 'boost trunk' taşıdı ve kendi motorlarıyla uzay istasyonunun yörüngesini yükseltti.",
             "NASA, Uluslararası Uzay İstasyonu'nu ömrünün sonunda yörüngeden indirecek aracı yapması için SpaceX'i seçti — Dragon'a dayanan bir uzay aracı.",
             "NASA'nın bir gezegen görevi için yaptığı en büyük uzay aracı olan Europa Clipper, Ekim 2024'te bir Falcon Heavy ile Jüpiter'in uydusu Europa'ya doğru fırlatıldı.",
+            "Uzay istasyonuna en hızlı yolculuk: 1 Ekim 2026'da Crew Dragon, Crew-13'ün dört astronotunu kalkıştan ISS'e kenetlenmeye kadar yalnızca 7 saat 55 dakikada taşıdı — istasyon tarihinde bir ABD uzay aracının en hızlı fırlatmadan kenetlenmeye yolculuğu."
         ];
 
         function getFactText(index, currentLang) {
@@ -18790,9 +18913,21 @@
             }
         }
 
+        // satellites added per week, from the Starlink launches of the last 30 days (88 a month when none are known)
+        // ...on Falcon 9 and on Starship (its Starlink flights carry V3 satellites - estimateGen3SatelliteCount)
+        function starlinkWeeklyDeploymentRate() {
+            const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            const last30Days = estimateStarlinkSatsAddedSince(cutoff);
+            const starshipFlights = (rawPastMissions || []).filter(m => isGen3StarlinkDeployment(m) && new Date(m.date).getTime() > cutoff);
+            const launches = last30Days.launches + starshipFlights.length;
+            const added = last30Days.added + starshipFlights.reduce((sum, m) => sum + estimateGen3SatelliteCount(m), 0);
+            return Math.round((launches === 0 ? 88 : added) / 4.33);
+        }
+
         function updateStarlinkStats() {
+            // the real recent rate on every path - it used to be a fixed "+60" whenever the count itself arrived
             const rateEl = document.getElementById('starlink-rate-text');
-            if (rateEl) rateEl.innerText = `+60 / week`;
+            if (rateEl) rateEl.innerText = `+${starlinkWeeklyDeploymentRate()} / week`;
 
             const CACHE_KEY = 'spacex_starlink_stats';
 
@@ -18813,8 +18948,10 @@
                     clearTimeout(timeoutId);
                     const count = data && Number(data.active), at = data && Date.parse(data.updatedAt);
                     if (Number.isFinite(count) && count > 5000 && Number.isFinite(at)) {
-                        localStorage.setItem(CACHE_KEY, count.toString());
-                        localStorage.setItem(CACHE_KEY + '_ts', String(at));
+                        try {
+                            localStorage.setItem(CACHE_KEY, count.toString());
+                            localStorage.setItem(CACHE_KEY + '_ts', String(at));
+                        } catch (e) { /* full or blocked - the fresh count still shows below */ }
                         // plus Starlink launches since that count was taken (same estimate as the cached path below);
                         // "live" while the count is under two days old
                         applyStarlinkCount(count + estimateStarlinkSatsAddedSince(at).added, Date.now() - at < 2 * 864e5);
@@ -19254,9 +19391,6 @@
             return starlinkBizInflight;
         }
 
-        setTimeout(function () {
-            if (typeof ensureStarlinkBizData === 'function') ensureStarlinkBizData();
-        }, 2500);
 
         // Shared by fallbackStarlinkStats and updateStarlinkStats' cached-fallback path -
         // estimates how many Starlink satellites have been added since a cutoff date by scanning
@@ -19419,10 +19553,7 @@
             const baseDateMs = new Date('2026-08-20T00:00:00Z').getTime();
             let currentCount = 11003 + estimateStarlinkSatsAddedSince(baseDateMs).added;
 
-            const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-            const last30Days = estimateStarlinkSatsAddedSince(thirtyDaysAgo);
-            let satsAdded30Days = last30Days.launches === 0 ? 88 : last30Days.added;
-            const deploymentRatePerWeek = Math.round(satsAdded30Days / 4.33);
+            const deploymentRatePerWeek = starlinkWeeklyDeploymentRate();
 
             const targetGen2 = 12000;
             const percentage = Math.min(100, (currentCount / targetGen2) * 100).toFixed(1);
@@ -20186,7 +20317,34 @@
         // already treats exactly like a failed fetch: it transparently refills that half from
         // the last successful cache instead of wiping it, so a previous-only refresh can't
         // blank out the upcoming list (or vice versa).
-        async function fetchLiveLaunches({ fetchUpcoming = true, fetchPrevious = true } = {}) {
+        // One run at a time. Several callers start runs on their own (the refresh schedule, the past-video re-check,
+        // the hero leaving "in progress", the page coming back into view) - two runs at once each read the saved
+        // launches at their start and each saved its own result at the end, so whichever finished last overwrote
+        // what the other had just merged in. A call made while one runs waits for it and then runs once, with
+        // everything every waiting caller asked for.
+        let liveFetchRunning = null;
+        let liveFetchQueued = null;
+        function fetchLiveLaunches({ fetchUpcoming = true, fetchPrevious = true } = {}) {
+            if (!liveFetchRunning) {
+                liveFetchRunning = runFetchLiveLaunches({ fetchUpcoming, fetchPrevious }).finally(() => {
+                    liveFetchRunning = null;
+                    const next = liveFetchQueued;
+                    liveFetchQueued = null;
+                    if (next) fetchLiveLaunches(next.want).then(next.resolve, next.resolve);
+                });
+                return liveFetchRunning;
+            }
+            if (!liveFetchQueued) {
+                let resolve;
+                const promise = new Promise(r => { resolve = r; });
+                liveFetchQueued = { want: { fetchUpcoming: false, fetchPrevious: false }, promise, resolve };
+            }
+            liveFetchQueued.want.fetchUpcoming = liveFetchQueued.want.fetchUpcoming || fetchUpcoming;
+            liveFetchQueued.want.fetchPrevious = liveFetchQueued.want.fetchPrevious || fetchPrevious;
+            return liveFetchQueued.promise;
+        }
+
+        async function runFetchLiveLaunches({ fetchUpcoming = true, fetchPrevious = true } = {}) {
             const CACHE_KEY = 'spacex_launches_cache';
 
             try {
@@ -20875,7 +21033,8 @@
             // GTO and SSO have their own entries in the orbit diagram and dossier (ORBIT_INFO) - a GTO flight
             // used to get GEO's figures (24 h, a fixed 35,786 km), which describe the orbit the satellite reaches
             // on its own later, not the one SpaceX leaves it in
-            if (/\bGTO\b|TRANSFER ORBIT/.test(searchText)) {
+            // a transfer orbit to GEO only - "transfer orbit" alone also matched a lunar / Mars transfer orbit
+            if (/\bGTO\b|GEO(?:STATIONARY|SYNCHRONOUS)[\s-]*TRANSFER|SUPERSYNCHRONOUS TRANSFER/.test(searchText)) {
                 return { code: 'GTO', label: 'GTO (Geostationary Transfer Orbit)' };
             }
             if (/\bGEO\b|GEOSTATIONARY|GEOSYNCHRONOUS/.test(searchText)) {
@@ -20951,6 +21110,46 @@
         // lldev.thespacedevs.com (the backup Launch Library server) links its images on thespacedevs' "-dev" storage
         // bucket, which lacks newer files the "-prod" bucket has at the very same path - Sergey Teteryatnikov's
         // photo (uploaded 2026) 404'd on "-dev" and the crew card showed only his name. Always the "-prod" copy.
+        // Saved per-launch data (crew lists; mission type / programs / partners) - read from localStorage ONCE and
+        // kept in memory. mapLaunchToSchema runs for every launch on every refresh (~170, plus the historical ones
+        // for the patches strip) and used to parse and rewrite the whole saved object for each one. Now a changed
+        // value is written back once, right after the run, and the saved object is kept to the newest
+        // PER_LAUNCH_CACHE_MAX launches (it used to grow forever): launches not seen this visit go first.
+        const PER_LAUNCH_CACHE_MAX = 400;
+        const perLaunchCaches = {};
+        function perLaunchCache(storageKey) {
+            let c = perLaunchCaches[storageKey];
+            if (!c) {
+                let data = null;
+                try { data = JSON.parse(localStorage.getItem(storageKey)); } catch (e) { data = null; }
+                if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+                c = perLaunchCaches[storageKey] = { data, seen: new Set(), timer: null };
+            }
+            return c;
+        }
+        function perLaunchCacheGet(storageKey, key) {
+            const c = perLaunchCache(storageKey);
+            c.seen.add(String(key));
+            const v = c.data[key];
+            return v === undefined ? undefined : JSON.parse(JSON.stringify(v));   // a copy, like the old per-call parse
+        }
+        function perLaunchCacheSet(storageKey, key, value) {
+            const c = perLaunchCache(storageKey);
+            c.seen.add(String(key));
+            const json = JSON.stringify(value);
+            if (JSON.stringify(c.data[key]) === json) return;
+            c.data[key] = JSON.parse(json);   // a copy - later changes to the mission's own objects don't leak in
+            if (c.timer) return;
+            c.timer = setTimeout(() => {
+                c.timer = null;
+                const keys = Object.keys(c.data);
+                for (let i = 0; i < keys.length && Object.keys(c.data).length > PER_LAUNCH_CACHE_MAX; i++) {
+                    if (!c.seen.has(keys[i])) delete c.data[keys[i]];
+                }
+                try { localStorage.setItem(storageKey, JSON.stringify(c.data)); } catch (e) { /* full or blocked */ }
+            }, 0);
+        }
+
         function preferProdImageBucket(url) {
             return typeof url === 'string' ? url.replace('://thespacedevs-dev.', '://thespacedevs-prod.') : url;
         }
@@ -21337,10 +21536,6 @@
             }
 
             // מנגנון שמירה ושליפה אוטומטי (Cache Fallback)
-            let crewCache = {};
-            try {
-                crewCache = JSON.parse(localStorage.getItem('spacex_crew_cache')) || {};
-            } catch (e) { crewCache = {}; }
 
             // Cached under the SAME id this function actually returns for the mission
             // (launch.id || id, see the return statement below) - not launch.id alone.
@@ -21351,20 +21546,12 @@
 
             if (crewArr.length > 0) {
                 // אם קיבלנו נתונים תקינים מה-API, נשמור אותם בזיכרון המקומי לפי ה-ID של המשימה
-                crewCache[crewCacheKey] = crewArr;
-                // This write is unguarded unlike the read right above it - mapLaunchToSchema
-                // runs unguarded per-launch inside processLaunchData's forEach, so a
-                // QuotaExceededError here (plausible given how much this app caches - patches,
-                // weather, currency, favorites, reminders) would throw out past the forEach,
-                // caught by fetchLiveLaunches' outer catch, which reprocesses cached data and
-                // can throw again on another crew mission - risking a cascade that eventually
-                // blanks all mission data. try/catch matches every other localStorage write
-                // pattern already used elsewhere in this same pipeline.
-                try { localStorage.setItem('spacex_crew_cache', JSON.stringify(crewCache)); } catch (e) { }
+                perLaunchCacheSet('spacex_crew_cache', crewCacheKey, crewArr);
             } else if (isCrewMission) {
                 // אם ה-API חזר ריק, נבדוק אם אי פעם בעבר שמרנו את הצוות הזה
-                if (crewCache[crewCacheKey] && crewCache[crewCacheKey].length > 0) {
-                    crewArr = crewCache[crewCacheKey].map(c => c && c.image ? { ...c, image: preferProdImageBucket(c.image) } : c);
+                const savedCrew = perLaunchCacheGet('spacex_crew_cache', crewCacheKey);
+                if (Array.isArray(savedCrew) && savedCrew.length > 0) {
+                    crewArr = savedCrew.map(c => c && c.image ? { ...c, image: preferProdImageBucket(c.image) } : c);
                 }
             }
             // אם עדיין crewArr ריק (כלומר ה-API ריק ומעולם לא שמרנו אותו) - המקטע פשוט לא ירונדר ב-HTML.
@@ -21428,12 +21615,8 @@
                 if (!missionAgencies.includes(name)) missionAgencies.push(name);
             });
 
-            let purposeCache = {};
-            try {
-                purposeCache = JSON.parse(localStorage.getItem('spacex_mission_purpose_cache')) || {};
-            } catch (e) { purposeCache = {}; }
             const purposeCacheKey = launch.id || id;
-            const cachedPurpose = purposeCache[purposeCacheKey] || {};
+            const cachedPurpose = perLaunchCacheGet('spacex_mission_purpose_cache', purposeCacheKey) || {};
 
             // Per-field, not all-or-nothing: a response can be genuinely partial (e.g. a real
             // LL2 fetch that has missionType but happens to lack agencies for this one launch),
@@ -21458,8 +21641,7 @@
             }
 
             if (missionType || programNames.length > 0 || missionAgencies.length > 0) {
-                purposeCache[purposeCacheKey] = { missionType, programNames, missionAgencies, programs };
-                try { localStorage.setItem('spacex_mission_purpose_cache', JSON.stringify(purposeCache)); } catch (e) { }
+                perLaunchCacheSet('spacex_mission_purpose_cache', purposeCacheKey, { missionType, programNames, missionAgencies, programs });
             }
 
             return {
@@ -22849,21 +23031,10 @@
             const wDict = WEATHER_I18N[langKey] || WEATHER_I18N.en;
 
             if (!window.latestWeather || window.latestWeather.isFallback) {
-                let defaultTempC = 26; let defaultTempF = 78;
-                let defaultIcon = "fa-cloud-sun";
-                let defaultDescKey = "partlyCloudy";
-
-                if (window.latestWeather && window.latestWeather.siteInfo) {
-                    const siteLower = window.latestWeather.siteInfo;
-                    if (siteLower.includes('starbase') || siteLower.includes('texas')) {
-                        defaultTempC = 29; defaultTempF = 84; defaultIcon = "fa-sun"; defaultDescKey = "clear";
-                    } else if (siteLower.includes('vandenberg') || siteLower.includes('slc-4')) {
-                        defaultTempC = 17; defaultTempF = 62; defaultIcon = "fa-smog"; defaultDescKey = "fog";
-                    }
-                }
-
-                let tStr = window.currentUnitSystem === 'metric' ? `${defaultTempC}°C` : `${defaultTempF}°F`;
-                weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid ${defaultIcon}"></i> <span class="notranslate" translate="no">${wDict[defaultDescKey]}</span> • <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`;
+                // No reading (the weather services didn't answer and nothing is saved): say so with dashes - it
+                // used to show a made-up "typical" sky and temperature for the site as if it were the real one
+                const tStr = window.currentUnitSystem === 'metric' ? '--°C' : '--°F';
+                weatherEl.innerHTML = `<span class="hw-row"><i class="fa-solid fa-temperature-half"></i> <span class="notranslate inline-block" dir="ltr" translate="no">${tStr}</span></span>`;
                 return;
             }
 
@@ -22941,18 +23112,11 @@
             if (isNaN(minutesToLaunch) || minutesToLaunch > 150 || minutesToLaunch < -180) return null;
             if (Date.now() - (nasaYoutubeLookupAt[m.id] || 0) < 10 * 60000) return null;
             nasaYoutubeLookupAt[m.id] = Date.now();
-            try {
-                const res = await fetchWithTimeout(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${NASA_YT_CHANNEL_ID}&eventType=live&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`,
-                    { timeout: 8000 }
-                );
-                if (!res.ok) return null;
-                const data = await res.json();
-                const hit = (data.items || []).find(it => it && it.id && it.id.videoId && it.snippet && youtubeTitleNamesMission(it.snippet.title, m));
-                if (!hit) return null;
-                rememberNasaBroadcast(m.id, { id: hit.id.videoId, live: true });
-                return hit.id.videoId;
-            } catch (e) { return null; }
+            const items = await fetchYoutubeLiveItems(NASA_YT_CHANNEL_ID);
+            const hit = (items || []).find(it => youtubeTitleNamesMission(it.title, m));
+            if (!hit) return null;
+            rememberNasaBroadcast(m.id, { id: hit.videoId, live: true });
+            return hit.videoId;
         }
 
         // NASA's YouTube broadcast for this launch, once it is on air (or about to be): Launch Library's own "live"
@@ -23008,26 +23172,49 @@
         // unreliable dependency. The official API has proper CORS support and doesn't need any
         // proxy at all, so this is a single, direct, reliable call instead of a proxy + 3-attempt
         // retry loop trying to paper over a broken dependency.
-        let sfnLiveVideoIdCache = { id: null, fetchedAt: 0 };
-        async function resolveSfnLiveVideoId() {
-            if (sfnLiveVideoIdCache.id && Date.now() - sfnLiveVideoIdCache.fetchedAt < 2 * 60 * 1000) {
-                return sfnLiveVideoIdCache.id;
-            }
+        // The live videos on air now on one of the two channels above, as [{ videoId, title }] (null: couldn't tell).
+        // A YouTube search costs 100 of the key's 10,000 daily units, and it is shared by every visitor - a page
+        // searching for itself every 20 seconds meant a handful of viewers during a launch used up the whole day.
+        // So the Worker searches, once a minute for everyone (/yt-live), and the page asks it. Only when the Worker
+        // can't answer does the page search YouTube itself - and then at most once per channel every 2 minutes
+        // across all of this visitor's tabs (the answer, "nothing live" included, is shared through localStorage).
+        const YT_LIVE_MEMO_MS = 60 * 1000;
+        const YT_LIVE_DIRECT_GAP_MS = 2 * 60 * 1000;
+        const ytLiveMemo = {};
+        async function fetchYoutubeLiveItems(channelId) {
+            const memo = ytLiveMemo[channelId];
+            if (memo && Date.now() - memo.at < YT_LIVE_MEMO_MS) return memo.items;
+            const remember = (items) => { ytLiveMemo[channelId] = { at: Date.now(), items }; return items; };
             try {
-                const res = await fetchWithTimeout(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${SFN_YT_CHANNEL_ID}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`,
-                    { timeout: 8000 }
-                );
+                const res = await fetchWithTimeout(`${WEATHER_OBS_URL}/yt-live?channel=${encodeURIComponent(channelId)}`, { timeout: 8000 });
                 if (res.ok) {
                     const data = await res.json();
-                    const videoId = data.items && data.items[0] && data.items[0].id && data.items[0].id.videoId;
-                    if (videoId) {
-                        sfnLiveVideoIdCache = { id: videoId, fetchedAt: Date.now() };
-                        return videoId;
-                    }
+                    if (data && Array.isArray(data.items)) return remember(data.items.filter(it => it && it.videoId));
                 }
+            } catch (e) { /* the Worker is unreachable - YouTube directly below */ }
+            const storeKey = 'spacex_yt_live_' + channelId;
+            try {
+                const saved = JSON.parse(localStorage.getItem(storeKey) || 'null');
+                if (saved && Array.isArray(saved.items) && Date.now() - saved.at < YT_LIVE_DIRECT_GAP_MS) return remember(saved.items);
             } catch (e) { }
-            return null;
+            try {
+                const res = await fetchWithTimeout(
+                    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`,
+                    { timeout: 8000 }
+                );
+                if (!res.ok) return null;
+                const data = await res.json();
+                const items = (data.items || [])
+                    .filter(it => it && it.id && it.id.videoId)
+                    .map(it => ({ videoId: it.id.videoId, title: (it.snippet && it.snippet.title) || '' }));
+                try { localStorage.setItem(storeKey, JSON.stringify({ at: Date.now(), items })); } catch (e) { }
+                return remember(items);
+            } catch (e) { return null; }
+        }
+
+        async function resolveSfnLiveVideoId() {
+            const items = await fetchYoutubeLiveItems(SFN_YT_CHANNEL_ID);
+            return (items && items[0] && items[0].videoId) || null;
         }
 
         // ---- Resumable YouTube playback (past-launch archived footage + documentary episodes
@@ -23628,7 +23815,7 @@ setTimeout(() => {
                         remindBtn.title = "Remind Me";
                         remindBtn.innerHTML = `<i class="fa-solid fa-bell"></i>`;
                     }
-                    remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, sanitizeForInlineAttr(nextLaunch.name), nextLaunch.date, event);
+                    remindBtn.onclick = (event) => toggleReminder(nextLaunch.id, nextLaunch.name, nextLaunch.date, event);
                 }
 
                 // Only animate the reveal the first time - setupHeroBanner() re-runs on every
@@ -23769,7 +23956,7 @@ setTimeout(() => {
             let lat = 28.5623, lon = -80.5773;
             if (siteLower.includes('starbase') || siteLower.includes('texas') || siteLower.includes('boca chica') || siteLower.includes('pad 2')) {
                 lat = 25.9973; lon = -97.1556;
-            } else if (siteLower.includes('vandenberg') || /(?:slc-|complex )4[ew]/.test(siteLower) || siteLower.includes('california') || siteLower.includes('pacific')) {
+            } else if (siteLower.includes('vandenberg') || /\b(?:slc-|complex )4[ew]\b/.test(siteLower) || siteLower.includes('california') || siteLower.includes('pacific')) {
                 lat = 34.6321; lon = -120.6106;
             } else if (siteLower.includes('kennedy') || siteLower.includes('lc-39a') || siteLower.includes('ksc')) {
                 lat = 28.6083; lon = -80.6041;
@@ -24092,7 +24279,9 @@ setTimeout(() => {
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
         }
 
+        let cardCountdownsPaintedAt = 0;
         function paintMissionCardCountdowns() {
+            cardCountdownsPaintedAt = Date.now();
             const now = new Date();
             cardCountdownMissions.forEach(m => {
                 const el = document.getElementById(`countdown-${m.id}`);
@@ -24137,7 +24326,11 @@ setTimeout(() => {
             // translator wrap cannot freeze a stale node until the next full refresh.
             cardCountdownMissions = missionList || [];
             paintMissionCardCountdowns();
-            countdownIntervals.push(setInterval(paintMissionCardCountdowns, 1000));
+            // the hero's clock already paints the cards every second (same tick, so both change together); this
+            // one only fills in when it doesn't - no hero clock running - instead of painting a second time
+            countdownIntervals.push(setInterval(() => {
+                if (Date.now() - cardCountdownsPaintedAt > 900) paintMissionCardCountdowns();
+            }, 1000));
         }
 
         // Multilingual keyword groups used both for exact-word smart search (translate a full
@@ -24417,16 +24610,16 @@ setTimeout(() => {
             filterMissions();
         }
 
-        // NOTE: this does NOT HTML-escape (no &lt;/&gt;/&amp;). It only escapes quotes/newlines
-        // so a mission name can be safely embedded as a JS string literal inside an inline
-        // onclick="..." attribute. That's intentional: the escaped value ends up in alert() and
-        // Notification body text (plain text, not rendered HTML), so HTML-entity-escaping it would
-        // wrongly show literal "&amp;" etc. to the user instead of "&". Keep this scoped to that
-        // one job — if this value is ever rendered as HTML elsewhere, it still needs real
-        // HTML-escaping there.
+        // A mission name as a JS string literal inside an inline onclick="..." attribute ('...'), for the
+        // card's bell. Two layers: JS escaping (backslash and ') for the string, then HTML escaping for the
+        // attribute. A backslash does nothing in HTML, so a name with a " in it used to end the onclick
+        // attribute right there (a broken button, and the rest of the name read as HTML). The browser turns
+        // the HTML entities back into the characters before the JS runs, so alert() and the notification
+        // still get the plain name. Only for that attribute - a name passed to the function directly needs
+        // no escaping at all.
         function sanitizeForInlineAttr(str) {
             if (!str) return '';
-            return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
+            return escapeHtml(String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]+/g, ' '));
         }
 
         // Single source of truth for "which real-world launch site is this mission
@@ -25131,11 +25324,7 @@ setTimeout(() => {
                     }
                 }
 
-                // מילון תמונות מותאמות אישית לאסטרונאוטים
-                const CUSTOM_ASTRONAUT_IMAGES = {
-                    "Jessica Watkins": "https://media-cldnry.s-nbcnews.com/image/upload/rockcms/2022-04/220421-Jessica-Watkins-ew-356p-ae35bd.jpg",
-                    "Oleg Vladimirovich Platonov": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Oleg_Platonov_portrait_2025_%28cropped%29.jpg/960px-Oleg_Platonov_portrait_2025_%28cropped%29.jpg"
-                };
+                // the custom astronaut photos: the one shared table, CUSTOM_ASTRONAUT_IMAGES (defined once, below)
 
                 const crewGridLang = (document.documentElement.lang || 'en').split('-')[0];
                 crewContainer.innerHTML = m.crew.map((c, i) => {
@@ -25161,7 +25350,7 @@ setTimeout(() => {
                                      style="object-position: center 0%;">
                             </div>
                             <div class="text-[9px] md:text-sm font-bold text-center text-zinc-300 leading-tight group-hover:text-emerald-400 transition-colors w-full">${escapeHtml(c.name)}</div>
-                            <div class="modal-subhead mission-title-fit text-[8px] md:text-xs text-emerald-400 uppercase tracking-wider text-center mt-0.5 whitespace-normal overflow-hidden w-full leading-tight">${roleHtml}</div>
+                            <div class="modal-subhead mission-title-fit text-[8px] md:text-xs text-emerald-400 uppercase tracking-wider text-center mt-0.5 whitespace-normal overflow-hidden w-full leading-tight" data-crew-role-index="${i}" data-role-lang="${escapeHtml(crewGridLang)}">${roleHtml}</div>
                         </div>
                     `;
                 }).join('');
@@ -26713,14 +26902,21 @@ setTimeout(() => {
             // (some apps also print the share "title" as its own line under the link)
             const shareText = shareUrl;
 
+            // Without a share sheet (or when it can't open), the link is copied - through the same helper as the
+            // desktop menu's "Copy link", which also works where navigator.clipboard doesn't exist - and the
+            // confirmation is in the site's language. Closing the share sheet without sharing isn't an error.
+            const copyInstead = () => copyDesktopShareClipboard(shareUrl, () => {
+                alert(getDesktopShareDict(document.documentElement.lang || 'en').copied);
+            });
             if (navigator.share) {
                 navigator.share({
                     text: shareText
+                }).catch(err => {
+                    if (err && err.name === 'AbortError') return;
+                    copyInstead();
                 });
             } else {
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                    alert('Share link copied to clipboard!');
-                });
+                copyInstead();
             }
         }
 
@@ -26801,7 +26997,9 @@ setTimeout(() => {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // released a minute later: Safari can still be starting the download right after click() returns,
+            // and releasing the address at once could cancel it
+            setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
         }
 
         // Draws a downloadable "mission poster" (1080x1350, portrait - fits social stories/feed),
@@ -27088,12 +27286,26 @@ setTimeout(() => {
                 if (langKey === 'zh') langKey = 'zh';
                 let posterMission = m;
                 if (langKey !== 'en') {
+                    // The same names the site itself shows: the mission name from the Gemini names map (Google
+                    // only for a mission it hasn't covered yet - exactly like the titles on the page), the
+                    // vehicle and the launch site from the site's own dictionaries
+                    const apiLang = langKey === 'iw' ? 'he' : langKey;
+                    let name = localizeMissionName(m.name, langKey);
                     try {
-                        const [tName, tVehicle, tSite] = await translateBatchViaGoogle([m.name, m.vehicle, m.site], langKey);
-                        posterMission = { ...m, name: tName || m.name, vehicle: tVehicle || m.vehicle, site: tSite || m.site };
-                    } catch (translateErr) {
-                        // Poster still generates in English rather than failing outright.
-                    }
+                        const map = _geminiNamesMap !== null ? _geminiNamesMap : await loadGeminiPurposeMap().then(() => _geminiNamesMap);
+                        const hit = await lookupGeminiName(map, m.name, apiLang);
+                        if (hit) name = localizeMissionName(fixMistranslatedPhrasesText(hit, langKey), langKey);
+                        else {
+                            const translated = await translateTextViaGoogle(m.name, apiLang);
+                            if (translated) name = localizeMissionName(translated, langKey);
+                        }
+                    } catch (translateErr) { /* the instant localized name above */ }
+                    posterMission = {
+                        ...m,
+                        name,
+                        vehicle: localizeVehicleNamesText(m.vehicle, langKey) || m.vehicle,
+                        site: localizeSiteStr(m.site, langKey) || m.site
+                    };
                 }
 
                 let canvas = drawPosterCanvas(posterMission, photoImg);
@@ -27144,7 +27356,7 @@ setTimeout(() => {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(objectUrl);
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 60 * 1000);   // not at once - see saveToCalendar
             } catch (e) {
                 console.error('Poster generation failed:', e);
             } finally {
@@ -27289,7 +27501,7 @@ setTimeout(() => {
                 coords: "25.997° N, 97.155° W",
                 lat: 25.997, lng: -97.155, timezone: 'America/Chicago',
                 fleet: "Starship System Profile Only",
-                desc: "Starbase is SpaceX's private spaceport, production facility, and launch site located in Chica, Texas. Established as a dedicated development hub for the Starship program, it features advanced manufacturing tents, vertical assembly buildings (VAB), and the massive Orbital Launch Mount.\n\nKnown colloquially as the 'Gateway to Mars', Starbase is where full-scale structural testing, Raptor engine installations, and suborbital/orbital test flights occur. It serves as a continuous production ecosystem designed for rapid prototyping."
+                desc: "Starbase is SpaceX's private spaceport, production facility, and launch site located in Boca Chica, Texas. Established as a dedicated development hub for the Starship program, it features advanced manufacturing tents, vertical assembly buildings (VAB), and the massive Orbital Launch Mount.\n\nKnown colloquially as the 'Gateway to Mars', Starbase is where full-scale structural testing, Raptor engine installations, and suborbital/orbital test flights occur. It serves as a continuous production ecosystem designed for rapid prototyping."
             },
             cape: {
                 name: "Cape Canaveral Space Force Station • FL",
@@ -27436,6 +27648,9 @@ setTimeout(() => {
         function openRocketSpecs(type) {
             const data = ROCKET_DATABASE[type];
             if (!data) return;
+            // also called to re-render the dossier while it is open (language / units / currency switch) -
+            // the page's scroll lock is taken only by the opening, so the one close releases it
+            const rocketModalWasOpen = !document.getElementById('rocket-modal').classList.contains('hidden');
 
             const rocketModalContentEl = document.getElementById('rocket-modal-content');
             if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0;
@@ -27501,7 +27716,7 @@ setTimeout(() => {
             const modalEl = document.getElementById('rocket-modal');
             modalEl.classList.remove('hidden');
             modalEl.style.display = 'flex';
-            lockBodyScroll();
+            if (!rocketModalWasOpen) lockBodyScroll();
             setTimeout(() => { if (rocketModalContentEl) rocketModalContentEl.scrollTop = 0; }, 10);
         }
 
@@ -28224,8 +28439,20 @@ setTimeout(() => {
         // עם מילון override ידני (כמו CUSTOM_ASTRONAUT_IMAGES למעלה) לשמות חריגים/לא ודאיים.
         // ברירת מחדל היא זכר - זה מה שהתרגום הגנרי דרך גוגל כבר מפיק היום, כך שאיש צוות לא מזוהה
         // פשוט ממשיך להתנהג כמו לפני התיקון הזה, ולא "מנחש" לכיוון הלא נכון.
+        // Every woman who has flown (or is assigned) on Dragon, by full name - the first-name guess below
+        // is only the fallback for names not listed here
         const CUSTOM_ASTRONAUT_GENDER = {
-            "Jessica Watkins": "female"
+            "Jessica Watkins": "female", "Jessica Meir": "female", "Sophie Adenot": "female",
+            "Zena Cardman": "female", "Anne McClain": "female", "Nichole Ayers": "female",
+            "Jeanette Epps": "female", "Jasmin Moghbeli": "female", "Loral O'Hara": "female",
+            "Kate Rubins": "female", "Kathleen Rubins": "female", "Kayla Barron": "female",
+            "Megan McArthur": "female", "K. Megan McArthur": "female", "Shannon Walker": "female",
+            "Sunita Williams": "female", "Nicole Mann": "female", "Nicole Aunapu Mann": "female",
+            "Anna Kikina": "female", "Samantha Cristoforetti": "female", "Peggy Whitson": "female",
+            "Rayyanah Barnawi": "female", "Sarah Gillis": "female", "Anna Menon": "female",
+            "Hayley Arceneaux": "female", "Sian Proctor": "female", "Rabea Rogge": "female",
+            "Jannicke Mikkelsen": "female", "Christina Koch": "female", "Jessica Wittner": "female",
+            "Tracy Dyson": "female", "Tracy Caldwell Dyson": "female", "Marta Kossakowska": "female"
         };
         const FEMALE_ASTRONAUT_FIRST_NAMES = new Set([
             "jessica", "sarah", "sara", "anna", "samantha", "christina", "kristin", "nicole",
@@ -28236,7 +28463,9 @@ setTimeout(() => {
             "catherine", "cady", "joan", "marsha", "rhonda", "bonnie", "janet", "linda",
             "lisa", "mary", "laurel", "stephanie", "tammy", "dorothy", "claudie", "heidemarie",
             "liu", "wang", "koch", "meir", "walentina", "shannon", "mccool", "nyberg",
-            "whitson", "auñón-chancellor", "epps", "mann", "cristoforetti", "rubins", "mccormick"
+            "whitson", "auñón-chancellor", "epps", "mann", "cristoforetti", "rubins", "mccormick",
+            "zena", "anne", "nichole", "jeanette", "sophie", "hayley", "sian", "rabea", "jannicke",
+            "rayyanah", "marta", "ekaterina", "kristina"
         ]);
         function getAstronautGender(fullName) {
             const trimmed = (fullName || '').trim();
@@ -28259,6 +28488,27 @@ setTimeout(() => {
             "flight crew member": { male: "חבר צוות טיסה", female: "חברת צוות טיסה" },
             "crew member": { male: "חבר צוות", female: "חברת צוות" }
         };
+        // The crew cards' roles in the language now showing - the mission window's crew is built once when it opens,
+        // so a language switch made while it is open left the roles to Google Translate ("טַיָס", a female
+        // commander as "מפקד"). Run on every language change: our own (gendered) Hebrew role, or the English one
+        // for Google Translate to translate, as the opening does.
+        function relocalizeCrewGridRoles(currentLang) {
+            const lang = (currentLang || document.documentElement.lang || 'en').split('-')[0];
+            const crew = window.currentMissionCrew || [];
+            document.querySelectorAll('#modal-crew-container [data-crew-role-index]').forEach(el => {
+                if (el.dataset.roleLang === lang) return;
+                const c = crew[Number(el.dataset.crewRoleIndex)];
+                if (!c) return;
+                el.dataset.roleLang = lang;
+                const localizedRole = getLocalizedAstronautRole(c.role, c.name, lang);
+                el.innerHTML = localizedRole
+                    ? `<span class="notranslate" translate="no">${escapeHtml(localizedRole)}</span>`
+                    : escapeHtml(c.role);
+                delete el.dataset.fitForText;
+                if (typeof fitTitleOneLine === 'function') fitTitleOneLine(el);
+            });
+        }
+
         function getLocalizedAstronautRole(role, name, lang) {
             if (lang !== 'he' && lang !== 'iw') return null;
             const entry = ASTRONAUT_ROLE_HE[(role || '').trim().toLowerCase()];

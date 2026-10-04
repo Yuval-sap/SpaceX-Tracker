@@ -43,11 +43,18 @@ jobs:
         run: python update_starlink_count.py
         continue-on-error: true
 
+      # This year's launches worldwide for the launch-cadence chart (launch-cadence.json) - once here for every
+      # visitor, instead of each visitor's browser spending its own Launch Library budget on it (refreshed at
+      # most every 20 hours).
+      - name: Update launch cadence data
+        run: python update_launch_cadence.py
+        continue-on-error: true
+
       - name: Commit and push if anything changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add m/ sitemap.xml mission-purpose-gemini.json starlink-stats.json
+          git add m/ sitemap.xml mission-purpose-gemini.json starlink-stats.json launch-cadence.json
           git diff --staged --quiet && exit 0
           git commit -m "Update mission share cards"
           git pull --rebase origin main

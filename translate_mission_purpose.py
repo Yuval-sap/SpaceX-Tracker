@@ -1168,6 +1168,9 @@ def write_output(data: dict) -> None:
     tmp.replace(OUTPUT_PATH)
 
 
+UPCOMING_GATE_MAX_RUNS = 3   # runs in a row the past backlog may wait for upcoming launches (see main())
+
+
 def main() -> int:
     api_key = (os.environ.get("GEMINI_API_KEY") or "").strip()
     if not api_key:
@@ -1189,15 +1192,27 @@ def main() -> int:
     # than an old past launch's card still being untranslated. Checked BEFORE even fetching the
     # previous-launches pages, so a run with upcoming work pending skips that fetch entirely and
     # puts every one of its (rate-limited, ~13s-per-call) requests toward upcoming missions only.
-    if (
+    # But an upcoming item that Gemini can never finish (a language it keeps getting wrong, an answer that is
+    # always rejected) would keep that gate shut forever, and the past backlog would never be reached. So after
+    # UPCOMING_GATE_MAX_RUNS runs in a row that skipped the backlog, the next run takes it too - upcoming launches
+    # still come first in it (launches = upcoming + previous below), so nothing new waits behind the old ones.
+    meta = store.get("meta") if isinstance(store.get("meta"), dict) else {}
+    store["meta"] = meta
+    blocked_runs = meta.get("backlogSkippedRuns") if isinstance(meta.get("backlogSkippedRuns"), int) else 0
+    upcoming_pending = (
         upcoming_still_needs_entries(upcoming, entries)
         or upcoming_still_needs_names(upcoming, names_store)
         or upcoming_still_needs_updates(upcoming, updates_store)
         or any(not name_langs_complete(timeline_store.get(e), TIMELINE_LANGS) for e in timeline_events)
-    ):
+    )
+    if upcoming_pending and blocked_runs < UPCOMING_GATE_MAX_RUNS:
+        meta["backlogSkippedRuns"] = blocked_runs + 1
         print("Upcoming launches still need translation - skipping the past-launch backlog this run.")
         previous = []
     else:
+        if upcoming_pending:
+            print(f"Upcoming launches still need translation, but the backlog was skipped {blocked_runs} runs in a row - taking it too this run.")
+        meta["backlogSkippedRuns"] = 0
         time.sleep(3)
         previous = fetch_previous_launches()
 

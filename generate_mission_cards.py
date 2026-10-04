@@ -40,7 +40,8 @@ import re
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from urllib.parse import quote
 
@@ -218,7 +219,8 @@ SITE_NAMES_HE = [
 
 def format_date_he(net: str) -> str:
     try:
-        dt = datetime.fromisoformat(net.replace("Z", "+00:00")).astimezone(timezone.utc)
+        # Israel's own date - in UTC a launch late in the evening Israel time showed as the day before
+        dt = to_israel_time(datetime.fromisoformat(net.replace("Z", "+00:00")))
         return f"{dt.day} ב{HE_MONTHS[dt.month - 1]} {dt.year}"
     except Exception:
         return "טרם נקבע"
@@ -233,7 +235,11 @@ def clean_mission_name(name: str) -> str:
 
 
 # index.html's localizeMissionName for Hebrew: the fixed terms the site itself puts into every mission title
+# (and its vehicle names, VEHICLE_NAME_I18N.he - the Dragons included)
 def localize_name_he(text: str) -> str:
+    text = re.sub(r"\bCrew\s+Dragon\b", "דרגון צוות", text, flags=re.I)
+    text = re.sub(r"\bCargo\s+Dragon\b", "דרגון תובלה", text, flags=re.I)
+    text = re.sub(r"\bDragon\b", "דרגון", text, flags=re.I)
     text = re.sub(r"\bFlight\s+(\d+)", r"טיסה \1", text, flags=re.I)
     text = re.sub(r"starship", "סטארשיפ", text, flags=re.I)
     text = re.sub(r"starlink", "סטארלינק", text, flags=re.I)
@@ -317,12 +323,43 @@ def build_page(mission_id: str, name: str, vehicle: str, site: str, net: str, la
     )
 
 
+def to_israel_time(dt: datetime) -> datetime:
+    try:
+        return dt.astimezone(ZoneInfo("Asia/Jerusalem"))
+    except Exception:
+        # No time-zone database on this machine (Windows without the tzdata package - GitHub's Ubuntu has one):
+        # Israel's own rule - summer time (UTC+3) from the Friday before the last Sunday of March, 02:00, to the
+        # last Sunday of October, 02:00 (summer time); UTC+2 the rest of the year
+        utc = dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+        def last_sunday(month):
+            d = datetime(utc.year, month + 1, 1) - timedelta(days=1)
+            return d - timedelta(days=(d.weekday() + 1) % 7)
+
+        summer_from = last_sunday(3) - timedelta(days=2)                  # Friday 02:00 Israel = 00:00 UTC
+        summer_to = last_sunday(10) - timedelta(hours=1)                  # Sunday 02:00 summer time = Saturday 23:00 UTC
+        return utc + timedelta(hours=3 if summer_from <= utc < summer_to else 2)
+
+
+PAGE_KEEP_DAYS = 400   # a little over the year of past launches the site lists
+
+
+def page_start_date(path):
+    try:
+        m = re.search(r'"startDate":\s*"([^"]+)"', path.read_text(encoding="utf-8"))
+        return datetime.fromisoformat(m.group(1).replace("Z", "+00:00")) if m else None
+    except Exception:
+        return None
+
+
 def build_sitemap(mission_ids: list) -> str:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     urls = [f"  <url><loc>{html.escape(SITE_BASE_URL)}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>"]
     for safe_id in mission_ids:
-        loc = html.escape(f"{SITE_BASE_URL}/m/{safe_id}.html")
-        urls.append(f"  <url><loc>{loc}</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>")
+        # the English page and its Hebrew copy (m/he/) - both are real pages people share
+        for path in (f"m/{safe_id}.html", f"m/he/{safe_id}.html"):
+            loc = html.escape(f"{SITE_BASE_URL}/{path}")
+            urls.append(f"  <url><loc>{loc}</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>")
     body = "\n".join(urls)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{body}\n</urlset>\n'
 
@@ -392,14 +429,26 @@ def main():
     # format from before this script was rewritten) linger on disk and stay reachable/indexable
     # forever even though they no longer appear in the sitemap. Only ever touches files inside
     # OUTPUT_DIR (m/) that match the mission-id filename pattern this script itself writes.
+    # The site lists a whole year of past launches, and their share links point here - but the LL2 request above
+    # only covers the latest 50 (about two months), so pages of launches older than that used to be deleted and
+    # their shared links went to a 404. A page of a launch from the last PAGE_KEEP_DAYS stays (its date is read
+    # from the page itself, the JSON-LD "startDate" it was written with); only older ones are removed.
     keep = {f"{safe_id}.html" for safe_id in written_safe_ids}
+    keep_from = datetime.now(timezone.utc) - timedelta(days=PAGE_KEEP_DAYS)
+    for existing in OUTPUT_DIR.glob("*.html"):
+        if existing.name in keep:
+            continue
+        started = page_start_date(existing)
+        if started and started >= keep_from:
+            keep.add(existing.name)
+            written_safe_ids.append(existing.stem)
     pruned = 0
     for existing in list(OUTPUT_DIR.glob("*.html")) + list(OUTPUT_DIR_HE.glob("*.html")):
         if existing.name not in keep:
             existing.unlink()
             pruned += 1
     if pruned:
-        print(f"Pruned {pruned} stale mission page(s) no longer in the LL2 launch window.")
+        print(f"Pruned {pruned} mission page(s) of launches more than {PAGE_KEEP_DAYS} days old (or no longer listed).")
 
     # sitemap.xml at the repo root (same level as index.html) - not inside m/ - so it covers the
     # homepage too and matches the conventional /sitemap.xml location search engines expect.
