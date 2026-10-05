@@ -6261,7 +6261,7 @@
             display: flex !important;
             flex-direction: row !important;
             align-self: stretch;
-            align-items: flex-end;
+            align-items: flex-start;
             gap: 0.5rem !important;
             margin: 0 -1rem;
             padding: 0 1rem;
@@ -6269,6 +6269,7 @@
         }
         html.in-app .app-toolbar #app-search-btn {
             flex-shrink: 0;
+            box-sizing: border-box;
             width: 2.4rem;
             height: 2.4rem;
             border-radius: 999px;
@@ -6286,7 +6287,7 @@
             flex-wrap: nowrap !important;
             justify-content: flex-start !important;
             gap: 0.4rem;
-            padding: 0.15rem 0;
+            padding: 0;
             overflow-x: auto;
             scrollbar-width: none;
             background: transparent !important;
@@ -6301,7 +6302,11 @@
         }
         html.in-app .app-toolbar #category-filter-bar > button {
             flex-shrink: 0;
-            padding: 0.5rem 0.95rem !important;
+            box-sizing: border-box;
+            height: 2.4rem;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 0.95rem !important;
             border-radius: 999px !important;
             background: var(--app-surface) !important;
             border: 1px solid var(--app-border);
@@ -6335,10 +6340,12 @@
             min-width: 0;
         }
         html.in-app .app-tool-col small {
+            display: block;
+            height: 0.8rem;
             font-size: 0.64rem;
             font-weight: 600;
             letter-spacing: 0.04em;
-            line-height: 1;
+            line-height: 0.8rem;
             color: var(--app-dim);
         }
         html.in-app .app-tool-col.is-filter small {
@@ -6394,9 +6401,20 @@
             gap: 0.4rem;
             margin-inline-start: auto;
         }
-        html.in-app .app-head-actions > button {
+        html.in-app .app-head-actions > button,
+        html.in-app #tab-panel-launches .app-head-actions #year-count-box {
             margin: 0;
+            box-sizing: border-box;
+            min-height: 2.6rem;
             justify-content: center;
+            background: var(--app-surface) !important;
+            border: 1px solid var(--app-border) !important;
+            box-shadow: none !important;
+            color: var(--app-accent) !important;
+        }
+        /* (no scan lines on the year box: its partner has none) */
+        html.in-app .app-head-actions #year-count-box::before {
+            display: none;
         }
         html.in-app .app-head-actions #year-count-box {
             flex: none;
@@ -6418,17 +6436,26 @@
             margin: 0;
             gap: 0.3rem;
         }
-        html.in-app .app-head-actions #i18n-upcoming-launches {
+        html.in-app .app-head-actions #i18n-upcoming-launches,
+        html.in-app .app-head-actions #launch-cadence-btn-label-mobile {
             font-size: 0.75rem;
+            font-weight: 700;
             letter-spacing: 0.02em;
-            color: inherit;
+            color: var(--app-accent) !important;
         }
         html.in-app .app-head-actions #year-count-box > div:first-child > i {
-            font-size: 0.6rem;
+            font-size: 0.65rem;
+            color: var(--app-accent) !important;
+            opacity: 0.8;
         }
         html.in-app .app-head-actions #upcoming-count {
             order: 1;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+            line-height: 1;
+            color: var(--app-accent) !important;
+        }
+        html.in-app .app-head-actions > button i {
+            color: var(--app-accent) !important;
         }
         /* its breakdown opens under it, from the screen's side it sits on (it opened sideways, off the screen) */
         html.in-app .app-head-actions #year-count-breakdown {
