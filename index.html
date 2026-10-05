@@ -6219,6 +6219,10 @@
             color: #fff;
             animation: none;
         }
+        /* night: the same look, but solid - the night sky's stars showed through the see-through fill */
+        html.in-app body:where(:not(.light-theme):not(.mars-theme):not(.moon-theme)) #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+            background: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)), var(--app-bg);
+        }
         html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
             display: none;
         }
@@ -7300,6 +7304,12 @@
             border-color: var(--app-border) !important;
         }
 
+        /* the business customers' list opens above the Starlink screen (it's moved to <body> as it opens - under the
+           screen otherwise), on a solid card (nothing behind it shows through: the app has no blur) */
+        html.in-app body > #starlink-biz-breakdown {
+            z-index: 100 !important;
+            background: var(--app-surface) !important;
+        }
         /* A section opened as its own screen (Starlink, AI compute): the site's section as it is, full screen */
         #app-detail {
             display: none;
@@ -31398,8 +31408,11 @@ if (heroNameEl) {
                 // Hide outgoing, show incoming at opacity 0, then fade/slide in
                 outgoing.classList.add('hidden');
                 incoming.classList.remove('hidden');
-                // the Android app: back where this tab was left, like an app's bottom tabs (saved below)
-                if (inAppTabs) window.scrollTo(0, (window._appTabScroll && window._appTabScroll[tab]) || 0);
+                // the Android app: the tab starts afresh - from the top, as first shown (appResetTab)
+                if (inAppTabs) {
+                    if (typeof appResetTab === 'function') appResetTab(tab);
+                    window.scrollTo(0, 0);
+                }
                 // The status headline may have changed while the Launches tab was hidden - fit it as the panel comes
                 // back. Only AFTER .tab-panel-preenter is on: measuring the panel before that fixed its starting
                 // opacity at 1, and the Launches tab lost its fade-in (02281ef).
@@ -31420,12 +31433,9 @@ if (heroNameEl) {
             // On mobile use instant jump only if not touch-locked; otherwise skip to avoid the
             // "thrown back to top" fight during normal browsing.
             const isMobileViewport = window.innerWidth < 640;
-            // The Android app keeps each tab's own place instead: saved here, restored as the tab comes back (finishSwap)
+            // The Android app starts the tab afresh instead, as it's shown (finishSwap)
             const inAppTabs = document.documentElement.classList.contains('in-app');
-            if (inAppTabs) {
-                window._appTabScroll = window._appTabScroll || {};
-                window._appTabScroll[isLaunches ? 'more' : 'launches'] = window.scrollY;
-            } else {
+            if (!inAppTabs) {
                 try {
                     window.scrollTo({ top: 0, behavior: isMobileViewport ? 'auto' : 'smooth' });
                 } catch (e) { /* ignore */ }
@@ -32020,6 +32030,28 @@ if (heroNameEl) {
             appSyncListGroups();
         }
 
+        // A tab that's switched to starts afresh: every sideways row (the facts, the episodes, the fleet, the sections'
+        // bar) back at its start, the lists back to their first page, an open Starlink / AI screen closed (the filter
+        // and the search are left as chosen)
+        function appResetTab(tab) {
+            const panel = document.getElementById(tab === 'more' ? 'tab-panel-more' : 'tab-panel-launches');
+            if (!panel) return;
+            if (typeof closeAppDetail === 'function') closeAppDetail();
+            if (tab === 'more') {
+                appPatchShown = 8;
+                appMilestonesShown = 5;
+                if (typeof renderAppInfo === 'function') renderAppInfo();
+            } else if (appPastShown !== APP_PAST_PAGE) {
+                appPastShown = APP_PAST_PAGE;
+                appSyncListGroups();
+            }
+            [panel, document.getElementById('app-info-nav')].forEach(root => {
+                if (!root) return;
+                if (root.scrollLeft) root.scrollLeft = 0;
+                root.querySelectorAll('*').forEach(el => { if (el.scrollLeft) el.scrollLeft = 0; });
+            });
+        }
+
         // The past launches a page at a time: the first APP_PAST_PAGE, then the next page from the "show more"
         // button under them (as the Info tab's mission patches). A search shows all its matches at once.
         const APP_PAST_PAGE = 12;
@@ -32568,6 +32600,8 @@ if (heroNameEl) {
         }
         function closeAppDetail() {
             if (!appDetailOpen) return false;
+            // the business customers' list, if it's open, goes with the screen
+            if (typeof setStarlinkBizBreakdownOpen === 'function') setStarlinkBizBreakdownOpen(false);
             const { section, mark } = appDetailOpen;
             mark.replaceWith(section);
             appDetailOpen = null;
