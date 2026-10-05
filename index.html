@@ -5748,7 +5748,7 @@
             to { transform: none; }
         }
 
-        /* ---------- The upcoming launches: photo cards by day, the screen's full width but a narrow margin
+        /* ---------- The upcoming launches: photo cards, the screen's full width but a narrow margin
            (see appDecorateUpcoming) ---------- */
         html.in-app #missions-grid.app-list {
             display: block;
@@ -5758,30 +5758,6 @@
             padding: 0.25rem 0 0.5rem;
             /* (the site's phone carousel pads this grid's sides with !important) */
             padding-inline: 0 !important;
-        }
-        html.in-app .app-day {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 0.35rem 0 0.55rem;
-            padding-inline: 0.35rem;
-            font-size: 0.74rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            color: #a1a1aa;
-        }
-        html.in-app .app-day::before {
-            content: "";
-            flex-shrink: 0;
-            width: 0.6rem;
-            height: 0.6rem;
-            border-radius: 999px;
-            background: #09090b;
-            border: 2px solid #34d399;
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
-        }
-        html.in-app .app-day.is-today {
-            color: #34d399;
         }
         html.in-app #missions-grid.app-list .mission-card {
             width: auto;
@@ -5891,19 +5867,12 @@
             font-weight: 700;
             color: #34d399;
         }
-        html.in-app body.light-theme .app-day { color: #475569; }
-        html.in-app body.light-theme .app-day.is-today { color: #047857; }
-        html.in-app body.light-theme .app-day::before { background: #f1f5f9; border-color: #047857; box-shadow: none; }
         html.in-app body.light-theme #missions-grid.app-list .mission-card { border-color: #e2e8f0; }
         html.in-app body.light-theme .app-cd-seg { background: rgba(15, 23, 42, 0.05); border-color: rgba(15, 23, 42, 0.12); }
         html.in-app body.light-theme .app-cd-seg b { color: #b45309; }
         html.in-app body.light-theme .app-cd-days b { color: #0f172a; }
         html.in-app body.light-theme .app-cd-seg small { color: #64748b; }
         html.in-app body.light-theme .app-cd-live { color: #047857; }
-        html.in-app body.mars-theme .app-day.is-today { color: #ff8c5a; }
-        html.in-app body.mars-theme .app-day::before { background: #140806; border-color: #ff8c5a; box-shadow: 0 0 8px rgba(255, 107, 53, 0.8); }
-        html.in-app body.moon-theme .app-day.is-today { color: #6abffb; }
-        html.in-app body.moon-theme .app-day::before { background: #080c14; border-color: #6abffb; box-shadow: 0 0 8px rgba(63, 169, 245, 0.8); }
 
         /* ---------- The past launches: the same photo cards by month, with the list's numbers on top
            (see appDecoratePast) ---------- */
@@ -5911,7 +5880,7 @@
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0.5rem;
-            margin: 0.25rem -0.5rem 1rem;
+            margin: 1.1rem -0.5rem 1rem;
         }
         html.in-app #app-past-stats.hidden {
             display: none;
@@ -5948,11 +5917,11 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            margin: 0.35rem 0 0.55rem;
+            margin: 0.5rem 0 0.6rem;
             padding-inline: 0.35rem;
-            font-size: 0.74rem;
+            font-size: 0.92rem;
             font-weight: 600;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
             color: #a1a1aa;
         }
         html.in-app .app-month::before {
@@ -5971,7 +5940,10 @@
             font-weight: 500;
             color: #71717a;
         }
-        html.in-app .app-month-count i { font-size: 0.62rem; margin-inline-end: 0.15rem; }
+        html.in-app .app-month-count {
+            font-size: 0.8rem;
+        }
+        html.in-app .app-month-count i { font-size: 0.7rem; margin-inline-end: 0.15rem; }
         html.in-app #past-launches-grid.app-list .mission-card {
             width: auto;
             min-width: 0;
@@ -6393,6 +6365,51 @@
             to { opacity: 1; transform: none; }
         }
 
+        /* the upcoming launches' title and those two buttons share one row: less margin at the screen's side
+           (as the cards have), the title takes what's left - a language whose title doesn't fit wraps it to a
+           second line rather than shrinking it out of reading size, and long button words wrap too */
+        html.in-app .app-launches-head {
+            flex-wrap: nowrap !important;
+            align-items: center;
+            gap: 0.6rem;
+            margin-inline: -0.5rem;
+        }
+        html.in-app .app-launches-head > div:first-child {
+            flex: 1;
+            min-width: 0;
+        }
+        html.in-app .app-launches-head h3 > span {
+            min-width: 0;
+            white-space: normal;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        html.in-app .app-launches-head .app-head-actions {
+            flex-shrink: 0;
+            max-width: 50%;
+            /* the two buttons always the same height, also where one's words wrap */
+            display: grid;
+            grid-auto-rows: 1fr;
+        }
+        html.in-app .app-launches-head .app-head-actions #i18n-upcoming-launches,
+        html.in-app .app-launches-head .app-head-actions #launch-cadence-btn-label-mobile {
+            white-space: normal;
+            line-height: 1.15;
+            text-align: center;
+        }
+        html.in-app .app-launches-head .app-head-actions > button,
+        html.in-app #tab-panel-launches .app-launches-head .app-head-actions #year-count-box {
+            padding: 0.4rem 0.6rem;
+            min-height: 2.3rem;
+        }
+        html.in-app .app-launches-head .app-head-actions #i18n-upcoming-launches,
+        html.in-app .app-launches-head .app-head-actions #launch-cadence-btn-label-mobile {
+            font-size: 0.68rem;
+        }
+
         /* Launch Cadence and Launches This Year, one over the other, the same button look (initAppYearCount) */
         html.in-app .app-head-actions {
             display: flex;
@@ -6478,8 +6495,7 @@
             scroll-snap-align: none !important;
         }
 
-        /* a day's / month's heading whose launches a search hid (appSyncListGroups) - over their flex display */
-        html.in-app .app-day.hidden,
+        /* a month's heading whose launches a search hid (appSyncListGroups) - over its flex display */
         html.in-app .app-month.hidden {
             display: none;
         }
@@ -31684,23 +31700,23 @@ if (heroNameEl) {
         // one day at a time, as photo cards with a live countdown; past launches as rows by month, with the
         // mission patch, the outcome and the landing - and the year's numbers above them.
         const APP_LIST_I18N = {
-            en: { success: 'Success', launched: 'Launched successfully', failure: 'Failure', landings: 'Landings', gap: 'Days between launches', remind: 'Remind me', share: 'Share', search: 'Search', filter: 'Filter' },
-            he: { success: 'הצלחה', launched: 'שוגר בהצלחה', failure: 'כישלון', landings: 'נחיתות', gap: 'ימים בין שיגורים', remind: 'תזכורת', share: 'שיתוף', search: 'חיפוש', filter: 'סינון' },
-            es: { success: 'Éxito', launched: 'Lanzado con éxito', failure: 'Fallo', landings: 'Aterrizajes', gap: 'Días entre lanzamientos', remind: 'Recordar', share: 'Compartir', search: 'Buscar', filter: 'Filtrar' },
-            fr: { success: 'Réussite', launched: 'Lancé avec succès', failure: 'Échec', landings: 'Atterrissages', gap: 'Jours entre lancements', remind: 'Rappel', share: 'Partager', search: 'Rechercher', filter: 'Filtrer' },
-            de: { success: 'Erfolg', launched: 'Erfolgreich gestartet', failure: 'Fehlschlag', landings: 'Landungen', gap: 'Tage zwischen Starts', remind: 'Erinnern', share: 'Teilen', search: 'Suche', filter: 'Filter' },
-            ru: { success: 'Успех', launched: 'Успешный запуск', failure: 'Авария', landings: 'Посадки', gap: 'Дней между пусками', remind: 'Напомнить', share: 'Поделиться', search: 'Поиск', filter: 'Фильтр' },
-            zh: { success: '成功率', launched: '发射成功', failure: '失败', landings: '着陆', gap: '发射间隔天数', remind: '提醒', share: '分享', search: '搜索', filter: '筛选' },
-            it: { success: 'Successo', launched: 'Lanciato con successo', failure: 'Fallimento', landings: 'Atterraggi', gap: 'Giorni tra i lanci', remind: 'Promemoria', share: 'Condividi', search: 'Cerca', filter: 'Filtra' },
-            cs: { success: 'Úspěšnost', launched: 'Úspěšně vypuštěno', failure: 'Selhání', landings: 'Přistání', gap: 'Dní mezi starty', remind: 'Připomenout', share: 'Sdílet', search: 'Hledat', filter: 'Filtr' },
-            sv: { success: 'Lyckade', launched: 'Lyckad uppskjutning', failure: 'Misslyckad', landings: 'Landningar', gap: 'Dagar mellan uppskjutningar', remind: 'Påminn', share: 'Dela', search: 'Sök', filter: 'Filter' },
-            nl: { success: 'Succes', launched: 'Succesvol gelanceerd', failure: 'Mislukt', landings: 'Landingen', gap: 'Dagen tussen lanceringen', remind: 'Herinner', share: 'Delen', search: 'Zoeken', filter: 'Filter' },
-            da: { success: 'Succes', launched: 'Opsendt med succes', failure: 'Fejlet', landings: 'Landinger', gap: 'Dage mellem opsendelser', remind: 'Påmind', share: 'Del', search: 'Søg', filter: 'Filter' },
-            pt: { success: 'Sucesso', launched: 'Lançado com sucesso', failure: 'Falha', landings: 'Aterragens', gap: 'Dias entre lançamentos', remind: 'Lembrar', share: 'Partilhar', search: 'Pesquisar', filter: 'Filtrar' },
-            pl: { success: 'Sukces', launched: 'Udany start', failure: 'Porażka', landings: 'Lądowania', gap: 'Dni między startami', remind: 'Przypomnij', share: 'Udostępnij', search: 'Szukaj', filter: 'Filtr' },
-            hi: { success: 'सफलता', launched: 'सफलतापूर्वक लॉन्च', failure: 'विफल', landings: 'लैंडिंग', gap: 'लॉन्च के बीच दिन', remind: 'रिमाइंडर', share: 'साझा करें', search: 'खोजें', filter: 'फ़िल्टर' },
-            ar: { success: 'النجاح', launched: 'أُطلق بنجاح', failure: 'فشل', landings: 'الهبوط', gap: 'أيام بين عمليات الإطلاق', remind: 'تذكير', share: 'مشاركة', search: 'بحث', filter: 'تصفية' },
-            tr: { success: 'Başarı', launched: 'Başarıyla fırlatıldı', failure: 'Başarısız', landings: 'İnişler', gap: 'Fırlatmalar arası gün', remind: 'Hatırlat', share: 'Paylaş', search: 'Ara', filter: 'Filtre' },
+            en: { success: 'Success', launched: 'Launched successfully', failure: 'Failure', launches: 'Launches', gap: 'Avg. days between launches', remind: 'Remind me', share: 'Share', search: 'Search', filter: 'Filter' },
+            he: { success: 'הצלחה', launched: 'שוגר בהצלחה', failure: 'כישלון', launches: 'שיגורים', gap: 'ממוצע ימים בין שיגורים', remind: 'תזכורת', share: 'שיתוף', search: 'חיפוש', filter: 'סינון' },
+            es: { success: 'Éxito', launched: 'Lanzado con éxito', failure: 'Fallo', launches: 'Lanzamientos', gap: 'Promedio de días entre lanzamientos', remind: 'Recordar', share: 'Compartir', search: 'Buscar', filter: 'Filtrar' },
+            fr: { success: 'Réussite', launched: 'Lancé avec succès', failure: 'Échec', launches: 'Lancements', gap: 'Jours moyens entre lancements', remind: 'Rappel', share: 'Partager', search: 'Rechercher', filter: 'Filtrer' },
+            de: { success: 'Erfolg', launched: 'Erfolgreich gestartet', failure: 'Fehlschlag', launches: 'Starts', gap: 'Ø Tage zwischen Starts', remind: 'Erinnern', share: 'Teilen', search: 'Suche', filter: 'Filter' },
+            ru: { success: 'Успех', launched: 'Успешный запуск', failure: 'Авария', launches: 'Запуски', gap: 'Сред. дней между пусками', remind: 'Напомнить', share: 'Поделиться', search: 'Поиск', filter: 'Фильтр' },
+            zh: { success: '成功率', launched: '发射成功', failure: '失败', launches: '发射次数', gap: '平均发射间隔天数', remind: '提醒', share: '分享', search: '搜索', filter: '筛选' },
+            it: { success: 'Successo', launched: 'Lanciato con successo', failure: 'Fallimento', launches: 'Lanci', gap: 'Media giorni tra i lanci', remind: 'Promemoria', share: 'Condividi', search: 'Cerca', filter: 'Filtra' },
+            cs: { success: 'Úspěšnost', launched: 'Úspěšně vypuštěno', failure: 'Selhání', launches: 'Starty', gap: 'Prům. dní mezi starty', remind: 'Připomenout', share: 'Sdílet', search: 'Hledat', filter: 'Filtr' },
+            sv: { success: 'Lyckade', launched: 'Lyckad uppskjutning', failure: 'Misslyckad', launches: 'Uppskjutningar', gap: 'Snitt dagar mellan uppskjutningar', remind: 'Påminn', share: 'Dela', search: 'Sök', filter: 'Filter' },
+            nl: { success: 'Succes', launched: 'Succesvol gelanceerd', failure: 'Mislukt', launches: 'Lanceringen', gap: 'Gem. dagen tussen lanceringen', remind: 'Herinner', share: 'Delen', search: 'Zoeken', filter: 'Filter' },
+            da: { success: 'Succes', launched: 'Opsendt med succes', failure: 'Fejlet', launches: 'Opsendelser', gap: 'Gns. dage mellem opsendelser', remind: 'Påmind', share: 'Del', search: 'Søg', filter: 'Filter' },
+            pt: { success: 'Sucesso', launched: 'Lançado com sucesso', failure: 'Falha', launches: 'Lançamentos', gap: 'Média de dias entre lançamentos', remind: 'Lembrar', share: 'Partilhar', search: 'Pesquisar', filter: 'Filtrar' },
+            pl: { success: 'Sukces', launched: 'Udany start', failure: 'Porażka', launches: 'Starty', gap: 'Śr. dni między startami', remind: 'Przypomnij', share: 'Udostępnij', search: 'Szukaj', filter: 'Filtr' },
+            hi: { success: 'सफलता', launched: 'सफलतापूर्वक लॉन्च', failure: 'विफल', launches: 'लॉन्च', gap: 'लॉन्च के बीच औसत दिन', remind: 'रिमाइंडर', share: 'साझा करें', search: 'खोजें', filter: 'फ़िल्टर' },
+            ar: { success: 'النجاح', launched: 'أُطلق بنجاح', failure: 'فشل', launches: 'عمليات الإطلاق', gap: 'متوسط الأيام بين عمليات الإطلاق', remind: 'تذكير', share: 'مشاركة', search: 'بحث', filter: 'تصفية' },
+            tr: { success: 'Başarı', launched: 'Başarıyla fırlatıldı', failure: 'Başarısız', launches: 'Fırlatmalar', gap: 'Fırlatmalar arası ort. gün', remind: 'Hatırlat', share: 'Paylaş', search: 'Ara', filter: 'Filtre' },
         };
         APP_LIST_I18N.iw = APP_LIST_I18N.he;
         // the site's language, as Intl wants it
@@ -31720,9 +31736,6 @@ if (heroNameEl) {
                 return { num: String(n), unit: unit[0] };
             }
         }
-        function appDayKey(d) {
-            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-        }
         function appEl(tag, cls, html) {
             const el = document.createElement(tag);
             if (cls) el.className = cls;
@@ -31732,38 +31745,13 @@ if (heroNameEl) {
             return el;
         }
 
-        // the "today" / "tomorrow" / "Sunday, October 11" line over a day's launches
-        function appDayLabel(date) {
-            const lang = appLang();
-            const today = new Date();
-            const days = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()) - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
-            let weekday = '';
-            try { weekday = new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(date); } catch (e) { }
-            if (days === 0 || days === 1) {
-                let rel = '';
-                try { rel = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(days, 'day'); } catch (e) { }
-                if (rel) return `${rel.charAt(0).toLocaleUpperCase(lang) + rel.slice(1)} · ${weekday}`;
-            }
-            try { return new Intl.DateTimeFormat(lang, { weekday: 'long', day: 'numeric', month: 'long' }).format(date).replace(/,\s*/, ' · '); } catch (e) { return date.toDateString(); }
-        }
-
         function appDecorateUpcoming(grid, missions) {
             if (!document.documentElement.classList.contains('in-app') || !grid) return;
             grid.classList.add('app-list');
             const byId = new Map((missions || []).map(m => [String(m.id), m]));
-            let lastDay = null;
             grid.querySelectorAll('.mission-card').forEach(card => {
                 const m = byId.get(String(card.dataset.missionId));
                 if (!m) return;
-                const date = new Date(m.date);
-                const key = isNaN(date) ? 'tbd' : appDayKey(date);
-                if (key !== lastDay) {
-                    lastDay = key;
-                    const day = appEl('div', 'app-day', '');
-                    if (!isNaN(date)) day.dataset.appDate = m.date;
-                    if (key === appDayKey(new Date())) day.classList.add('is-today');
-                    grid.insertBefore(day, card);
-                }
                 card.dataset.appDate = m.date;
                 // on top: the watchlist star and the reminder bell at the start side, the status across from them at
                 // the end side (right, or left in a right-to-left language)
@@ -31894,8 +31882,9 @@ if (heroNameEl) {
             more.classList.toggle('hidden', !remaining);
         }
 
-        // the numbers over the past launches: share of successful launches, landings, and the average gap between
-        // launches - of the launches the list shows (so a filter tab gives that rocket's own numbers)
+        // the numbers over the past launches: share of successful launches, how many launches, and the average gap
+        // between launches (first to last launch, over the gaps between them) - of the launches the list shows (so a
+        // filter tab gives that rocket's own numbers)
         let appPastStatsList = [];
         function appRenderPastStats() {
             const stats = document.getElementById('app-past-stats');
@@ -31905,13 +31894,12 @@ if (heroNameEl) {
             const dict = appListDict();
             const judged = list.filter(m => m.launchSuccess === true || m.launchSuccess === false);
             const successPct = judged.length ? Math.round(judged.filter(m => m.launchSuccess).length * 100 / judged.length) : null;
-            const landings = list.filter(m => m.landingSuccess === true).length;
             const times = list.map(m => new Date(m.date).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b);
             const gap = times.length > 1 ? (times[times.length - 1] - times[0]) / 86400000 / (times.length - 1) : null;
             const fmt = (v, d) => v == null ? '–' : new Intl.NumberFormat(lang, { maximumFractionDigits: d, minimumFractionDigits: d }).format(v);
             stats.innerHTML = list.length ? `
                 <div class="app-stat"><b class="is-accent">${successPct == null ? '–' : fmt(successPct, 0) + '%'}</b><span>${escapeHtml(dict.success)}</span></div>
-                <div class="app-stat"><b>${fmt(landings, 0)}</b><span>${escapeHtml(dict.landings)}</span></div>
+                <div class="app-stat"><b>${fmt(list.length, 0)}</b><span>${escapeHtml(dict.launches)}</span></div>
                 <div class="app-stat"><b>${fmt(gap, 1)}</b><span>${escapeHtml(dict.gap)}</span></div>` : '';
             stats.classList.toggle('hidden', !list.length);
         }
@@ -31958,7 +31946,6 @@ if (heroNameEl) {
             const fmt = (opts, d) => { try { return new Intl.DateTimeFormat(lang, opts).format(d); } catch (e) { return ''; } };
             // a heading starts with a capital ("воскресенье" -> "Воскресенье")
             const cap = s => s.charAt(0).toLocaleUpperCase(lang) + s.slice(1);
-            document.querySelectorAll('.app-day[data-app-date]').forEach(el => { el.textContent = cap(appDayLabel(new Date(el.dataset.appDate))); });
             document.querySelectorAll('.app-month[data-app-date]').forEach(el => {
                 el.querySelector('.app-month-name').textContent = cap(fmt({ month: 'long', year: 'numeric' }, new Date(el.dataset.appDate)));
             });
@@ -32023,7 +32010,7 @@ if (heroNameEl) {
             appRelabelLists();
         }
 
-        // a search hides cards one by one: a day's / month's heading goes with the last of its cards
+        // a search hides cards one by one: a month's heading goes with the last of its cards
         function appSyncListGroups() {
             if (!document.documentElement.classList.contains('in-app')) return;
             appApplyPastPaging();
@@ -32031,7 +32018,7 @@ if (heroNameEl) {
                 let head = null, any = false;
                 const close = () => { if (head) head.classList.toggle('hidden', !any); };
                 Array.from(grid.children).forEach(el => {
-                    if (el.classList.contains('app-day') || el.classList.contains('app-month')) {
+                    if (el.classList.contains('app-month')) {
                         close();
                         head = el;
                         any = false;
@@ -32512,6 +32499,8 @@ if (heroNameEl) {
             col.appendChild(cadence);
             col.appendChild(box);
             box.classList.add('text-emerald-400');
+            // the row they share with the upcoming launches' title: one line (CSS: .app-launches-head)
+            col.parentElement.classList.add('app-launches-head');
         }
 
         function initAndroidAppShell() {
