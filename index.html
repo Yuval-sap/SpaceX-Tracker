@@ -6250,6 +6250,115 @@
         html.in-app .card-modal-scroll {
             will-change: transform;
         }
+        /* ---------- The launches' filter + search: one row (see initAppToolbar) - a round search button and the
+           filter chips gliding sideways; the search button opens the search field in the chips' place ---------- */
+        html.in-app .app-toolbar {
+            display: flex !important;
+            flex-direction: row !important;
+            align-self: stretch;
+            align-items: center;
+            gap: 0.5rem !important;
+            margin: 0 -1rem;
+            padding: 0 1rem;
+            width: auto !important;
+        }
+        html.in-app .app-toolbar #app-search-btn {
+            flex-shrink: 0;
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--app-surface);
+            border: 1px solid var(--app-border);
+            color: var(--app-text);
+            font-size: 0.95rem;
+        }
+        html.in-app .app-toolbar #category-filter-bar {
+            flex: 1;
+            min-width: 0;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start !important;
+            gap: 0.4rem;
+            padding: 0.15rem 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 0;
+        }
+        html.in-app .app-toolbar #category-filter-bar::-webkit-scrollbar {
+            display: none;
+        }
+        html.in-app .app-toolbar #category-filter-bar::before {
+            display: none;
+        }
+        html.in-app .app-toolbar #category-filter-bar > button {
+            flex-shrink: 0;
+            padding: 0.5rem 0.95rem !important;
+            border-radius: 999px !important;
+            background: var(--app-surface) !important;
+            border: 1px solid var(--app-border);
+            color: var(--app-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        html.in-app .app-toolbar #category-filter-bar > button#filter-favorites {
+            color: #f59e0b;
+        }
+        /* the chosen filter (the site marks it bg-white) in the theme's accent */
+        html.in-app .app-toolbar #category-filter-bar > button.bg-white {
+            background: var(--app-accent) !important;
+            border-color: var(--app-accent);
+            color: var(--app-bg) !important;
+        }
+        html.in-app .app-toolbar #search-box-wrap {
+            display: none;
+        }
+        html.in-app .app-toolbar.is-searching #category-filter-bar,
+        html.in-app .app-toolbar.is-searching #app-search-btn {
+            display: none !important;
+        }
+        html.in-app .app-toolbar.is-searching #search-box-wrap {
+            display: block;
+            flex: 1;
+            width: auto;
+            animation: app-search-in 0.22s ease-out;
+        }
+        html.in-app .app-toolbar #search-input {
+            padding-block: 0.65rem;
+            padding-inline: 2.6rem;
+            border-radius: 999px;
+            background: var(--app-surface);
+            border: 1px solid rgba(var(--app-accent-rgb), 0.45);
+            color: var(--app-text);
+        }
+        html.in-app .app-toolbar #search-box-wrap > i.fa-search {
+            top: 50%;
+            left: auto;
+            inset-inline-start: 1rem;
+            transform: translateY(-50%);
+            color: var(--app-accent);
+        }
+        html.in-app .app-toolbar #app-search-close {
+            position: absolute;
+            top: 50%;
+            inset-inline-end: 0.35rem;
+            transform: translateY(-50%);
+            width: 2rem;
+            height: 2rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--app-muted);
+        }
+        @keyframes app-search-in {
+            from { opacity: 0; transform: scaleX(0.92); }
+            to { opacity: 1; transform: none; }
+        }
+
         /* Sideways rows glide freely in the app - the site's own rows snap card by card (its classes) */
         html.in-app .snap-x {
             scroll-snap-type: none !important;
@@ -6258,6 +6367,11 @@
             scroll-snap-align: none !important;
         }
 
+        /* a day's / month's heading whose launches a search hid (appSyncListGroups) - over their flex display */
+        html.in-app .app-day.hidden,
+        html.in-app .app-month.hidden {
+            display: none;
+        }
         /* the past launches' pages not reached yet (see appApplyPastPaging) */
         html.in-app .app-list .mission-card.app-page-hidden {
             display: none;
@@ -32223,9 +32337,56 @@ if (heroNameEl) {
             syncAppInfoNav();
         }
 
+        // The launches' filter + search as one row: a round search button before the filter chips; tapped, the
+        // search field takes the chips' place (its X clears the search and brings them back). The site's own
+        // chips and search field, so filtering and searching work exactly as before.
+        function initAppToolbar() {
+            const bar = document.getElementById('category-filter-bar');
+            const wrap = document.getElementById('search-box-wrap');
+            const input = document.getElementById('search-input');
+            if (!bar || !wrap || !input || bar.parentElement !== wrap.parentElement) return;
+            const row = bar.parentElement;
+            row.classList.add('app-toolbar');
+            const open = document.createElement('button');
+            open.type = 'button';
+            open.id = 'app-search-btn';
+            open.setAttribute('aria-label', 'Search');
+            open.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
+            row.insertBefore(open, row.firstChild);
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.id = 'app-search-close';
+            close.setAttribute('aria-label', 'Close');
+            close.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            wrap.appendChild(close);
+            open.onclick = () => {
+                appHaptic();
+                row.classList.add('is-searching');
+                input.focus();
+            };
+            close.onclick = () => {
+                appHaptic();
+                row.classList.remove('is-searching');
+                if (input.value) {
+                    input.value = '';
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                input.blur();
+            };
+            // the chosen chip kept in view
+            const showActive = () => {
+                const on = bar.querySelector('.bg-white');
+                if (!on) return;
+                const cr = on.getBoundingClientRect(), br = bar.getBoundingClientRect();
+                if (cr.left < br.left || cr.right > br.right) bar.scrollBy({ left: (cr.left + cr.width / 2) - (br.left + br.width / 2), behavior: 'smooth' });
+            };
+            new MutationObserver(showActive).observe(bar, { attributes: true, subtree: true, attributeFilter: ['class'] });
+        }
+
         function initAndroidAppShell() {
             if (!document.documentElement.classList.contains('in-app')) return;
             initAppInfoTab();
+            initAppToolbar();
             setInterval(paintAppCountdowns, 1000);
             // a new site language: the lists' own words follow it
             new MutationObserver(appRelabelLists).observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
