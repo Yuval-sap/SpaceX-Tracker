@@ -6372,8 +6372,12 @@
             line-height: 0.8rem;
             color: var(--app-dim);
         }
+        /* "Filter" centred over the first chip, "All" (its width - appAlignFilterLabel) */
         html.in-app .app-tool-col.is-filter small {
-            padding-inline-start: 0.2rem;
+            display: flex;
+            justify-content: center;
+            width: var(--app-first-chip, 3.2rem);
+            white-space: nowrap;
         }
         html.in-app .app-toolbar.is-searching .app-tool-col {
             display: none !important;
@@ -6802,9 +6806,6 @@
             inset: -1px;
             pointer-events: none;
         }
-        html.in-app .app-feature-slide .app-card-top {
-            z-index: 2;
-        }
         html.in-app .app-feature-info {
             position: absolute;
             z-index: 2;
@@ -6818,12 +6819,18 @@
         html.in-app .app-feature-info b {
             flex: 1;
             min-width: 0;
-            font-size: 1rem !important;
+            font-size: var(--app-title-size, 1rem) !important;
             font-weight: 600;
             line-height: 1.25;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        html.in-app .app-feature-info b.is-two {
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
         }
         /* the play button as the cards' star and bell: a dark round button with a white icon (white in the day) */
         html.in-app .app-feature-play {
@@ -13911,6 +13918,19 @@
             class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-8 mb-10 hidden transition-all duration-300 relative overflow-hidden shadow-xl lg:min-h-[380px] lg:flex lg:items-center">
             <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-3xl">
                 <img id="hero-image" src="" alt="" class="w-full h-full object-cover object-[center_19%] opacity-40 hero-fade-image">
+                <script>
+                    // Android app only: the hero's last photo, asked for right away and first - the launches come
+                    // in later, and by then dozens of other pictures were ahead of it (appDecorateHero keeps it)
+                    (function () {
+                        if (!document.documentElement.classList.contains('in-app')) return;
+                        try {
+                            var last = localStorage.getItem('appHeroImage');
+                            var img = document.getElementById('hero-image');
+                            if (img) img.fetchPriority = 'high';
+                            if (last && img && !img.getAttribute('src')) img.src = last;
+                        } catch (e) { }
+                    })();
+                </script>
             </div>
             <!-- תגית הירו - HUD Bracket Tag - מוצמדת לפינה העליונה של ההירו, מחוץ לזרימת
                  הטקסט הממורכז אנכית, כדי שתישאר תמיד ליד הקצה העליון בכל הגדלי מסך. -->
@@ -31856,11 +31876,24 @@ if (heroNameEl) {
         function appRefitCards() {
             document.querySelectorAll('.app-list .mission-card[data-app-end-pad]').forEach(c => { delete c.dataset.appEndPad; });
             appFitCardEnds();
+            if (typeof appFitEpisodeTitles === 'function') appFitEpisodeTitles();
+        }
+
+        // "Filter" over the first chip: the label as wide as that chip (its words change width with the language and
+        // the mode's font) - centred over it
+        function appAlignFilterLabel() {
+            const col = document.querySelector('.app-tool-col.is-filter');
+            const chip = col && col.querySelector('#category-filter-bar > button');
+            if (!chip || !chip.offsetWidth) return;
+            const w = chip.offsetWidth + 'px';
+            if (col.style.getPropertyValue('--app-first-chip') !== w) col.style.setProperty('--app-first-chip', w);
         }
 
         // the cards' countdowns: hours, minutes and seconds on the last day, otherwise the days left
         function paintAppCountdowns() {
             appFitCardEnds();
+            appAlignFilterLabel();
+            if (window.currentMainTab === 'more') appFitEpisodeTitles();
             const now = Date.now();
             document.querySelectorAll('#missions-grid .app-cd').forEach(cd => {
                 const card = cd.closest('.mission-card');
@@ -32071,6 +32104,8 @@ if (heroNameEl) {
             if (!hero) return;
             hero.classList.add('app-hero');
             window._appHeroMission = m;
+            // the photo, asked for first the next time the app opens (the script under #hero-image)
+            try { if (m.image) localStorage.setItem('appHeroImage', m.image); } catch (e) { }
             // the status, colored like the cards' own badge
             let status = document.getElementById('app-hero-status');
             if (!status) {
@@ -32229,18 +32264,13 @@ if (heroNameEl) {
             if (head && head.querySelector('h3').textContent !== title) head.querySelector('h3').textContent = title;
             const yt = document.querySelector('#documentary-strip')?.closest('#tab-panel-more > div')?.querySelector('a[href*="youtube"]:not(.mission-card)');
             if (head) appSetHtml(head.querySelector('span'), yt ? `<a class="app-feature-yt" href="${escapeHtml(yt.getAttribute('href'))}" target="_blank" rel="noopener"><i class="fa-brands fa-youtube"></i>YouTube</a>` : '');
-            // the episodes: cards like the launch cards - the photo, the episode's number in a box as a past launch's
-            // date, its name as a launch's, and the play button as their round buttons; the next one peeks in
+            // the episodes: cards like the launch cards - the photo, the episode's name as the site gives it ("Episode 1 -
+            // Critical Path") as a launch's name, and the play button as their round buttons; the next one peeks in
             const slides = cards.map((c, i) => {
                 const img = c.querySelector('img');
-                const parts = appText(c.querySelector('h4')).split(/\s+[-–]\s+/);
-                const ep = parts.length > 1 ? parts.shift() : '';
-                const epNum = (ep.match(/\d+/) || [''])[0];
-                const epWord = ep.replace(/\d+/, '').trim();
                 return `<div class="app-feature-slide" data-i="${i}"><img src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy">`
                     + `<div class="mission-card-fade app-feature-fade"></div>`
-                    + (epNum ? `<div class="app-card-top"><span class="app-cd-seg app-cd-days app-date"><b>${escapeHtml(epNum)}</b><small>${escapeHtml(epWord)}</small></span></div>` : '')
-                    + `<div class="app-feature-info"><b class="mission-title-fit text-white">${escapeHtml(parts.join(' - '))}</b>`
+                    + `<div class="app-feature-info"><b class="mission-title-fit text-white">${escapeHtml(appText(c.querySelector('h4')))}</b>`
                     + `<span class="app-feature-play"><i class="fa-solid fa-play"></i></span></div></div>`;
             }).join('');
             appSetHtml(body, `<div class="app-feature"><div class="app-feature-track">${slides}</div></div>`);
@@ -32417,6 +32447,36 @@ if (heroNameEl) {
                 document.querySelectorAll('#app-info .app-info-head h3').forEach(el => {
                     try { fitTitleOneLine(el); } catch (e) { }
                 });
+                appFitEpisodeTitles();
+            });
+        }
+        // the documentary's episode names on one line as the launches' (appFitCardTitle): a long one a little smaller
+        // (checked every second with the countdowns: fitted again only when its words, its width or the mode's font
+        // changed)
+        function appFitEpisodeTitles() {
+            document.querySelectorAll('#app-info .app-feature-info b').forEach(t => {
+                if (!t.clientWidth) return;
+                const key = t.textContent + '|' + t.clientWidth + '|' + getComputedStyle(t).fontFamily;
+                if (t.dataset.appFitFor === key) return;
+                t.dataset.appFitFor = key;
+                t.style.removeProperty('--app-title-size');
+                t.classList.remove('is-two');
+                const have = t.clientWidth, need = t.scrollWidth;
+                if (need <= have + 1) return;
+                const size = Math.floor(parseFloat(getComputedStyle(t).fontSize) * have / need * 10) / 10 - 0.2;
+                // one line down to 13px (the play button beside it leaves less room than a launch name has); longer: two
+                // lines, as large as they let it be
+                if (size >= 13) t.style.setProperty('--app-title-size', size + 'px');
+                else {
+                    // (and as large as two lines let it be)
+                    t.classList.add('is-two');
+                    let two = Math.min(16, Math.floor(size * 2 * 10) / 10);
+                    t.style.setProperty('--app-title-size', two + 'px');
+                    for (let k = 0; k < 12 && t.scrollHeight > t.clientHeight + 1 && two > APP_TITLE_MIN_PX; k++) {
+                        two -= 0.5;
+                        t.style.setProperty('--app-title-size', two + 'px');
+                    }
+                }
             });
         }
         let appInfoRenderTimer = null;
