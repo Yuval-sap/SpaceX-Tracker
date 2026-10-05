@@ -5769,7 +5769,10 @@
         html.in-app #missions-grid.app-list .mission-card > .z-20 {
             min-height: 10rem;
             padding: 3.7rem 0.95rem 0.85rem;
-            /* clear of the status at the bottom's end side (its width - appFitCardEnds) */
+        }
+        /* the line under the name keeps clear of the status beside it (its width - appFitCardEnds); the name
+           above them has the whole width */
+        html.in-app #missions-grid.app-list .mission-card-date {
             padding-inline-end: var(--app-end-pad, 8.5rem);
         }
         html.in-app #missions-grid.app-list .mission-title-fit {
@@ -5779,7 +5782,8 @@
             -webkit-box-orient: vertical;
             font-size: 1rem;
             line-height: 1.25;
-            margin-bottom: 0.3rem;
+            /* the line under the name (and the status beside it) a little lower, clear of the name */
+            margin-bottom: 0.65rem;
         }
         html.in-app #missions-grid.app-list .mission-card-date {
             margin-bottom: 0;
@@ -5952,14 +5956,21 @@
         }
         html.in-app #past-launches-grid.app-list .mission-card > .z-20 {
             min-height: 9rem;
-            padding: 3.6rem 0.95rem 0.85rem;
-            /* clear of the outcome at the bottom's end side (its width - appFitCardEnds) */
-            padding-inline-end: var(--app-end-pad, 8rem);
+            /* the name under the date box and the star below it (they stand one over the other at the end side) */
+            padding: 6.15rem 0.95rem 0.85rem;
         }
         html.in-app .app-card-ends {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+        /* the past cards: the date box, the watchlist star under it, and the outcome at the bottom - one column */
+        html.in-app #past-launches-grid.app-list .app-card-top.is-split {
+            align-items: flex-start;
+        }
+        html.in-app #past-launches-grid.app-list .app-card-ends {
+            flex-direction: column-reverse;
+            gap: 0.4rem;
         }
         /* a countdown / date box at a card's top sits on the photo (sky, cloud, night) - a solid backing like the
            star and bell beside it, so it reads on any picture: dark with light figures, white in the day theme */
@@ -5997,8 +6008,11 @@
             display: none;
         }
         html.in-app #past-launches-grid.app-list .mission-card > .z-20 > div:first-child > div:nth-child(2) {
-            margin-top: 0.2rem;
+            /* a little lower (with the outcome beside it), clear of the name */
+            margin-top: 0.65rem;
             margin-bottom: 0;
+            /* clear of the outcome beside it (its width - appFitCardEnds) */
+            padding-inline-end: var(--app-end-pad, 8rem);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -6731,7 +6745,7 @@
         /* Starship: the featured banner, edge to edge, one episode per slide */
         html.in-app .app-feature {
             position: relative;
-            margin: 0.75rem -1rem 0;
+            margin: 0 -1rem;
         }
         html.in-app .app-feature-track {
             display: flex;
@@ -32170,8 +32184,7 @@ if (heroNameEl) {
         function appInfoBlock(key) {
             const block = appEl('section', 'app-info-block');
             block.dataset.key = key;
-            if (key !== 'starship') block.innerHTML = '<div class="app-info-head"><h3></h3><span></span></div><div class="app-info-body"></div>';
-            else block.innerHTML = '<div class="app-info-body"></div>';
+            block.innerHTML = '<div class="app-info-head"><h3></h3><span></span></div><div class="app-info-body"></div>';
             return block;
         }
         function appInfoHead(block, title, aside) {
@@ -32181,10 +32194,10 @@ if (heroNameEl) {
             head.querySelector('span').textContent = aside || '';
         }
 
-        function renderAppFeatured(body) {
+        function renderAppFeatured(block, body) {
             const cards = [...document.querySelectorAll('#documentary-strip > .mission-card')];
             if (!cards.length) return;
-            const kicker = appText(document.getElementById('starship-doc-subtitle'));
+            appInfoHead(block, appText(document.getElementById('starship-doc-subtitle')), '');
             const yt = document.querySelector('#documentary-strip')?.closest('#tab-panel-more > div')?.querySelector('a[href*="youtube"]:not(.mission-card)');
             const slides = cards.map((c, i) => {
                 const img = c.querySelector('img');
@@ -32195,7 +32208,7 @@ if (heroNameEl) {
                     + `<div class="app-feature-info"><div><small>${escapeHtml(ep)}</small><b>${escapeHtml(parts.join(' - '))}</b></div>`
                     + `<span class="app-feature-play"><i class="fa-solid fa-play"></i></span></div></div>`;
             }).join('');
-            appSetHtml(body, `<div class="app-feature"><span class="app-feature-kicker">${escapeHtml(kicker)}</span>`
+            appSetHtml(body, `<div class="app-feature">`
                 + (yt ? `<a class="app-feature-yt" href="${escapeHtml(yt.getAttribute('href'))}" target="_blank" rel="noopener"><i class="fa-brands fa-youtube"></i> YouTube</a>` : '')
                 + `<div class="app-feature-track">${slides}</div><div class="app-feature-dots">${cards.map((_, i) => `<i${i === 0 ? ' class="is-on"' : ''}></i>`).join('')}</div></div>`);
             appBindTaps(body, '.app-feature-slide', el => document.querySelectorAll('#documentary-strip > .mission-card')[+el.dataset.i]);
@@ -32247,15 +32260,13 @@ if (heroNameEl) {
                 aiUnit = aiDict ? aiDict.monthly : '';
                 if (typeof AI_COMPUTE_TOTAL_GW !== 'undefined' && AI_COMPUTE_GOAL_GW) aiPct = Math.min(100, AI_COMPUTE_TOTAL_GW / AI_COMPUTE_GOAL_GW * 100);
             }
-            const C = 2 * Math.PI * 26;
             const chev = '<i class="fa-solid fa-chevron-right app-chev"></i>';
             appInfoHead(block, appInfoDict().numbers, '');
             appSetHtml(body, `<div class="app-bento">`
                 // Starlink: both its figures in the tall tile - satellites (ring), then customers (bar)
                 + `<button type="button" class="app-tile is-tall" data-open="starlink"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-satellite"></i></span>${chev}</div>`
                 + `<div class="app-tile-kicker">${escapeHtml(starlinkName)}</div>`
-                + `<div class="app-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" cx="32" cy="32" r="26" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct / 100)).toFixed(1)}"/></svg><b dir="ltr">${Math.round(pct)}%</b></div>`
-                + `<div class="app-tile-num" dir="ltr">${escapeHtml(count)}</div><div class="app-tile-label" dir="auto">${escapeHtml(countLabel)}</div><div class="app-tile-accent" dir="ltr">${escapeHtml(rate)}</div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(count)}</div><div class="app-tile-label" dir="auto">${escapeHtml(countLabel)}</div><div class="app-tile-accent" dir="ltr">${escapeHtml(rate)}</div><div class="app-tile-bar"><i style="width:${pct}%"></i></div>`
                 + `<div class="app-tile-sep"></div>`
                 + `<div class="app-tile-num" dir="ltr">${escapeHtml(custShort)}</div><div class="app-tile-label" dir="auto">${escapeHtml(custLabel)}</div><div class="app-tile-bar"><i style="width:${custPct}%"></i></div></button>`
                 + `<button type="button" class="app-tile" data-open="ai"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-microchip"></i></span>${chev}</div>`
@@ -32362,7 +32373,7 @@ if (heroNameEl) {
             if (!root) return;
             const get = key => root.querySelector(`.app-info-block[data-key="${key}"]`);
             const b = key => get(key).querySelector('.app-info-body');
-            try { renderAppFeatured(b('starship')); } catch (e) { }
+            try { renderAppFeatured(get('starship'), b('starship')); } catch (e) { }
             try { renderAppNumbers(get('numbers'), b('numbers')); } catch (e) { }
             try { renderAppFacts(get('facts'), b('facts')); } catch (e) { }
             try { renderAppPatches(get('patches'), b('patches')); } catch (e) { }
