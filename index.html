@@ -6720,7 +6720,7 @@
             overflow: hidden;
             color: var(--app-text);
         }
-        html.in-app .app-info-head span {
+        html.in-app .app-info-head > span {
             flex-shrink: 0;
             font-size: 0.72rem;
             color: var(--app-dim);
@@ -6759,15 +6759,18 @@
             transform: scaleX(-1);
         }
 
-        /* Starship: the featured banner, edge to edge, one episode per slide */
+        /* Starship's documentary: a row of episode cards in the launch cards' language (rounded, a thin border, the
+           photo under the same scrim), the next one peeking in as in the other rows */
         html.in-app .app-feature {
-            position: relative;
             margin: 0 -1rem;
         }
         html.in-app .app-feature-track {
             display: flex;
+            gap: 0.65rem;
+            padding: 0 1rem 0.25rem;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
+            scroll-padding-inline: 1rem;
             scrollbar-width: none;
         }
         html.in-app .app-feature-track::-webkit-scrollbar {
@@ -6775,11 +6778,17 @@
         }
         html.in-app .app-feature-slide {
             position: relative;
-            flex: 0 0 100%;
-            height: 15.5rem;
+            flex: 0 0 86%;
+            height: 12.5rem;
             scroll-snap-align: start;
             overflow: hidden;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            background: var(--app-surface);
             cursor: pointer;
+        }
+        html.in-app body.light-theme .app-feature-slide {
+            border-color: #e2e8f0;
         }
         html.in-app .app-feature-slide img {
             position: absolute;
@@ -6788,98 +6797,65 @@
             height: 100%;
             object-fit: cover;
         }
-        html.in-app .app-feature-slide::after {
-            content: "";
+        html.in-app .app-feature-fade {
             position: absolute;
-            inset: 0;
-            background: linear-gradient(to top, var(--app-bg) 2%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.15));
+            inset: -1px;
+            pointer-events: none;
         }
-        html.in-app .app-feature-kicker {
-            position: absolute;
-            z-index: 1;
-            top: 0.85rem;
-            inset-inline-start: 1rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 999px;
-            background: rgba(0, 0, 0, 0.55);
-            color: #fff;
-            font-size: 0.66rem;
-            font-weight: 600;
-            letter-spacing: 0.06em;
-        }
-        html.in-app .app-feature-yt {
-            position: absolute;
+        html.in-app .app-feature-slide .app-card-top {
             z-index: 2;
-            top: 0.85rem;
-            inset-inline-end: 1rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 999px;
-            background: rgba(0, 0, 0, 0.55);
-            color: #fca5a5;
-            font-size: 0.66rem;
-            font-weight: 600;
         }
         html.in-app .app-feature-info {
             position: absolute;
-            z-index: 1;
-            bottom: 1.2rem;
-            inset-inline: 1rem;
+            z-index: 2;
+            bottom: 0.85rem;
+            inset-inline: 0.95rem;
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
         }
-        html.in-app .app-feature-info small {
-            display: block;
-            font-size: 0.72rem;
-            color: var(--app-muted);
-        }
         html.in-app .app-feature-info b {
-            display: block;
-            font-family: var(--app-font-display);
-            font-size: 1.3rem;
-            font-weight: var(--app-font-weight);
+            flex: 1;
+            min-width: 0;
+            font-size: 1rem !important;
+            font-weight: 600;
             line-height: 1.25;
             white-space: nowrap;
             overflow: hidden;
-            color: var(--app-text);
+            text-overflow: ellipsis;
         }
-        html.in-app .app-feature-info > div {
-            flex: 1;
-            min-width: 0;
-        }
+        /* the play button as the cards' star and bell: a dark round button with a white icon (white in the day) */
         html.in-app .app-feature-play {
             flex-shrink: 0;
-            width: 2.9rem;
-            height: 2.9rem;
+            width: 2.5rem;
+            height: 2.5rem;
             border-radius: 999px;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        html.in-app body.light-theme .app-feature-play {
             background: #fff;
-            color: #000;
-            font-size: 1rem;
+            border-color: #e2e8f0;
+            color: #0f172a;
         }
-        html.in-app .app-feature-dots {
-            position: absolute;
-            z-index: 2;
-            bottom: 0.45rem;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: center;
+        /* YouTube beside the heading */
+        html.in-app .app-feature-yt {
+            display: inline-flex;
+            align-items: center;
             gap: 0.3rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--app-muted);
         }
-        html.in-app .app-feature-dots i {
-            width: 0.35rem;
-            height: 0.22rem;
-            border-radius: 999px;
-            background: var(--app-dim);
-            transition: width 0.25s ease, background-color 0.25s ease;
-        }
-        html.in-app .app-feature-dots i.is-on {
-            width: 1rem;
-            background: var(--app-text);
+        html.in-app .app-feature-yt i {
+            font-size: 0.85rem;
+            color: #ef4444;
         }
 
         /* By the numbers: one tile language - the theme's surface, a glow of its accent, an icon chip, a big number */
@@ -32247,29 +32223,28 @@ if (heroNameEl) {
         function renderAppFeatured(block, body) {
             const cards = [...document.querySelectorAll('#documentary-strip > .mission-card')];
             if (!cards.length) return;
-            appInfoHead(block, appText(document.getElementById('starship-doc-subtitle')), '');
+            // the heading as every section's; the series on YouTube beside it (where the others have "swipe" / a count)
+            const head = block.querySelector('.app-info-head');
+            const title = appText(document.getElementById('starship-doc-subtitle'));
+            if (head && head.querySelector('h3').textContent !== title) head.querySelector('h3').textContent = title;
             const yt = document.querySelector('#documentary-strip')?.closest('#tab-panel-more > div')?.querySelector('a[href*="youtube"]:not(.mission-card)');
+            if (head) appSetHtml(head.querySelector('span'), yt ? `<a class="app-feature-yt" href="${escapeHtml(yt.getAttribute('href'))}" target="_blank" rel="noopener"><i class="fa-brands fa-youtube"></i>YouTube</a>` : '');
+            // the episodes: cards like the launch cards - the photo, the episode's number in a box as a past launch's
+            // date, its name as a launch's, and the play button as their round buttons; the next one peeks in
             const slides = cards.map((c, i) => {
                 const img = c.querySelector('img');
-                const title = appText(c.querySelector('h4'));
-                const parts = title.split(/\s+[-–]\s+/);
+                const parts = appText(c.querySelector('h4')).split(/\s+[-–]\s+/);
                 const ep = parts.length > 1 ? parts.shift() : '';
+                const epNum = (ep.match(/\d+/) || [''])[0];
+                const epWord = ep.replace(/\d+/, '').trim();
                 return `<div class="app-feature-slide" data-i="${i}"><img src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy">`
-                    + `<div class="app-feature-info"><div><small>${escapeHtml(ep)}</small><b>${escapeHtml(parts.join(' - '))}</b></div>`
+                    + `<div class="mission-card-fade app-feature-fade"></div>`
+                    + (epNum ? `<div class="app-card-top"><span class="app-cd-seg app-cd-days app-date"><b>${escapeHtml(epNum)}</b><small>${escapeHtml(epWord)}</small></span></div>` : '')
+                    + `<div class="app-feature-info"><b class="mission-title-fit text-white">${escapeHtml(parts.join(' - '))}</b>`
                     + `<span class="app-feature-play"><i class="fa-solid fa-play"></i></span></div></div>`;
             }).join('');
-            appSetHtml(body, `<div class="app-feature">`
-                + (yt ? `<a class="app-feature-yt" href="${escapeHtml(yt.getAttribute('href'))}" target="_blank" rel="noopener"><i class="fa-brands fa-youtube"></i> YouTube</a>` : '')
-                + `<div class="app-feature-track">${slides}</div><div class="app-feature-dots">${cards.map((_, i) => `<i${i === 0 ? ' class="is-on"' : ''}></i>`).join('')}</div></div>`);
+            appSetHtml(body, `<div class="app-feature"><div class="app-feature-track">${slides}</div></div>`);
             appBindTaps(body, '.app-feature-slide', el => document.querySelectorAll('#documentary-strip > .mission-card')[+el.dataset.i]);
-            const track = body.querySelector('.app-feature-track');
-            if (track && !track._appDots) {
-                track._appDots = true;
-                track.addEventListener('scroll', () => {
-                    const i = Math.round(Math.abs(track.scrollLeft) / Math.max(1, track.clientWidth));
-                    body.querySelectorAll('.app-feature-dots i').forEach((d, j) => d.classList.toggle('is-on', j === i));
-                }, { passive: true });
-            }
         }
 
         function renderAppNumbers(block, body) {
@@ -32439,7 +32414,7 @@ if (heroNameEl) {
         function fitAppInfoTitles() {
             if (window.currentMainTab !== 'more' || typeof fitTitleOneLine !== 'function') return;
             requestAnimationFrame(() => {
-                document.querySelectorAll('#app-info .app-info-head h3, #app-info .app-feature-info b').forEach(el => {
+                document.querySelectorAll('#app-info .app-info-head h3').forEach(el => {
                     try { fitTitleOneLine(el); } catch (e) { }
                 });
             });
