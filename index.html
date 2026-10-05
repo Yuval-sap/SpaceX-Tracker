@@ -5768,11 +5768,9 @@
         }
         html.in-app #missions-grid.app-list .mission-card > .z-20 {
             min-height: 10rem;
-            padding: 3.4rem 0.95rem 0.85rem;
-            padding-inline-end: 4.6rem;
-        }
-        html.in-app #missions-grid.app-list .mission-card.app-cd-wide > .z-20 {
-            padding-inline-end: 8.6rem;
+            padding: 3.7rem 0.95rem 0.85rem;
+            /* clear of the status at the bottom's end side (its width - appFitCardEnds) */
+            padding-inline-end: var(--app-end-pad, 8.5rem);
         }
         html.in-app #missions-grid.app-list .mission-title-fit {
             white-space: normal;
@@ -5954,8 +5952,36 @@
         }
         html.in-app #past-launches-grid.app-list .mission-card > .z-20 {
             min-height: 9rem;
-            padding: 3.1rem 0.95rem 0.85rem;
-            padding-inline-end: 6.4rem;
+            padding: 3.6rem 0.95rem 0.85rem;
+            /* clear of the outcome at the bottom's end side (its width - appFitCardEnds) */
+            padding-inline-end: var(--app-end-pad, 8rem);
+        }
+        html.in-app .app-card-ends {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        /* a countdown / date box at a card's top sits on the photo (sky, cloud, night) - a solid backing like the
+           star and bell beside it, so it reads on any picture: dark with light figures, white in the day theme */
+        html.in-app .app-card-top .app-cd-seg {
+            background: rgba(0, 0, 0, 0.58);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+        html.in-app .app-card-top .app-cd-seg small {
+            color: rgba(255, 255, 255, 0.75);
+        }
+        html.in-app .app-card-top .app-cd-days b {
+            color: #fff;
+        }
+        html.in-app body.light-theme .app-card-top .app-cd-seg {
+            background: rgba(255, 255, 255, 0.94);
+            border-color: #e2e8f0;
+        }
+        html.in-app body.light-theme .app-card-top .app-cd-seg small {
+            color: #475569;
+        }
+        html.in-app body.light-theme .app-card-top .app-cd-days b {
+            color: #0f172a;
         }
         html.in-app #past-launches-grid.app-list .mission-title-fit {
             white-space: normal;
@@ -6156,7 +6182,8 @@
             border-color: #10b981;
             color: #000;
         }
-        html.in-app #hero-banner.app-hero #hero-watch-live-btn.bg-red-600 > i {
+        html.in-app #hero-banner.app-hero #hero-watch-live-btn.bg-red-600 > i,
+        html.in-app body.light-theme #hero-banner.app-hero #hero-watch-live-btn.bg-red-600 > i {
             background: #dc2626;
             border-color: #ef4444;
             color: #fff;
@@ -6170,7 +6197,7 @@
         html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
             color: #334155 !important;
         }
-        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #app-hero-share) > i {
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             background: #ffffff;
             border-color: #e2e8f0;
             color: #0f172a;
@@ -6828,6 +6855,8 @@
         html.in-app .app-bento {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            /* the two tiles beside the tall Starlink one, the same height */
+            grid-auto-rows: 1fr;
             gap: 0.6rem;
         }
         html.in-app .app-tile {
@@ -6847,6 +6876,11 @@
         }
         html.in-app .app-tile.is-tall {
             grid-row: span 2;
+        }
+        html.in-app .app-tile-sep {
+            height: 1px;
+            margin: 0.75rem 0;
+            background: var(--app-border);
         }
         html.in-app .app-tile.is-wide {
             grid-column: span 2;
@@ -6952,7 +6986,7 @@
             position: relative;
             width: 9.5rem;
             height: 13rem;
-            padding: 1.6rem 0.85rem 0.9rem;
+            padding: 2rem 0.85rem 0.8rem;
             border-radius: var(--app-r-lg);
             display: flex;
             flex-direction: column;
@@ -6971,15 +7005,11 @@
             font-size: 0.62rem;
             color: var(--app-muted);
         }
-        html.in-app .app-story > i {
-            font-size: 1.15rem;
-            color: var(--app-text);
-            margin-bottom: auto;
-        }
+        /* the text from the same point at the top of every card, however long it is */
         html.in-app .app-story p {
-            margin: 0.6rem 0 0;
+            margin: 0;
             display: -webkit-box;
-            -webkit-line-clamp: 7;
+            -webkit-line-clamp: 9;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -31753,8 +31783,8 @@ if (heroNameEl) {
                 const m = byId.get(String(card.dataset.missionId));
                 if (!m) return;
                 card.dataset.appDate = m.date;
-                // on top: the watchlist star and the reminder bell at the start side, the status across from them at
-                // the end side (right, or left in a right-to-left language)
+                // on top: the watchlist star and the reminder bell at the start side, the countdown across from them
+                // at the end side (right, or left in a right-to-left language)
                 const top = appEl('div', 'app-card-top is-split');
                 const bell = card.querySelector('[data-reminder-bell]');
                 const actions = bell && bell.parentElement;
@@ -31764,22 +31794,38 @@ if (heroNameEl) {
                 } else {
                     top.appendChild(appEl('span', ''));
                 }
-                const status = card.querySelector('.mission-status-badge.md\\:hidden');
-                if (status) top.appendChild(status);
-                card.appendChild(top);
-                // the countdown alone at the bottom's end side, beside the name
-                const bottom = appEl('div', 'app-card-bottom');
                 const cd = appEl('div', 'app-cd');
                 cd.dataset.appCd = m.id;
-                bottom.appendChild(cd);
+                top.appendChild(cd);
+                card.appendChild(top);
+                // the status alone at the bottom's end side, beside the name
+                const bottom = appEl('div', 'app-card-bottom');
+                const status = card.querySelector('.mission-status-badge.md\\:hidden');
+                if (status) bottom.appendChild(status);
                 card.appendChild(bottom);
             });
             appRelabelLists();
             paintAppCountdowns();
         }
 
+        // A card's name keeps clear of what sits at its bottom's end side (the status, the outcome): that width,
+        // measured once it's on screen (and again after a new language - appRelabelLists clears it)
+        function appFitCardEnds() {
+            document.querySelectorAll('.app-list .mission-card:not(.app-page-hidden):not([data-app-end-pad])').forEach(card => {
+                const end = card.querySelector('.app-card-bottom');
+                if (!end || !card.offsetWidth) return;   // not on screen yet
+                // the item in that row (the row itself spans the card); none - the name runs to the card's edge
+                const item = end.firstElementChild;
+                const w = item ? item.offsetWidth : 0;
+                if (item && !w) return;
+                card.style.setProperty('--app-end-pad', (item ? w + 26 : 15) + 'px');
+                card.dataset.appEndPad = '1';
+            });
+        }
+
         // the cards' countdowns: hours, minutes and seconds on the last day, otherwise the days left
         function paintAppCountdowns() {
+            appFitCardEnds();
             const now = Date.now();
             document.querySelectorAll('#missions-grid .app-cd').forEach(cd => {
                 const card = cd.closest('.mission-card');
@@ -31805,7 +31851,6 @@ if (heroNameEl) {
                 if (cd.dataset.stamp === stamp) return;
                 cd.dataset.stamp = stamp;
                 cd.innerHTML = html;
-                card.classList.toggle('app-cd-wide', !(diff >= 86400000));
             });
         }
 
@@ -31906,36 +31951,45 @@ if (heroNameEl) {
 
         // one past launch's row: the patch, the tags, the date
         function appDecoratePastRow(card, m, d) {
-            // on top: the mission patch (the launch photo when there's none), and the outcome at the end side
+            // on top: the mission patch (only a real one), and across from it the star and the date
             const top = appEl('div', 'app-card-top is-split');
-            const patch = appEl('div', 'app-patch');
-            const img = document.createElement('img');
-            img.alt = '';
-            img.loading = 'lazy';
-            img.src = m.patch || m.image || '';
-            if (m.patch) img.onerror = function () { this.onerror = null; this.src = m.image || ''; this.parentElement.classList.add('is-photo'); };
-            else patch.classList.add('is-photo');
-            patch.appendChild(img);
-            top.appendChild(patch);
-            if (m.launchSuccess === true) top.appendChild(appEl('span', 'app-outcome-chip is-ok', '<i class="fa-solid fa-check"></i><span data-app-label="launched"></span>'));
-            else if (m.launchSuccess === false) top.appendChild(appEl('span', 'app-outcome-chip is-fail', '<i class="fa-solid fa-xmark"></i><span data-app-label="failure"></span>'));
+            if (m.patch) {
+                const patch = appEl('div', 'app-patch');
+                const img = document.createElement('img');
+                img.alt = '';
+                img.loading = 'lazy';
+                img.src = m.patch;
+                // a patch that fails to load leaves its place empty (nothing stands in for it)
+                img.onerror = function () { this.onerror = null; patch.style.visibility = 'hidden'; };
+                patch.appendChild(img);
+                top.appendChild(patch);
+            } else {
+                // no patch: an empty place, so the date and star stay at the end side
+                top.appendChild(appEl('span', ''));
+            }
             card.appendChild(top);
 
             // the launch site under the name, in the site's language (appRelabelLists)
             card.dataset.appSite = m.site || '';
 
-            // the bottom row, at the end side - as on the upcoming cards: the watchlist star, then the date where
-            // their countdown is
-            const bottom = appEl('div', 'app-card-bottom');
+            // on top across from the patch - as on the upcoming cards: the watchlist star, then the date where their
+            // countdown is
+            const ends = appEl('div', 'app-card-ends');
             const star = card.querySelector('button[onclick^="toggleFavorite"]');
             if (star) {
                 const actions = appEl('div', 'app-card-actions');
                 actions.appendChild(star);
-                bottom.appendChild(actions);
+                ends.appendChild(actions);
             }
             const dateBox = appEl('span', 'app-cd-seg app-cd-days app-date', '<b></b><small></small>');
             if (!isNaN(d)) dateBox.dataset.appDate = m.date;
-            bottom.appendChild(dateBox);
+            ends.appendChild(dateBox);
+            top.appendChild(ends);
+
+            // the outcome at the bottom's end side, beside the name
+            const bottom = appEl('div', 'app-card-bottom');
+            if (m.launchSuccess === true) bottom.appendChild(appEl('span', 'app-outcome-chip is-ok', '<i class="fa-solid fa-check"></i><span data-app-label="launched"></span>'));
+            else if (m.launchSuccess === false) bottom.appendChild(appEl('span', 'app-outcome-chip is-fail', '<i class="fa-solid fa-xmark"></i><span data-app-label="failure"></span>'));
             card.appendChild(bottom);
         }
 
@@ -31969,6 +32023,9 @@ if (heroNameEl) {
             paintAppCountdowns();
             const pastMore = document.getElementById('app-past-more');
             if (pastMore && typeof appInfoDict === 'function') pastMore.textContent = appInfoDict().more;
+            // the outcome's words changed width: measured again
+            document.querySelectorAll('.app-list .mission-card[data-app-end-pad]').forEach(c => { delete c.dataset.appEndPad; });
+            appFitCardEnds();
         }
 
         // The next launch as the app's opening screen (CSS: #hero-banner.app-hero): the status on top, a share
@@ -32036,23 +32093,23 @@ if (heroNameEl) {
         // a component taps the site's own element behind it; Starlink and AI compute open as screens of their own.
         // Redrawn whenever one of those sections changes (debounced), and on a new language.
         const APP_INFO_I18N = {
-            en: { numbers: 'By the numbers', allTime: 'SpaceX launches all-time', more: 'Show more', less: 'Show less', swipe: 'Swipe' },
-            he: { numbers: 'במספרים', allTime: 'שיגורי SpaceX בכל הזמנים', more: 'הצג עוד', less: 'הצג פחות', swipe: 'החליקו' },
-            es: { numbers: 'En cifras', allTime: 'Lanzamientos de SpaceX en total', more: 'Ver más', less: 'Ver menos', swipe: 'Desliza' },
-            fr: { numbers: 'En chiffres', allTime: 'Lancements SpaceX au total', more: 'Voir plus', less: 'Voir moins', swipe: 'Faites glisser' },
-            de: { numbers: 'In Zahlen', allTime: 'SpaceX-Starts insgesamt', more: 'Mehr anzeigen', less: 'Weniger anzeigen', swipe: 'Wischen' },
-            ru: { numbers: 'В цифрах', allTime: 'Всего запусков SpaceX', more: 'Показать ещё', less: 'Свернуть', swipe: 'Листайте' },
-            zh: { numbers: '数据一览', allTime: 'SpaceX 历史发射总数', more: '显示更多', less: '收起', swipe: '滑动查看' },
-            it: { numbers: 'In numeri', allTime: 'Lanci SpaceX in totale', more: 'Mostra altro', less: 'Mostra meno', swipe: 'Scorri' },
-            cs: { numbers: 'V číslech', allTime: 'Startů SpaceX celkem', more: 'Zobrazit více', less: 'Zobrazit méně', swipe: 'Přejeďte' },
-            sv: { numbers: 'I siffror', allTime: 'SpaceX-uppskjutningar totalt', more: 'Visa mer', less: 'Visa mindre', swipe: 'Svep' },
-            nl: { numbers: 'In cijfers', allTime: 'SpaceX-lanceringen in totaal', more: 'Meer tonen', less: 'Minder tonen', swipe: 'Veeg' },
-            da: { numbers: 'I tal', allTime: 'SpaceX-opsendelser i alt', more: 'Vis mere', less: 'Vis mindre', swipe: 'Stryg' },
-            pt: { numbers: 'Em números', allTime: 'Lançamentos da SpaceX no total', more: 'Ver mais', less: 'Ver menos', swipe: 'Deslize' },
-            pl: { numbers: 'W liczbach', allTime: 'Starty SpaceX łącznie', more: 'Pokaż więcej', less: 'Pokaż mniej', swipe: 'Przesuń' },
-            hi: { numbers: 'आंकड़ों में', allTime: 'SpaceX के कुल लॉन्च', more: 'और दिखाएँ', less: 'कम दिखाएँ', swipe: 'स्वाइप करें' },
-            ar: { numbers: 'بالأرقام', allTime: 'إجمالي عمليات إطلاق SpaceX', more: 'عرض المزيد', less: 'عرض أقل', swipe: 'اسحب' },
-            tr: { numbers: 'Rakamlarla', allTime: 'Toplam SpaceX fırlatması', more: 'Daha fazla', less: 'Daha az', swipe: 'Kaydırın' },
+            en: { numbers: 'By the numbers', allTime: 'SpaceX launches all-time', more: 'Show more', less: 'Show less', swipe: 'Swipe', sats: 'Active satellites (approx)', cust: 'Active customers', upd: 'updated {d}', week: 'week' },
+            he: { numbers: 'במספרים', allTime: 'שיגורי SpaceX בכל הזמנים', more: 'הצג עוד', less: 'הצג פחות', swipe: 'החליקו', sats: 'לוויינים פעילים (בקירוב)', cust: 'לקוחות פעילים', upd: 'עודכן ב{d}', week: 'שבוע' },
+            es: { numbers: 'En cifras', allTime: 'Lanzamientos de SpaceX en total', more: 'Ver más', less: 'Ver menos', swipe: 'Desliza', sats: 'Satélites activos (aprox.)', cust: 'Clientes activos', upd: 'actualizado en {d}', week: 'semana' },
+            fr: { numbers: 'En chiffres', allTime: 'Lancements SpaceX au total', more: 'Voir plus', less: 'Voir moins', swipe: 'Faites glisser', sats: 'Satellites actifs (env.)', cust: 'Clients actifs', upd: 'mis à jour en {d}', week: 'semaine' },
+            de: { numbers: 'In Zahlen', allTime: 'SpaceX-Starts insgesamt', more: 'Mehr anzeigen', less: 'Weniger anzeigen', swipe: 'Wischen', sats: 'Aktive Satelliten (ca.)', cust: 'Aktive Kunden', upd: 'Stand: {d}', week: 'Woche' },
+            ru: { numbers: 'В цифрах', allTime: 'Всего запусков SpaceX', more: 'Показать ещё', less: 'Свернуть', swipe: 'Листайте', sats: 'Активные спутники (прибл.)', cust: 'Активные клиенты', upd: 'обновлено: {d}', week: 'нед.' },
+            zh: { numbers: '数据一览', allTime: 'SpaceX 历史发射总数', more: '显示更多', less: '收起', swipe: '滑动查看', sats: '活跃卫星（约）', cust: '活跃用户', upd: '更新于 {d}', week: '周' },
+            it: { numbers: 'In numeri', allTime: 'Lanci SpaceX in totale', more: 'Mostra altro', less: 'Mostra meno', swipe: 'Scorri', sats: 'Satelliti attivi (circa)', cust: 'Clienti attivi', upd: 'aggiornato: {d}', week: 'settimana' },
+            cs: { numbers: 'V číslech', allTime: 'Startů SpaceX celkem', more: 'Zobrazit více', less: 'Zobrazit méně', swipe: 'Přejeďte', sats: 'Aktivní satelity (přibl.)', cust: 'Aktivní zákazníci', upd: 'aktualizováno: {d}', week: 'týden' },
+            sv: { numbers: 'I siffror', allTime: 'SpaceX-uppskjutningar totalt', more: 'Visa mer', less: 'Visa mindre', swipe: 'Svep', sats: 'Aktiva satelliter (ca)', cust: 'Aktiva kunder', upd: 'uppdaterat {d}', week: 'vecka' },
+            nl: { numbers: 'In cijfers', allTime: 'SpaceX-lanceringen in totaal', more: 'Meer tonen', less: 'Minder tonen', swipe: 'Veeg', sats: 'Actieve satellieten (ca.)', cust: 'Actieve klanten', upd: 'bijgewerkt {d}', week: 'week' },
+            da: { numbers: 'I tal', allTime: 'SpaceX-opsendelser i alt', more: 'Vis mere', less: 'Vis mindre', swipe: 'Stryg', sats: 'Aktive satellitter (ca.)', cust: 'Aktive kunder', upd: 'opdateret {d}', week: 'uge' },
+            pt: { numbers: 'Em números', allTime: 'Lançamentos da SpaceX no total', more: 'Ver mais', less: 'Ver menos', swipe: 'Deslize', sats: 'Satélites ativos (aprox.)', cust: 'Clientes ativos', upd: 'atualizado em {d}', week: 'semana' },
+            pl: { numbers: 'W liczbach', allTime: 'Starty SpaceX łącznie', more: 'Pokaż więcej', less: 'Pokaż mniej', swipe: 'Przesuń', sats: 'Aktywne satelity (ok.)', cust: 'Aktywni klienci', upd: 'stan na: {d}', week: 'tydzień' },
+            hi: { numbers: 'आंकड़ों में', allTime: 'SpaceX के कुल लॉन्च', more: 'और दिखाएँ', less: 'कम दिखाएँ', swipe: 'स्वाइप करें', sats: 'सक्रिय उपग्रह (लगभग)', cust: 'सक्रिय ग्राहक', upd: '{d} में अपडेट', week: 'सप्ताह' },
+            ar: { numbers: 'بالأرقام', allTime: 'إجمالي عمليات إطلاق SpaceX', more: 'عرض المزيد', less: 'عرض أقل', swipe: 'اسحب', sats: 'الأقمار الصناعية النشطة (تقريبًا)', cust: 'العملاء النشطون', upd: 'آخر تحديث: {d}', week: 'أسبوع' },
+            tr: { numbers: 'Rakamlarla', allTime: 'Toplam SpaceX fırlatması', more: 'Daha fazla', less: 'Daha az', swipe: 'Kaydırın', sats: 'Aktif uydular (yaklaşık)', cust: 'Aktif müşteriler', upd: 'güncelleme: {d}', week: 'hafta' },
         };
         APP_INFO_I18N.iw = APP_INFO_I18N.he;
         function appInfoDict() {
@@ -32157,12 +32214,21 @@ if (heroNameEl) {
             const num = s => parseFloat(String(s || '').replace(/[^\d.]/g, '')) || 0;
             const count = appText(document.getElementById('starlink-count'));
             const countEl = document.getElementById('starlink-count');
-            const countLabel = countEl ? appText(countEl.parentElement.nextElementSibling) : '';
-            const rate = appText(document.getElementById('starlink-rate-text'));
+            const dict = appInfoDict();
+            // the site's labels are translated by Google there; the app's copy can't be (notranslate), so its own words
+            const countLabel = dict.sats;
+            const rateNum = (appText(document.getElementById('starlink-rate-text')).match(/[+-]?\d[\d,.]*/) || [''])[0];
+            const rate = rateNum ? `${rateNum} / ${dict.week}` : '';
             const pct = Math.max(0, Math.min(100, num(appText(document.getElementById('starlink-percentage')))));
             const custEl = document.getElementById('starlink-customers-count');
             const cust = num(appText(custEl));
-            const custLabel = custEl ? appText(custEl.parentElement.nextElementSibling) : '';
+            // "Active customers · updated August 2026": the month the site gives, in the language's own words
+            const upd = /updated\s+([A-Za-z]+)\s+(\d{4})/.exec(custEl ? appText(custEl.parentElement.nextElementSibling) : '');
+            const updMonth = upd ? ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'].indexOf(upd[1].toLowerCase()) : -1;
+            let custLabel = dict.cust;
+            if (updMonth >= 0) {
+                try { custLabel += ' · ' + dict.upd.replace('{d}', new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric' }).format(new Date(+upd[2], updMonth, 15))); } catch (e) { }
+            }
             const custPct = Math.max(0, Math.min(100, num(appText(document.getElementById('starlink-customers-percentage')))));
             const custShort = cust ? new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(cust) : '–';
             // SpaceX's launches to date: the latest launch's own number in the count (its launchStats)
@@ -32185,15 +32251,17 @@ if (heroNameEl) {
             const chev = '<i class="fa-solid fa-chevron-right app-chev"></i>';
             appInfoHead(block, appInfoDict().numbers, '');
             appSetHtml(body, `<div class="app-bento">`
+                // Starlink: both its figures in the tall tile - satellites (ring), then customers (bar)
                 + `<button type="button" class="app-tile is-tall" data-open="starlink"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-satellite"></i></span>${chev}</div>`
+                + `<div class="app-tile-kicker">${escapeHtml(starlinkName)}</div>`
                 + `<div class="app-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" cx="32" cy="32" r="26" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct / 100)).toFixed(1)}"/></svg><b dir="ltr">${Math.round(pct)}%</b></div>`
-                + `<div class="app-tile-num" dir="ltr">${escapeHtml(count)}</div><div class="app-tile-label">${escapeHtml(countLabel)}</div><div class="app-tile-accent" dir="ltr">${escapeHtml(rate)}</div></button>`
-                + `<button type="button" class="app-tile" data-open="starlink"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-users"></i></span>${chev}</div>`
-                + `<div class="app-tile-kicker">${escapeHtml(starlinkName)}</div><div class="app-tile-num" dir="ltr">${escapeHtml(custShort)}</div><div class="app-tile-label" dir="auto">${escapeHtml(custLabel)}</div><div class="app-tile-bar"><i style="width:${custPct}%"></i></div></button>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(count)}</div><div class="app-tile-label" dir="auto">${escapeHtml(countLabel)}</div><div class="app-tile-accent" dir="ltr">${escapeHtml(rate)}</div>`
+                + `<div class="app-tile-sep"></div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(custShort)}</div><div class="app-tile-label" dir="auto">${escapeHtml(custLabel)}</div><div class="app-tile-bar"><i style="width:${custPct}%"></i></div></button>`
+                + `<button type="button" class="app-tile" data-open="ai"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-microchip"></i></span>${chev}</div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(aiValue)}</div><div class="app-tile-label">${escapeHtml(aiUnit)} · ${escapeHtml(aiTitle)}</div><div class="app-tile-bar"><i style="width:${aiPct}%"></i></div></button>`
                 + `<div class="app-tile is-static"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-rocket"></i></span></div>`
                 + `<div class="app-tile-num" dir="ltr">${allTime ? new Intl.NumberFormat(lang).format(allTime) : '–'}</div><div class="app-tile-label">${escapeHtml(appInfoDict().allTime)}</div></div>`
-                + `<button type="button" class="app-tile is-wide" data-open="ai"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-microchip"></i></span>${chev}</div>`
-                + `<div class="app-tile-num" dir="ltr">${escapeHtml(aiValue)}</div><div class="app-tile-label">${escapeHtml(aiUnit)} · ${escapeHtml(aiTitle)}</div><div class="app-tile-bar"><i style="width:${aiPct}%"></i></div></button>`
                 + `</div>`);
             body.querySelectorAll('[data-open]').forEach(t => { t.onclick = () => { appHaptic(); openAppDetail(t.dataset.open); }; });
         }
@@ -32204,12 +32272,11 @@ if (heroNameEl) {
             // every fact, in the site's own (shuffled) order from the one it shows now
             const lang = document.documentElement.lang;
             const n = weeklyFactIndices.length;
-            const icons = ['fa-lightbulb', 'fa-rocket', 'fa-satellite', 'fa-star', 'fa-bolt', 'fa-earth-americas', 'fa-fire', 'fa-meteor'];
             let html = '';
             for (let i = 0; i < n; i++) {
                 const text = getFactText(weeklyFactIndices[(currentFactIndex + i) % n], lang);
                 html += `<div class="app-story"><span class="app-story-count" dir="ltr">${i + 1} / ${n}</span>`
-                    + `<i class="fa-solid ${icons[i % icons.length]}"></i><p dir="auto">${escapeHtml(text)}</p></div>`;
+                    + `<p dir="auto">${escapeHtml(text)}</p></div>`;
             }
             appSetHtml(body, `<div class="app-info-row">${html}</div>`);
         }
@@ -32505,6 +32572,11 @@ if (heroNameEl) {
 
         function initAndroidAppShell() {
             if (!document.documentElement.classList.contains('in-app')) return;
+            // a new mode changes the fonts, so the cards' status / outcome widths: measured again (appFitCardEnds)
+            new MutationObserver(() => {
+                document.querySelectorAll('.app-list .mission-card[data-app-end-pad]').forEach(c => { delete c.dataset.appEndPad; });
+                setTimeout(appFitCardEnds, 600);
+            }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
             initAppInfoTab();
             initAppToolbar();
             initAppYearCount();
