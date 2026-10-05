@@ -31411,7 +31411,9 @@ if (heroNameEl) {
                 // the Android app: the tab starts afresh - from the top, as first shown (appResetTab)
                 if (inAppTabs) {
                     if (typeof appResetTab === 'function') appResetTab(tab);
-                    window.scrollTo(0, 0);
+                    // straight to the page's top - not window.scrollTo, which the touch guard (init) swallows for a
+                    // second after any touch, and tapping the tab is one
+                    (document.scrollingElement || document.documentElement).scrollTop = 0;
                 }
                 // The status headline may have changed while the Launches tab was hidden - fit it as the panel comes
                 // back. Only AFTER .tab-panel-preenter is on: measuring the panel before that fixed its starting
