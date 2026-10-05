@@ -6171,6 +6171,9 @@
             color: #fff;
             animation: none;
         }
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
+            display: none;
+        }
         html.in-app #hero-banner.app-hero #hero-remind-btn[data-reminded="1"] > i {
             background: #10b981;
             border-color: #10b981;
@@ -6247,6 +6250,14 @@
         html.in-app .card-modal-scroll {
             will-change: transform;
         }
+        /* Sideways rows glide freely in the app - the site's own rows snap card by card (its classes) */
+        html.in-app .snap-x {
+            scroll-snap-type: none !important;
+        }
+        html.in-app .snap-start {
+            scroll-snap-align: none !important;
+        }
+
         /* the past launches' pages not reached yet (see appApplyPastPaging) */
         html.in-app .app-list .mission-card.app-page-hidden {
             display: none;
@@ -6255,11 +6266,8 @@
             display: none;
         }
         html.in-app #app-past-more {
-            display: flex;
-            justify-content: center;
-            padding: 0.75rem 0 1.25rem;
-            font-size: 1.1rem;
-            color: #71717a;
+            display: block;
+            margin: 0.4rem auto 1.25rem;
         }
         html.in-app #app-past-more.hidden {
             display: none;
@@ -6425,8 +6433,6 @@
             margin: 0 -1rem;
             padding: 0 1rem 0.25rem;
             overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            scroll-padding-inline: 1rem;
             scrollbar-width: none;
         }
         html.in-app .app-info-row::-webkit-scrollbar {
@@ -6434,7 +6440,6 @@
         }
         html.in-app .app-info-row > * {
             flex-shrink: 0;
-            scroll-snap-align: start;
         }
         html.in-app .app-info-more {
             display: block;
@@ -31633,12 +31638,11 @@ if (heroNameEl) {
             appSyncListGroups();
         }
 
-        // The past launches a page at a time: the first APP_PAST_PAGE, then the next page each time the list's
-        // end scrolls near (a spinner marks it while more are left). A search shows all its matches at once.
+        // The past launches a page at a time: the first APP_PAST_PAGE, then the next page from the "show more"
+        // button under them (as the Info tab's mission patches). A search shows all its matches at once.
         const APP_PAST_PAGE = 12;
         let appPastShown = APP_PAST_PAGE;
         let appPastFilterKey = null;
-        let appPastObserver = null;
         function appApplyPastPaging() {
             const grid = document.getElementById('past-launches-grid');
             if (!grid || !grid.classList.contains('app-list')) return;
@@ -31649,23 +31653,20 @@ if (heroNameEl) {
             const remaining = !searching && cards.length > appPastShown;
             let more = document.getElementById('app-past-more');
             if (!more) {
-                more = appEl('div', '', '<i class="fa-solid fa-spinner fa-spin"></i>');
+                more = document.createElement('button');
+                more.type = 'button';
                 more.id = 'app-past-more';
-            }
-            if (grid.nextElementSibling !== more) grid.after(more);
-            more.classList.toggle('hidden', !remaining);
-            if (!appPastObserver && 'IntersectionObserver' in window) {
-                appPastObserver = new IntersectionObserver(entries => {
-                    if (!entries.some(e => e.isIntersecting)) return;
+                more.className = 'app-info-more notranslate';
+                more.setAttribute('translate', 'no');
+                more.onclick = () => {
+                    appHaptic();
                     appPastShown += APP_PAST_PAGE;
                     appSyncListGroups();
-                }, { rootMargin: '0px 0px 700px 0px' });
+                };
             }
-            if (appPastObserver) {
-                appPastObserver.disconnect();
-                // observed again from scratch: if the end is still near after a page arrived, the next one follows
-                if (remaining) appPastObserver.observe(more);
-            }
+            if (grid.nextElementSibling !== more) grid.after(more);
+            more.textContent = appInfoDict().more;
+            more.classList.toggle('hidden', !remaining);
         }
 
         // the numbers over the past launches: share of successful launches, landings, and the average gap between
@@ -31754,6 +31755,8 @@ if (heroNameEl) {
             if (remindBtn && remindBtn.closest('.app-hero')) remindBtn.dataset.appCaption = dict.remind;
             appRenderPastStats();
             paintAppCountdowns();
+            const pastMore = document.getElementById('app-past-more');
+            if (pastMore && typeof appInfoDict === 'function') pastMore.textContent = appInfoDict().more;
         }
 
         // The next launch as the app's opening screen (CSS: #hero-banner.app-hero): the status on top, a share
