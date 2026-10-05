@@ -5789,6 +5789,26 @@
         html.in-app #missions-grid.app-list .mission-card-date {
             margin-bottom: 0;
         }
+        /* the dark modes' scrim over a card's photo (launches, the documentary): solid behind the lines at the bottom,
+           fading out a little above the name - in px, as the app's cards are short (the site's is in % of tall ones) */
+        html.in-app body { --app-fade: 24, 24, 27; }
+        html.in-app body.mars-theme { --app-fade: 39, 21, 16; }
+        html.in-app body.moon-theme { --app-fade: 18, 24, 38; }
+        html.in-app body:not(.light-theme) :is(.app-list .mission-card .mission-card-fade, .app-feature-fade) {
+            background: linear-gradient(to top,
+                rgb(var(--app-fade)) 0,
+                rgb(var(--app-fade)) 26px,
+                rgba(var(--app-fade), 0.85) 46px,
+                rgba(var(--app-fade), 0.5) 66px,
+                rgba(var(--app-fade), 0.15) 86px,
+                transparent 104px) !important;
+        }
+        /* the line under it on one line too (appFitCardSub sizes it) */
+        html.in-app .app-list .app-sub-one {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         /* a launch's name on one line, its font a little smaller when it's long (appFitCardTitle) */
         html.in-app :is(#missions-grid, #past-launches-grid).app-list .mission-title-fit.app-title-one {
             display: block !important;
@@ -31781,6 +31801,19 @@ if (heroNameEl) {
             const l = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
             return l === 'iw' ? 'he' : l === 'zh' ? 'zh-CN' : l;
         }
+        // the cards' launch site a little shorter, to fit its line beside the outcome: "Orbital Launch Pad 2" ->
+        // "Launch Pad 2" (Starbase's pads), in each language's words
+        const APP_LAUNCH_PAD = {
+            en: 'Launch Pad', he: 'משטח שיגור', iw: 'משטח שיגור', es: 'Plataforma', fr: 'Pas de Tir', de: 'Startrampe',
+            ru: 'Площадка', zh: '发射台', it: 'Rampa', cs: 'Odpalovací Rampa', sv: 'Startramp', nl: 'Platform',
+            da: 'Affyringsrampe', pt: 'Plataforma', pl: 'Wyrzutnia', hi: 'लॉन्च पैड', ar: 'منصة الإطلاق', tr: 'Fırlatma Rampası',
+        };
+        function appShortSite(text) {
+            const key = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            const long = (SITE_NAME_I18N[key] || SITE_NAME_I18N.en).orbitalLaunchPad;
+            const short = APP_LAUNCH_PAD[key] || APP_LAUNCH_PAD.en;
+            return long && text ? text.split(long).join(short) : text;
+        }
         function appListDict() {
             return APP_LIST_I18N[(document.documentElement.lang || 'en').toLowerCase().split('-')[0]] || APP_LIST_I18N.en;
         }
@@ -31841,7 +31874,8 @@ if (heroNameEl) {
             // a name whose words changed since it was fitted (a translation that came in after): fitted again
             document.querySelectorAll('.app-list .mission-card[data-app-end-pad]:not(.app-page-hidden)').forEach(card => {
                 const t = card.querySelector('.mission-title-fit');
-                if (t && t.dataset.appFitFor !== t.textContent) delete card.dataset.appEndPad;
+                const sub = appCardSub(card);
+                if ((t && t.dataset.appFitFor !== t.textContent) || (sub && sub.dataset.appFitFor !== sub.textContent)) delete card.dataset.appEndPad;
             });
             document.querySelectorAll('.app-list .mission-card:not(.app-page-hidden):not([data-app-end-pad])').forEach(card => {
                 const end = card.querySelector('.app-card-bottom');
@@ -31853,6 +31887,7 @@ if (heroNameEl) {
                 if (!appFitCardTitle(card)) return;   // the name not laid out yet - next time
                 card.style.setProperty('--app-end-pad', (item ? w + 26 : 15) + 'px');
                 card.dataset.appEndPad = '1';
+                appFitCardSub(card);
             });
         }
         // the launch's name on one line: if it's wider than the card, its font shrinks just enough to fit (down to
@@ -31872,6 +31907,27 @@ if (heroNameEl) {
             if (size >= APP_TITLE_MIN_PX) t.style.setProperty('--app-title-size', size + 'px');
             else t.classList.remove('app-title-one');
             return true;
+        }
+        // the line under the name (the date and window / the launch site) on one line too, beside the status: its
+        // font a little smaller when it's longer than the room it has
+        const APP_SUB_MIN_PX = 8.5;
+        function appCardSub(card) {
+            return card.querySelector('#missions-grid .mission-card-date, #past-launches-grid .z-20 > div:first-child > div:nth-child(2)');
+        }
+        function appFitCardSub(card) {
+            const sub = appCardSub(card);
+            if (!sub) return;
+            sub.classList.add('app-sub-one');
+            sub.style.fontSize = '';
+            sub.dataset.appFitFor = sub.textContent;
+            const cs = getComputedStyle(sub);
+            const have = sub.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            const r = document.createRange();
+            r.selectNodeContents(sub);
+            const need = r.getBoundingClientRect().width;
+            if (!have || need <= have + 0.5) return;
+            const size = Math.floor(parseFloat(cs.fontSize) * have / need * 10) / 10 - 0.2;
+            sub.style.fontSize = Math.max(APP_SUB_MIN_PX, size) + 'px';
         }
         function appRefitCards() {
             document.querySelectorAll('.app-list .mission-card[data-app-end-pad]').forEach(c => { delete c.dataset.appEndPad; });
@@ -32080,7 +32136,7 @@ if (heroNameEl) {
                 const line = card.querySelector('.z-20 > div:first-child > div:nth-child(2)');
                 const site = line && line.lastElementChild;
                 if (!site || typeof localizeSiteStr !== 'function') return;
-                site.textContent = localizeSiteStr(card.dataset.appSite, document.documentElement.lang);
+                site.textContent = appShortSite(localizeSiteStr(card.dataset.appSite, document.documentElement.lang));
                 site.setAttribute('dir', document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr');
             });
             const dict = appListDict();
