@@ -5780,13 +5780,24 @@
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
-            font-size: 1rem;
+            /* !important: the site's own fitter (its inline size) doesn't size the app's names - appFitCardTitle does */
+            font-size: 1rem !important;
             line-height: 1.25;
             /* the line under the name (and the status beside it) a little lower, clear of the name */
             margin-bottom: 0.65rem;
         }
         html.in-app #missions-grid.app-list .mission-card-date {
             margin-bottom: 0;
+        }
+        /* a launch's name on one line, its font a little smaller when it's long (appFitCardTitle) */
+        html.in-app :is(#missions-grid, #past-launches-grid).app-list .mission-title-fit.app-title-one {
+            display: block !important;
+            white-space: nowrap !important;
+            overflow: hidden;
+            font-size: var(--app-title-size, 1rem) !important;
+        }
+        html.in-app #past-launches-grid.app-list .mission-title-fit.app-title-one {
+            font-size: var(--app-title-size, 0.98rem) !important;
         }
         html.in-app #missions-grid.app-list .mission-card-desc,
         html.in-app #missions-grid.app-list .mission-card > .z-20 > div:last-child {
@@ -5999,7 +6010,7 @@
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
-            font-size: 0.98rem;
+            font-size: 0.98rem !important;
             line-height: 1.25;
             margin-bottom: 0;
         }
@@ -6686,10 +6697,16 @@
         }
         html.in-app .app-info-head {
             display: flex;
-            align-items: baseline;
+            align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
             margin-bottom: 0.8rem;
+        }
+        html.in-app .app-info-head > i {
+            flex-shrink: 0;
+            margin-inline-end: -0.25rem;
+            font-size: 1rem;
+            /* its colour the launches tab headings' icons' (the site's emerald, per mode) */
         }
         html.in-app .app-info-head h3 {
             flex: 1;
@@ -31825,6 +31842,11 @@ if (heroNameEl) {
         // A card's name keeps clear of what sits at its bottom's end side (the status, the outcome): that width,
         // measured once it's on screen (and again after a new language - appRelabelLists clears it)
         function appFitCardEnds() {
+            // a name whose words changed since it was fitted (a translation that came in after): fitted again
+            document.querySelectorAll('.app-list .mission-card[data-app-end-pad]:not(.app-page-hidden)').forEach(card => {
+                const t = card.querySelector('.mission-title-fit');
+                if (t && t.dataset.appFitFor !== t.textContent) delete card.dataset.appEndPad;
+            });
             document.querySelectorAll('.app-list .mission-card:not(.app-page-hidden):not([data-app-end-pad])').forEach(card => {
                 const end = card.querySelector('.app-card-bottom');
                 if (!end || !card.offsetWidth) return;   // not on screen yet
@@ -31832,9 +31854,32 @@ if (heroNameEl) {
                 const item = end.firstElementChild;
                 const w = item ? item.offsetWidth : 0;
                 if (item && !w) return;
+                if (!appFitCardTitle(card)) return;   // the name not laid out yet - next time
                 card.style.setProperty('--app-end-pad', (item ? w + 26 : 15) + 'px');
                 card.dataset.appEndPad = '1';
             });
+        }
+        // the launch's name on one line: if it's wider than the card, its font shrinks just enough to fit (down to
+        // a floor - a name that would need less still wraps to a second line at the normal size). Measured again
+        // with the cards' ends (a new language, mode - its font -, a font that loaded, a new screen width)
+        const APP_TITLE_MIN_PX = 9.5;
+        function appFitCardTitle(card) {
+            const t = card.querySelector('.mission-title-fit');
+            if (!t) return true;
+            t.style.removeProperty('--app-title-size');
+            t.classList.add('app-title-one');
+            const have = t.clientWidth, need = t.scrollWidth;
+            if (!have) return false;
+            t.dataset.appFitFor = t.textContent;
+            if (need <= have + 1) return true;
+            const size = Math.floor(parseFloat(getComputedStyle(t).fontSize) * have / need * 10) / 10 - 0.2;
+            if (size >= APP_TITLE_MIN_PX) t.style.setProperty('--app-title-size', size + 'px');
+            else t.classList.remove('app-title-one');
+            return true;
+        }
+        function appRefitCards() {
+            document.querySelectorAll('.app-list .mission-card[data-app-end-pad]').forEach(c => { delete c.dataset.appEndPad; });
+            appFitCardEnds();
         }
 
         // the cards' countdowns: hours, minutes and seconds on the last day, otherwise the days left
@@ -32181,10 +32226,15 @@ if (heroNameEl) {
             });
         }
 
+        // the headings' icons - the site's own for each section (the numbers: a chart)
+        const APP_INFO_ICONS = {
+            starship: 'fa-film', numbers: 'fa-chart-simple', facts: 'fa-circle-info', patches: 'fa-shield-halved',
+            boosters: 'fa-trophy', milestones: 'fa-timeline', sites: 'fa-map-location-dot', fleet: 'fa-anchor',
+        };
         function appInfoBlock(key) {
             const block = appEl('section', 'app-info-block');
             block.dataset.key = key;
-            block.innerHTML = '<div class="app-info-head"><h3></h3><span></span></div><div class="app-info-body"></div>';
+            block.innerHTML = `<div class="app-info-head"><i class="fa-solid ${APP_INFO_ICONS[key] || 'fa-circle-info'} text-emerald-400"></i><h3></h3><span></span></div><div class="app-info-body"></div>`;
             return block;
         }
         function appInfoHead(block, title, aside) {
@@ -32586,8 +32636,16 @@ if (heroNameEl) {
             // a new mode changes the fonts, so the cards' status / outcome widths: measured again (appFitCardEnds)
             new MutationObserver(() => {
                 document.querySelectorAll('.app-list .mission-card[data-app-end-pad]').forEach(c => { delete c.dataset.appEndPad; });
-                setTimeout(appFitCardEnds, 600);
+                setTimeout(appRefitCards, 600);
             }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            // a mode's font arriving after the mode, a new screen width (the phone turned): the names fitted again
+            if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', () => setTimeout(appRefitCards, 50));
+            let appLastWidth = window.innerWidth;
+            window.addEventListener('resize', () => {
+                if (window.innerWidth === appLastWidth) return;
+                appLastWidth = window.innerWidth;
+                setTimeout(appRefitCards, 150);
+            });
             initAppInfoTab();
             initAppToolbar();
             initAppYearCount();
