@@ -6274,8 +6274,7 @@
             contain-intrinsic-size: auto 9.5rem;
         }
 
-        /* ---------- The Info tab (see initAppInfoTab): a sticky bar of its sections, one look for every section's
-           heading, the documentary row edge to edge ---------- */
+        /* ---------- The Info tab's sticky bar of its sections (see initAppInfoTab) ---------- */
         #app-info-nav {
             display: none;
         }
@@ -6321,161 +6320,707 @@
         html.in-app body.moon-theme #app-info-nav { background: #080c14; border-color: rgba(80, 100, 140, 0.35); }
         html.in-app body.moon-theme .app-info-chip { background: #121826; border-color: rgba(80, 100, 140, 0.5); color: #8fa3bc; }
         html.in-app body.moon-theme .app-info-chip.is-active { background: rgba(63, 169, 245, 0.15); border-color: rgba(63, 169, 245, 0.5); color: #6abffb; }
-        /* every heading: its icon in a tinted rounded square */
-        html.in-app h3.app-sec-title {
-            gap: 0.65rem;
-            font-size: 1.05rem;
-        }
-        html.in-app h3.app-sec-title > i:first-child {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 2.05rem;
-            height: 2.05rem;
-            border-radius: 0.65rem;
-            font-size: 0.9rem;
-            background: rgba(255, 255, 255, 0.06);
-            background: color-mix(in srgb, currentColor 16%, transparent);
-        }
-        /* Every section a panel of its own (the heading and its content inside it), the way an app groups its
-           screens - instead of sections floating on the page between dividing lines */
-        html.in-app #tab-panel-more > .app-info-section {
-            margin-top: 0.9rem;
-            padding: 0.95rem 0.85rem 1rem;
-            border-radius: 1.25rem;
-            background: #111114;
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            overflow: hidden;
-            /* its cards' own z-index (the Starship episodes sit at 60) stays inside the panel - under the sticky bar */
-            isolation: isolate;
-        }
-        html.in-app #tab-panel-more > .app-info-section.is-first {
-            margin-top: 0.75rem;
-        }
-        html.in-app body.light-theme #tab-panel-more > .app-info-section { background: #ffffff; border-color: #e2e8f0; }
-        html.in-app body.mars-theme #tab-panel-more > .app-info-section { background: #1d0e0a; border-color: rgba(140, 65, 35, 0.4); }
-        html.in-app body.moon-theme #tab-panel-more > .app-info-section { background: #0e1420; border-color: rgba(80, 100, 140, 0.4); }
-        /* the heading block: tight above the content, its line of explanation small */
-        html.in-app #tab-panel-more > .app-info-section > div:first-child {
-            margin-bottom: 0.8rem;
-        }
-        html.in-app #tab-panel-more > .app-info-section > div:first-child p {
-            margin-top: 0.2rem;
-            font-size: 0.74rem;
-            line-height: 1.35;
-        }
-        /* the rows that ran to the page's edges now run to the panel's edges */
-        html.in-app #tab-panel-more > .app-info-section .\-mx-4 {
-            margin-inline: -0.85rem;
-        }
-        html.in-app #tab-panel-more > .app-info-section .\-mx-4.px-4 {
-            padding-inline: 0.85rem;
-            scroll-padding-inline: 0.85rem;
-        }
-        html.in-app #tab-panel-more > .app-info-section .pb-8 {
-            padding-bottom: 0.25rem;
-        }
-
-        /* Starship: small episode cards, several in view (the full description opens with the episode) */
-        html.in-app #documentary-strip {
-            gap: 0.6rem;
-            padding-bottom: 0.25rem;
-        }
-        html.in-app #documentary-strip > .mission-card {
-            width: 13.5rem;
-            max-width: none;
-            min-height: 0;
-            border-radius: 1rem;
-        }
-        html.in-app #documentary-strip > .mission-card > .z-20 {
-            min-height: 10rem;
-            padding: 0.75rem;
-        }
-        html.in-app #documentary-strip .mission-card-desc {
-            display: none;
-        }
-        html.in-app #documentary-strip h4 {
-            margin-bottom: 0;
-            font-size: 0.85rem;
-            line-height: 1.3;
-        }
-
-        /* Starlink: compact number cards, their buttons in a row at the bottom */
-        html.in-app #tab-panel-more > .app-info-section div:has(> #starlink-customers-card) {
-            gap: 0.6rem;
-        }
-        html.in-app #tab-panel-more div:has(> #starlink-customers-card) > div {
-            display: flex;
-            flex-direction: column;
-            padding: 0.85rem;
-            border-radius: 1rem;
-        }
-        html.in-app #tab-panel-more div:has(> #starlink-customers-card) > div > div:first-child {
-            display: contents;
-        }
-        html.in-app #tab-panel-more div:has(> #starlink-customers-card) > div > div:first-child > div:first-child {
-            margin-bottom: 0.55rem;
-        }
-        html.in-app #tab-panel-more div:has(> #starlink-customers-card) > div > div:first-child > div:last-child {
-            order: 9;
-            justify-content: flex-start;
-            margin-top: 0.8rem;
-        }
-        html.in-app #tab-panel-more div:has(> #starlink-customers-card) > div > div:nth-child(2) {
-            margin-bottom: 0.6rem;
-        }
-        html.in-app #tab-panel-more div:has(> #starlink-customers-card) .text-3xl {
-            font-size: 1.6rem;
-            line-height: 1.15;
-        }
-
-        /* Milestones: narrower cards, more of the timeline in view */
-        html.in-app #tab-panel-more .milestones-bleed {
-            margin-inline: -0.85rem;
-        }
-        html.in-app #tab-panel-more .milestones-scrollbox {
-            gap: 0.6rem;
-            padding-inline: 0.85rem !important;
-            scroll-padding-inline: 0.85rem;
-        }
-        html.in-app #tab-panel-more .milestones-scrollbox > .milestone-card {
-            width: 15rem;
-            min-height: 0;
-            border-radius: 1rem;
-        }
-
-        /* Boosters: the table merges into its panel - clean ranked rows with thin bars */
-        html.in-app #tab-panel-more #booster-leaderboard {
-            background: transparent !important;
-            border: 0 !important;
-            box-shadow: none !important;
-            padding: 0;
-        }
-        html.in-app #tab-panel-more #booster-leaderboard::before {
-            display: none;
-        }
-        html.in-app #tab-panel-more #booster-leaderboard .booster-bar-track {
-            height: 0.55rem;
-        }
-
-        /* Launch sites and the recovery fleet: compact cards, more in view */
-        html.in-app #tab-panel-more #launch-sites-grid {
-            gap: 0.6rem;
-        }
-        html.in-app #tab-panel-more #launch-sites-grid > .launch-site-card {
-            width: 14rem;
-            max-width: none;
-            border-radius: 1rem;
-        }
-        html.in-app #tab-panel-more > .app-info-section .overflow-x-auto > .w-\[85vw\] {
-            width: 16rem;
-            max-width: none;
-            border-radius: 1rem;
-        }
         /* the "scroll sideways" hints: a row cut at the screen's edge already says so (and the past launches are
            a list here) */
         html.in-app span:has(> i.fa-arrows-left-right) {
             display: none !important;
+        }
+
+        /* ---------- The Info tab, the app's own way (see buildAppInfo): its components are drawn from the site's
+           sections (which stay in the page, hidden, still doing the work - two open as detail screens). One
+           design language for all of them: the tokens below, per theme. ---------- */
+        html.in-app {
+            --app-surface: #111114;
+            --app-surface-2: #18181b;
+            --app-border: rgba(255, 255, 255, 0.07);
+            --app-text: #f4f4f5;
+            --app-muted: #a1a1aa;
+            --app-dim: #71717a;
+            --app-accent: #34d399;
+            --app-accent-rgb: 16, 185, 129;
+            --app-bg: #09090b;
+            --app-r-lg: 1.25rem;
+            --app-r-md: 1rem;
+        }
+        html.in-app body.light-theme {
+            --app-surface: #ffffff;
+            --app-surface-2: #f8fafc;
+            --app-border: #e2e8f0;
+            --app-text: #0f172a;
+            --app-muted: #475569;
+            --app-dim: #64748b;
+            --app-accent: #047857;
+            --app-accent-rgb: 4, 120, 87;
+            --app-bg: #f1f5f9;
+        }
+        html.in-app body.mars-theme {
+            --app-surface: #1d0e0a;
+            --app-surface-2: #271510;
+            --app-border: rgba(140, 65, 35, 0.4);
+            --app-muted: #c4a080;
+            --app-dim: #8f6f58;
+            --app-accent: #ff8c5a;
+            --app-accent-rgb: 255, 107, 53;
+            --app-bg: #140806;
+        }
+        html.in-app body.moon-theme {
+            --app-surface: #0e1420;
+            --app-surface-2: #121826;
+            --app-border: rgba(80, 100, 140, 0.4);
+            --app-muted: #8fa3bc;
+            --app-dim: #6b7f99;
+            --app-accent: #6abffb;
+            --app-accent-rgb: 63, 169, 245;
+            --app-bg: #080c14;
+        }
+        /* the site's own sections stay in the page for their work, out of sight */
+        html.in-app #tab-panel-more > .app-info-section {
+            display: none;
+        }
+        #app-info {
+            display: none;
+        }
+        html.in-app #app-info {
+            display: block;
+            color: var(--app-text);
+        }
+        html.in-app .app-info-block {
+            margin-top: 1.9rem;
+        }
+        html.in-app .app-info-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.8rem;
+        }
+        html.in-app .app-info-head h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            line-height: 1.25;
+            color: var(--app-text);
+        }
+        html.in-app .app-info-head span {
+            flex-shrink: 0;
+            font-size: 0.72rem;
+            color: var(--app-dim);
+        }
+        /* a row that scrolls sideways, edge to edge */
+        html.in-app .app-info-row {
+            display: flex;
+            gap: 0.65rem;
+            margin: 0 -1rem;
+            padding: 0 1rem 0.25rem;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-padding-inline: 1rem;
+            scrollbar-width: none;
+        }
+        html.in-app .app-info-row::-webkit-scrollbar {
+            display: none;
+        }
+        html.in-app .app-info-row > * {
+            flex-shrink: 0;
+            scroll-snap-align: start;
+        }
+        html.in-app .app-info-more {
+            display: block;
+            margin: 0.8rem auto 0;
+            padding: 0.45rem 1.1rem;
+            border-radius: 999px;
+            border: 1px solid var(--app-border);
+            background: var(--app-surface);
+            color: var(--app-accent);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        html.in-app .app-chev {
+            font-size: 0.7rem;
+            color: var(--app-dim);
+        }
+        html[dir="rtl"].in-app .app-chev {
+            transform: scaleX(-1);
+        }
+
+        /* Starship: the featured banner, edge to edge, one episode per slide */
+        html.in-app .app-feature {
+            position: relative;
+            margin: 0.75rem -1rem 0;
+        }
+        html.in-app .app-feature-track {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+        }
+        html.in-app .app-feature-track::-webkit-scrollbar {
+            display: none;
+        }
+        html.in-app .app-feature-slide {
+            position: relative;
+            flex: 0 0 100%;
+            height: 15.5rem;
+            scroll-snap-align: start;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        html.in-app .app-feature-slide img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        html.in-app .app-feature-slide::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, var(--app-bg) 2%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.15));
+        }
+        html.in-app .app-feature-kicker {
+            position: absolute;
+            z-index: 1;
+            top: 0.85rem;
+            inset-inline-start: 1rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            font-size: 0.66rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+        }
+        html.in-app .app-feature-yt {
+            position: absolute;
+            z-index: 2;
+            top: 0.85rem;
+            inset-inline-end: 1rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fca5a5;
+            font-size: 0.66rem;
+            font-weight: 600;
+        }
+        html.in-app .app-feature-info {
+            position: absolute;
+            z-index: 1;
+            bottom: 1.2rem;
+            inset-inline: 1rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        html.in-app .app-feature-info small {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--app-muted);
+        }
+        html.in-app .app-feature-info b {
+            display: block;
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--app-text);
+        }
+        html.in-app .app-feature-play {
+            flex-shrink: 0;
+            width: 2.9rem;
+            height: 2.9rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            color: #000;
+            font-size: 1rem;
+        }
+        html.in-app .app-feature-dots {
+            position: absolute;
+            z-index: 2;
+            bottom: 0.45rem;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 0.3rem;
+        }
+        html.in-app .app-feature-dots i {
+            width: 0.35rem;
+            height: 0.22rem;
+            border-radius: 999px;
+            background: var(--app-dim);
+            transition: width 0.25s ease, background-color 0.25s ease;
+        }
+        html.in-app .app-feature-dots i.is-on {
+            width: 1rem;
+            background: var(--app-text);
+        }
+
+        /* By the numbers: one tile language - the theme's surface, a glow of its accent, an icon chip, a big number */
+        html.in-app .app-bento {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+        }
+        html.in-app .app-tile {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 0.85rem;
+            border-radius: var(--app-r-lg);
+            border: 1px solid var(--app-border);
+            background: radial-gradient(120% 90% at 100% 0%, rgba(var(--app-accent-rgb), 0.16), transparent 60%), var(--app-surface);
+            overflow: hidden;
+            cursor: pointer;
+            text-align: start;
+        }
+        html.in-app .app-tile.is-tall {
+            grid-row: span 2;
+        }
+        html.in-app .app-tile.is-wide {
+            grid-column: span 2;
+        }
+        html.in-app .app-tile-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: auto;
+            padding-bottom: 0.6rem;
+        }
+        html.in-app .app-tile-icon {
+            width: 1.9rem;
+            height: 1.9rem;
+            border-radius: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(var(--app-accent-rgb), 0.16);
+            color: var(--app-accent);
+            font-size: 0.85rem;
+        }
+        html.in-app .app-tile-num {
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-feature-settings: "tnum";
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1.15;
+            color: var(--app-text);
+        }
+        html.in-app .app-tile.is-tall .app-tile-num {
+            font-size: 1.55rem;
+        }
+        html.in-app .app-tile-label {
+            margin-top: 0.25rem;
+            font-size: 0.7rem;
+            line-height: 1.3;
+            color: var(--app-muted);
+        }
+        html.in-app .app-tile-accent {
+            margin-top: 0.3rem;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--app-accent);
+        }
+        html.in-app .app-ring {
+            position: relative;
+            width: 4.6rem;
+            height: 4.6rem;
+            margin: 0.2rem 0 0.7rem;
+        }
+        html.in-app .app-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        html.in-app .app-ring circle {
+            fill: none;
+            stroke-width: 7;
+        }
+        html.in-app .app-ring .bg {
+            stroke: rgba(var(--app-accent-rgb), 0.15);
+        }
+        html.in-app .app-ring .fg {
+            stroke: var(--app-accent);
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s ease;
+        }
+        html.in-app .app-ring b {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 0.85rem;
+            color: var(--app-text);
+        }
+        html.in-app .app-tile-bar {
+            height: 0.3rem;
+            margin-top: 0.55rem;
+            border-radius: 999px;
+            background: rgba(var(--app-accent-rgb), 0.15);
+            overflow: hidden;
+        }
+        html.in-app .app-tile-bar i {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: var(--app-accent);
+        }
+
+        /* Good to know: story cards in the accent's colors */
+        html.in-app .app-story {
+            position: relative;
+            width: 9.5rem;
+            height: 13rem;
+            padding: 1.6rem 0.85rem 0.9rem;
+            border-radius: var(--app-r-lg);
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(160deg, rgba(var(--app-accent-rgb), 0.55), rgba(var(--app-accent-rgb), 0.12) 70%), var(--app-surface);
+            border: 1px solid var(--app-border);
+            color: var(--app-text);
+            font-size: 0.8rem;
+            line-height: 1.4;
+            overflow: hidden;
+        }
+        html.in-app .app-story-bars {
+            position: absolute;
+            top: 0.6rem;
+            inset-inline: 0.7rem;
+            display: flex;
+            gap: 0.2rem;
+        }
+        html.in-app .app-story-bars i {
+            flex: 1;
+            height: 0.15rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+        html.in-app .app-story-bars i.is-on {
+            background: #fff;
+        }
+        html.in-app body.light-theme .app-story-bars i { background: rgba(15, 23, 42, 0.15); }
+        html.in-app body.light-theme .app-story-bars i.is-on { background: var(--app-accent); }
+        html.in-app .app-story > i {
+            font-size: 1.15rem;
+            color: var(--app-text);
+            margin-bottom: auto;
+        }
+        html.in-app .app-story p {
+            margin: 0.6rem 0 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 7;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        html.in-app .app-story.is-follow {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 0.6rem;
+            font-weight: 600;
+        }
+        html.in-app .app-story.is-follow > i {
+            margin: 0;
+            font-size: 1.6rem;
+        }
+
+        /* Mission patches: badges, like achievements */
+        html.in-app .app-badges {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.9rem 0.4rem;
+        }
+        html.in-app .app-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+            cursor: pointer;
+        }
+        html.in-app .app-badge span {
+            width: 4.1rem;
+            height: 4.1rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--app-surface);
+            border: 1px solid var(--app-border);
+            box-shadow: 0 0 18px rgba(var(--app-accent-rgb), 0.12);
+        }
+        html.in-app .app-badge img {
+            width: 3.3rem;
+            height: 3.3rem;
+            object-fit: contain;
+        }
+        html.in-app .app-badge small {
+            width: 100%;
+            text-align: center;
+            font-size: 0.62rem;
+            line-height: 1.25;
+            color: var(--app-muted);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Boosters: a podium for the top three, the rest in a list - all on the theme's surface */
+        html.in-app .app-podium {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.5rem;
+            padding: 0.25rem 0.25rem 0;
+        }
+        html.in-app .app-podium-col {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+        }
+        html.in-app .app-podium-col .sn {
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+        html.in-app .app-podium-col .crown {
+            font-size: 1rem;
+            margin-bottom: 0.15rem;
+            color: #fbbf24;
+        }
+        html.in-app .app-podium-col .step {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--app-r-md) var(--app-r-md) 0 0;
+            color: #fff;
+        }
+        html.in-app .app-podium-col .step b {
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 1.3rem;
+        }
+        html.in-app .app-podium-col .step small {
+            font-size: 0.62rem;
+            opacity: 0.85;
+        }
+        html.in-app .app-podium-col.is-1 .sn { color: #fbbf24; }
+        html.in-app .app-podium-col.is-2 .sn { color: #cbd5e1; }
+        html.in-app .app-podium-col.is-3 .sn { color: #fdba74; }
+        html.in-app body.light-theme .app-podium-col.is-1 .sn { color: #b45309; }
+        html.in-app body.light-theme .app-podium-col.is-2 .sn { color: #475569; }
+        html.in-app body.light-theme .app-podium-col.is-3 .sn { color: #c2410c; }
+        html.in-app .app-podium-col.is-1 .step { background: linear-gradient(#fbbf24, #b45309); }
+        html.in-app .app-podium-col.is-2 .step { background: linear-gradient(#cbd5e1, #475569); }
+        html.in-app .app-podium-col.is-3 .step { background: linear-gradient(#fdba74, #9a3412); }
+        html.in-app .app-rank-list {
+            border-radius: 0 0 var(--app-r-lg) var(--app-r-lg);
+            background: var(--app-surface);
+            border: 1px solid var(--app-border);
+            padding: 0.2rem 0.85rem;
+        }
+        html.in-app .app-rank-row {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.55rem 0;
+            border-top: 1px solid var(--app-border);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        html.in-app .app-rank-row:first-child {
+            border-top: 0;
+        }
+        html.in-app .app-rank-row .r {
+            width: 1.2rem;
+            color: var(--app-dim);
+            text-align: center;
+        }
+        html.in-app .app-rank-row .s {
+            width: 3.6rem;
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 0.74rem;
+            color: var(--app-text);
+        }
+        html.in-app .app-rank-row .b {
+            flex: 1;
+            height: 0.35rem;
+            border-radius: 999px;
+            background: rgba(var(--app-accent-rgb), 0.15);
+            overflow: hidden;
+        }
+        html.in-app .app-rank-row .b i {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: var(--app-accent);
+        }
+        html.in-app .app-rank-row .c {
+            width: 1.6rem;
+            text-align: end;
+            font-family: 'Orbitron', 'Rubik', monospace;
+            font-size: 0.78rem;
+            color: var(--app-text);
+        }
+
+        /* Milestones: a vertical timeline in the accent */
+        html.in-app .app-timeline {
+            position: relative;
+            padding-inline-start: 1.6rem;
+        }
+        html.in-app .app-timeline::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: 0.42rem;
+            top: 0.4rem;
+            bottom: 0.4rem;
+            width: 2px;
+            border-radius: 2px;
+            background: linear-gradient(var(--app-accent), rgba(var(--app-accent-rgb), 0.12));
+        }
+        html.in-app .app-tl-item {
+            position: relative;
+            padding: 0 0 1.05rem;
+            cursor: pointer;
+        }
+        html.in-app .app-tl-item::before {
+            content: "";
+            position: absolute;
+            inset-inline-start: -1.6rem;
+            top: 0.15rem;
+            width: 0.85rem;
+            height: 0.85rem;
+            border-radius: 999px;
+            background: var(--app-bg);
+            border: 2px solid var(--app-accent);
+            box-shadow: 0 0 10px rgba(var(--app-accent-rgb), 0.45);
+        }
+        html.in-app .app-tl-item small {
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--app-accent);
+        }
+        html.in-app .app-tl-item b {
+            display: block;
+            margin-top: 0.1rem;
+            font-size: 0.92rem;
+            color: var(--app-text);
+        }
+        html.in-app .app-tl-item p {
+            margin: 0.2rem 0 0;
+            font-size: 0.76rem;
+            line-height: 1.45;
+            color: var(--app-muted);
+        }
+
+        /* Launch sites: a shelf of photos with their names on them */
+        html.in-app .app-shelf-card {
+            position: relative;
+            width: 12.5rem;
+            height: 8.5rem;
+            border-radius: var(--app-r-md);
+            overflow: hidden;
+            border: 1px solid var(--app-border);
+            cursor: pointer;
+        }
+        html.in-app .app-shelf-card img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        html.in-app .app-shelf-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent 60%);
+        }
+        html.in-app .app-shelf-card b {
+            position: absolute;
+            z-index: 1;
+            bottom: 0.6rem;
+            inset-inline: 0.75rem;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+
+        /* The recovery fleet: the site's own live-position cards, in the same card look */
+        html.in-app .app-fleet-host > div {
+            margin: 0 -1rem !important;
+            padding: 0 1rem 0.25rem !important;
+            gap: 0.65rem !important;
+        }
+        html.in-app .app-fleet-host > div > div {
+            width: 16rem !important;
+            max-width: none !important;
+            border-radius: var(--app-r-lg) !important;
+            background: var(--app-surface) !important;
+            border-color: var(--app-border) !important;
+        }
+
+        /* A section opened as its own screen (Starlink, AI compute): the site's section as it is, full screen */
+        #app-detail {
+            display: none;
+        }
+        html.in-app #app-detail.is-open {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            inset: 0;
+            z-index: 95;
+            background: var(--app-bg);
+            animation: app-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        html.in-app .app-detail-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--app-border);
+            background: var(--app-bg);
+        }
+        html.in-app .app-detail-bar button {
+            width: 2.3rem;
+            height: 2.3rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--app-surface);
+            border: 1px solid var(--app-border);
+            color: var(--app-text);
+        }
+        html.in-app .app-detail-bar b {
+            font-size: 1.05rem;
+            color: var(--app-text);
+        }
+        html.in-app .app-detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 1rem 2rem;
+            overscroll-behavior: contain;
+        }
+        html.in-app #app-detail h3.app-sec-title {
+            display: none;
+        }
+        /* (the section's own spacing from the page above it) */
+        html.in-app #app-detail .app-info-section {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: 0;
         }
 
         /* pull down at the top of the page to refresh (see initAppPullToRefresh) */
@@ -30713,6 +31258,8 @@ if (heroNameEl) {
                 return true;
             }
             if (closeTopSiteWindow()) return true;
+            // an Info-tab section opened as its own screen (the app's Starlink / AI compute)
+            if (typeof closeAppDetail === 'function' && closeAppDetail()) return true;
             // then from the Info tab back to the launches (the app's first tab), and only then out of the app
             if (window.currentMainTab === 'more') {
                 switchMainTab('launches');
@@ -31249,36 +31796,323 @@ if (heroNameEl) {
             });
         }
 
-        // The Info tab's sticky bar: a chip per section (tapped, the page scrolls to it), the one being read lit up.
-        // Starship / Starlink in the site's own spelling of them (STARSHIP_I18N / STARLINK_I18N); the rest, short
-        // names of our own.
-        const APP_INFO_SECTIONS = [
-            ['starship', '#tab-panel-more > div:first-child h3'], ['starlink', '#starlink-section-title'],
-            ['facts', '#i18n-nice-to-know-title'], ['milestones', '#i18n-milestones-title'], ['patches', '#i18n-patches-title'],
-            ['boosters', '#i18n-booster-title'], ['sites', '#i18n-launch-sites-title'], ['fleet', '#i18n-recovery-fleet-title'],
-            ['ai', '#i18n-ai-compute-title'],
-        ];
+        // ------------------------------------------------------------------ the Info tab, the app's own way
+        // Its own components (CSS: the "Info tab, the app's own way" block), drawn from the site's sections, which
+        // stay in the page hidden and keep doing the work: their data, their translations, their windows. A tap on
+        // a component taps the site's own element behind it; Starlink and AI compute open as screens of their own.
+        // Redrawn whenever one of those sections changes (debounced), and on a new language.
+        const APP_INFO_I18N = {
+            en: { numbers: 'By the numbers', more: 'Show more', less: 'Show less', swipe: 'Swipe' },
+            he: { numbers: 'במספרים', more: 'הצג עוד', less: 'הצג פחות', swipe: 'החליקו' },
+            es: { numbers: 'En cifras', more: 'Ver más', less: 'Ver menos', swipe: 'Desliza' },
+            fr: { numbers: 'En chiffres', more: 'Voir plus', less: 'Voir moins', swipe: 'Faites glisser' },
+            de: { numbers: 'In Zahlen', more: 'Mehr anzeigen', less: 'Weniger anzeigen', swipe: 'Wischen' },
+            ru: { numbers: 'В цифрах', more: 'Показать ещё', less: 'Свернуть', swipe: 'Листайте' },
+            zh: { numbers: '数据一览', more: '显示更多', less: '收起', swipe: '滑动查看' },
+            it: { numbers: 'In numeri', more: 'Mostra altro', less: 'Mostra meno', swipe: 'Scorri' },
+            cs: { numbers: 'V číslech', more: 'Zobrazit více', less: 'Zobrazit méně', swipe: 'Přejeďte' },
+            sv: { numbers: 'I siffror', more: 'Visa mer', less: 'Visa mindre', swipe: 'Svep' },
+            nl: { numbers: 'In cijfers', more: 'Meer tonen', less: 'Minder tonen', swipe: 'Veeg' },
+            da: { numbers: 'I tal', more: 'Vis mere', less: 'Vis mindre', swipe: 'Stryg' },
+            pt: { numbers: 'Em números', more: 'Ver mais', less: 'Ver menos', swipe: 'Deslize' },
+            pl: { numbers: 'W liczbach', more: 'Pokaż więcej', less: 'Pokaż mniej', swipe: 'Przesuń' },
+            hi: { numbers: 'आंकड़ों में', more: 'और दिखाएँ', less: 'कम दिखाएँ', swipe: 'स्वाइप करें' },
+            ar: { numbers: 'بالأرقام', more: 'عرض المزيد', less: 'عرض أقل', swipe: 'اسحب' },
+            tr: { numbers: 'Rakamlarla', more: 'Daha fazla', less: 'Daha az', swipe: 'Kaydırın' },
+        };
+        APP_INFO_I18N.iw = APP_INFO_I18N.he;
+        function appInfoDict() {
+            return APP_INFO_I18N[(document.documentElement.lang || 'en').toLowerCase().split('-')[0]] || APP_INFO_I18N.en;
+        }
+        // the short names on the sticky bar
         const APP_INFO_NAMES = {
-            en: { facts: 'Good to know', milestones: 'Milestones', patches: 'Mission patches', boosters: 'Boosters', sites: 'Launch sites', fleet: 'Fleet', ai: 'AI compute' },
-            he: { facts: 'טוב לדעת', milestones: 'אבני דרך', patches: 'תגי משימה', boosters: 'בוסטרים', sites: 'אתרי שיגור', fleet: 'צי ההשבה', ai: 'מחשוב AI' },
-            es: { facts: 'Curiosidades', milestones: 'Hitos', patches: 'Insignias', boosters: 'Propulsores', sites: 'Sitios de lanzamiento', fleet: 'Flota', ai: 'Cómputo IA' },
-            fr: { facts: 'Le saviez-vous', milestones: 'Jalons', patches: 'Écussons', boosters: 'Boosters', sites: 'Sites de lancement', fleet: 'Flotte', ai: 'Calcul IA' },
-            de: { facts: 'Wissenswertes', milestones: 'Meilensteine', patches: 'Missionsabzeichen', boosters: 'Booster', sites: 'Startplätze', fleet: 'Flotte', ai: 'KI-Rechenleistung' },
-            ru: { facts: 'Полезно знать', milestones: 'Вехи', patches: 'Нашивки', boosters: 'Бустеры', sites: 'Площадки', fleet: 'Флот', ai: 'ИИ-вычисления' },
-            zh: { facts: '小知识', milestones: '里程碑', patches: '任务徽章', boosters: '助推器', sites: '发射场', fleet: '回收船队', ai: 'AI 算力' },
-            it: { facts: 'Curiosità', milestones: 'Tappe', patches: 'Stemmi', boosters: 'Booster', sites: 'Siti di lancio', fleet: 'Flotta', ai: 'Calcolo IA' },
-            cs: { facts: 'Zajímavosti', milestones: 'Milníky', patches: 'Nášivky', boosters: 'Boostery', sites: 'Startoviště', fleet: 'Flotila', ai: 'AI výpočty' },
-            sv: { facts: 'Bra att veta', milestones: 'Milstolpar', patches: 'Märken', boosters: 'Boosters', sites: 'Uppskjutningsplatser', fleet: 'Flotta', ai: 'AI-beräkning' },
-            nl: { facts: 'Goed om te weten', milestones: 'Mijlpalen', patches: 'Emblemen', boosters: 'Boosters', sites: 'Lanceerplaatsen', fleet: 'Vloot', ai: 'AI-rekenkracht' },
-            da: { facts: 'Godt at vide', milestones: 'Milepæle', patches: 'Emblemer', boosters: 'Boostere', sites: 'Opsendelsessteder', fleet: 'Flåde', ai: 'AI-beregning' },
-            pt: { facts: 'Curiosidades', milestones: 'Marcos', patches: 'Emblemas', boosters: 'Propulsores', sites: 'Locais de lançamento', fleet: 'Frota', ai: 'Computação IA' },
-            pl: { facts: 'Warto wiedzieć', milestones: 'Kamienie milowe', patches: 'Naszywki', boosters: 'Boostery', sites: 'Miejsca startu', fleet: 'Flota', ai: 'Obliczenia AI' },
-            hi: { facts: 'जानने योग्य', milestones: 'उपलब्धियाँ', patches: 'मिशन पैच', boosters: 'बूस्टर', sites: 'लॉन्च साइट', fleet: 'बेड़ा', ai: 'AI कंप्यूटिंग' },
-            ar: { facts: 'معلومات مفيدة', milestones: 'محطات بارزة', patches: 'شارات المهام', boosters: 'المعززات', sites: 'مواقع الإطلاق', fleet: 'الأسطول', ai: 'حوسبة الذكاء الاصطناعي' },
-            tr: { facts: 'Bilmekte fayda var', milestones: 'Kilometre taşları', patches: 'Görev armaları', boosters: 'Güçlendiriciler', sites: 'Fırlatma alanları', fleet: 'Filo', ai: 'Yapay zekâ hesaplama' },
+            en: { facts: 'Good to know', milestones: 'Milestones', patches: 'Mission patches', boosters: 'Boosters', sites: 'Launch sites', fleet: 'Fleet' },
+            he: { facts: 'טוב לדעת', milestones: 'אבני דרך', patches: 'תגי משימה', boosters: 'בוסטרים', sites: 'אתרי שיגור', fleet: 'צי ההשבה' },
+            es: { facts: 'Curiosidades', milestones: 'Hitos', patches: 'Insignias', boosters: 'Propulsores', sites: 'Sitios de lanzamiento', fleet: 'Flota' },
+            fr: { facts: 'Le saviez-vous', milestones: 'Jalons', patches: 'Écussons', boosters: 'Boosters', sites: 'Sites de lancement', fleet: 'Flotte' },
+            de: { facts: 'Wissenswertes', milestones: 'Meilensteine', patches: 'Missionsabzeichen', boosters: 'Booster', sites: 'Startplätze', fleet: 'Flotte' },
+            ru: { facts: 'Полезно знать', milestones: 'Вехи', patches: 'Нашивки', boosters: 'Бустеры', sites: 'Площадки', fleet: 'Флот' },
+            zh: { facts: '小知识', milestones: '里程碑', patches: '任务徽章', boosters: '助推器', sites: '发射场', fleet: '回收船队' },
+            it: { facts: 'Curiosità', milestones: 'Tappe', patches: 'Stemmi', boosters: 'Booster', sites: 'Siti di lancio', fleet: 'Flotta' },
+            cs: { facts: 'Zajímavosti', milestones: 'Milníky', patches: 'Nášivky', boosters: 'Boostery', sites: 'Startoviště', fleet: 'Flotila' },
+            sv: { facts: 'Bra att veta', milestones: 'Milstolpar', patches: 'Märken', boosters: 'Boosters', sites: 'Uppskjutningsplatser', fleet: 'Flotta' },
+            nl: { facts: 'Goed om te weten', milestones: 'Mijlpalen', patches: 'Emblemen', boosters: 'Boosters', sites: 'Lanceerplaatsen', fleet: 'Vloot' },
+            da: { facts: 'Godt at vide', milestones: 'Milepæle', patches: 'Emblemer', boosters: 'Boostere', sites: 'Opsendelsessteder', fleet: 'Flåde' },
+            pt: { facts: 'Curiosidades', milestones: 'Marcos', patches: 'Emblemas', boosters: 'Propulsores', sites: 'Locais de lançamento', fleet: 'Frota' },
+            pl: { facts: 'Warto wiedzieć', milestones: 'Kamienie milowe', patches: 'Naszywki', boosters: 'Boostery', sites: 'Miejsca startu', fleet: 'Flota' },
+            hi: { facts: 'जानने योग्य', milestones: 'उपलब्धियाँ', patches: 'मिशन पैच', boosters: 'बूस्टर', sites: 'लॉन्च साइट', fleet: 'बेड़ा' },
+            ar: { facts: 'معلومات مفيدة', milestones: 'محطات بارزة', patches: 'شارات المهام', boosters: 'المعززات', sites: 'مواقع الإطلاق', fleet: 'الأسطول' },
+            tr: { facts: 'Bilmekte fayda var', milestones: 'Kilometre taşları', patches: 'Görev armaları', boosters: 'Güçlendiriciler', sites: 'Fırlatma alanları', fleet: 'Filo' },
         };
         APP_INFO_NAMES.iw = APP_INFO_NAMES.he;
+        const APP_INFO_KEYS = ['starship', 'numbers', 'facts', 'patches', 'boosters', 'milestones', 'sites', 'fleet'];
         let appInfoItems = [];
+        let appPatchShown = 8;
+        let appMilestonesShown = 5;
+
+        // the site's section a title belongs to (the hidden original)
+        function appOrigSection(titleSel) {
+            const t = document.querySelector(titleSel);
+            return t ? t.closest('#tab-panel-more > div') : null;
+        }
+        const appText = el => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+        // writes a component's markup only when it changed - no image reloads or lost scroll on a redraw
+        function appSetHtml(el, html) {
+            if (el && el._appHtml !== html) {
+                el._appHtml = html;
+                el.innerHTML = html;
+            }
+        }
+        // a tap on a component taps the site's own element (found again at tap time - the site may have redrawn it)
+        function appBindTaps(root, selector, find) {
+            root.querySelectorAll(selector).forEach(el => {
+                el.onclick = (e) => {
+                    const target = find(el);
+                    if (!target) return;
+                    e.preventDefault();
+                    appHaptic();
+                    target.click();
+                };
+            });
+        }
+
+        function appInfoBlock(key) {
+            const block = appEl('section', 'app-info-block');
+            block.dataset.key = key;
+            if (key !== 'starship') block.innerHTML = '<div class="app-info-head"><h3></h3><span></span></div><div class="app-info-body"></div>';
+            else block.innerHTML = '<div class="app-info-body"></div>';
+            return block;
+        }
+        function appInfoHead(block, title, aside) {
+            const head = block.querySelector('.app-info-head');
+            if (!head) return;
+            head.querySelector('h3').textContent = title;
+            head.querySelector('span').textContent = aside || '';
+        }
+
+        function renderAppFeatured(body) {
+            const cards = [...document.querySelectorAll('#documentary-strip > .mission-card')];
+            if (!cards.length) return;
+            const kicker = appText(document.getElementById('starship-doc-subtitle'));
+            const yt = document.querySelector('#documentary-strip')?.closest('#tab-panel-more > div')?.querySelector('a[href*="youtube"]:not(.mission-card)');
+            const slides = cards.map((c, i) => {
+                const img = c.querySelector('img');
+                const title = appText(c.querySelector('h4'));
+                const parts = title.split(/\s+[-–]\s+/);
+                const ep = parts.length > 1 ? parts.shift() : '';
+                return `<div class="app-feature-slide" data-i="${i}"><img src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy">`
+                    + `<div class="app-feature-info"><div><small>${escapeHtml(ep)}</small><b>${escapeHtml(parts.join(' - '))}</b></div>`
+                    + `<span class="app-feature-play"><i class="fa-solid fa-play"></i></span></div></div>`;
+            }).join('');
+            appSetHtml(body, `<div class="app-feature"><span class="app-feature-kicker">${escapeHtml(kicker)}</span>`
+                + (yt ? `<a class="app-feature-yt" href="${escapeHtml(yt.getAttribute('href'))}" target="_blank" rel="noopener"><i class="fa-brands fa-youtube"></i> YouTube</a>` : '')
+                + `<div class="app-feature-track">${slides}</div><div class="app-feature-dots">${cards.map((_, i) => `<i${i === 0 ? ' class="is-on"' : ''}></i>`).join('')}</div></div>`);
+            appBindTaps(body, '.app-feature-slide', el => document.querySelectorAll('#documentary-strip > .mission-card')[+el.dataset.i]);
+            const track = body.querySelector('.app-feature-track');
+            if (track && !track._appDots) {
+                track._appDots = true;
+                track.addEventListener('scroll', () => {
+                    const i = Math.round(Math.abs(track.scrollLeft) / Math.max(1, track.clientWidth));
+                    body.querySelectorAll('.app-feature-dots i').forEach((d, j) => d.classList.toggle('is-on', j === i));
+                }, { passive: true });
+            }
+        }
+
+        function renderAppNumbers(block, body) {
+            const lang = appLang();
+            const num = s => parseFloat(String(s || '').replace(/[^\d.]/g, '')) || 0;
+            const count = appText(document.getElementById('starlink-count'));
+            const countEl = document.getElementById('starlink-count');
+            const countLabel = countEl ? appText(countEl.parentElement.nextElementSibling) : '';
+            const rate = appText(document.getElementById('starlink-rate-text'));
+            const pct = Math.max(0, Math.min(100, num(appText(document.getElementById('starlink-percentage')))));
+            const custEl = document.getElementById('starlink-customers-count');
+            const cust = num(appText(custEl));
+            const custLabel = custEl ? appText(custEl.parentElement.nextElementSibling) : '';
+            const custPct = Math.max(0, Math.min(100, num(appText(document.getElementById('starlink-customers-percentage')))));
+            const custShort = cust ? new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(cust) : '–';
+            const rows = [...document.querySelectorAll('#booster-leaderboard > div[onclick]')];
+            const top = rows[0];
+            const topSn = top ? appText(top.querySelector('.booster-sn')) : '';
+            const topCount = top ? ((top.getAttribute('onclick') || '').match(/,\s*(\d+)\s*\)/) || [])[1] || '' : '';
+            const flightsWord = appText(document.querySelector('#booster-leaderboard > div:first-child > div:last-child'));
+            const aiTitle = appText(document.getElementById('i18n-ai-compute-title'));
+            let aiValue = '', aiUnit = '', aiPct = 0;
+            if (typeof AI_COMPUTE_DEALS !== 'undefined') {
+                const monthly = AI_COMPUTE_DEALS.reduce((s, d) => s + d.monthlyUsd, 0);
+                aiValue = monthly >= 1000 ? '$' + (monthly / 1000).toFixed(2) + 'B' : '$' + monthly + 'M';
+                const aiDict = (typeof AI_COMPUTE_I18N !== 'undefined') && (AI_COMPUTE_I18N[(document.documentElement.lang || 'en').toLowerCase().split('-')[0]] || AI_COMPUTE_I18N.en);
+                aiUnit = aiDict ? aiDict.monthly : '';
+                if (typeof AI_COMPUTE_TOTAL_GW !== 'undefined' && AI_COMPUTE_GOAL_GW) aiPct = Math.min(100, AI_COMPUTE_TOTAL_GW / AI_COMPUTE_GOAL_GW * 100);
+            }
+            const C = 2 * Math.PI * 26;
+            const chev = '<i class="fa-solid fa-chevron-right app-chev"></i>';
+            appInfoHead(block, appInfoDict().numbers, '');
+            appSetHtml(body, `<div class="app-bento">`
+                + `<button type="button" class="app-tile is-tall" data-open="starlink"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-satellite"></i></span>${chev}</div>`
+                + `<div class="app-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" cx="32" cy="32" r="26" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct / 100)).toFixed(1)}"/></svg><b dir="ltr">${Math.round(pct)}%</b></div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(count)}</div><div class="app-tile-label">${escapeHtml(countLabel)}</div><div class="app-tile-accent" dir="ltr">${escapeHtml(rate)}</div></button>`
+                + `<button type="button" class="app-tile" data-open="starlink"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-users"></i></span>${chev}</div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(custShort)}</div><div class="app-tile-label">${escapeHtml(custLabel)}</div><div class="app-tile-bar"><i style="width:${custPct}%"></i></div></button>`
+                + `<button type="button" class="app-tile" data-booster="1"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-trophy"></i></span>${chev}</div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(topCount)}</div><div class="app-tile-label">${escapeHtml(flightsWord)} · <span dir="ltr">${escapeHtml(topSn)}</span></div></button>`
+                + `<button type="button" class="app-tile is-wide" data-open="ai"><div class="app-tile-top"><span class="app-tile-icon"><i class="fa-solid fa-microchip"></i></span>${chev}</div>`
+                + `<div class="app-tile-num" dir="ltr">${escapeHtml(aiValue)}</div><div class="app-tile-label">${escapeHtml(aiUnit)} · ${escapeHtml(aiTitle)}</div><div class="app-tile-bar"><i style="width:${aiPct}%"></i></div></button>`
+                + `</div>`);
+            body.querySelectorAll('[data-open]').forEach(t => { t.onclick = () => { appHaptic(); openAppDetail(t.dataset.open); }; });
+            appBindTaps(body, '[data-booster]', () => document.querySelector('#booster-leaderboard > div[onclick]'));
+        }
+
+        function renderAppFacts(block, body) {
+            appInfoHead(block, appText(document.getElementById('i18n-nice-to-know-title')), appInfoDict().swipe);
+            if (typeof weeklyFactIndices === 'undefined' || !weeklyFactIndices.length || typeof getFactText !== 'function') return;
+            const lang = document.documentElement.lang;
+            const n = Math.min(8, weeklyFactIndices.length);
+            const icons = ['fa-lightbulb', 'fa-rocket', 'fa-satellite', 'fa-star', 'fa-bolt', 'fa-earth-americas', 'fa-fire', 'fa-meteor'];
+            let html = '';
+            for (let i = 0; i < n; i++) {
+                const text = getFactText(weeklyFactIndices[(currentFactIndex + i) % weeklyFactIndices.length], lang);
+                html += `<div class="app-story"><div class="app-story-bars">${Array.from({ length: n }, (_, j) => `<i${j === i ? ' class="is-on"' : ''}></i>`).join('')}</div>`
+                    + `<i class="fa-solid ${icons[i % icons.length]}"></i><p dir="auto">${escapeHtml(text)}</p></div>`;
+            }
+            const follow = document.querySelector('a[href="https://x.com/SpaceX"]');
+            if (follow) html += `<a class="app-story is-follow" href="https://x.com/SpaceX" target="_blank" rel="noopener"><i class="fa-brands fa-x-twitter"></i><span>${escapeHtml(appText(follow))}</span></a>`;
+            appSetHtml(body, `<div class="app-info-row">${html}</div>`);
+        }
+
+        function renderAppPatches(block, body) {
+            const tiles = [...document.querySelectorAll('#mission-patches-strip .patch-tile')];
+            appInfoHead(block, appText(document.getElementById('i18n-patches-title')), tiles.length ? String(tiles.length) : '');
+            const shown = tiles.slice(0, appPatchShown);
+            const d = appInfoDict();
+            const badges = shown.map((t, i) => {
+                const img = t.querySelector('img');
+                return `<button type="button" class="app-badge" data-i="${i}"><span><img src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy"></span><small dir="auto">${escapeHtml(appText(t.querySelector('.patch-tile-name')))}</small></button>`;
+            }).join('');
+            const toggle = tiles.length > appPatchShown ? `<button type="button" class="app-info-more" data-more="1">${escapeHtml(d.more)}</button>`
+                : (appPatchShown > 8 ? `<button type="button" class="app-info-more" data-more="0">${escapeHtml(d.less)}</button>` : '');
+            appSetHtml(body, `<div class="app-badges">${badges}</div>${toggle}`);
+            appBindTaps(body, '.app-badge', el => document.querySelectorAll('#mission-patches-strip .patch-tile')[+el.dataset.i]);
+            const more = body.querySelector('[data-more]');
+            if (more) more.onclick = () => {
+                appPatchShown = more.dataset.more === '1' ? appPatchShown + 12 : 8;
+                renderAppPatches(block, body);
+                if (more.dataset.more === '0') block.scrollIntoView({ block: 'start' });
+            };
+        }
+
+        function renderAppBoosters(block, body) {
+            appInfoHead(block, appText(document.getElementById('i18n-booster-title')), '');
+            const rows = [...document.querySelectorAll('#booster-leaderboard > div[onclick]')].map((r, i) => ({
+                i, sn: appText(r.querySelector('.booster-sn')), n: +(((r.getAttribute('onclick') || '').match(/,\s*(\d+)\s*\)/) || [])[1] || 0),
+            }));
+            if (!rows.length) return;
+            const max = Math.max(...rows.map(r => r.n), 1);
+            const word = appText(document.querySelector('#booster-leaderboard > div:first-child > div:last-child'));
+            const col = (r, place) => r ? `<div class="app-podium-col is-${place}" data-i="${r.i}">${place === 1 ? '<i class="fa-solid fa-crown crown"></i>' : ''}<div class="sn" dir="ltr">${escapeHtml(r.sn)}</div>`
+                + `<div class="step" style="height:${{ 1: 6.4, 2: 5.1, 3: 4.2 }[place]}rem"><b>${r.n}</b><small>${escapeHtml(word)}</small></div></div>` : '';
+            const list = rows.slice(3).map(r => `<div class="app-rank-row" data-i="${r.i}"><span class="r">${r.i + 1}</span><span class="s" dir="ltr">${escapeHtml(r.sn)}</span>`
+                + `<span class="b"><i style="width:${(r.n / max * 100).toFixed(1)}%"></i></span><span class="c">${r.n}</span></div>`).join('');
+            appSetHtml(body, `<div class="app-podium">${col(rows[1], 2)}${col(rows[0], 1)}${col(rows[2], 3)}</div><div class="app-rank-list">${list}</div>`);
+            appBindTaps(body, '[data-i]', el => document.querySelectorAll('#booster-leaderboard > div[onclick]')[+el.dataset.i]);
+        }
+
+        function renderAppMilestones(block, body) {
+            appInfoHead(block, appText(document.getElementById('i18n-milestones-title')), '');
+            const cards = [...document.querySelectorAll('.milestones-scrollbox > .milestone-card')];
+            const d = appInfoDict();
+            const items = cards.slice(0, appMilestonesShown).map((c, i) => `<div class="app-tl-item" data-i="${i}"><small>${escapeHtml(appText(c.querySelector('.milestone-year')))}</small>`
+                + `<b dir="auto">${escapeHtml(appText(c.querySelector('.milestone-title')))}</b><p dir="auto">${escapeHtml(appText(c.querySelector('.milestone-desc')))}</p></div>`).join('');
+            const toggle = cards.length > appMilestonesShown ? `<button type="button" class="app-info-more" data-more="1">${escapeHtml(d.more)}</button>`
+                : (appMilestonesShown > 5 ? `<button type="button" class="app-info-more" data-more="0">${escapeHtml(d.less)}</button>` : '');
+            appSetHtml(body, `<div class="app-timeline">${items}</div>${toggle}`);
+            appBindTaps(body, '.app-tl-item', el => document.querySelectorAll('.milestones-scrollbox > .milestone-card')[+el.dataset.i]);
+            const more = body.querySelector('[data-more]');
+            if (more) more.onclick = () => {
+                appMilestonesShown = more.dataset.more === '1' ? cards.length : 5;
+                renderAppMilestones(block, body);
+                if (more.dataset.more === '0') block.scrollIntoView({ block: 'start' });
+            };
+        }
+
+        function renderAppSites(block, body) {
+            appInfoHead(block, appText(document.getElementById('i18n-launch-sites-title')), '');
+            const cards = [...document.querySelectorAll('#launch-sites-grid .launch-site-card')];
+            appSetHtml(body, `<div class="app-info-row">${cards.map((c, i) => {
+                const img = c.querySelector('img');
+                return `<div class="app-shelf-card" data-i="${i}"><img src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy"><b dir="auto">${escapeHtml(c.getAttribute('aria-label') || '')}</b></div>`;
+            }).join('')}</div>`);
+            appBindTaps(body, '.app-shelf-card', el => document.querySelectorAll('#launch-sites-grid .launch-site-card')[+el.dataset.i]);
+        }
+
+        // the fleet's cards hold live maps (iframes): the site's own row is moved in once, not copied
+        function renderAppFleet(block, body) {
+            appInfoHead(block, appText(document.getElementById('i18n-recovery-fleet-title')), '');
+            if (body.firstChild) return;
+            const orig = appOrigSection('#i18n-recovery-fleet-title');
+            const row = orig && orig.querySelector('.overflow-x-auto');
+            if (!row) return;
+            body.classList.add('app-fleet-host');
+            body.appendChild(row);
+        }
+
+        function renderAppInfo() {
+            const root = document.getElementById('app-info');
+            if (!root) return;
+            const get = key => root.querySelector(`.app-info-block[data-key="${key}"]`);
+            const b = key => get(key).querySelector('.app-info-body');
+            try { renderAppFeatured(b('starship')); } catch (e) { }
+            try { renderAppNumbers(get('numbers'), b('numbers')); } catch (e) { }
+            try { renderAppFacts(get('facts'), b('facts')); } catch (e) { }
+            try { renderAppPatches(get('patches'), b('patches')); } catch (e) { }
+            try { renderAppBoosters(get('boosters'), b('boosters')); } catch (e) { }
+            try { renderAppMilestones(get('milestones'), b('milestones')); } catch (e) { }
+            try { renderAppSites(get('sites'), b('sites')); } catch (e) { }
+            try { renderAppFleet(get('fleet'), b('fleet')); } catch (e) { }
+            relabelAppInfoNav();
+        }
+        let appInfoRenderTimer = null;
+        function scheduleAppInfoRender() {
+            clearTimeout(appInfoRenderTimer);
+            appInfoRenderTimer = setTimeout(renderAppInfo, 300);
+        }
+
+        // ---- Starlink / AI compute as screens of their own: the site's section moved in, and back on close
+        let appDetailOpen = null;
+        function openAppDetail(key) {
+            const section = appOrigSection(key === 'ai' ? '#i18n-ai-compute-title' : '#starlink-section-title');
+            if (!section || appDetailOpen) return;
+            let sheet = document.getElementById('app-detail');
+            if (!sheet) {
+                sheet = appEl('div', '');
+                sheet.id = 'app-detail';
+                sheet.innerHTML = '<div class="app-detail-bar"><button type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><b></b></div><div class="app-detail-body"></div>';
+                sheet.querySelector('button').onclick = () => { appHaptic(); closeAppDetail(); };
+                document.body.appendChild(sheet);
+            }
+            const title = section.querySelector('h3');
+            sheet.querySelector('.app-detail-bar b').textContent = appText(title);
+            const mark = document.createComment('app-detail');
+            section.before(mark);
+            sheet.querySelector('.app-detail-body').appendChild(section);
+            sheet.querySelector('.app-detail-body').scrollTop = 0;
+            sheet.classList.add('is-open');
+            appDetailOpen = { section, mark };
+            if (typeof lockBodyScroll === 'function') lockBodyScroll();
+            // the AI donut sizes itself to its box: it has one again
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+        }
+        function closeAppDetail() {
+            if (!appDetailOpen) return false;
+            const { section, mark } = appDetailOpen;
+            mark.replaceWith(section);
+            appDetailOpen = null;
+            document.getElementById('app-detail').classList.remove('is-open');
+            if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+            return true;
+        }
+
+        // ---- the sticky bar of the sections
         function appInfoNavHeight() {
             const nav = document.querySelector('body > nav');
             return nav ? nav.getBoundingClientRect().height : 0;
@@ -31287,13 +32121,13 @@ if (heroNameEl) {
             const lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
             const names = Object.assign({}, APP_INFO_NAMES[lang] || APP_INFO_NAMES.en, {
                 starship: STARSHIP_I18N[lang] || STARSHIP_I18N.en,
-                starlink: STARLINK_I18N[lang] || STARLINK_I18N.en,
+                numbers: appInfoDict().numbers,
             });
             appInfoItems.forEach(({ key, chip }) => { chip.textContent = names[key] || key; });
         }
         function syncAppInfoNav() {
             const bar = document.getElementById('app-info-nav');
-            if (!bar || window.currentMainTab !== 'more') return;
+            if (!bar || window.currentMainTab !== 'more' || !appInfoItems.length) return;
             const navH = appInfoNavHeight();
             bar.style.top = navH + 'px';
             const line = navH + bar.offsetHeight + 24;
@@ -31302,45 +32136,55 @@ if (heroNameEl) {
             appInfoItems.forEach(it => it.chip.classList.toggle('is-active', it === active));
             if (active && bar.dataset.active !== active.key) {
                 bar.dataset.active = active.key;
-                // the lit chip kept in view inside the bar (sideways only)
                 const cr = active.chip.getBoundingClientRect(), br = bar.getBoundingClientRect();
                 if (cr.left < br.left + 8 || cr.right > br.right - 8) bar.scrollBy({ left: (cr.left + cr.width / 2) - (br.left + br.width / 2), behavior: 'smooth' });
             }
         }
+
         function initAppInfoTab() {
             const panel = document.getElementById('tab-panel-more');
-            if (!panel || document.getElementById('app-info-nav')) return;
-            const bar = appEl('div', '');
-            bar.id = 'app-info-nav';
-            APP_INFO_SECTIONS.forEach(([key, sel], i) => {
-                const title = document.querySelector(sel);
-                const section = title && title.closest('#tab-panel-more > div');
+            if (!panel || document.getElementById('app-info')) return;
+            // the originals: marked (hidden by CSS), their headings marked for the detail screens
+            ['.starship-term', '#starlink-section-title', '#i18n-nice-to-know-title', '#i18n-milestones-title', '#i18n-patches-title',
+                '#i18n-booster-title', '#i18n-launch-sites-title', '#i18n-recovery-fleet-title', '#i18n-ai-compute-title'].forEach(sel => {
+                const t = panel.querySelector(sel);
+                const section = t && t.closest('#tab-panel-more > div');
                 if (!section) return;
                 section.classList.add('app-info-section');
-                if (i === 0) section.classList.add('is-first');
-                const h3 = title.tagName === 'H3' ? title : title.closest('h3');
+                const h3 = t.closest('h3');
                 if (h3) h3.classList.add('app-sec-title');
+            });
+            const root = appEl('div', '');
+            root.id = 'app-info';
+            const bar = appEl('div', '');
+            bar.id = 'app-info-nav';
+            APP_INFO_KEYS.forEach(key => {
+                const block = appInfoBlock(key);
+                root.appendChild(block);
                 const chip = document.createElement('button');
                 chip.type = 'button';
                 chip.className = 'app-info-chip';
                 chip.onclick = () => {
                     appHaptic();
-                    const top = section.getBoundingClientRect().top + window.scrollY - appInfoNavHeight() - bar.offsetHeight - 12;
+                    const top = block.getBoundingClientRect().top + window.scrollY - appInfoNavHeight() - bar.offsetHeight - 12;
                     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
                 };
                 bar.appendChild(chip);
-                appInfoItems.push({ key, chip, section });
+                appInfoItems.push({ key, chip, section: block });
             });
-            panel.insertBefore(bar, panel.firstChild);
-            relabelAppInfoNav();
+            panel.insertBefore(root, panel.firstChild);
+            panel.insertBefore(bar, root);
+            renderAppInfo();
+            // the originals change (data arriving, translations, a new fact): drawn again
+            const watch = new MutationObserver(scheduleAppInfoRender);
+            panel.querySelectorAll(':scope > .app-info-section').forEach(s => watch.observe(s, { childList: true, subtree: true, characterData: true }));
+            new MutationObserver(scheduleAppInfoRender).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
             let ticking = false;
             window.addEventListener('scroll', () => {
                 if (ticking) return;
                 ticking = true;
                 requestAnimationFrame(() => { ticking = false; syncAppInfoNav(); });
             }, { passive: true });
-            new MutationObserver(relabelAppInfoNav).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-            // coming to the Info tab (its tab button, Back, a link from another window): lit up once it has settled
             new MutationObserver(() => setTimeout(syncAppInfoNav, 400)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-main-tab'] });
             syncAppInfoNav();
         }
