@@ -6607,18 +6607,28 @@
         #app-info-nav {
             display: none;
         }
+        /* the bottom tab bar's top row on the Info tab (initAppInfoTab puts it in #main-tabs): its background and
+           scanlines are the tab bar's own */
+        html.in-app #main-tabs {
+            flex-wrap: wrap;
+        }
         html.in-app #app-info-nav {
             display: flex;
+            flex: 0 0 calc(100% + 1rem);
             gap: 0.4rem;
-            position: sticky;
-            top: 0;
-            z-index: 80;
-            margin: 0 -1rem;
-            padding: 0.55rem 1rem;
+            margin: -0.3rem -0.5rem 0.15rem;
+            padding: 0.55rem 1rem 0.45rem;
             overflow-x: auto;
             scrollbar-width: none;
-            background: #09090b;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: transparent;
+            border-bottom: 1px solid var(--app-border);
+        }
+        html.in-app:not([data-main-tab="more"]) #app-info-nav {
+            display: none;
+        }
+        /* the Info tab's page ends above both rows */
+        html.in-app[data-main-tab="more"] body {
+            padding-bottom: calc(4.25rem + 3rem + env(safe-area-inset-bottom, 0px));
         }
         html.in-app #app-info-nav::-webkit-scrollbar {
             display: none;
@@ -6640,13 +6650,10 @@
             border-color: rgba(16, 185, 129, 0.45);
             color: #34d399;
         }
-        html.in-app body.light-theme #app-info-nav { background: #f1f5f9; border-color: #e2e8f0; }
         html.in-app body.light-theme .app-info-chip { background: #ffffff; border-color: #e2e8f0; color: #475569; }
         html.in-app body.light-theme .app-info-chip.is-active { background: rgba(4, 120, 87, 0.1); border-color: rgba(4, 120, 87, 0.45); color: #047857; }
-        html.in-app body.mars-theme #app-info-nav { background: #140806; border-color: rgba(140, 65, 35, 0.35); }
         html.in-app body.mars-theme .app-info-chip { background: #271510; border-color: rgba(140, 65, 35, 0.5); color: #c4a080; }
         html.in-app body.mars-theme .app-info-chip.is-active { background: rgba(255, 107, 53, 0.15); border-color: rgba(255, 107, 53, 0.5); color: #ff8c5a; }
-        html.in-app body.moon-theme #app-info-nav { background: #080c14; border-color: rgba(80, 100, 140, 0.35); }
         html.in-app body.moon-theme .app-info-chip { background: #121826; border-color: rgba(80, 100, 140, 0.5); color: #8fa3bc; }
         html.in-app body.moon-theme .app-info-chip.is-active { background: rgba(63, 169, 245, 0.15); border-color: rgba(63, 169, 245, 0.5); color: #6abffb; }
         /* the "scroll sideways" hints: a row cut at the screen's edge already says so (and the past launches are
@@ -32628,9 +32635,8 @@ if (heroNameEl) {
         function syncAppInfoNav() {
             const bar = document.getElementById('app-info-nav');
             if (!bar || window.currentMainTab !== 'more' || !appInfoItems.length) return;
-            const navH = appInfoNavHeight();
-            bar.style.top = navH + 'px';
-            const line = navH + bar.offsetHeight + 24;
+            // the section at the top of the screen is the one marked
+            const line = appInfoNavHeight() + 24;
             let active = appInfoItems[0];
             appInfoItems.forEach(it => { if (it.section.getBoundingClientRect().top <= line) active = it; });
             appInfoItems.forEach(it => it.chip.classList.toggle('is-active', it === active));
@@ -32666,14 +32672,18 @@ if (heroNameEl) {
                 chip.className = 'app-info-chip';
                 chip.onclick = () => {
                     appHaptic();
-                    const top = block.getBoundingClientRect().top + window.scrollY - appInfoNavHeight() - bar.offsetHeight - 12;
+                    const top = block.getBoundingClientRect().top + window.scrollY - appInfoNavHeight() - 12;
                     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
                 };
                 bar.appendChild(chip);
                 appInfoItems.push({ key, chip, section: block });
             });
             panel.insertBefore(root, panel.firstChild);
-            panel.insertBefore(bar, root);
+            // the sections' bar: the bottom tab bar's top row, over its two tabs (the same bar, so the same background
+            // and look in every mode; shown on this tab only - CSS)
+            const tabs = document.getElementById('main-tabs');
+            if (tabs) tabs.insertBefore(bar, tabs.firstChild);
+            else panel.insertBefore(bar, root);
             renderAppInfo();
             // the originals change (data arriving, translations, a new fact): drawn again
             const watch = new MutationObserver(scheduleAppInfoRender);
