@@ -5629,8 +5629,9 @@
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
-            /* room for the bottom tab bar */
-            padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+            /* room for the bottom tab bar (--app-nav-pad: the part of the phone's own bottom bar it reaches over - the
+               app sets it, MainActivity.pushNavInset; an app without it, the page's safe area as before) */
+            padding-bottom: calc(4.25rem + var(--app-nav-pad, env(safe-area-inset-bottom, 0px)));
         }
         html.in-app input,
         html.in-app textarea {
@@ -5656,7 +5657,8 @@
         }
         html.in-app #main-tabs {
             gap: 0;
-            padding: 0.3rem 0.5rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+            /* down to the screen's edge, under the phone's gesture line / buttons (the app draws under them) */
+            padding: 0.3rem 0.5rem calc(0.3rem + var(--app-nav-pad, env(safe-area-inset-bottom, 0px)));
             border-radius: 0;
             border-width: 1px 0 0;
         }
@@ -6303,6 +6305,13 @@
         html.in-app .card-modal-scroll {
             will-change: transform;
         }
+        /* its end clear of the phone's own bottom bar (the app draws under it - --app-nav-inset) */
+        html.in-app .card-modal-scroll::after {
+            content: "";
+            display: block;
+            flex-shrink: 0;   /* (the window is a flex column) */
+            height: var(--app-nav-inset, 0px);
+        }
         /* ---------- The launches' filter + search: one row (see initAppToolbar) - a round search button and the
            filter chips gliding sideways; the search button opens the search field in the chips' place ---------- */
         html.in-app .app-toolbar {
@@ -6628,7 +6637,7 @@
         }
         /* the Info tab's page ends above both rows */
         html.in-app[data-main-tab="more"] body {
-            padding-bottom: calc(4.25rem + 3rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(4.25rem + 3rem + var(--app-nav-pad, env(safe-area-inset-bottom, 0px)));
         }
         html.in-app #app-info-nav::-webkit-scrollbar {
             display: none;
@@ -7356,7 +7365,7 @@
         html.in-app .app-detail-body {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem 1rem 2rem;
+            padding: 1rem 1rem calc(2rem + var(--app-nav-inset, 0px));
             overscroll-behavior: contain;
         }
         html.in-app #app-detail h3.app-sec-title {

@@ -46,7 +46,10 @@ import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import org.json.JSONArray;
@@ -86,6 +89,8 @@ public class MainActivity extends Activity {
     // the site theme's colors for the phone's bars (setBarColors) - the app's own dark until the site sends them
     private int barTop = Color.parseColor("#09090B");
     private int barBottom = Color.parseColor("#09090B");
+    // the phone's own bottom bar (the gesture line / the buttons): the page goes on under it - see edgeToEdge
+    private int navInsetPx = 0;
     private String offlineUrl;   // the page that failed to load while the phone was offline, loaded again once it's back
     private ConnectivityManager.NetworkCallback networkCallback;
 
@@ -106,6 +111,7 @@ public class MainActivity extends Activity {
         root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         if (savedInstanceState == null) showSplash();
         setContentView(root);
+        edgeToEdge();
         watchNetwork();
 
         WebSettings s = webView.getSettings();
@@ -258,13 +264,53 @@ public class MainActivity extends Activity {
         return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
+    // ------------------------------------------------------------------ the page down to the screen's bottom edge
+    // The page goes on under the phone's own bottom bar (now see-through): the site's tab bar reaches the screen's
+    // edge, with the gesture line over it, instead of a strip of its own color under it. The site is told how tall
+    // that bar is (--app-nav-inset, and --app-nav-pad for its tab bar - see pushNavInset) to keep its content clear
+    // of it. The top stays as it was: the page starts under the status bar. The keyboard still pushes the page up.
+
+    private void edgeToEdge() {
+        Window w = getWindow();
+        WindowCompat.setDecorFitsSystemWindows(w, false);
+        w.setNavigationBarColor(Color.TRANSPARENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) w.setNavigationBarContrastEnforced(false);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets status = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            boolean keyboard = insets.isVisible(WindowInsetsCompat.Type.ime());
+            int imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            v.setPadding(nav.left, status.top, nav.right, keyboard ? imeBottom : 0);
+            int inset = keyboard ? 0 : nav.bottom;
+            if (inset != navInsetPx) {
+                navInsetPx = inset;
+                pushNavInset();
+            }
+            return WindowInsetsCompat.CONSUMED;
+        });
+    }
+
+    /** the phone's bottom bar's height to the page, in its own (CSS) pixels: --app-nav-inset all of it, --app-nav-pad
+     *  what the tab bar keeps clear - all of a buttons bar, a gesture bar less 10px (its thin line sits low in it) */
+    private void pushNavInset() {
+        if (webView == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        int inset = Math.round(navInsetPx / density);
+        int pad = inset >= 40 ? inset : Math.max(inset - 10, 0);
+        webView.evaluateJavascript("(function(){var s=document.documentElement&&document.documentElement.style;if(!s)return;"
+                + "s.setProperty('--app-nav-inset','" + inset + "px');s.setProperty('--app-nav-pad','" + pad + "px');})()", null);
+    }
+
     // ------------------------------------------------------------------ the phone's bars
 
     /** the top (status) and bottom (navigation) bars' colors, with dark or light icons on them to match */
     private void setBars(int top, int bottom) {
         Window w = getWindow();
         w.setStatusBarColor(top);
-        w.setNavigationBarColor(bottom);
+        // the bottom bar is see-through over the page (edgeToEdge); its line / buttons still take the page's light or
+        // dark (the tab bar's color, below)
+        w.setNavigationBarColor(Color.TRANSPARENT);
+        if (root != null) root.setBackgroundColor(top);
         WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(w, w.getDecorView());
         bars.setAppearanceLightStatusBars(Color.luminance(top) > 0.5f);
         bars.setAppearanceLightNavigationBars(Color.luminance(bottom) > 0.5f);
@@ -350,14 +396,16 @@ public class MainActivity extends Activity {
             return true;
         }
 
-        // the site has painted: the splash can go
+        // the site has painted: the splash can go (and the page learns the bottom bar's height - a new page each load)
         @Override
         public void onPageCommitVisible(WebView view, String url) {
+            pushNavInset();
             hideSplash();
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            pushNavInset();
             hideSplash();
         }
 
