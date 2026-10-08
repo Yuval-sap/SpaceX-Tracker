@@ -12793,7 +12793,7 @@
                 descEl.innerText = window.currentOpenPatchMissionDescription;
                 const langNow = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
                 descEl.dataset.renderedStamp = langNow + '|' + window.currentOpenPatchMissionDescription;
-                translateModalDescriptions('patch', [descEl], document.documentElement.lang);
+                translatePatchCardDescription(descEl, window.currentOpenPatchMissionDescription, document.documentElement.lang);
             }
 
             const dateEl = document.getElementById('patch-mission-modal-date');
@@ -12817,6 +12817,30 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             lockBodyScroll();
+        }
+
+        // The patch card's description, translated the way the launch's own window translates it
+        // (applyMissionPurposeHtml): the ready translation from mission-purpose-gemini.json first,
+        // Google Translate only for a description that file doesn't have - the same text the
+        // "full launch details" window shows, instead of always asking Google (which left it in
+        // English whenever Google didn't answer, while the launch's window had it translated).
+        let _patchDescGen = 0;
+        function translatePatchCardDescription(el, description, currentLang) {
+            const key = (currentLang || 'en').toLowerCase().split('-')[0];
+            if (!el || !description || key === 'en') return;
+            const myGen = ++_patchDescGen;
+            const paint = text => {
+                if (_patchDescGen !== myGen || !text) return;
+                el.innerText = text;
+                fixMistranslatedPhrases(el, key);
+            };
+            const fromMap = map => lookupGeminiPurpose(map, description, key).then(hit => {
+                if (_patchDescGen !== myGen) return;
+                if (hit) paint(fixMistranslatedPhrasesText(hit.description, key));
+                else translateModalDescriptions('patch', [el], currentLang);
+            });
+            if (_geminiPurposeMap) fromMap(_geminiPurposeMap);
+            else loadGeminiPurposeMap().then(fromMap);
         }
 
         function closePatchMissionModal() {
@@ -13338,7 +13362,7 @@
                     if (patchDescEl.dataset.renderedStamp !== descStamp) {
                         patchDescEl.dataset.renderedStamp = descStamp;
                         patchDescEl.innerText = window.currentOpenPatchMissionDescription;
-                        translateModalDescriptions('patch', [patchDescEl], currentLang);
+                        translatePatchCardDescription(patchDescEl, window.currentOpenPatchMissionDescription, currentLang);
                     }
                 }
 
