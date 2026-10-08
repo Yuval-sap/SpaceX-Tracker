@@ -30908,6 +30908,25 @@ setTimeout(() => {
                     return;
                 }
 
+                // The same doubt on a page that was already open (brought back from the background, or saved data
+                // a few minutes old at load): T-0 passed, but the newest live word on this launch is from well before
+                // it - nothing in the 20 minutes before T-0, while a page watching a launch hears every few minutes.
+                // It may have been pushed back meanwhile, so ask now (once for this T-0) and show "checking" until
+                // the answer, instead of declaring it flying until the next scheduled refresh.
+                if (diff <= 0 && !flyingNow && !awaitingFirstLiveCheck) {
+                    const lastLive = readLiveStatusAt()[String(currentHeroMissionId)];
+                    const recheckKey = currentHeroMissionId + '@' + target.getTime();
+                    if ((!lastLive || lastLive < target.getTime() - 20 * 60 * 1000) && window._heroStaleRecheckFor !== recheckKey) {
+                        window._heroStaleRecheckFor = recheckKey;
+                        awaitingFirstLiveCheck = true;   // cleared when that check ends, answered or not
+                        if (refreshIntervalId) {
+                            clearTimeout(refreshIntervalId);
+                            refreshIntervalId = null;
+                        }
+                        runLaunchDataRefreshCycle();
+                    }
+                }
+
                 // T-0 already passed per the SAVED data, this page hasn't heard from a live source yet, nobody has
                 // since T-0, and the saved status doesn't say it's flying: it may have been pushed back since the
                 // last visit, so neither "flying" nor a countdown until the first live check settles it
