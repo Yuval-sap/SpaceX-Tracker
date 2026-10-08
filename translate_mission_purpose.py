@@ -845,6 +845,24 @@ def fetch_previous_launches() -> list:
     return collected
 
 
+# The older launches the site carries in index.html itself (HISTORICAL_RAW_LAUNCHES - the mission patches strip's
+# archive, 2024 on): their patch cards show the same description, so it is translated here too, after everything
+# else (the last part of the backlog). Read straight out of the page, the same raw Launch Library rows.
+INDEX_PATH = Path(__file__).resolve().parent / "index.html"
+
+
+def load_historical_launches() -> list:
+    try:
+        page = INDEX_PATH.read_text(encoding="utf-8")
+        marker = "const HISTORICAL_RAW_LAUNCHES = "
+        start = page.index(marker) + len(marker)
+        rows, _ = json.JSONDecoder().raw_decode(page[start:])
+        return [r for r in rows if isinstance(r, dict)]
+    except Exception as e:
+        print(f"Warning: could not read HISTORICAL_RAW_LAUNCHES from index.html: {e}", file=sys.stderr)
+        return []
+
+
 # Must match mapLaunchToSchema's own name cleanup in index.html EXACTLY (same regexes, same
 # order, same whitespace collapsing) - the client hashes its own cleaned m.name to look up the
 # "names" map, so if this script hashed a differently-cleaned name, every single lookup would
@@ -1215,6 +1233,9 @@ def main() -> int:
         meta["backlogSkippedRuns"] = 0
         time.sleep(3)
         previous = fetch_previous_launches()
+        # then the older ones the patches strip shows (see load_historical_launches) - last, after the rolling year
+        known = {l.get("id") for l in previous if isinstance(l, dict)}
+        previous += [l for l in load_historical_launches() if l.get("id") not in known]
 
     launches = upcoming + previous
     if not launches:

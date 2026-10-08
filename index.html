@@ -11366,6 +11366,10 @@
         // away from cannot clobber whatever is showing now.
         let _missionPurposeGen = 0;
         let _geminiPurposeMap = null;
+        // "entriesGoogle" in the same file: older launches' descriptions (the patches strip's archive) already run
+        // through translateTextViaGoogle, saved there until the GitHub job's own translation of them arrives
+        // ({hash: {lang: text}}) - a patch card needn't ask Google from the visitor's page (which can fail there)
+        let _savedGooglePurposeMap = {};
         // Mission NAMES from the same mission-purpose-gemini.json file, under its "names" key -
         // one fetch serves both maps, see translate_mission_purpose.py's own comment for why
         // names are keyed separately (by hash-of-the-name) from entries (hash-of-the-description).
@@ -11394,6 +11398,7 @@
                 .then(res => (res && res.ok ? res.json() : { entries: {}, names: {}, updates: {}, timeline: {} }))
                 .then(data => {
                     _geminiPurposeMap = (data && data.entries) || {};
+                    _savedGooglePurposeMap = (data && data.entriesGoogle) || {};
                     _geminiNamesMap = (data && data.names) || {};
                     _geminiUpdatesMap = (data && data.updates) || {};
                     _geminiTimelineMap = (data && data.timeline) || {};
@@ -12834,10 +12839,17 @@
                 el.innerText = text;
                 fixMistranslatedPhrases(el, key);
             };
+            const lang = key === 'iw' ? 'he' : key;
             const fromMap = map => lookupGeminiPurpose(map, description, key).then(hit => {
                 if (_patchDescGen !== myGen) return;
-                if (hit) paint(fixMistranslatedPhrasesText(hit.description, key));
-                else translateModalDescriptions('patch', [el], currentLang);
+                if (hit) return paint(fixMistranslatedPhrasesText(hit.description, key));
+                // no translation of the job's own yet: the saved Google one (entriesGoogle), else Google now
+                return sha256hex(description).then(hash => {
+                    const saved = _savedGooglePurposeMap[hash] && _savedGooglePurposeMap[hash][lang];
+                    if (_patchDescGen !== myGen) return;
+                    if (saved) paint(saved);
+                    else translateModalDescriptions('patch', [el], currentLang);
+                }).catch(() => translateModalDescriptions('patch', [el], currentLang));
             });
             if (_geminiPurposeMap) fromMap(_geminiPurposeMap);
             else loadGeminiPurposeMap().then(fromMap);
