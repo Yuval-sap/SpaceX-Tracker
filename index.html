@@ -5615,6 +5615,62 @@
             #launch-cadence-modal .lc-legend { gap: 10px 14px; }
         }
 
+        /* The past launches' row on a computer's screen: each month's start over its cards (placeDeskPastMonths) -
+           never on a phone's screen or in the app */
+        #past-launches-grid .desk-month {
+            display: none;
+        }
+        @media (min-width: 768px) {
+            #past-launches-grid.desk-months {
+                position: relative;
+                padding-top: 2.9rem;
+            }
+            html:not(.in-app) #past-launches-grid .desk-month {
+                position: absolute;
+                top: 0.75rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.95rem;
+                font-weight: 600;
+                letter-spacing: 0.03em;
+                color: #a1a1aa;
+                white-space: nowrap;
+                pointer-events: none;
+            }
+            #past-launches-grid .desk-month::before {
+                content: "";
+                flex-shrink: 0;
+                width: 0.6rem;
+                height: 0.6rem;
+                border-radius: 999px;
+                border: 2px solid #a1a1aa;
+            }
+            #past-launches-grid .desk-month-sep,
+            #past-launches-grid .desk-month-count {
+                font-weight: 500;
+                color: #71717a;
+            }
+            #past-launches-grid .desk-month-count {
+                font-size: 0.85rem;
+            }
+            #past-launches-grid .desk-month-count i {
+                font-size: 0.75rem;
+                margin-inline-end: 0.15rem;
+            }
+            #past-launches-grid .desk-month-line {
+                flex: 1;
+                min-width: 1rem;
+                height: 1px;
+                background: rgba(161, 161, 170, 0.25);
+            }
+            body.light-theme #past-launches-grid .desk-month { color: #475569; }
+            body.light-theme #past-launches-grid .desk-month::before { border-color: #64748b; }
+            body.light-theme #past-launches-grid .desk-month-sep,
+            body.light-theme #past-launches-grid .desk-month-count { color: #64748b; }
+            body.light-theme #past-launches-grid .desk-month-line { background: #cbd5e1; }
+        }
+
         /* ==================================================
            THE ANDROID APP ONLY (html.in-app - set at the top of <head> when the app's window.AndroidApp is there).
            None of this reaches the site in any browser, on a computer or a phone.
@@ -5968,8 +6024,10 @@
             background: #09090b;
             border: 2px solid #a1a1aa;
         }
-        html.in-app .app-month-name {
-            flex: 1;
+        /* "September 2026 - (rocket) 8": the month's count right after its name */
+        html.in-app .app-month-sep {
+            color: #71717a;
+            font-weight: 500;
         }
         html.in-app .app-month-count {
             font-weight: 500;
@@ -26298,6 +26356,9 @@ setTimeout(() => {
             applyCardTitlesTranslation(pastGrid, filteredPast, document.documentElement.lang);
             // the Android app's own layout of the list (does nothing in a browser)
             if (typeof appDecoratePast === 'function') appDecoratePast(pastGrid, filteredPast);
+            // a computer's screen: the months over the row (placeDeskPastMonths)
+            deskPastDates = new Map(filteredPast.map(m => [String(m.id), m.date]));
+            placeDeskPastMonths();
 
             const pastSearchEmptyMsg = document.createElement('div');
             pastSearchEmptyMsg.id = 'past-launches-grid-search-empty';
@@ -26516,6 +26577,7 @@ setTimeout(() => {
                 });
                 if (typeof appSyncListGroups === 'function') appSyncListGroups();
                 if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
+                placeDeskPastMonths();
                 return;
             }
 
@@ -26565,7 +26627,59 @@ setTimeout(() => {
             });
             if (typeof appSyncListGroups === 'function') appSyncListGroups();
             if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
+            placeDeskPastMonths();
         }
+
+        // A computer's screen (not a phone, not the Android app - each has its own way): the past launches' row
+        // gets a timeline over it - where each month's launches start, "September 2026 - (rocket) 8", and a line
+        // across that month's cards. Laid over the row (it scrolls with it), placed from the cards shown - again
+        // after a search (it hides cards), a new list (filter, data, language) and a new window width.
+        // (var, not let: the first list is drawn - renderPastMissions sets this - before the script gets this far)
+        var deskPastDates;
+        function placeDeskPastMonths() {
+            const grid = document.getElementById('past-launches-grid');
+            if (!grid) return;
+            grid.querySelectorAll(':scope > .desk-month').forEach(el => el.remove());
+            const on = window.matchMedia('(min-width: 768px)').matches && !document.documentElement.classList.contains('in-app');
+            grid.classList.toggle('desk-months', on);
+            if (!on) return;
+            const lang = document.documentElement.lang || 'en';
+            let fmt;
+            try { fmt = new Intl.DateTimeFormat(dateLocaleForLang(lang), { month: 'long', year: 'numeric' }); } catch (e) { fmt = null; }
+            const groups = [];
+            grid.querySelectorAll(':scope > .mission-card:not(.hidden)').forEach(card => {
+                const d = new Date(deskPastDates && deskPastDates.get(String(card.dataset.missionId)));
+                if (isNaN(d)) return;
+                const key = d.getFullYear() + '-' + d.getMonth();
+                const last = groups[groups.length - 1];
+                if (last && last.key === key) last.cards.push(card);
+                else groups.push({ key, date: d, cards: [card] });
+            });
+            groups.forEach(g => {
+                const first = g.cards[0], end = g.cards[g.cards.length - 1];
+                const left = Math.min(first.offsetLeft, end.offsetLeft);
+                const right = Math.max(first.offsetLeft + first.offsetWidth, end.offsetLeft + end.offsetWidth);
+                let name = fmt ? fmt.format(g.date) : '';
+                name = name.charAt(0).toLocaleUpperCase(lang) + name.slice(1);
+                const el = document.createElement('div');
+                el.className = 'desk-month notranslate';
+                el.setAttribute('translate', 'no');
+                el.style.left = left + 'px';
+                el.style.width = (right - left) + 'px';
+                el.innerHTML = `<span class="desk-month-name">${escapeHtml(name)}</span><span class="desk-month-sep" aria-hidden="true">-</span>`
+                    + `<span class="desk-month-count"><i class="fa-solid fa-rocket"></i> ${g.cards.length}</span><span class="desk-month-line"></span>`;
+                grid.appendChild(el);
+            });
+        }
+        var deskPastMonthsTimer = null;
+        function scheduleDeskPastMonths() {
+            clearTimeout(deskPastMonthsTimer);
+            deskPastMonthsTimer = setTimeout(placeDeskPastMonths, 200);
+        }
+        window.addEventListener('resize', scheduleDeskPastMonths);
+        try { window.matchMedia('(min-width: 768px)').addEventListener('change', scheduleDeskPastMonths); } catch (e) { }
+        // a new language: the months' names in it, and right-to-left the row runs the other way
+        new MutationObserver(scheduleDeskPastMonths).observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
 
         // Same live show/hide as applySearchFilter(), scoped to the mission-patches strip:
         // never rebuilds tiles (the strip's names are already on-screen, and possibly already
@@ -32087,7 +32201,7 @@ if (heroNameEl) {
                 const mKey = isNaN(d) ? 'x' : `${d.getFullYear()}-${d.getMonth()}`;
                 if (mKey !== lastMonth) {
                     lastMonth = mKey;
-                    const head = appEl('div', 'app-month', `<span class="app-month-name"></span><span class="app-month-count"><i class="fa-solid fa-rocket"></i> ${monthCounts[mKey] || ''}</span>`);
+                    const head = appEl('div', 'app-month', `<span class="app-month-name"></span><span class="app-month-sep" aria-hidden="true">-</span><span class="app-month-count"><i class="fa-solid fa-rocket"></i> ${monthCounts[mKey] || ''}</span>`);
                     if (!isNaN(d)) head.dataset.appDate = m.date;
                     grid.insertBefore(head, card);
                 }
