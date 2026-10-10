@@ -393,15 +393,11 @@ public class MainActivity extends Activity {
 
     private class SiteClient extends WebViewClient {
         // The site's own translation requests (translateTextViaGoogle: the launch dossiers, the patches' descriptions):
-        // inside this WebView Google's answer to them never reaches the page - it arrives, but is refused as a
-        // cross-site answer (checked 2026-10-10 on the owner's phone: Failed to fetch, while the same request with no
-        // cross-site check got through and other sites' answers were read fine). So the app asks Google itself and hands
-        // the page the answer, marked readable by it. Only this one address; anything going wrong leaves the request to
-        // the WebView as before.
-        // 2.5 on the owner's phone: the app's own request was refused by Google too. So it is asked as Android's
-        // default client first and then as the phone's Chrome would ask; whatever Google answers reaches the page
-        // (its status and body, readable), with what each attempt got in "X-App-Proxy" (the ?debug=translate check
-        // shows it).
+        // Google answers this address with a redirect to its robot check (google.com/sorry) when the asker says it is
+        // Android - the WebView ("; wv") or the app itself - and the page then gets nothing it can read (found
+        // 2026-10-10 on the owner's phone; the same request as the phone's Chrome gets the translation). So the app asks
+        // Google itself, as the phone's Chrome would, and hands the page the answer, marked readable by it. Only this
+        // one address; anything going wrong leaves the request to the WebView as before.
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
@@ -409,60 +405,32 @@ public class MainActivity extends Activity {
                     || !"translate.googleapis.com".equals(uri.getHost()) || !"/translate_a/single".equals(uri.getPath())) {
                 return null;
             }
-            String chromeUa = null;
+            HttpURLConnection conn = null;
             try {
-                chromeUa = WebSettings.getDefaultUserAgent(MainActivity.this)
+                String chromeUa = WebSettings.getDefaultUserAgent(MainActivity.this)
                         .replace("; wv", "").replaceAll(" Version/[0-9.]+", "");
-            } catch (Exception ignored) { }
-            StringBuilder report = new StringBuilder();
-            int lastCode = 502;
-            String lastType = "text/plain";
-            byte[] lastBody = new byte[0];
-            String[] agents = { null, chromeUa };
-            for (int i = 0; i < agents.length; i++) {
-                if (i > 0 && agents[i] == null) continue;
-                String name = i == 0 ? "android" : "chrome";
-                HttpURLConnection conn = null;
-                try {
-                    conn = (HttpURLConnection) new URL(uri.toString()).openConnection();
-                    conn.setInstanceFollowRedirects(false);
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    if (agents[i] != null) conn.setRequestProperty("User-Agent", agents[i]);
-                    int code = conn.getResponseCode();
-                    InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-                    ByteArrayOutputStream body = new ByteArrayOutputStream();
-                    if (in != null) {
-                        byte[] buf = new byte[8192];
-                        for (int n; (n = in.read(buf)) != -1 && body.size() < 200000; ) body.write(buf, 0, n);
-                        in.close();
-                    }
-                    String location = conn.getHeaderField("Location");
-                    report.append(report.length() > 0 ? "; " : "").append(name).append(' ').append(code)
-                            .append(location != null ? " -> " + location : "");
-                    // a redirect can't be handed to the page as one - its status says it
-                    lastCode = (code >= 300 && code < 400) ? 502 : code;
-                    String type = conn.getContentType();
-                    lastType = type == null ? "text/plain" : type.split(";")[0].trim();
-                    lastBody = body.toByteArray();
-                    if (code >= 200 && code < 300) break;
-                } catch (Exception e) {
-                    report.append(report.length() > 0 ? "; " : "").append(name).append(' ').append(e.getClass().getSimpleName())
-                            .append(": ").append(String.valueOf(e.getMessage()));
-                    lastCode = 502;
-                    lastType = "text/plain";
-                    lastBody = String.valueOf(e).getBytes();
-                } finally {
-                    if (conn != null) conn.disconnect();
-                }
+                conn = (HttpURLConnection) new URL(uri.toString()).openConnection();
+                conn.setInstanceFollowRedirects(false);
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setRequestProperty("User-Agent", chromeUa);
+                int code = conn.getResponseCode();
+                if (code < 200 || code >= 300) return null;
+                InputStream in = conn.getInputStream();
+                ByteArrayOutputStream body = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                for (int n; (n = in.read(buf)) != -1; ) body.write(buf, 0, n);
+                in.close();
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Access-Control-Allow-Origin", "*");
+                headers.put("Cache-Control", "no-store");
+                return new WebResourceResponse("application/json", "UTF-8", code, "OK", headers,
+                        new ByteArrayInputStream(body.toByteArray()));
+            } catch (Exception e) {
+                return null;
+            } finally {
+                if (conn != null) conn.disconnect();
             }
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Access-Control-Allow-Origin", "*");
-            headers.put("Access-Control-Expose-Headers", "X-App-Proxy");
-            headers.put("X-App-Proxy", report.toString().replaceAll("[\\r\\n]", " "));
-            headers.put("Cache-Control", "no-store");
-            return new WebResourceResponse(lastType, "UTF-8", lastCode, lastCode < 400 ? "OK" : "Error", headers,
-                    new ByteArrayInputStream(lastBody));
         }
 
         @Override
