@@ -59,3 +59,65 @@ jobs:
           git commit -m "Update mission share cards"
           git pull --rebase origin main
           git push
+
+  # Does every launch due in the next 48 hours have SpaceX's own status timeline on the live site (the hero's status
+  # list), and does the site match every page SpaceX lists as upcoming to one of its launches? Runs the site's own code
+  # for it in a headless Chrome (.github/scripts/check-hero-timelines.mjs). Only for the site's owner - nothing reaches
+  # visitors: a problem fails this job (GitHub emails the owner about the failed run) and opens an issue labelled
+  # "timeline-watch" with the details (or adds them to the one already open); a later clean run closes that issue.
+  # A job of its own, so it never holds up the cards update above (and that one never holds it up).
+  timeline-watch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install the browser driver
+        run: |
+          mkdir -p "$RUNNER_TEMP/watch" && cd "$RUNNER_TEMP/watch"
+          npm init -y >/dev/null
+          npm install puppeteer-core@22 --no-audit --no-fund
+          cp "$GITHUB_WORKSPACE/.github/scripts/check-hero-timelines.mjs" .
+
+      - name: Check the hero's status timelines on the live site
+        id: check
+        run: |
+          cd "$RUNNER_TEMP/watch"
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)" node check-hero-timelines.mjs
+        continue-on-error: true
+
+      - name: Open or update the alert issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP/watch"
+          gh label create timeline-watch --color D93F0B --description "Hero status timeline missing" -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          NUM=$(gh issue list -R "$GITHUB_REPOSITORY" --label timeline-watch --state open --json number --jq '.[0].number')
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" -R "$GITHUB_REPOSITORY" --body-file timeline-report.md
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --label timeline-watch --title "Hero status timeline missing for an upcoming launch" --body-file timeline-report.md
+          fi
+
+      - name: Close the alert issue once all is well
+        if: steps.check.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for NUM in $(gh issue list -R "$GITHUB_REPOSITORY" --label timeline-watch --state open --json number --jq '.[].number'); do
+            gh issue close "$NUM" -R "$GITHUB_REPOSITORY" --comment "All launches in the next 48 hours have their status timeline now - closed by the watch."
+          done
+
+      # the run fails on a problem, so GitHub also emails the owner
+      - name: Fail the run when there is a problem
+        if: steps.check.outcome == 'failure'
+        run: |
+          cat "$RUNNER_TEMP/watch/timeline-report.md"
+          exit 1
