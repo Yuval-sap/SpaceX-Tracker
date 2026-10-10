@@ -7981,6 +7981,9 @@
                 add('mpower-f');
                 add('mpower');
             }
+            // SDA's Transport Layer flights: "sda-t1tl-a" (see namesReferToSameMission)
+            const sda = /tranche\s+(\d+)\s+transport\s+layer\s+([a-z])\b/i.exec(raw);
+            if (sda) add('sda-t' + sda[1] + 'tl-' + sda[2].toLowerCase());
             add(payload.toLowerCase().replace(/[^a-z0-9]/g, ''));
             add(payload.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
             // Starship's own CMS slugs are "starship-flight-N" (confirmed live for Flight 13) -
@@ -8358,6 +8361,12 @@
                 (b.includes(titleCore) || titleCore.includes(b))) return true;
             // Opaque family slugs ("mpower-f") share no substring with "O3b mPOWER 11-13".
             if (/\bmpower\b/.test(slugN) && /\bmpower\b/.test(b)) return true;
+            // SDA's flights: an abbreviated slug ("sda-t1tl-a" = Tranche 1 Transport Layer A) and a title that names
+            // neither ("SDA's Fourth Tranche 1 Mission") - matched on the tranche, the layer and the letter
+            const sdaSlug = /^sda t (\d+) ([a-z]+) ([a-z])$/.exec(slugN);
+            const sdaName = /\btranche (\d+) (transport|tracking) layer ([a-z])\b/.exec(b);
+            if (sdaSlug && sdaName && sdaSlug[1] === sdaName[1] && sdaSlug[3] === sdaName[3] &&
+                (sdaSlug[2] === 'tl') === (sdaName[2] === 'transport')) return true;
             if (/\bo3b\b/.test(a) && /\bo3b\b/.test(b)) return true;
             // SpaceX's own CMS title for a recurring mission family is often fully generic
             // ("Starlink Mission" for every single Starlink launch, no flight number at all) -
