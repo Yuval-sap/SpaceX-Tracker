@@ -768,6 +768,17 @@ def candidate_slugs(full_name: str) -> list:
     m = re.search(r"starlink(?:\s+group)?\s+(\d+)\s*[-\u2013]\s*(\d+)", raw, re.I)
     if m:
         add(f"sl-{m.group(1)}-{m.group(2)}")
+    # same as index.html: SDA Transport Layer ("sda-t1tl-a"), Dragon cargo ("crs35"), Cygnus ("ng25" / "ng-25")
+    m = re.search(r"tranche\s+(\d+)\s+transport\s+layer\s+([a-z])\b", raw, re.I)
+    if m:
+        add(f"sda-t{m.group(1)}tl-{m.group(2).lower()}")
+    m = re.search(r"\bspx[\s-]*(\d+)\b", raw, re.I)
+    if m:
+        add(f"crs{m.group(1)}")
+    m = re.search(r"\bng[\s-]*(\d+)\b", raw, re.I)
+    if m:
+        add(f"ng{m.group(1)}")
+        add(f"ng-{m.group(1)}")
     add(re.sub(r"[^a-z0-9]", "", payload.lower()))
     add(re.sub(r"[^a-z0-9]+", "-", payload.lower()).strip("-"))
     return slugs[:5]
