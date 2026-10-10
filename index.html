@@ -33129,7 +33129,9 @@ if (heroNameEl) {
                     const res = await withTimeout(fetch(url, opts || {}), 10000);
                     let body = '';
                     try { body = res.type === 'opaque' ? '(opaque)' : await res.text(); } catch (e) { body = '(body: ' + e.name + ': ' + e.message + ')'; }
-                    log(`[${name}] ${ms(t)} type=${res.type} status=${res.status} ${res.statusText || ''} ct=${res.headers.get('content-type') || '-'}\n    ${short(body)}`);
+                    const proxy = res.headers.get('x-app-proxy');
+                    log(`[${name}] ${ms(t)} type=${res.type} status=${res.status} ${res.statusText || ''} ct=${res.headers.get('content-type') || '-'}` +
+                        (proxy ? `\n    app asked Google: ${proxy}` : '') + `\n    ${short(body)}`);
                 } catch (e) {
                     log(`[${name}] ${ms(t)} FAILED ${e && e.name}: ${e && e.message}`);
                 }
