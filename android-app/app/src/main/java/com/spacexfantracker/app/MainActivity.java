@@ -36,6 +36,7 @@ import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -54,9 +55,16 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import org.json.JSONArray;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * The app: the live site (spacexfantracker.com) in the app's own WebView - not a browser tab, so it doesn't depend on
@@ -384,6 +392,44 @@ public class MainActivity extends Activity {
     // ------------------------------------------------------------------ the page
 
     private class SiteClient extends WebViewClient {
+        // The site's own translation requests (translateTextViaGoogle: the launch dossiers, the patches' descriptions):
+        // inside this WebView Google's answer to them never reaches the page - it arrives, but is refused as a
+        // cross-site answer (checked 2026-10-10 on the owner's phone: Failed to fetch, while the same request with no
+        // cross-site check got through and other sites' answers were read fine). So the app asks Google itself and hands
+        // the page the answer, marked readable by it. Only this one address; anything going wrong leaves the request to
+        // the WebView as before.
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            Uri uri = request.getUrl();
+            if (uri == null || !"GET".equalsIgnoreCase(request.getMethod())
+                    || !"translate.googleapis.com".equals(uri.getHost()) || !"/translate_a/single".equals(uri.getPath())) {
+                return null;
+            }
+            HttpURLConnection conn = null;
+            try {
+                conn = (HttpURLConnection) new URL(uri.toString()).openConnection();
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setRequestProperty("Accept", "application/json");
+                int code = conn.getResponseCode();
+                if (code < 200 || code >= 300) return null;
+                InputStream in = conn.getInputStream();
+                ByteArrayOutputStream body = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                for (int n; (n = in.read(buf)) != -1; ) body.write(buf, 0, n);
+                in.close();
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Access-Control-Allow-Origin", "*");
+                headers.put("Cache-Control", "no-store");
+                return new WebResourceResponse("application/json", "UTF-8", code, "OK", headers,
+                        new ByteArrayInputStream(body.toByteArray()));
+            } catch (Exception e) {
+                return null;
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }
+
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
