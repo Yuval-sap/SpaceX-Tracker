@@ -155,6 +155,10 @@ Rules:
 - For "Starlink" use exactly: {starlink_terms}
 - "satellite bus" is the satellite platform/chassis, NEVER a road vehicle. Translate that meaning in each language (Hebrew: פלטפורמת הלוויין).
 - "classified" means secret/restricted, not "sorted". "splashdown" is a water landing. "rideshare" is a shared launch.
+- These descriptions are written before the launch, often from a template. "launched by X" / "launched for X" says whose
+  mission it is (who runs or orders it), NOT that it has already flown: translate it as the mission of X / for X (Hebrew:
+  "משימה מסווגת של הסוכנות לפיתוח החלל (SDA) עבור..."), never in the past tense. Use the past tense only where the
+  English itself reports something that already happened (e.g. "was launched on 3 May 2024", "previously flew").
 - Empty English input must stay an empty string in every language.
 - Do not add labels, markdown, or commentary.
 
@@ -1001,6 +1005,24 @@ def strip_json_fences(text: str) -> str:
     return cleaned.strip()
 
 
+# Each fix to PROMPT that changes how some descriptions come out gets a number here, with the English it touches: an
+# entry translated under an earlier number (its "rev", 1 when it has none) whose English matches is translated again -
+# so a fix reaches the descriptions already translated, not only the ones still to come, and only those it concerns.
+PROMPT_REVISIONS = {
+    # 2026-10-11: "Classified mission launched by the Space Development Agency (SDA)..." (an upcoming launch) came out
+    # as "ששוגרה" - already launched
+    2: re.compile(r"\blaunch(?:ed|es)?\s+(?:by|for)\b", re.IGNORECASE),
+}
+PROMPT_REVISION = max(PROMPT_REVISIONS)
+
+
+def entry_outdated(entry, description: str) -> bool:
+    rev = entry.get("rev", 1) if isinstance(entry, dict) else 1
+    if not isinstance(rev, int):
+        rev = 1
+    return any(number > rev and pattern.search(description or "") for number, pattern in PROMPT_REVISIONS.items())
+
+
 def langs_complete(entry, langs) -> bool:
     if not isinstance(entry, dict):
         return False
@@ -1040,7 +1062,7 @@ def upcoming_still_needs_entries(upcoming: list, entries: dict) -> bool:
             continue
         seen_hashes.add(key)
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        if any(not langs_complete(existing, batch) for batch in LANG_BATCHES):
+        if entry_outdated(existing, description) or any(not langs_complete(existing, batch) for batch in LANG_BATCHES):
             return True
     return False
 
@@ -1448,7 +1470,12 @@ def main() -> int:
         seen_hashes.add(key)
 
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        missing_batches = [batch for batch in LANG_BATCHES if not langs_complete(existing, batch)]
+        # translated under an older PROMPT that this description's English is affected by (PROMPT_REVISIONS): every
+        # language again - the old translations stay until each new one arrives
+        if entry_outdated(existing, description):
+            missing_batches = list(LANG_BATCHES)
+        else:
+            missing_batches = [batch for batch in LANG_BATCHES if not langs_complete(existing, batch)]
         if not missing_batches:
             reused += 1
             continue
@@ -1481,6 +1508,8 @@ def main() -> int:
             failed += 1
             continue
 
+        if batch_ok and langs_complete(merged, list(LANG_NAMES)):
+            merged["rev"] = PROMPT_REVISION
         entries[key] = merged
         if batch_ok and langs_complete(merged, list(LANG_NAMES)):
             translated += 1
