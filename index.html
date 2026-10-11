@@ -7097,37 +7097,73 @@
             background: var(--app-accent);
         }
 
-        /* Good to know: story cards in the accent's colors */
-        html.in-app .app-story {
-            position: relative;
-            width: 9.5rem;
-            height: 13rem;
-            padding: 2rem 0.85rem 0.8rem;
+        /* Good to know: one fact at a time, as on the site - a card in the accent's colors, the next or the previous
+           fact by its arrows or a swipe across it */
+        html.in-app .app-fact {
+            padding: 1rem 1rem 0.85rem;
             border-radius: var(--app-r-lg);
-            display: flex;
-            flex-direction: column;
-            background: linear-gradient(160deg, rgba(var(--app-accent-rgb), 0.55), rgba(var(--app-accent-rgb), 0.12) 70%), var(--app-surface);
+            background: linear-gradient(160deg, rgba(var(--app-accent-rgb), 0.45), rgba(var(--app-accent-rgb), 0.08) 75%), var(--app-surface);
             border: 1px solid var(--app-border);
             color: var(--app-text);
-            font-size: 0.8rem;
-            line-height: 1.4;
-            overflow: hidden;
+            touch-action: pan-y;
         }
-        html.in-app .app-story-count {
-            position: absolute;
-            top: 0.7rem;
-            inset-inline-end: 0.8rem;
+        html.in-app .app-fact-top {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.7rem;
+        }
+        html.in-app .app-fact-icon {
+            width: 2.25rem;
+            height: 2.25rem;
+            flex-shrink: 0;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(var(--app-accent-rgb), 0.18);
+            color: var(--app-accent);
+            font-size: 1rem;
+        }
+        html.in-app .app-fact-label {
             font-family: var(--app-font-display);
-            font-size: 0.62rem;
-            color: var(--app-muted);
+            font-size: 0.68rem;
+            font-weight: var(--app-font-weight);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--app-accent);
         }
-        /* the text from the same point at the top of every card, however long it is */
-        html.in-app .app-story p {
+        /* room for a long fact from the start, so the arrows below don't jump from one fact to the next */
+        html.in-app .app-fact-text {
             margin: 0;
-            display: -webkit-box;
-            -webkit-line-clamp: 9;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            min-height: 6.2rem;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            transition: opacity 0.16s ease;
+        }
+        html.in-app .app-fact-text.is-out {
+            opacity: 0;
+        }
+        html.in-app .app-fact-nav {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        html.in-app .app-fact-nav button {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(var(--app-accent-rgb), 0.14);
+            border: 1px solid rgba(var(--app-accent-rgb), 0.3);
+            color: var(--app-accent);
+            font-size: 0.85rem;
+        }
+        html[dir="rtl"].in-app .app-fact-nav i {
+            transform: scaleX(-1);
         }
 
         /* Mission patches: badges, like achievements */
@@ -32670,19 +32706,69 @@ if (heroNameEl) {
             body.querySelectorAll('[data-open]').forEach(t => { t.onclick = () => { appHaptic(); openAppDetail(t.dataset.open); }; });
         }
 
+        // Good to know: the site's fact of the moment, one at a time (its own order and its own place in it -
+        // currentFactIndex), the next or the previous by the arrows or a swipe; the site's own change every 15 minutes
+        // shows here too
         function renderAppFacts(block, body) {
-            appInfoHead(block, appText(document.getElementById('i18n-nice-to-know-title')), appInfoDict().swipe);
+            appInfoHead(block, appText(document.getElementById('i18n-nice-to-know-title')), '');
             if (typeof weeklyFactIndices === 'undefined' || !weeklyFactIndices.length || typeof getFactText !== 'function') return;
-            // every fact, in the site's own (shuffled) order from the one it shows now
-            const lang = document.documentElement.lang;
-            const n = weeklyFactIndices.length;
-            let html = '';
-            for (let i = 0; i < n; i++) {
-                const text = getFactText(weeklyFactIndices[(currentFactIndex + i) % n], lang);
-                html += `<div class="app-story"><span class="app-story-count" dir="ltr">${i + 1} / ${n}</span>`
-                    + `<p dir="auto">${escapeHtml(text)}</p></div>`;
+            appSetHtml(body, `<div class="app-fact"><div class="app-fact-top"><span class="app-fact-icon"><i class="fa-solid fa-lightbulb"></i></span>`
+                + `<span class="app-fact-label">${escapeHtml(appText(document.getElementById('i18n-fact-label')))}</span></div>`
+                + `<p class="app-fact-text" dir="auto"></p>`
+                + `<div class="app-fact-nav"><button type="button" data-step="-1" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>`
+                + `<button type="button" data-step="1" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button></div></div>`);
+            const card = body.querySelector('.app-fact');
+            if (!card._appWired) {
+                card._appWired = true;
+                card.querySelectorAll('[data-step]').forEach(b => { b.onclick = () => appStepFact(card, +b.dataset.step); });
+                // a swipe across the card: towards the reading direction's start is the next fact
+                let x0 = null, y0 = 0;
+                card.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+                card.addEventListener('touchend', e => {
+                    if (x0 === null) return;
+                    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+                    x0 = null;
+                    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                    const rtl = getComputedStyle(card).direction === 'rtl';
+                    appStepFact(card, (rtl ? dx > 0 : dx < 0) ? 1 : -1);
+                }, { passive: true });
+                if (window._appFactWatch) window._appFactWatch.disconnect();
+                const siteFact = document.getElementById('fact-text');
+                if (siteFact) {
+                    window._appFactWatch = new MutationObserver(() => appShowFact(card, true));
+                    window._appFactWatch.observe(siteFact, { childList: true, characterData: true, subtree: true });
+                }
             }
-            appSetHtml(body, `<div class="app-info-row">${html}</div>`);
+            appShowFact(card, false);
+        }
+        function appShowFact(card, fade) {
+            const p = card.querySelector('.app-fact-text');
+            const text = getFactText(weeklyFactIndices[currentFactIndex], document.documentElement.lang);
+            if (p._appFact === text) return;
+            p._appFact = text;
+            clearTimeout(p._appFadeTimer);
+            if (!fade) {
+                p.classList.remove('is-out');
+                p.textContent = text;
+                return;
+            }
+            p.classList.add('is-out');
+            p._appFadeTimer = setTimeout(() => {
+                p.textContent = p._appFact;
+                p.classList.remove('is-out');
+            }, 160);
+        }
+        function appStepFact(card, step) {
+            const n = weeklyFactIndices.length;
+            if (!n) return;
+            appHaptic();
+            // the site's own steps: its fact moves with this one (and its 15-minute timer starts again)
+            if (step > 0) showNextFact(true);
+            else {
+                currentFactIndex = (currentFactIndex - 1 + n) % n;
+                renderCurrentFact();
+            }
+            appShowFact(card, true);
         }
 
         function renderAppPatches(block, body) {
