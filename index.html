@@ -32258,10 +32258,11 @@ if (heroNameEl) {
                     stamp = 'x:' + (orig ? orig.textContent : '');
                     html = `<span class="app-cd-live">${escapeHtml(orig ? orig.textContent : '')}</span>`;
                 } else if (diff < 86400000) {
-                    const h = Math.floor(diff / 3600000), mi = Math.floor(diff % 3600000 / 60000), s = Math.floor(diff % 60000 / 1000);
-                    stamp = `${h}:${mi}:${s}:${appLang()}`;
+                    // the last day: hours and minutes (the seconds are the hero's)
+                    const h = Math.floor(diff / 3600000), mi = Math.floor(diff % 3600000 / 60000);
+                    stamp = `${h}:${mi}:${appLang()}`;
                     const seg = (v, unit) => `<span class="app-cd-seg"><b>${String(v).padStart(2, '0')}</b><small>${escapeHtml(appUnitParts(v, unit, 'narrow').unit)}</small></span>`;
-                    html = `<span class="app-cd-segs" dir="ltr">${seg(h, 'hour')}${seg(mi, 'minute')}${seg(s, 'second')}</span>`;
+                    html = `<span class="app-cd-segs" dir="ltr">${seg(h, 'hour')}${seg(mi, 'minute')}</span>`;
                 } else {
                     const days = Math.floor(diff / 86400000);
                     stamp = `d${days}:${appLang()}`;
