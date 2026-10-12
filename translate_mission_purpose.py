@@ -78,6 +78,33 @@ class GeminiQuotaExceededError(RuntimeError):
     and let the next scheduled run (quota resets daily) pick up where this one left off."""
 
 
+class GeminiUnavailableError(GeminiQuotaExceededError):
+    """Gemini itself is not answering - a call already tried every model, several times each, and got only "503 high
+    demand" / timeouts (2026-10-12: a run spent 30+ minutes retrying one call after another this way and translated
+    nothing). Handled as the quota is (a subclass, so every place that stops on it stops on this too): what is done is
+    saved, the run stops, the next scheduled run tries again."""
+
+
+def gemini_outage(error) -> bool:
+    text = str(error).lower()
+    return any(s in text for s in ("http 500", "http 502", "http 503", "http 504", "unavailable", "high demand",
+                                   "overloaded", "timed out"))
+
+
+# a call that failed with every model: Gemini being down ends the run (GeminiUnavailableError), anything else is this
+# one call's problem (its caller skips it and goes on)
+def gemini_give_up(last_error):
+    if gemini_outage(last_error):
+        raise GeminiUnavailableError(f"Gemini is not answering this run ({last_error}) - stopping, the next run tries again")
+    raise RuntimeError(last_error)
+
+
+# a model Gemini says doesn't exist (404) is not asked again this run
+def drop_model(model: str) -> None:
+    if model in GEMINI_MODELS and len(GEMINI_MODELS) > 1:
+        GEMINI_MODELS.remove(model)
+
+
 def gemini_url(model: str) -> str:
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
@@ -444,6 +471,8 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
                     raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
                 if e.code in (404, 400) and attempt == 0:
                     print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    if e.code == 404:
+                        drop_model(model)
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
@@ -463,7 +492,7 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini update-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
-    raise RuntimeError(last_error)
+    gemini_give_up(last_error)
 
 
 # SpaceX's own post-launch timeline events (content.spacex.com, shown in the site's hero status and
@@ -596,6 +625,8 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
                     raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
                 if e.code in (404, 400) and attempt == 0:
                     print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    if e.code == 404:
+                        drop_model(model)
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
@@ -615,7 +646,7 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini timeline-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
-    raise RuntimeError(last_error)
+    gemini_give_up(last_error)
 
 
 def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: list = None) -> dict:
@@ -706,6 +737,8 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
                     raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
                 if e.code in (404, 400) and attempt == 0:
                     print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    if e.code == 404:
+                        drop_model(model)
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
@@ -725,7 +758,7 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini name-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
-    raise RuntimeError(last_error)
+    gemini_give_up(last_error)
 
 
 def fetch_launches(url: str, retries: int = 4) -> list:
@@ -1190,6 +1223,8 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
                     raise GeminiAuthError(f"Gemini rejected the API key (HTTP {e.code}): {detail}")
                 if e.code in (404, 400) and attempt == 0:
                     print(f"Model {model} is not available ({e.code}); trying another.", file=sys.stderr)
+                    if e.code == 404:
+                        drop_model(model)
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
@@ -1209,7 +1244,7 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
-    raise RuntimeError(last_error)
+    gemini_give_up(last_error)
 
 
 def write_output(data: dict) -> None:
