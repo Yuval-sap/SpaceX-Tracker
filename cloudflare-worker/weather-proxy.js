@@ -370,17 +370,22 @@ async function launches(ctx) {
   const cache = caches.default;
   const freshKey = new Request('https://cache.internal/ll-upcoming-v1');
   const lastKey = new Request('https://cache.internal/ll-upcoming-last-v1');
+  const failKey = new Request('https://cache.internal/ll-upcoming-fail-v1');
   const hit = await cache.match(freshKey);
   if (hit) return withCors(hit);
-  let text = null;
+  // Launch Library refused a minute ago and there is no good copy yet: the same answer, without asking it again
+  const failed = await cache.match(failKey);
+  if (failed) return withCors(failed);
+  let text = null, why = '';
   try {
     const r = await fetch(LL_UPCOMING_URL, { headers: { 'User-Agent': 'spacexfantracker launches cache' } });
+    const t = await r.text();
     if (r.ok) {
-      const t = await r.text();
       const data = JSON.parse(t);
       if (data && Array.isArray(data.results) && data.results.length) text = t;
-    }
-  } catch (e) { }
+      else why = 'no launches in the answer';
+    } else why = `HTTP ${r.status}: ${t.slice(0, 200)}`;
+  } catch (e) { why = String(e && e.message || e); }
   if (text) {
     const at = new Date().toISOString();
     const make = (maxAge) => new Response(text, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${maxAge}`, 'X-Fetched-At': at } });
@@ -389,7 +394,12 @@ async function launches(ctx) {
   }
   // Launch Library didn't answer (its limit, or down): the last good copy, and not asked again for a minute
   const last = await cache.match(lastKey);
-  if (!last) return json({ error: 'upstream unavailable' }, 502);
+  // what Launch Library said, to tell its limit from a refusal - and not asked again for a minute
+  if (!last) {
+    const res = json({ error: 'upstream unavailable', upstream: why, at: new Date().toISOString() }, 502, { 'Cache-Control': `public, max-age=${LAUNCHES_RETRY_SECONDS}` });
+    ctx.waitUntil(cache.put(failKey, res.clone()));
+    return res;
+  }
   const body = await last.text();
   const at = last.headers.get('X-Fetched-At') || '';
   ctx.waitUntil(cache.put(freshKey, new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${LAUNCHES_RETRY_SECONDS}`, 'X-Fetched-At': at } })));
