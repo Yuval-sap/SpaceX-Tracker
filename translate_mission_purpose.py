@@ -149,9 +149,12 @@ LANG_NAMES = {
     "tr": "Turkish",
 }
 
-# Two batches so one Gemini reply stays small enough to parse reliably.
+# Hebrew first and on its own - the site's main language gets the first, smallest request for every text, so it is
+# translated even when Gemini is overloaded and the bigger requests after it fail (2026-10-13: whole runs lost to 503s
+# and timeouts). Then the others in two batches, so one Gemini reply stays small enough to parse reliably.
 LANG_BATCHES = [
-    ["he", "es", "fr", "de", "ru", "zh", "it", "cs"],
+    ["he"],
+    ["es", "fr", "de", "ru", "zh", "it", "cs"],
     ["sv", "nl", "da", "pt", "pl", "hi", "ar", "tr"],
 ]
 
@@ -526,7 +529,7 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
 SPACEX_UPCOMING_TILES_URL = "https://content.spacex.com/api/spacex-website/launches-page-tiles/upcoming"
 SPACEX_MISSION_URL = "https://content.spacex.com/api/spacex-website/missions/"
 # "en" too: an event nobody has seen before has no English explanation either
-TIMELINE_LANG_BATCHES = [["en"] + LANG_BATCHES[0], LANG_BATCHES[1]]
+TIMELINE_LANG_BATCHES = [["en"] + LANG_BATCHES[0]] + LANG_BATCHES[1:]
 TIMELINE_LANGS = ["en"] + list(LANG_NAMES)
 TIMELINE_DEPLOY_TEMPLATE = "{payload} deploys, manifested by {company}"
 
@@ -1402,7 +1405,9 @@ def main() -> int:
     # maxOutputTokens. The array-based format above is far cheaper per name, but kept smaller
     # (15) anyway for headroom - mission names can run long ("Bandwagon 5 (Dedicated
     # Mid-Inclination Rideshare)"), and 8 languages' worth of them still adds up.
-    NAME_CHUNK_SIZE = 15
+    # 5 now: with Gemini overloaded (2026-10-13), the 15-name request was the one that timed out, and as the first
+    # request of the run it stopped the whole run before any description was reached; small requests get through.
+    NAME_CHUNK_SIZE = 5
     name_chunks = [names_to_translate[i:i + NAME_CHUNK_SIZE] for i in range(0, len(names_to_translate), NAME_CHUNK_SIZE)]
 
     for chunk in name_chunks:
