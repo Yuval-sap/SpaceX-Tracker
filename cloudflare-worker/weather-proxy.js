@@ -26,6 +26,12 @@
 //    Here one answer per channel is kept for 60 seconds for everyone (at most ~1,440 searches a day per channel
 //    even if the page is open all day - and in practice only around launches).
 //
+// 5. GET /launches  - SpaceX's upcoming launches from Launch Library (the site's main source for its countdowns), one copy
+//    for every visitor, fetched again at most every 4 minutes. Launch Library allows about 15 requests an hour from one
+//    address; a phone that opens the app often went past it, fell back to the backup server's stale copy and showed a
+//    launch still on the pad as flying (2026-10-13: "SECO" for a Starlink whose T-0 had moved 1.5 hours later). When
+//    Launch Library doesn't answer, the last good copy is served (its time in X-Fetched-At, so the page knows how old it is).
+//
 // Needs (Cloudflare dashboard -> this worker -> Settings):
 //   - KV namespace binding  NEWS_KV   (Storage & databases -> KV -> create one, then bind it here)
 //   - Secret                GEMINI_API_KEY  (same key as the GitHub Actions secret)
@@ -41,7 +47,7 @@ const STATIONS = new Set([
   'KBRO',   // Brownsville airport - nearest station to Starbase (~30 km)
 ]);
 const METAR_CACHE_SECONDS = 120;
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Expose-Headers': 'X-Fetched-At' };
 // pages allowed to use POST /updates (the site, its GitHub Pages address, and a local copy while developing)
 const SITE_ORIGINS = /^https:\/\/(?:www\.)?spacexfantracker\.com$|^https:\/\/yuval-sap\.github\.io$|^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i;
 
@@ -57,6 +63,7 @@ export default {
       return updates(request, env);
     }
     if (url.pathname === '/yt-live') return ytLive(url, env, ctx);
+    if (url.pathname === '/launches') return launches(ctx);
     return new Response('Not found', { status: 404, headers: CORS });
   },
 };
@@ -349,6 +356,46 @@ async function ytLive(url, env, ctx) {
     .map(it => ({ videoId: it.id.videoId, title: (it.snippet && it.snippet.title) || '' }));
   const res = new Response(JSON.stringify({ at: new Date().toISOString(), items }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${YT_LIVE_CACHE_SECONDS}` } });
   ctx.waitUntil(cache.put(key, res.clone()));
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
+  return out;
+}
+
+// ------------------------------------------------------------------ upcoming launches (Launch Library)
+const LL_UPCOMING_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed';
+const LAUNCHES_FRESH_SECONDS = 240;        // at most 15 requests an hour to Launch Library from one Cloudflare location
+const LAUNCHES_RETRY_SECONDS = 60;         // after a failed request, the last good copy for a minute before asking again
+const LAUNCHES_KEEP_SECONDS = 2 * 86400;   // the last good copy, for when Launch Library doesn't answer
+async function launches(ctx) {
+  const cache = caches.default;
+  const freshKey = new Request('https://cache.internal/ll-upcoming-v1');
+  const lastKey = new Request('https://cache.internal/ll-upcoming-last-v1');
+  const hit = await cache.match(freshKey);
+  if (hit) return withCors(hit);
+  let text = null;
+  try {
+    const r = await fetch(LL_UPCOMING_URL, { headers: { 'User-Agent': 'spacexfantracker launches cache' } });
+    if (r.ok) {
+      const t = await r.text();
+      const data = JSON.parse(t);
+      if (data && Array.isArray(data.results) && data.results.length) text = t;
+    }
+  } catch (e) { }
+  if (text) {
+    const at = new Date().toISOString();
+    const make = (maxAge) => new Response(text, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${maxAge}`, 'X-Fetched-At': at } });
+    ctx.waitUntil(Promise.all([cache.put(freshKey, make(LAUNCHES_FRESH_SECONDS)), cache.put(lastKey, make(LAUNCHES_KEEP_SECONDS))]));
+    return withCors(make(LAUNCHES_FRESH_SECONDS));
+  }
+  // Launch Library didn't answer (its limit, or down): the last good copy, and not asked again for a minute
+  const last = await cache.match(lastKey);
+  if (!last) return json({ error: 'upstream unavailable' }, 502);
+  const body = await last.text();
+  const at = last.headers.get('X-Fetched-At') || '';
+  ctx.waitUntil(cache.put(freshKey, new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${LAUNCHES_RETRY_SECONDS}`, 'X-Fetched-At': at } })));
+  return withCors(new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Fetched-At': at } }));
+}
+function withCors(res) {
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
   return out;

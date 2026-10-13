@@ -8218,6 +8218,64 @@
             for (const k of Object.keys(at)) if (now - at[k] > 7 * 864e5) delete at[k];
             try { localStorage.setItem(LIVE_STATUS_STORE_KEY, JSON.stringify(at)); } catch (e) { }
         }
+        // A short log on this device of where its launch times came from and what the hero showed (the last 60
+        // entries): each refresh's source (our Worker, Launch Library, the Worker's older copy, the backup server, or
+        // none - this device's saved copy) with the next launch's T-0 as that source gave it, and each change of the
+        // hero between counting down, "checking status" and the flight. So when a phone shows something the computer
+        // doesn't, what it was given is on record - opened with ?debug=sources (showSourceLog).
+        const SOURCE_LOG_KEY = 'spacex_source_log_v1';
+        function addSourceLog(entry) {
+            let log = [];
+            try { log = JSON.parse(localStorage.getItem(SOURCE_LOG_KEY) || '[]') || []; } catch (e) { }
+            log.push(Object.assign({ t: new Date().toISOString() }, entry));
+            try { localStorage.setItem(SOURCE_LOG_KEY, JSON.stringify(log.slice(-60))); } catch (e) { }
+        }
+        function noteLaunchSource(source, rows) {
+            const now = Date.now();
+            const next = (Array.isArray(rows) ? rows : [])
+                .filter(r => r && r.net && Date.parse(r.net) > now - 3 * 3600000)
+                .sort((a, b) => Date.parse(a.net) - Date.parse(b.net))[0];
+            addSourceLog({ src: source, next: next ? `${next.name} @ ${next.net} (${(next.status && next.status.abbrev) || '?'}, updated ${next.last_updated || '?'})` : '-' });
+        }
+        let lastLoggedHeroMode = '';
+        function noteHeroMode(mode, missionId, t0Ms) {
+            const key = mode + '|' + missionId + '|' + t0Ms;
+            if (key === lastLoggedHeroMode) return;
+            lastLoggedHeroMode = key;
+            addSourceLog({ hero: mode, launch: String(missionId), t0: isNaN(t0Ms) ? '-' : new Date(t0Ms).toISOString() });
+        }
+        function showSourceLog() {
+            let log = [];
+            try { log = JSON.parse(localStorage.getItem(SOURCE_LOG_KEY) || '[]') || []; } catch (e) { }
+            const text = log.slice().reverse().map(e => e.src !== undefined
+                ? `${e.t}  source: ${e.src}  next: ${e.next}`
+                : `${e.t}  hero: ${e.hero}  launch ${e.launch}  T-0 ${e.t0}`).join('\n') || '(empty)';
+            const box = document.createElement('div');
+            box.className = 'notranslate';
+            box.setAttribute('translate', 'no');
+            box.setAttribute('dir', 'ltr');
+            box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#09090b;color:#e4e4e7;font:11px/1.5 monospace;' +
+                'padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 90px;overflow:auto;white-space:pre-wrap;word-break:break-word';
+            box.textContent = 'Launch data sources (newest first)\n\n' + text;
+            const bar = document.createElement('div');
+            bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;padding:12px 14px calc(var(--app-nav-pad,0px) + 12px);background:#18181b';
+            [['העתק', b => { if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => { b.textContent = 'הועתק'; }, () => { }); }],
+                ['סגור', () => box.remove()]].forEach(([label, fn]) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.textContent = label;
+                    b.style.cssText = 'flex:1;padding:12px;border-radius:10px;background:#34d399;color:#000;font:600 14px sans-serif';
+                    b.addEventListener('click', () => fn(b));
+                    bar.appendChild(b);
+                });
+            box.appendChild(bar);
+            document.body.appendChild(box);
+        }
+        try {
+            if (new URLSearchParams(location.search).get('debug') === 'sources') {
+                window.addEventListener('load', () => setTimeout(showSourceLog, 1500));
+            }
+        } catch (e) { }
         // true only between rendering saved launch data on page load and the end of that page's first live
         // fetch (success or failure) - see where it is set, next to the cached render
         let awaitingFirstLiveCheck = false;
@@ -22513,17 +22571,50 @@
 
         async function runFetchLiveLaunches({ fetchUpcoming = true, fetchPrevious = true } = {}) {
             const CACHE_KEY = 'spacex_launches_cache';
+            if (fetchUpcoming) window._lastUpcomingFetchAt = Date.now();   // the hero's "checking status" asks again 2 minutes after
 
             try {
                 let freshUpcoming = null, freshPrevious = null;   // what LIVE sources returned this round (see noteLiveStatus)
+                let upcomingSource = 'none';                         // which one answered (noteLaunchSource)
                 const fetchUpcomingWithFallback = async () => {
+                    // First our Worker's copy of the same Launch Library answer (cloudflare-worker/weather-proxy.js,
+                    // /launches): fetched once every 4 minutes for every visitor. Launch Library allows ~15 requests an
+                    // hour from one address - a phone that opens the app often went past it, got only the backup
+                    // server's stale copy below and showed a Starlink still on the pad as flying ("SECO", 2026-10-13:
+                    // the backup's T-0 was 1.5 hours old). A live answer only while fresh; an older one is kept in case
+                    // Launch Library itself doesn't answer either (still its own data, newer than the backup's).
+                    let workerRows = null;
+                    try {
+                        const wr = await fetchWithTimeout('https://spacex-weather.yuvisapir24.workers.dev/launches', { timeout: 8000 });
+                        if (wr.ok) {
+                            const age = Date.now() - Date.parse(wr.headers.get('X-Fetched-At') || '');
+                            const data = await wr.json();
+                            if (data.results && data.results.length > 0) {
+                                if (age >= -60000 && age <= 10 * 60 * 1000) {
+                                    upcomingSource = 'worker';
+                                    return (freshUpcoming = data.results);
+                                }
+                                workerRows = data.results;
+                            }
+                        }
+                    } catch (e) { }
+
                     try {
                         const res = await fetchWithTimeout('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
                         if (res.ok) {
                             const data = await res.json();
-                            if (data.results && data.results.length > 0) return (freshUpcoming = data.results);
-                        }
+                            if (data.results && data.results.length > 0) {
+                                upcomingSource = 'launch-library';
+                                return (freshUpcoming = data.results);
+                            }
+                        } else upcomingSource = 'launch-library ' + res.status;
                     } catch (e) { }
+
+                    // the Worker's older copy - Launch Library's own data - before the backup server's
+                    if (workerRows) {
+                        upcomingSource = 'worker (old copy)';
+                        return workerRows;
+                    }
 
                     // (spacelaunch.dev, the second source that used to be tried here, no longer exists - its domain
                     // doesn't resolve - so it was removed.)
@@ -22537,7 +22628,10 @@
                         const fb2Res = await fetchWithTimeout('https://lldev.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=15&mode=detailed', { timeout: 12000 });
                         if (fb2Res.ok) {
                             const fb2Data = await fb2Res.json();
-                            if (fb2Data.results && fb2Data.results.length > 0) return fb2Data.results;
+                            if (fb2Data.results && fb2Data.results.length > 0) {
+                                upcomingSource = 'backup server';
+                                return fb2Data.results;
+                            }
                         }
                     } catch (e) { }
 
@@ -22587,6 +22681,7 @@
                 ]);
 
                 noteLiveStatus(freshUpcoming); noteLiveStatus(freshPrevious);
+                if (fetchUpcoming) noteLaunchSource(upcomingSource, upcomingRaw);
                 awaitingFirstLiveCheck = false;   // answered or not, the first check is over (a blocked API keeps the flight view)
                 if (upcomingRaw === null && previousRaw === null) {
                     throw new Error("All APIs failed or timed out.");
@@ -31173,11 +31268,15 @@ setTimeout(() => {
                 // it - nothing in the 20 minutes before T-0, while a page watching a launch hears every few minutes.
                 // It may have been pushed back meanwhile, so ask now (once for this T-0) and show "checking" until
                 // the answer, instead of declaring it flying until the next scheduled refresh.
-                if (diff <= 0 && !flyingNow && !awaitingFirstLiveCheck) {
-                    const lastLive = readLiveStatusAt()[String(currentHeroMissionId)];
-                    const recheckKey = currentHeroMissionId + '@' + target.getTime();
-                    if ((!lastLive || lastLive < target.getTime() - 20 * 60 * 1000) && window._heroStaleRecheckFor !== recheckKey) {
-                        window._heroStaleRecheckFor = recheckKey;
+                // Until a live source has spoken about this launch from 20 minutes before its T-0 on, a passed T-0 is
+                // not taken for a liftoff: the T-0 may be an old one (a launch pushed back since, the backup server's
+                // stale copy) - 2026-10-13 a phone showed "SECO" for a Starlink still on the pad, from the backup
+                // server's T-0 1.5 hours earlier, because with no live answer the flight was assumed. Now it shows
+                // "checking status" and asks again every 2 minutes until a live answer settles it.
+                const lastLiveForHero = readLiveStatusAt()[String(currentHeroMissionId)];
+                const t0Unconfirmed = diff <= 0 && !flyingNow && (!lastLiveForHero || lastLiveForHero < target.getTime() - 20 * 60 * 1000);
+                if (t0Unconfirmed && !awaitingFirstLiveCheck) {
+                    if (Date.now() - (window._lastUpcomingFetchAt || 0) >= 2 * 60 * 1000) {
                         awaitingFirstLiveCheck = true;   // cleared when that check ends, answered or not
                         if (refreshIntervalId) {
                             clearTimeout(refreshIntervalId);
@@ -31190,7 +31289,8 @@ setTimeout(() => {
                 // T-0 already passed per the SAVED data, this page hasn't heard from a live source yet, nobody has
                 // since T-0, and the saved status doesn't say it's flying: it may have been pushed back since the
                 // last visit, so neither "flying" nor a countdown until the first live check settles it
-                if (diff <= 0 && awaitingFirstLiveCheck && !flyingNow && !liveStatusSince(currentHeroMissionId, target.getTime())) {
+                if (diff <= 0 && !flyingNow && (t0Unconfirmed || (awaitingFirstLiveCheck && !liveStatusSince(currentHeroMissionId, target.getTime())))) {
+                    noteHeroMode('checking', currentHeroMissionId, target.getTime());
                     const key = (document.documentElement.lang || 'en').split('-')[0];
                     const checking = (LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en).checkingStatus || LAUNCH_LABEL_I18N.en.checkingStatus;
                     setCountdownLabel(false);
@@ -31204,6 +31304,7 @@ setTimeout(() => {
                     });
                     return;
                 }
+                noteHeroMode(diff <= 0 ? 'flight' : 'countdown', currentHeroMissionId, target.getTime());
 
                 if (diff <= 0) {
                     // Past-launches refresh is no longer triggered from here - see the
