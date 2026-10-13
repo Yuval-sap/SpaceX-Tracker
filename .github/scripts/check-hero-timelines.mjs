@@ -8,8 +8,11 @@
 //
 // A problem is:
 //   - a launch in the next WINDOW_HOURS with no timeline found (SpaceX usually publishes the page days before), or
-//   - a page SpaceX already lists in its upcoming tiles that the site matches to none of its launches
+//   - a page SpaceX already lists in its upcoming tiles that the site matches to none of its launches, while the site
+//     has a launch within TILE_NEAR_DAYS of the page's date - most likely that same launch, unmatched
 //     (2026-10-10: "sda-t1tl-a" for "SDA Tranche 1 Transport Layer A" - the hero flew with no status list).
+//     A page with no date yet, or none of the site's launches near its date, is only listed: SpaceX often publishes
+//     a page before Launch Library has the launch at all (2026-10-13: "sl-15-16", not yet in Launch Library).
 // Writes the findings to timeline-report.md and exits 1 when there is a problem (the workflow then alerts),
 // 0 when all is well, and 0 with a note when the page itself could not be checked (no launch data loaded -
 // e.g. Launch Library rate-limited this runner) so a passing hiccup does not raise a false alarm.
@@ -19,6 +22,7 @@ import { writeFileSync } from 'node:fs';
 
 const SITE = 'https://spacexfantracker.com/';
 const WINDOW_HOURS = 48;
+const TILE_NEAR_DAYS = 3;
 const CHROME = process.env.CHROME_PATH || '/usr/bin/google-chrome';
 
 const report = (lines) => writeFileSync('timeline-report.md', lines.join('\n') + '\n');
@@ -36,7 +40,7 @@ try {
         report(['## Hero status timeline check', '', 'Could not check: the site loaded no launches this time (Launch Library may have rate-limited this run). Nothing to report.']);
         console.log('No launch data loaded - skipped.');
     } else {
-        const result = await page.evaluate(async (windowHours) => {
+        const result = await page.evaluate(async (windowHours, nearDays) => {
             const need = ['candidateSlugsFromMissionName', 'pickHeroTimelineTile', 'namesReferToSameMission',
                 'parseCmsPostLaunchTimeline', 'fetchSpacexCms'];
             const missing = need.filter(n => typeof window[n] !== 'function');
@@ -66,9 +70,13 @@ try {
             }
             const unmatchedTiles = (Array.isArray(tiles) ? tiles : [])
                 .filter(t => t && t.link && !dbMissions.some(m => namesReferToSameMission(t.title, t.link, m.patchTagName || m.name)))
-                .map(t => ({ slug: t.link, title: t.title || '', date: t.launchDate || '' }));
+                .map(t => {
+                    const day = t.launchDate ? Date.parse(t.launchDate + 'T12:00:00Z') : NaN;
+                    const near = !isNaN(day) && dbMissions.some(m => Math.abs(new Date(m.date).getTime() - day) <= nearDays * 86400000);
+                    return { slug: t.link, title: t.title || '', date: t.launchDate || '', near };
+                });
             return { launches, unmatchedTiles, tiles: (Array.isArray(tiles) ? tiles : []).map(t => t && t.link) };
-        }, WINDOW_HOURS);
+        }, WINDOW_HOURS, TILE_NEAR_DAYS);
 
         const lines = ['## Hero status timeline check', '', `Checked ${new Date().toISOString()} against ${SITE}`, ''];
         if (result.broken) {
@@ -81,14 +89,19 @@ try {
                 problems.forEach(l => lines.push(`- **${l.name}** - ${l.date} (in ${l.hours} h). Tried: ${l.tried.join(', ') || 'no slug'}`));
                 lines.push('');
             }
-            if (result.unmatchedTiles.length) {
-                lines.push('### SpaceX pages the site matches to none of its launches', '');
-                result.unmatchedTiles.forEach(t => lines.push(`- \`${t.slug}\` - "${t.title}" ${t.date}`));
+            const tileProblems = result.unmatchedTiles.filter(t => t.near);
+            const tileNotes = result.unmatchedTiles.filter(t => !t.near);
+            if (tileProblems.length) {
+                lines.push(`### SpaceX pages the site matches to none of its launches, with a launch of the site's within ${TILE_NEAR_DAYS} days of them`, '');
+                tileProblems.forEach(t => lines.push(`- \`${t.slug}\` - "${t.title}" ${t.date}`));
                 lines.push('');
             }
-            if (problems.length || result.unmatchedTiles.length) exitCode = 1;
+            if (problems.length || tileProblems.length) exitCode = 1;
             lines.push('### All upcoming launches', '');
             result.launches.forEach(l => lines.push(`- ${l.found ? 'OK' : (l.inWindow ? 'MISSING' : 'not yet')} - ${l.name} - ${l.date} - ${l.found ? l.found.slug + ' (' + l.found.events + ' events)' : 'tried: ' + (l.tried.join(', ') || 'no slug')}`));
+            if (tileNotes.length) {
+                lines.push('', `SpaceX pages with no launch of the site's near them (no date yet, or Launch Library doesn't have the launch yet) - not a problem: ${tileNotes.map(t => t.slug + (t.date ? ' ' + t.date : '')).join(', ')}`);
+            }
             lines.push('', 'SpaceX upcoming tiles: ' + (result.tiles.join(', ') || 'none'));
         }
         report(lines);
