@@ -1184,16 +1184,18 @@
            theme stylesheet sets border-color on these elements with !important,
            which would otherwise permanently win over the keyframe and make the
            pulse invisible. box-shadow isn't touched by that override, so this reads
-           the same way in both themes. */
+           the same way in both themes.
+           Brightest where pulse-calm's digits are (0% / 100%) and faintest with them (50%) - it was the other way
+           round, so the border lit up as the digits faded; syncCountdownPulses starts them all at the same moment too. */
         @keyframes border-pulse-calm {
 
             0%,
             100% {
-                box-shadow: inset 0 0 0 1.5px rgba(239, 68, 68, 0);
+                box-shadow: inset 0 0 0 1.5px rgba(239, 68, 68, 0.85), 0 0 24px -6px rgba(239, 68, 68, 0.45);
             }
 
             50% {
-                box-shadow: inset 0 0 0 1.5px rgba(239, 68, 68, 0.85), 0 0 24px -6px rgba(239, 68, 68, 0.45);
+                box-shadow: inset 0 0 0 1.5px rgba(239, 68, 68, 0), 0 0 24px -6px rgba(239, 68, 68, 0);
             }
         }
 
@@ -30868,6 +30870,16 @@ setTimeout(() => {
         }
 
         let heroInterval;
+        // Every red pulse of the last minutes - the hero's digits and its countdown box's border, the sticky bar's
+        // countdown, a card's - on one beat: each started at the page's time zero, whenever it was switched on (or its
+        // element redrawn), so they all brighten and fade together instead of each from its own moment
+        function syncCountdownPulses() {
+            if (!document.getAnimations) return;
+            document.getAnimations().forEach(a => {
+                if ((a.animationName === 'pulse-calm' || a.animationName === 'border-pulse-calm') && a.startTime !== 0) a.startTime = 0;
+            });
+        }
+
         function updateHeroCountdown(targetDate, currentStatus, missionCategory, missionLandingStr, windowStartAt, windowEndAt) {
             // Only Falcon 9 Starlink missions attempting an ASDS (droneship) landing match the
             // fixed timeline in STARLINK_ASDS_TIMELINE - gating on both so a crewed mission, a
@@ -31059,6 +31071,8 @@ setTimeout(() => {
             const statusText = document.getElementById('hero-status-text');
 
             const update = () => {
+                // after this tick's own changes (a pulse switched on below starts in step at once)
+                requestAnimationFrame(syncCountdownPulses);
                 const now = new Date();
                 const diff = target - now;
                 const sLower = currentStatus.toLowerCase();
