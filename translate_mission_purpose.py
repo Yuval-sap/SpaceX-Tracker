@@ -91,9 +91,30 @@ def gemini_outage(error) -> bool:
                                    "overloaded", "timed out"))
 
 
-# a call that failed with every model: Gemini being down ends the run (GeminiUnavailableError), anything else is this
-# one call's problem (its caller skips it and goes on)
+# The free quota is per model and per day (20 requests each - 2026-10-13: "limit: 20"). A model whose quota is used up
+# is left for the rest of the run and the next one is asked - the run used to stop at the first model's limit, leaving
+# the other models' quota unused while descriptions (the SDA launches' "ששוגרה") waited for days.
+_models_out_of_quota = set()
+
+
+def models_in_order() -> list:
+    order = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    left = [m for m in order if m in GEMINI_MODELS and m not in _models_out_of_quota]
+    if not left:
+        raise GeminiQuotaExceededError("Gemini free-tier quota exhausted on every model")
+    return left
+
+
+def quota_used_up(model: str) -> None:
+    _models_out_of_quota.add(model)
+    print(f"Model {model}: today's free quota is used up; trying another.", file=sys.stderr)
+
+
+# a call that failed with every model: every model's quota used up, or Gemini being down, ends the run (both handled as
+# GeminiQuotaExceededError by the callers); anything else is this one call's problem (its caller skips it and goes on)
 def gemini_give_up(last_error):
+    if all(m in _models_out_of_quota for m in GEMINI_MODELS):
+        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted on every model: {last_error}")
     if gemini_outage(last_error):
         raise GeminiUnavailableError(f"Gemini is not answering this run ({last_error}) - stopping, the next run tries again")
     raise RuntimeError(last_error)
@@ -417,7 +438,7 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
     }
     payload = json.dumps(body).encode("utf-8")
     global _active_model
-    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    models_to_try = models_in_order()
     last_error = None
     for model in models_to_try:
         for attempt in range(3):
@@ -476,7 +497,8 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
-                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
+                        quota_used_up(model)
+                        break
                     wait = 15 * (attempt + 1)
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
@@ -570,7 +592,7 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
     }
     payload = json.dumps(body).encode("utf-8")
     global _active_model
-    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    models_to_try = models_in_order()
     last_error = None
     for model in models_to_try:
         for attempt in range(3):
@@ -630,7 +652,8 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
-                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
+                        quota_used_up(model)
+                        break
                     wait = 15 * (attempt + 1)
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
@@ -679,7 +702,7 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
     }
     payload = json.dumps(body).encode("utf-8")
     global _active_model
-    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    models_to_try = models_in_order()
     last_error = None
     for model in models_to_try:
         for attempt in range(3):
@@ -742,7 +765,8 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
-                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
+                        quota_used_up(model)
+                        break
                     wait = 15 * (attempt + 1)
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
@@ -1175,7 +1199,7 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
     }
     payload = json.dumps(body).encode("utf-8")
     global _active_model
-    models_to_try = [_active_model] + [m for m in GEMINI_MODELS if m != _active_model]
+    models_to_try = models_in_order()
     last_error = None
     for model in models_to_try:
         for attempt in range(3):
@@ -1228,7 +1252,8 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
                     break
                 if e.code == 429:
                     if "exceeded your current quota" in detail.lower():
-                        raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted: {detail}")
+                        quota_used_up(model)
+                        break
                     wait = 15 * (attempt + 1)
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
