@@ -506,6 +506,9 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
                     continue
+                if gemini_outage(last_error):
+                    print(f"Model {model} is overloaded ({e.code}); trying another.", file=sys.stderr)
+                    break
                 if attempt < 2:
                     wait = 8 * (attempt + 1)
                     print(f"Warning: Gemini update-batch call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
@@ -514,6 +517,9 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
                 break
             except Exception as e:
                 last_error = e
+                if gemini_outage(e):
+                    print(f"Model {model} did not answer in time; trying another.", file=sys.stderr)
+                    break
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini update-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
@@ -661,6 +667,9 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
                     continue
+                if gemini_outage(last_error):
+                    print(f"Model {model} is overloaded ({e.code}); trying another.", file=sys.stderr)
+                    break
                 if attempt < 2:
                     wait = 8 * (attempt + 1)
                     print(f"Warning: Gemini timeline-batch call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
@@ -669,6 +678,9 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
                 break
             except Exception as e:
                 last_error = e
+                if gemini_outage(e):
+                    print(f"Model {model} did not answer in time; trying another.", file=sys.stderr)
+                    break
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini timeline-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
@@ -774,6 +786,9 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
                     continue
+                if gemini_outage(last_error):
+                    print(f"Model {model} is overloaded ({e.code}); trying another.", file=sys.stderr)
+                    break
                 if attempt < 2:
                     wait = 8 * (attempt + 1)
                     print(f"Warning: Gemini name-batch call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
@@ -782,6 +797,9 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
                 break
             except Exception as e:
                 last_error = e
+                if gemini_outage(e):
+                    print(f"Model {model} did not answer in time; trying another.", file=sys.stderr)
+                    break
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini name-batch call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
@@ -1261,6 +1279,9 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
                     print(f"Warning: Gemini rate-limited; retrying in {wait}s...", file=sys.stderr)
                     time.sleep(wait)
                     continue
+                if gemini_outage(last_error):
+                    print(f"Model {model} is overloaded ({e.code}); trying another.", file=sys.stderr)
+                    break
                 if attempt < 2:
                     wait = 8 * (attempt + 1)
                     print(f"Warning: Gemini call failed ({last_error}); retrying in {wait}s...", file=sys.stderr)
@@ -1269,6 +1290,9 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
                 break
             except Exception as e:
                 last_error = e
+                if gemini_outage(e):
+                    print(f"Model {model} did not answer in time; trying another.", file=sys.stderr)
+                    break
                 wait = 8 * (attempt + 1)
                 print(f"Warning: Gemini call failed ({e}); retrying in {wait}s...", file=sys.stderr)
                 time.sleep(wait)
@@ -1283,6 +1307,36 @@ def write_output(data: dict) -> None:
 
 
 UPCOMING_GATE_MAX_RUNS = 3   # runs in a row the past backlog may wait for upcoming launches (see main())
+
+
+# Gemini's overload comes and goes within minutes (the Worker, same key: a 503 at 05:07, a translation at 05:08), while
+# a run is hours from the next one. So when every model was overloaded, the call is asked again after 2 minutes - at
+# most OUTAGE_WAITS times a run, then the run stops (GeminiUnavailableError) as before.
+OUTAGE_WAITS = 3
+OUTAGE_WAIT_SECONDS = 120
+_outage_waits_left = OUTAGE_WAITS
+
+
+def with_outage_waits(fn):
+    def wrapped(*args, **kwargs):
+        global _outage_waits_left
+        while True:
+            try:
+                return fn(*args, **kwargs)
+            except GeminiUnavailableError:
+                if _outage_waits_left <= 0:
+                    raise
+                _outage_waits_left -= 1
+                print(f"Gemini is overloaded on every model - asking again in {OUTAGE_WAIT_SECONDS}s "
+                      f"({_outage_waits_left} more waits this run).", file=sys.stderr)
+                time.sleep(OUTAGE_WAIT_SECONDS)
+    return wrapped
+
+
+call_gemini_batch = with_outage_waits(call_gemini_batch)
+call_gemini_name_batch = with_outage_waits(call_gemini_name_batch)
+call_gemini_timeline_batch = with_outage_waits(call_gemini_timeline_batch)
+call_gemini_update_batch = with_outage_waits(call_gemini_update_batch)
 
 
 def main() -> int:
