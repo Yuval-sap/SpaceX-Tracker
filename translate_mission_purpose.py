@@ -264,6 +264,8 @@ Rules:
   mission it is (who runs or orders it), NOT that it has already flown: translate it as the mission of X / for X (Hebrew:
   "משימה מסווגת של הסוכנות לפיתוח החלל (SDA) עבור..."), never in the past tense. Use the past tense only where the
   English itself reports something that already happened (e.g. "was launched on 3 May 2024", "previously flew").
+- Ordinary English words inside a mission's name are translated, only the name's own codes and brands stay as they
+  are: "Tranche 2 Transport Layer" -> Hebrew "שכבת התעבורה של Tranche 2", "Tracking Layer" -> "שכבת המעקב".
 - Empty English input must stay an empty string in every language.
 - Do not add labels, markdown, or commentary.
 
@@ -1111,6 +1113,8 @@ PROMPT_REVISIONS = {
     # 2026-10-11: "Classified mission launched by the Space Development Agency (SDA)..." (an upcoming launch) came out
     # as "ששוגרה" - already launched
     2: re.compile(r"\blaunch(?:ed|es)?\s+(?:by|for)\b", re.IGNORECASE),
+    # 2026-10-14: "... for Tranche 2 Transport Layer." came back with "Transport Layer" left in English
+    3: re.compile(r"\b(?:Transport|Tracking)\s+Layer\b", re.IGNORECASE),
 }
 PROMPT_REVISION = max(PROMPT_REVISIONS)
 
