@@ -14,6 +14,7 @@ No dependencies beyond the Python standard library.
 """
 
 import hashlib
+import io
 import json
 import os
 import re
@@ -55,6 +56,13 @@ GEMINI_MODELS = []
 for _name in _DEFAULT_MODELS:
     if _name and _name not in GEMINI_MODELS:
         GEMINI_MODELS.append(_name)
+# Mistral, last in the list: asked only when every Gemini model is overloaded or out of quota (2026-10-14: Gemini's
+# free models answered almost nothing for two days). Same prompts, same JSON answers (generate() turns them into
+# Gemini's shape). Its key is MISTRAL_API_KEY in GitHub Secrets; without it, Gemini alone as before.
+MISTRAL_PREFIX = "mistral:"
+MISTRAL_API_KEY = (os.environ.get("MISTRAL_API_KEY") or "").strip()
+if MISTRAL_API_KEY:
+    GEMINI_MODELS.append(MISTRAL_PREFIX + (os.environ.get("MISTRAL_MODEL") or "mistral-large-latest"))
 _active_model = GEMINI_MODELS[0]
 
 # The account's actual free-tier ceiling (confirmed live in AI Studio's rate-limit page) is 5
@@ -115,7 +123,8 @@ def quota_used_up(model: str) -> None:
 def gemini_give_up(last_error):
     if all(m in _models_out_of_quota for m in GEMINI_MODELS):
         raise GeminiQuotaExceededError(f"Gemini free-tier quota exhausted on every model: {last_error}")
-    if gemini_outage(last_error):
+    # Mistral is asked only after every Gemini model failed - its key being rejected leaves Gemini's outage as the answer
+    if gemini_outage(last_error) or "Mistral key rejected" in str(last_error):
         raise GeminiUnavailableError(f"Gemini is not answering this run ({last_error}) - stopping, the next run tries again")
     raise RuntimeError(last_error)
 
@@ -128,6 +137,51 @@ def drop_model(model: str) -> None:
 
 def gemini_url(model: str) -> str:
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+# One request to a model - Gemini's own API, or Mistral's for a "mistral:" model - answered in Gemini's shape
+# ({"candidates": [{"content": {"parts": [{"text": ...}]}}]}), so every caller reads it the same way.
+def generate(model: str, payload: bytes, api_key: str, timeout: int) -> dict:
+    if model.startswith(MISTRAL_PREFIX):
+        body = json.loads(payload.decode("utf-8"))
+        cfg = body.get("generationConfig") or {}
+        request = {
+            "model": model[len(MISTRAL_PREFIX):],
+            "messages": [{"role": "user", "content": body["contents"][0]["parts"][0]["text"]}],
+            "temperature": cfg.get("temperature", 0.2),
+            "max_tokens": cfg.get("maxOutputTokens", 8192),
+            "response_format": {"type": "json_object"},
+        }
+        req = urllib.request.Request(
+            "https://api.mistral.ai/v1/chat/completions",
+            data=json.dumps(request).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Accept": "application/json",
+                     "Authorization": "Bearer " + MISTRAL_API_KEY, "User-Agent": "spacexfantracker-gemini-purpose/1.0"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                # a rejected Mistral key must not stop the run the way a rejected Gemini key does - only Mistral is
+                # left out (the callers drop a 404 model)
+                raise urllib.error.HTTPError(e.url, 404, "Mistral key rejected", e.headers, io.BytesIO(b"Mistral key rejected"))
+            raise
+        content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        return {"candidates": [{"content": {"parts": [{"text": content}]}}]}
+    req = urllib.request.Request(
+        gemini_url(model),
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key,
+            "User-Agent": "spacexfantracker-gemini-purpose/1.0",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
 
 # Must match MISSION_PURPOSE_I18N in index.html (except en, and iw which is the same as he).
 LANG_NAMES = {
@@ -446,18 +500,7 @@ def call_gemini_update_batch(api_key: str, comments: list, langs: list, prompt: 
     for model in models_to_try:
         for attempt in range(3):
             try:
-                req = urllib.request.Request(
-                    gemini_url(model),
-                    data=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": api_key,
-                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
-                    },
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=120 if max_tokens > 8192 else 60) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
+                data = generate(model, payload, api_key, timeout=120 if max_tokens > 8192 else 60)
                 text = (
                     data.get("candidates", [{}])[0]
                     .get("content", {})
@@ -606,18 +649,7 @@ def call_gemini_timeline_batch(api_key: str, events: list, langs: list) -> dict:
     for model in models_to_try:
         for attempt in range(3):
             try:
-                req = urllib.request.Request(
-                    gemini_url(model),
-                    data=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": api_key,
-                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
-                    },
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
+                data = generate(model, payload, api_key, timeout=60)
                 text = (
                     data.get("candidates", [{}])[0]
                     .get("content", {})
@@ -722,18 +754,7 @@ def call_gemini_name_batch(api_key: str, names: list, langs: list, examples: lis
     for model in models_to_try:
         for attempt in range(3):
             try:
-                req = urllib.request.Request(
-                    gemini_url(model),
-                    data=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": api_key,
-                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
-                    },
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
+                data = generate(model, payload, api_key, timeout=60)
                 text = (
                     data.get("candidates", [{}])[0]
                     .get("content", {})
@@ -1244,18 +1265,7 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
     for model in models_to_try:
         for attempt in range(3):
             try:
-                req = urllib.request.Request(
-                    gemini_url(model),
-                    data=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": api_key,
-                        "User-Agent": "spacexfantracker-gemini-purpose/1.0",
-                    },
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
+                data = generate(model, payload, api_key, timeout=60)
                 text = (
                     data.get("candidates", [{}])[0]
                     .get("content", {})
@@ -1463,7 +1473,7 @@ def main() -> int:
                 merged.update(result)
                 mark_batch_done(merged, ["he"])
                 entries[key] = merged
-                print(f"Hebrew first: {launch.get('name') or key}")
+                print(f"Hebrew first ({_active_model}): {launch.get('name') or key} -> {result['he'].get('description', '')}")
             time.sleep(GEMINI_CALL_PACING_SECONDS)
         except GeminiAuthError as e:
             print(f"Error: {e}", file=sys.stderr)
