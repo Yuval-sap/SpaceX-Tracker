@@ -1094,11 +1094,30 @@ PROMPT_REVISIONS = {
 PROMPT_REVISION = max(PROMPT_REVISIONS)
 
 
-def entry_outdated(entry, description: str) -> bool:
-    rev = entry.get("rev", 1) if isinstance(entry, dict) else 1
-    if not isinstance(rev, int):
-        rev = 1
+# The revision each language was translated under ("revs": {lang: n}; older entries have one "rev" for all, or none = 1)
+def lang_rev(entry, lang: str) -> int:
+    if not isinstance(entry, dict):
+        return 1
+    revs = entry.get("revs") if isinstance(entry.get("revs"), dict) else {}
+    rev = revs.get(lang, entry.get("rev", 1))
+    return rev if isinstance(rev, int) else 1
+
+
+def lang_outdated(entry, lang: str, description: str) -> bool:
+    rev = lang_rev(entry, lang)
     return any(number > rev and pattern.search(description or "") for number, pattern in PROMPT_REVISIONS.items())
+
+
+# a language batch with nothing to do: every language there, none of them made under a PROMPT a later fix concerns
+def batch_done(entry, batch: list, description: str) -> bool:
+    return langs_complete(entry, batch) and not any(lang_outdated(entry, lang, description) for lang in batch)
+
+
+def mark_batch_done(entry: dict, batch: list) -> None:
+    revs = entry.get("revs") if isinstance(entry.get("revs"), dict) else {}
+    for lang in batch:
+        revs[lang] = PROMPT_REVISION
+    entry["revs"] = revs
 
 
 def langs_complete(entry, langs) -> bool:
@@ -1140,7 +1159,7 @@ def upcoming_still_needs_entries(upcoming: list, entries: dict) -> bool:
             continue
         seen_hashes.add(key)
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        if entry_outdated(existing, description) or any(not langs_complete(existing, batch) for batch in LANG_BATCHES):
+        if any(not batch_done(existing, batch, description) for batch in LANG_BATCHES):
             return True
     return False
 
@@ -1420,6 +1439,47 @@ def main() -> int:
     store["programs"] = programs_store
     store["missionPrograms"] = mission_programs
 
+    # Hebrew before everything else: the upcoming launches' descriptions that are missing in Hebrew or were translated
+    # under a PROMPT a later fix concerns (the SDA launches' "ששוגרה"). 2026-10-14: Gemini answered a few calls in a
+    # night run, the names pass below took them, and the run stopped before reaching any description - a wrong Hebrew
+    # description on the site stayed for days. The other languages follow in the descriptions pass as before.
+    he_seen = set()
+    for launch in upcoming:
+        fields = extract_fields(launch)
+        description = fields["description"]
+        if not description or len(description) <= 30 or description.strip() == GENERIC_DESCRIPTION:
+            continue
+        key = description_hash(description)
+        if key in he_seen:
+            continue
+        he_seen.add(key)
+        existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
+        if batch_done(existing, ["he"], description):
+            continue
+        try:
+            result = call_gemini_batch(api_key, fields, ["he"])
+            if "he" in result:
+                merged = dict(existing)
+                merged.update(result)
+                mark_batch_done(merged, ["he"])
+                entries[key] = merged
+                print(f"Hebrew first: {launch.get('name') or key}")
+            time.sleep(GEMINI_CALL_PACING_SECONDS)
+        except GeminiAuthError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            store["entries"] = entries
+            write_output(store)
+            return 1
+        except GeminiQuotaExceededError as e:
+            print(f"{e} - stopping this run, the next scheduled run will resume once the quota resets.", file=sys.stderr)
+            store["entries"] = entries
+            write_output(store)
+            return 0
+        except Exception as e:
+            print(f"Warning: skipped Hebrew for {launch.get('name') or key}: {e}", file=sys.stderr)
+            time.sleep(GEMINI_CALL_PACING_SECONDS)
+    store["entries"] = entries
+
     # Mission NAMES - runs BEFORE the descriptions pass below, deliberately: a names call
     # batches up to NAME_CHUNK_SIZE names per request, while descriptions cost a request per
     # mission per language batch, so names are the cheapest pass by far and also the most
@@ -1589,12 +1649,9 @@ def main() -> int:
         seen_hashes.add(key)
 
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        # translated under an older PROMPT that this description's English is affected by (PROMPT_REVISIONS): every
-        # language again - the old translations stay until each new one arrives
-        if entry_outdated(existing, description):
-            missing_batches = list(LANG_BATCHES)
-        else:
-            missing_batches = [batch for batch in LANG_BATCHES if not langs_complete(existing, batch)]
+        # missing, or translated under an older PROMPT that this description's English is affected by (PROMPT_REVISIONS)
+        # - the old translation stays until the new one arrives
+        missing_batches = [batch for batch in LANG_BATCHES if not batch_done(existing, batch, description)]
         if not missing_batches:
             reused += 1
             continue
@@ -1604,7 +1661,13 @@ def main() -> int:
         batch_ok = True
         for batch in missing_batches:
             try:
-                merged.update(call_gemini_batch(api_key, fields, batch))
+                result = call_gemini_batch(api_key, fields, batch)
+                merged.update(result)
+                if all(lang in result for lang in batch):
+                    mark_batch_done(merged, batch)
+                # kept at once - a run stopped by the quota on the next batch used to lose this one (it was written
+                # only after every batch)
+                entries[key] = merged
                 # See GEMINI_CALL_PACING_SECONDS's own comment - this has to stay at or above
                 # the account's real per-model RPM ceiling, not just be "conservative".
                 time.sleep(GEMINI_CALL_PACING_SECONDS)
@@ -1627,8 +1690,6 @@ def main() -> int:
             failed += 1
             continue
 
-        if batch_ok and langs_complete(merged, list(LANG_NAMES)):
-            merged["rev"] = PROMPT_REVISION
         entries[key] = merged
         if batch_ok and langs_complete(merged, list(LANG_NAMES)):
             translated += 1
