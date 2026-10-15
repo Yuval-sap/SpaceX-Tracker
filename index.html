@@ -25242,16 +25242,17 @@
 
             legend.querySelectorAll('[data-ai-segment]').forEach(el => {
                 const i = +el.dataset.aiSegment;
-                el.addEventListener('mouseenter', () => setAIComputeActive(i));
-                el.addEventListener('mouseleave', () => setAIComputeActive(-1));
+                // Hover only for a real mouse; a finger only taps (click pins / unpins). A tap used to fire touchstart
+                // (slice up), touchend (down again), the phone's emulated mouseenter (up again) and then click - the
+                // slice went up, down and up in a fraction of a second and the centre figure flickered with each.
+                el.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') setAIComputeActive(i); });
+                el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') setAIComputeActive(-1); });
                 el.addEventListener('click', () => {
                     if (!aiComputeScene) return;
                     aiComputeScene.lockedIdx = (aiComputeScene.lockedIdx === i) ? -1 : i;
                     aiComputeScene.activeIdx = aiComputeScene.lockedIdx;
                     setAIComputeActive(aiComputeScene.activeIdx);
                 });
-                el.addEventListener('touchstart', () => setAIComputeActive(i), { passive: true });
-                el.addEventListener('touchend', () => setAIComputeActive(-1));
             });
 
             // Single aggregate row across all 3 deals combined (replaces the earlier
