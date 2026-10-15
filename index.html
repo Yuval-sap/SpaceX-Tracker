@@ -32831,7 +32831,7 @@ if (heroNameEl) {
             if (typeof weeklyFactIndices === 'undefined' || !weeklyFactIndices.length || typeof getFactText !== 'function') return;
             appSetHtml(body, `<div class="app-fact"><div class="app-fact-top"><span class="app-fact-icon"><i class="fa-solid fa-lightbulb"></i></span>`
                 + `<span class="app-fact-label">${escapeHtml(appText(document.getElementById('i18n-fact-label')))}</span></div>`
-                + `<p class="app-fact-text" dir="auto"></p>`
+                + `<p class="app-fact-text"></p>`
                 + `<div class="app-fact-nav"><button type="button" data-step="-1" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>`
                 + `<button type="button" data-step="1" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button></div></div>`);
             const card = body.querySelector('.app-fact');
@@ -32925,12 +32925,14 @@ if (heroNameEl) {
             appBindTaps(body, '[data-i]', el => document.querySelectorAll('#booster-leaderboard > div[onclick]')[+el.dataset.i]);
         }
 
+        // the milestones' and the facts' text in the page's direction, not dir="auto": that guesses from the first letter,
+        // and "SpaceX נוסדה" (Hebrew starting with a Latin word) was laid out left to right - read as "נוסדה SpaceX"
         function renderAppMilestones(block, body) {
             appInfoHead(block, appText(document.getElementById('i18n-milestones-title')), '');
             const cards = [...document.querySelectorAll('.milestones-scrollbox > .milestone-card')];
             const d = appInfoDict();
             const items = cards.slice(0, appMilestonesShown).map((c, i) => `<div class="app-tl-item" data-i="${i}"><small>${escapeHtml(appText(c.querySelector('.milestone-year')))}</small>`
-                + `<b dir="auto">${escapeHtml(appText(c.querySelector('.milestone-title')))}</b><p dir="auto">${escapeHtml(appText(c.querySelector('.milestone-desc')))}</p></div>`).join('');
+                + `<b>${escapeHtml(appText(c.querySelector('.milestone-title')))}</b><p>${escapeHtml(appText(c.querySelector('.milestone-desc')))}</p></div>`).join('');
             const toggle = cards.length > appMilestonesShown ? `<button type="button" class="app-info-more" data-more="1">${escapeHtml(d.more)}</button>`
                 : (appMilestonesShown > 5 ? `<button type="button" class="app-info-more" data-more="0">${escapeHtml(d.less)}</button>` : '');
             appSetHtml(body, `<div class="app-timeline">${items}</div>${toggle}`);
