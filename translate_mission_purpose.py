@@ -258,6 +258,7 @@ Rules:
 - Keep these as-is in every language (do not translate or respell them): SpaceX, Falcon, Falcon 9, Falcon Heavy, Dragon, Crew Dragon, Starshield, Starfall, USSF, NASA, NOAA, NRO, GPS, LEO, MEO, GEO, GTO, ISS, VLEO, and mission codes such as USSF-153.
 - For "Starship" use exactly: {starship_terms}
 - For "Starlink" use exactly: {starlink_terms}
+- Program names, exactly as the site already shows them (keep any other program name as it is): {program_terms}
 - "satellite bus" is the satellite platform/chassis, NEVER a road vehicle. Translate that meaning in each language (Hebrew: פלטפורמת הלוויין).
 - "classified" means secret/restricted, not "sorted". "splashdown" is a water landing. "rideshare" is a shared launch.
 - These descriptions are written before the launch, often from a template. "launched by X" / "launched for X" says whose
@@ -1134,8 +1135,44 @@ def lang_outdated(entry, lang: str, description: str) -> bool:
 
 
 # a language batch with nothing to do: every language there, none of them made under a PROMPT a later fix concerns
-def batch_done(entry, batch: list, description: str) -> bool:
-    return langs_complete(entry, batch) and not any(lang_outdated(entry, lang, description) for lang in batch)
+def batch_done(entry, batch: list, description: str, fields: dict = None) -> bool:
+    return langs_complete(entry, batch) and not any(
+        lang_outdated(entry, lang, description) or program_name_left_out(entry, lang, fields) for lang in batch)
+
+
+# The programs' names the site already shows, per language ({lang: {English name: translated}}), from the "programs"
+# map this job keeps (set in main()). A description's translation takes them as they are, so a program reads the same
+# in a launch's description as under its "Program" heading: 2026-10-15 "Commercial Resupply Services" stayed in
+# English in NG-25's description while the site says "שירותי אספקה מסחריים".
+PROGRAM_GLOSSARY = {}
+
+
+def set_program_glossary(programs_store: dict) -> None:
+    PROGRAM_GLOSSARY.clear()
+    for entry in (programs_store or {}).values():
+        if not isinstance(entry, dict) or not entry.get("name"):
+            continue
+        for lang, t in (entry.get("t") or {}).items():
+            name_t = (t or {}).get("name") if isinstance(t, dict) else None
+            if name_t and name_t != entry["name"]:
+                PROGRAM_GLOSSARY.setdefault(lang, {})[entry["name"]] = name_t
+
+
+def program_terms_for(langs: list) -> str:
+    parts = []
+    for lang in langs:
+        for en, tr in sorted((PROGRAM_GLOSSARY.get(lang) or {}).items()):
+            parts.append(f'{lang}: "{en}" = "{tr}"')
+    return "; ".join(parts) or "none"
+
+
+# a translation that kept a program's English name where the site has that program's name in this language
+def program_name_left_out(entry, lang: str, fields: dict) -> bool:
+    if not fields or not isinstance(entry, dict) or not isinstance(entry.get(lang), dict):
+        return False
+    english = " ".join(str(fields.get(k) or "") for k in ("description", "programStr"))
+    done = " ".join(str(entry[lang].get(k) or "") for k in ("description", "programStr"))
+    return any(en in english and en in done and tr not in done for en, tr in (PROGRAM_GLOSSARY.get(lang) or {}).items())
 
 
 def mark_batch_done(entry: dict, batch: list) -> None:
@@ -1184,7 +1221,7 @@ def upcoming_still_needs_entries(upcoming: list, entries: dict) -> bool:
             continue
         seen_hashes.add(key)
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        if any(not batch_done(existing, batch, description) for batch in LANG_BATCHES):
+        if any(not batch_done(existing, batch, description, fields) for batch in LANG_BATCHES):
             return True
     return False
 
@@ -1251,6 +1288,7 @@ def call_gemini_batch(api_key: str, fields: dict, langs: list) -> dict:
             lang_keys=", ".join(langs),
             starship_terms=starship_terms,
             starlink_terms=starlink_terms,
+            program_terms=program_terms_for(langs),
             description=fields["description"],
             missionType=fields["missionType"],
             programStr=fields["programStr"],
@@ -1380,6 +1418,7 @@ def main() -> int:
 
     upcoming = fetch_launches(LL2_UPCOMING_URL)
     store = load_existing()
+    set_program_glossary(store.get("programs"))
     entries = store["entries"]
     names_store = store["names"]
     updates_store = store["updates"]
@@ -1468,7 +1507,7 @@ def main() -> int:
             continue
         he_seen.add(key)
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
-        if batch_done(existing, ["he"], description):
+        if batch_done(existing, ["he"], description, fields):
             continue
         try:
             result = call_gemini_batch(api_key, fields, ["he"])
@@ -1665,7 +1704,7 @@ def main() -> int:
         existing = entries.get(key) if isinstance(entries.get(key), dict) else {}
         # missing, or translated under an older PROMPT that this description's English is affected by (PROMPT_REVISIONS)
         # - the old translation stays until the new one arrives
-        missing_batches = [batch for batch in LANG_BATCHES if not batch_done(existing, batch, description)]
+        missing_batches = [batch for batch in LANG_BATCHES if not batch_done(existing, batch, description, fields)]
         if not missing_batches:
             reused += 1
             continue
