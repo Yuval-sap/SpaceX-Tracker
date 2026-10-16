@@ -75,6 +75,7 @@ public class LaunchWatchJob extends JobService {
             } catch (org.json.JSONException ignored) { }
         }
         NextLaunchWidget.setLaunchLibraryList(context, list);
+        NextLaunchWidget.listImage(context);
         for (int i = 0; i < results.length(); i++) {
             JSONObject l = results.optJSONObject(i);
             if (l == null) continue;

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- the upcoming launches widget (LaunchListWidget): on the site's dark color, a header and up to five rows - each a
-     picture drawn in the site's fonts, each a tap of its own (that launch's window in the app). The frame is
+<!-- the upcoming launches widget (LaunchListWidget): on the first launch's blurred photo, a header and a list of every launch
+     ahead that scrolls inside the widget - each row a picture drawn in the site's fonts and a tap of its own (that
+     launch's window in the app). The frame is
      @android:id/background: the home screen can open the app out of the widget. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
@@ -9,9 +10,23 @@
     android:background="@drawable/widget_bg"
     android:clipToOutline="true">
 
+    <!-- the first launch's photo, softly blurred (NextLaunchWidget.listImage), darkened so the rows read on it -->
+    <ImageView
+        android:id="@+id/widget_list_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <!-- a FrameLayout, not a plain View: a widget's layout takes only some view classes -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#A6000000" />
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical">
 
         <ImageView
@@ -21,45 +36,28 @@
             android:adjustViewBounds="true"
             android:scaleType="fitStart" />
 
-        <ImageView
-            android:id="@+id/widget_row0"
+        <!-- all the launches ahead, scrolling inside the widget (LaunchListService draws the rows) -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            android:visibility="gone" />
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-        <ImageView
-            android:id="@+id/widget_row1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            android:visibility="gone" />
+            <ListView
+                android:id="@+id/widget_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:scrollbars="none" />
 
-        <ImageView
-            android:id="@+id/widget_row2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            android:visibility="gone" />
-
-        <ImageView
-            android:id="@+id/widget_row3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            android:visibility="gone" />
-
-        <ImageView
-            android:id="@+id/widget_row4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            android:visibility="gone" />
-
+            <TextView
+                android:id="@+id/widget_list_empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="—"
+                android:textColor="#A1A1AA"
+                android:textSize="16sp" />
+        </FrameLayout>
     </LinearLayout>
 </FrameLayout>

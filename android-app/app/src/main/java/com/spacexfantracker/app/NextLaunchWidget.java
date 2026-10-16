@@ -72,6 +72,8 @@ public class NextLaunchWidget extends AppWidgetProvider {
     static final String ACTION_REFRESH = "com.spacexfantracker.app.WIDGET_REFRESH";
     private static final long DAY_MS = 24 * 60 * 60 * 1000L;
     private static final String IMAGE_FILE = "widget_launch.jpg";
+    /** the upcoming launches widget's background: the first launch's photo, softly blurred (LaunchListWidget) */
+    static final String LIST_IMAGE_FILE = "widget_list.jpg";
     private static final int IMAGE_MAX_WIDTH = 720;
     /** the site's own for a Falcon flight when it gave none (missionInFlightWindowMs) */
     static final long DEFAULT_FLIGHT_MS = 75 * 60 * 1000L;
@@ -228,8 +230,9 @@ public class NextLaunchWidget extends AppWidgetProvider {
         if (site != null) e.putString("site", site.toString()).putLong("siteAt", System.currentTimeMillis());
         e.apply();
         if (imageUrl != null && !imageUrl.isEmpty() && !imageUrl.equals(p.getString("imageFor", ""))) {
-            if (downloadImage(context, imageUrl)) p.edit().putString("imageFor", imageUrl).apply();
+            if (downloadImage(context, imageUrl, IMAGE_FILE, false)) p.edit().putString("imageFor", imageUrl).apply();
         }
+        listImage(context);
         render(context);
         scheduleBackups(context, t0, flightMs(p, siteOf(p)));
     }
@@ -818,9 +821,22 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** the photo, made small enough for a widget (a launch photo can be several MB), kept in the app's files */
-    private static boolean downloadImage(Context context, String url) {
+    /** on a background thread: the list widget's background for the first launch in it, when that launch changed */
+    static void listImage(Context context) {
+        SharedPreferences p = prefs(context);
+        java.util.List<JSONObject> list = upcoming(context);
+        String url = list.isEmpty() ? "" : list.get(0).optString("image", "");
+        if (url.isEmpty() || url.equals(p.getString("listImageFor", ""))) return;
+        if (downloadImage(context, url, LIST_IMAGE_FILE, true)) {
+            p.edit().putString("listImageFor", url).apply();
+            render(context);
+        }
+    }
+
+    /** the photo, made small enough for a widget (a launch photo can be several MB), kept in the app's files - blurred too */
+    private static boolean downloadImage(Context context, String url, String file, boolean blur) {
         HttpURLConnection conn = null;
-        File tmp = new File(context.getCacheDir(), IMAGE_FILE + ".part");
+        File tmp = new File(context.getCacheDir(), file + ".part");
         try {
             conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setConnectTimeout(15000);
@@ -851,7 +867,16 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 if (scaled != bmp) bmp.recycle();
                 bmp = scaled;
             }
-            try (OutputStream out = new FileOutputStream(new File(context.getFilesDir(), IMAGE_FILE))) {
+            if (blur) {
+                // a soft blur: down to an eighth and back up, smoothed both ways
+                int w = bmp.getWidth(), h = bmp.getHeight();
+                Bitmap small = Bitmap.createScaledBitmap(bmp, Math.max(1, w / 8), Math.max(1, h / 8), true);
+                Bitmap soft = Bitmap.createScaledBitmap(small, w, h, true);
+                small.recycle();
+                bmp.recycle();
+                bmp = soft;
+            }
+            try (OutputStream out = new FileOutputStream(new File(context.getFilesDir(), file))) {
                 bmp.compress(Bitmap.CompressFormat.JPEG, 85, out);
             }
             bmp.recycle();
@@ -866,7 +891,11 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     static Bitmap loadImage(Context context) {
-        File f = new File(context.getFilesDir(), IMAGE_FILE);
+        return loadImage(context, IMAGE_FILE);
+    }
+
+    static Bitmap loadImage(Context context, String file) {
+        File f = new File(context.getFilesDir(), file);
         if (!f.exists()) return null;
         try {
             return BitmapFactory.decodeFile(f.getPath());
