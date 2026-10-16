@@ -349,7 +349,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
 
     // ---- drawing ----
 
-    /** the mode's fonts and colors - the site's, the night's on the day mode (the widget sits on a dark photo) */
+    /** the mode's fonts and colors - the site's; on the day and the night the night's, but for the day's darker green */
     private static final class Style {
         final int nameLatin, nameOther, boldLatin, boldOther, counter;
         final int[] cover;
@@ -393,8 +393,10 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 boldOther = R.font.rubik_bold;
                 cover = ORBITRON;
                 labelSpacing = 0.04f;
-                accent = 0xFF34D399;
-                digits = 0xFF34D399;
+                // the label and the numbers in the darker green of the hero's countdown on the site's day mode (#047857),
+                // on the night too - the rest the night's (the widget sits on a dark photo)
+                accent = 0xFF047857;
+                digits = 0xFF047857;
                 units = 0xFFA1A1AA;
                 status = 0xFF34D399;
                 muted = 0xFFA1A1AA;
