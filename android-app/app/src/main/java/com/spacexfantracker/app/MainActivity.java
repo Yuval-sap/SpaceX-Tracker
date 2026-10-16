@@ -539,7 +539,8 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
         }
 
-        /** the home screen widget's launch: { id, name, t0 (ISO), image (URL), labels: { next, now, day, hour } } */
+        /** the home screen widget's launch: { id, name, t0 (ISO), image (URL), labels: { next, now, day, hour }, rtl, mode,
+         *  upcoming: [ { id, name, image } ... ] - the next few launches in the site's language, for the background updates } */
         @JavascriptInterface
         public void setNextLaunch(String json) {
             final Context app = getApplicationContext();
@@ -547,7 +548,7 @@ public class MainActivity extends Activity {
                 try {
                     JSONObject o = new JSONObject(json);
                     NextLaunchWidget.setNext(app, o.optString("id", ""), o.optString("name", ""),
-                            LaunchWatch.parseIso(o.optString("t0", "")), o.optString("image", ""), o.optJSONObject("labels"), true);
+                            LaunchWatch.parseIso(o.optString("t0", "")), o.optString("image", ""), o, true);
                 } catch (Exception ignored) { }
             }).start();
         }

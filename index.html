@@ -32484,10 +32484,17 @@ if (heroNameEl) {
             const wd = launchWatchDict();
             // the abbreviation a plural count takes (Hebrew: "ימ׳" / "שע׳" - with 2 it was the dual "יומיים")
             const unit = u => { try { return appUnitParts(5, u, 'short').unit; } catch (e) { return u[0]; } };
-            let image = '';
-            try { image = m.image ? new URL(m.image, location.href).href : ''; } catch (e) { }
-            const data = JSON.stringify({ id: String(m.id), name: reminderMissionName(m.name), t0: m.date, image,
-                labels: { next: wd.next, now: wd.now, day: unit('day'), hour: unit('hour') } });
+            const abs = u => { try { return u ? new URL(u, location.href).href : ''; } catch (e) { return ''; } };
+            const lang = (document.documentElement.lang || 'en').toLowerCase();
+            const cls = document.body.classList;
+            const data = JSON.stringify({ id: String(m.id), name: reminderMissionName(m.name), t0: m.date, image: abs(m.image),
+                labels: { next: wd.next, now: wd.now, day: unit('day'), hour: unit('hour') },
+                // the widget in the site's direction and its mode's display font (NextLaunchWidget.layoutFor)
+                rtl: document.documentElement.dir === 'rtl' || /^(iw|he|ar)/.test(lang),
+                mode: cls.contains('mars-theme') ? 'mars' : cls.contains('moon-theme') ? 'moon' : cls.contains('light-theme') ? 'day' : 'night',
+                // the next few launches in the site's language: the background update names the next one with these
+                upcoming: dbMissions.filter(x => new Date(x.date).getTime() > now).slice(0, 6)
+                    .map(x => ({ id: String(x.id), name: reminderMissionName(x.name), image: abs(x.image) })) });
             if (data === window._appWidgetSent) return;
             window._appWidgetSent = data;
             try { window.AndroidApp.setNextLaunch(data); } catch (e) { }
