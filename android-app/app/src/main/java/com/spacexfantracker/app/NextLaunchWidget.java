@@ -74,26 +74,26 @@ public class NextLaunchWidget extends AppWidgetProvider {
     private static final String IMAGE_FILE = "widget_launch.jpg";
     private static final int IMAGE_MAX_WIDTH = 720;
     /** the site's own for a Falcon flight when it gave none (missionInFlightWindowMs) */
-    private static final long DEFAULT_FLIGHT_MS = 75 * 60 * 1000L;
+    static final long DEFAULT_FLIGHT_MS = 75 * 60 * 1000L;
     /** the site's live button turns red this long before T-0 (renderHeroLiveButton) */
-    private static final long LIVE_BEFORE_MS = 60 * 60 * 1000L;
+    static final long LIVE_BEFORE_MS = 60 * 60 * 1000L;
     /** the site shows LIFTOFF this long when no timeline event has come yet */
     private static final int LIFTOFF_SEC = 180;
     /** the text picture's size cap (pixels) - the home screen takes a widget's pictures through a limited channel */
     private static final int MAX_TEXT_PIXELS = 700_000;
 
     // the glyphs each Latin-only font has (from their cmap tables): code point ranges, first / last
-    private static final int[] ORBITRON = { 0x20, 0x5D, 0x5F, 0x7E, 0xA0, 0xA3, 0xA8, 0xA8, 0xAF, 0xB0, 0xB4, 0xB4,
+    static final int[] ORBITRON = { 0x20, 0x5D, 0x5F, 0x7E, 0xA0, 0xA3, 0xA8, 0xA8, 0xAF, 0xB0, 0xB4, 0xB4,
             0xB6, 0xB6, 0xB8, 0xB8, 0xBF, 0xCF, 0xD1, 0xD7, 0xD9, 0xDD, 0xDF, 0xEF, 0xF1, 0xF7, 0xF9, 0xFD, 0xFF, 0xFF,
             0x131, 0x131, 0x152, 0x153, 0x160, 0x161, 0x178, 0x178, 0x17D, 0x17E, 0x2013, 0x2014, 0x2018, 0x2019,
             0x201C, 0x201D, 0x2022, 0x2022, 0x2026, 0x2026, 0x20AC, 0x20AC, 0x2212, 0x2212 };
-    private static final int[] ZEN_DOTS = { 0x20, 0x7E, 0xA0, 0xFF, 0x131, 0x131, 0x152, 0x153, 0x174, 0x178,
+    static final int[] ZEN_DOTS = { 0x20, 0x7E, 0xA0, 0xFF, 0x131, 0x131, 0x152, 0x153, 0x174, 0x178,
             0x1E80, 0x1E85, 0x1E9E, 0x1E9E, 0x1EF2, 0x1EF3, 0x2013, 0x2014, 0x2018, 0x201A, 0x201C, 0x201E,
             0x2022, 0x2022, 0x2026, 0x2026, 0x2039, 0x203A, 0x20AC, 0x20AC, 0x2122, 0x2122, 0x2212, 0x2212 };
-    private static final int[] AUDIOWIDE = { 0x20, 0x7E, 0xA0, 0x17E, 0x192, 0x192, 0x1FC, 0x1FF, 0x1E80, 0x1E85,
+    static final int[] AUDIOWIDE = { 0x20, 0x7E, 0xA0, 0x17E, 0x192, 0x192, 0x1FC, 0x1FF, 0x1E80, 0x1E85,
             0x1EF2, 0x1EF3, 0x2013, 0x2014, 0x2018, 0x201A, 0x201C, 0x201E, 0x2020, 0x2022, 0x2026, 0x2026,
             0x2030, 0x2030, 0x2039, 0x203A, 0x20AC, 0x20AC, 0x2122, 0x2122, 0x2212, 0x2212 };
-    private static final int[] SPACE_GROTESK = { 0x20, 0x7E, 0xA0, 0x180, 0x18F, 0x18F, 0x192, 0x192, 0x1A0, 0x1A1,
+    static final int[] SPACE_GROTESK = { 0x20, 0x7E, 0xA0, 0x180, 0x18F, 0x18F, 0x192, 0x192, 0x1A0, 0x1A1,
             0x1AF, 0x1B0, 0x1C4, 0x1DC, 0x1E6, 0x1E7, 0x1EA, 0x1EB, 0x1FA, 0x21B, 0x22A, 0x22D, 0x230, 0x233,
             0x1E08, 0x1EF9, 0x2010, 0x2010, 0x2012, 0x2015, 0x2018, 0x201A, 0x201C, 0x201E, 0x2020, 0x2022,
             0x2026, 0x2026, 0x2030, 0x2030, 0x2032, 0x2033, 0x2039, 0x203A, 0x20AC, 0x20AC, 0x2122, 0x2122,
@@ -144,9 +144,60 @@ public class NextLaunchWidget extends AppWidgetProvider {
         }
     }
 
+    /** any of the app's three widgets on the home screen (this one, SmallLaunchWidget, LaunchListWidget) */
     static boolean hasWidgets(Context context) {
         AppWidgetManager m = AppWidgetManager.getInstance(context);
-        return m != null && m.getAppWidgetIds(new ComponentName(context, NextLaunchWidget.class)).length > 0;
+        return m != null && (count(context, m, NextLaunchWidget.class) + count(context, m, SmallLaunchWidget.class)
+                + count(context, m, LaunchListWidget.class)) > 0;
+    }
+
+    static int count(Context context, AppWidgetManager m, Class<?> provider) {
+        return m.getAppWidgetIds(new ComponentName(context, provider)).length;
+    }
+
+    /** Launch Library's next launches (LaunchWatchJob, with the app closed) - the list widget's when the site's are old */
+    static void setLaunchLibraryList(Context context, JSONArray list) {
+        prefs(context).edit().putString("ll", list.toString()).putLong("llAt", System.currentTimeMillis()).apply();
+    }
+
+    /**
+     * The launches still ahead, soonest first ({id, name, t0 (ms), image}): the site's list in its language, the times
+     * from Launch Library when it was asked later than the site last gave its list, and its launches the site's list
+     * doesn't have (their English names).
+     */
+    static java.util.List<JSONObject> upcoming(Context context) {
+        SharedPreferences p = prefs(context);
+        java.util.LinkedHashMap<String, JSONObject> byId = new java.util.LinkedHashMap<>();
+        JSONArray site = siteOf(p).optJSONArray("upcoming");
+        try {
+            if (site != null) {
+                for (int i = 0; i < site.length(); i++) {
+                    JSONObject l = site.optJSONObject(i);
+                    if (l == null || l.optString("id").isEmpty()) continue;
+                    byId.put(l.optString("id"), new JSONObject().put("id", l.optString("id")).put("name", l.optString("name"))
+                            .put("image", l.optString("image")).put("t0", LaunchWatch.parseIso(l.optString("t0", ""))));
+                }
+            }
+            JSONArray ll = new JSONArray(p.getString("ll", "[]"));
+            boolean llNewer = p.getLong("llAt", 0) > p.getLong("siteAt", 0);
+            for (int i = 0; i < ll.length(); i++) {
+                JSONObject l = ll.optJSONObject(i);
+                if (l == null || l.optString("id").isEmpty()) continue;
+                JSONObject known = byId.get(l.optString("id"));
+                if (known == null) {
+                    byId.put(l.optString("id"), new JSONObject().put("id", l.optString("id"))
+                            .put("name", l.optString("name").replace(" Block 5", "")).put("image", l.optString("image"))
+                            .put("t0", l.optLong("t0")));
+                } else if (llNewer && l.optLong("t0") > 0) {
+                    known.put("t0", l.optLong("t0"));
+                }
+            }
+        } catch (JSONException ignored) { }
+        long now = System.currentTimeMillis();
+        java.util.List<JSONObject> out = new java.util.ArrayList<>();
+        for (JSONObject l : byId.values()) if (l.optLong("t0") > now) out.add(l);
+        java.util.Collections.sort(out, (a, b) -> Long.compare(a.optLong("t0"), b.optLong("t0")));
+        return out;
     }
 
     /** on a background thread - a new photo is downloaded here */
@@ -174,7 +225,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         }
         SharedPreferences.Editor e = p.edit().putString("id", id).putString("name", name).putLong("t0", t0)
                 .putString("image", imageUrl == null ? "" : imageUrl);
-        if (site != null) e.putString("site", site.toString());
+        if (site != null) e.putString("site", site.toString()).putLong("siteAt", System.currentTimeMillis());
         e.apply();
         if (imageUrl != null && !imageUrl.isEmpty() && !imageUrl.equals(p.getString("imageFor", ""))) {
             if (downloadImage(context, imageUrl)) p.edit().putString("imageFor", imageUrl).apply();
@@ -210,16 +261,42 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** how long after T-0 the site keeps the launch in its hero - its own figure for this launch, when it gave one */
-    private static long flightMs(SharedPreferences p, JSONObject site) {
+    static long flightMs(SharedPreferences p, JSONObject site) {
         long ms = p.getString("id", "").equals(site.optString("id")) ? site.optLong("flightMs", 0) : 0;
         return ms > 0 ? ms : DEFAULT_FLIGHT_MS;
     }
 
+    /** all three widgets drawn again, and the next redraw set */
     static void render(Context context) {
         AppWidgetManager m = AppWidgetManager.getInstance(context);
         if (m == null) return;
+        boolean big = renderBig(context, m);
+        boolean small = SmallLaunchWidget.render(context, m);
+        boolean list = LaunchListWidget.render(context, m);
+
+        // the next redraw: the next minute ahead of T-0 (and T-0 itself), the next status change in flight - and the
+        // next minute while the list has a launch ahead
+        SharedPreferences p = prefs(context);
+        JSONObject site = siteOf(p);
+        String id = p.getString("id", "");
+        long t0 = p.getLong("t0", 0);
+        long now = System.currentTimeMillis();
+        long flightMs = flightMs(p, site);
+        long nextMinute = (now / 60000L + 1) * 60000L + 500;
+        long next = Long.MAX_VALUE;
+        if (big || small) {
+            if (t0 > 0 && now < t0) next = Math.min(nextMinute, t0 + 300);
+            else if (t0 > 0 && now < t0 + flightMs)
+                next = t0 + nextFlightChangeSec(site, id, (now - t0) / 1000.0, flightMs) * 1000L + 300;
+        }
+        if (list && !upcoming(context).isEmpty()) next = Math.min(next, nextMinute);
+        scheduleTick(context, next == Long.MAX_VALUE ? 0 : next);
+    }
+
+    /** this widget (the photo, the name, the time left / the flight) - false when there is none on the screen */
+    private static boolean renderBig(Context context, AppWidgetManager m) {
         int[] ids = m.getAppWidgetIds(new ComponentName(context, NextLaunchWidget.class));
-        if (ids.length == 0) return;
+        if (ids.length == 0) return false;
         SharedPreferences p = prefs(context);
         JSONObject site = siteOf(p);
         JSONObject labels = site.optJSONObject("labels");
@@ -297,19 +374,28 @@ public class NextLaunchWidget extends AppWidgetProvider {
             v.setOnClickPendingIntent(android.R.id.background, tap);   // the widget's frame: the app opens out of it
             m.updateAppWidget(wid, v);
         }
+        return true;
+    }
 
-        // the next redraw: the next minute ahead of T-0 (and T-0 itself), the next status change in flight
-        long next = 0;
-        if (ahead) {
-            next = Math.min((now / 60000L + 1) * 60000L + 500, t0 + 300);
-        } else if (flying) {
-            next = t0 + nextFlightChangeSec(site, id, elapsedMs / 1000.0, flightMs) * 1000L + 300;
-        }
-        scheduleTick(context, next);
+    /** a widget's size on the screen now (dp): width x height of the orientation showing */
+    static int[] sizeDp(Context context, AppWidgetManager m, int wid, int defW, int defH) {
+        boolean landscape = context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        Bundle o = m.getAppWidgetOptions(wid);
+        int wDp = o.getInt(landscape ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+        int hDp = o.getInt(landscape ? AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT : AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        return new int[] { wDp > 0 ? wDp : defW, hDp > 0 ? hDp : defH };
+    }
+
+    /** a tap that opens the app (growing out of the widget), with an extra for the page when given */
+    static PendingIntent openApp(Context context, int code, String extra, String value) {
+        Intent open = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(MainActivity.EXTRA_FROM_WIDGET, true);
+        if (extra != null) open.putExtra(extra, value);
+        return PendingIntent.getActivity(context, code, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     /** the hero's status at that second of the flight: {its text, its explanation} */
-    private static String[] flightStatus(JSONObject site, String id, JSONObject labels, double elapsed) {
+    static String[] flightStatus(JSONObject site, String id, JSONObject labels, double elapsed) {
         JSONArray tl = id.equals(site.optString("id")) ? site.optJSONArray("timeline") : null;
         if (tl != null && tl.length() > 0) {
             JSONObject cur = null;
@@ -330,7 +416,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** the next second of the flight anything shown changes at: an event, LIFTOFF's end, the clock's hour, the end */
-    private static long nextFlightChangeSec(JSONObject site, String id, double elapsed, long flightMs) {
+    static long nextFlightChangeSec(JSONObject site, String id, double elapsed, long flightMs) {
         double next = flightMs / 1000.0;
         JSONArray tl = id.equals(site.optString("id")) ? site.optJSONArray("timeline") : null;
         double tail = site.optDouble("tail", 60);
@@ -350,7 +436,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
     // ---- drawing ----
 
     /** the mode's fonts and colors - the site's, the night's on the day mode (the widget sits on a dark photo) */
-    private static final class Style {
+    static final class Style {
         final int nameLatin, nameOther, boldLatin, boldOther, counter;
         final int[] cover;
         final float labelSpacing;
@@ -404,14 +490,14 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** the picture's scale: the screen's density, less for a very large widget */
-    private static float scale(Context c, int wDp, int hDp) {
+    static float scale(Context c, int wDp, int hDp) {
         float s = c.getResources().getDisplayMetrics().density;
         if (wDp * hDp * s * s > MAX_TEXT_PIXELS) s = (float) Math.sqrt(MAX_TEXT_PIXELS / (double) (wDp * hDp));
         return s;
     }
 
     /** text sizes are sp - the phone's text size setting counts, within reason (the widget doesn't grow with it) */
-    private static float textScale(Context c, float s) {
+    static float textScale(Context c, float s) {
         return s * Math.min(1.3f, Math.max(0.85f, c.getResources().getConfiguration().fontScale));
     }
 
@@ -572,7 +658,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** "4d 8h 28m" - the cards' time left: days, hours, minutes */
-    private static CharSequence counterText(long leftMs, int unitPx, int unitColor) {
+    static CharSequence counterText(long leftMs, int unitPx, int unitColor) {
         long d = leftMs / DAY_MS;
         long h = (leftMs % DAY_MS) / (60 * 60 * 1000L);
         long m = (leftMs % (60 * 60 * 1000L)) / (60 * 1000L);
@@ -591,7 +677,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** each letter in the first of the two fonts that has it, as the browser does with "Orbitron, Rubik" */
-    private static CharSequence mixed(String text, Typeface latin, int[] cover, Typeface other) {
+    static CharSequence mixed(String text, Typeface latin, int[] cover, Typeface other) {
         SpannableStringBuilder sb = new SpannableStringBuilder(text);
         int i = 0;
         while (i < text.length()) {
@@ -634,7 +720,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         }
     }
 
-    private static TextPaint paint(Typeface typeface, float sizePx, int color, float letterSpacing) {
+    static TextPaint paint(Typeface typeface, float sizePx, int color, float letterSpacing) {
         TextPaint p = new TextPaint(TextPaint.ANTI_ALIAS_FLAG | TextPaint.SUBPIXEL_TEXT_FLAG);
         p.setTypeface(typeface);
         p.setTextSize(sizePx);
@@ -644,7 +730,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** the text in the site's direction, starting at the start side of its box, cut with "…" past its lines */
-    private static StaticLayout layout(CharSequence text, TextPaint paint, int width, int maxLines, boolean rtl) {
+    static StaticLayout layout(CharSequence text, TextPaint paint, int width, int maxLines, boolean rtl) {
         return StaticLayout.Builder.obtain(text, 0, text.length(), paint, Math.max(1, width))
                 .setAlignment(Layout.Alignment.ALIGN_NORMAL)
                 .setTextDirection(rtl ? TextDirectionHeuristics.RTL : TextDirectionHeuristics.LTR)
@@ -654,14 +740,14 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 .build();
     }
 
-    private static void draw(Canvas cv, StaticLayout l, float x, float y) {
+    static void draw(Canvas cv, StaticLayout l, float x, float y) {
         cv.save();
         cv.translate(x, y);
         l.draw(cv);
         cv.restore();
     }
 
-    private static Typeface font(Context c, int res) {
+    static Typeface font(Context c, int res) {
         synchronized (FONTS) {
             Typeface t = FONTS.get(res);
             if (t == null) {
@@ -677,7 +763,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
 
     // ---- data and timers ----
 
-    private static JSONObject siteOf(SharedPreferences p) {
+    static JSONObject siteOf(SharedPreferences p) {
         try {
             return new JSONObject(p.getString("site", "{}"));
         } catch (JSONException e) {
@@ -697,7 +783,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** the next redraw - an alarm that doesn't wake the phone: it comes while the screen is on, waits if not */
-    private static void scheduleTick(Context context, long at) {
+    static void scheduleTick(Context context, long at) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         Intent intent = new Intent(context, NextLaunchWidget.class).setAction(ACTION_REFRESH);
@@ -779,7 +865,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         }
     }
 
-    private static Bitmap loadImage(Context context) {
+    static Bitmap loadImage(Context context) {
         File f = new File(context.getFilesDir(), IMAGE_FILE);
         if (!f.exists()) return null;
         try {
@@ -789,7 +875,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         }
     }
 
-    private static SharedPreferences prefs(Context context) {
+    static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 }

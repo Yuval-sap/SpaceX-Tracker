@@ -93,6 +93,8 @@ public class MainActivity extends Activity {
     private static final String SITE_HOST = "spacexfantracker.com";
     /** the home screen widget's "Watch live": the launch whose broadcast to open (NextLaunchWidget) */
     static final String EXTRA_WATCH_LIVE = "watch_live";
+    /** a row of the upcoming launches widget: the launch whose window to open (LaunchListWidget) */
+    static final String EXTRA_OPEN_LAUNCH = "open_launch";
     /** a tap on the home screen widget: the app grows out of the widget (expandFromWidget) */
     static final String EXTRA_FROM_WIDGET = "from_widget";
     private static final int REQUEST_NOTIFICATIONS = 1;
@@ -114,6 +116,7 @@ public class MainActivity extends Activity {
     private int navInsetPx = 0;
     private String offlineUrl;   // the page that failed to load while the phone was offline, loaded again once it's back
     private String pendingWatchLive;   // the widget's "Watch live" launch, played once the page is there
+    private String pendingOpenLaunch;  // the list widget's launch, its window opened once the page is there
     private boolean pageLoaded;
     private ValueAnimator pendingExpand;   // the growth out of the widget, started with the first frame on the screen
     private ConnectivityManager.NetworkCallback networkCallback;
@@ -288,6 +291,11 @@ public class MainActivity extends Activity {
 
     /** the widget's "Watch live" tap: its launch, kept until the page can open its broadcast */
     private void takeWatchLive(Intent intent) {
+        String open = intent != null ? intent.getStringExtra(EXTRA_OPEN_LAUNCH) : null;
+        if (open != null && !open.isEmpty()) {
+            intent.removeExtra(EXTRA_OPEN_LAUNCH);
+            pendingOpenLaunch = open;
+        }
         String id = intent != null ? intent.getStringExtra(EXTRA_WATCH_LIVE) : null;
         if (id == null || id.isEmpty()) return;
         intent.removeExtra(EXTRA_WATCH_LIVE);   // not again when the activity is recreated with this intent
@@ -296,7 +304,15 @@ public class MainActivity extends Activity {
 
     /** the site opens that launch's broadcast as its own red button does (window.appWatchLive - it waits for its data) */
     private void deliverWatchLive() {
-        if (pendingWatchLive == null || !pageLoaded) return;
+        if (!pageLoaded) return;
+        if (pendingOpenLaunch != null) {
+            // the launch's own window, as a tap on its card opens it (window.appOpenLaunch - it waits for its data)
+            String open = pendingOpenLaunch;
+            pendingOpenLaunch = null;
+            webView.evaluateJavascript("(function(){try{if(window.appOpenLaunch)window.appOpenLaunch(" + JSONObject.quote(open)
+                    + ");}catch(e){}})()", null);
+        }
+        if (pendingWatchLive == null) return;
         String id = pendingWatchLive;
         pendingWatchLive = null;
         webView.evaluateJavascript("(function(){try{if(window.appWatchLive)window.appWatchLive(" + JSONObject.quote(id)

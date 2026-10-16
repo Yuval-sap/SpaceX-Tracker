@@ -19,7 +19,7 @@ public class LaunchWatchJob extends JobService {
     private static final int JOB_ID = 4417;
     private static final long PERIOD_MS = 30 * 60 * 1000L;
     private static final String UPCOMING_URL =
-            "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=3&mode=list";
+            "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=6&mode=list";
 
     static void schedule(Context context) {
         JobScheduler js = context.getSystemService(JobScheduler.class);
@@ -64,6 +64,17 @@ public class LaunchWatchJob extends JobService {
             return;
         }
         long now = System.currentTimeMillis();
+        // all of them for the upcoming launches widget (the site's names kept for the ones it listed)
+        JSONArray list = new JSONArray();
+        for (int i = 0; i < results.length(); i++) {
+            JSONObject l = results.optJSONObject(i);
+            if (l == null) continue;
+            try {
+                list.put(new JSONObject().put("id", l.optString("id", "")).put("name", l.optString("name", ""))
+                        .put("image", l.optString("image", "")).put("t0", LaunchWatch.parseIso(l.optString("net", ""))));
+            } catch (org.json.JSONException ignored) { }
+        }
+        NextLaunchWidget.setLaunchLibraryList(context, list);
         for (int i = 0; i < results.length(); i++) {
             JSONObject l = results.optJSONObject(i);
             if (l == null) continue;
