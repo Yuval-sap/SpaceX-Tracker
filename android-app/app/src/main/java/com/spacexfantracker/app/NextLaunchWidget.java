@@ -293,7 +293,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 v.setChronometer(R.id.widget_tplus, SystemClock.elapsedRealtime(), null, false);
                 v.setViewVisibility(R.id.widget_tplus, View.GONE);
             }
-            v.setOnClickPendingIntent(R.id.widget_root, tap);
+            v.setOnClickPendingIntent(android.R.id.background, tap);   // the widget's frame: the app opens out of it
             m.updateAppWidget(wid, v);
         }
 
