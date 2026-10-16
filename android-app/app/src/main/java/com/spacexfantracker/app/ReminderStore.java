@@ -49,6 +49,24 @@ final class ReminderStore {
         JSONObject all = load(context);
         all.remove(missionId);
         save(context, all);
+        LaunchWatch.unwatch(context, missionId);   // no reminder, nothing to warn about
+    }
+
+    /** the launch moved (LaunchWatch): its reminders move with it, by the same amount */
+    static synchronized void shift(Context context, String missionId, long deltaMs) {
+        JSONArray items = load(context).optJSONArray(missionId);
+        if (items == null) return;
+        JSONArray moved = new JSONArray();
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            try {
+                JSONObject copy = new JSONObject(item.toString());
+                copy.put("at", item.optLong("at", 0) + deltaMs);
+                moved.put(copy);
+            } catch (JSONException ignored) { }
+        }
+        schedule(context, missionId, moved);
     }
 
     /** After a restart or an app update: every reminder still ahead is set again; past ones are dropped. */

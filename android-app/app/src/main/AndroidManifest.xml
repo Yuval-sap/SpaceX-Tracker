@@ -40,6 +40,20 @@
         </activity>
 
         <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <!-- the home screen widget: the next launch, its photo and the time left -->
+        <receiver android:name=".NextLaunchWidget" android:exported="false" android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_next_launch_info" />
+        </receiver>
+        <!-- every 30 minutes, with the app closed too: the reminders' launches (a new time, a hold) and the widget -->
+        <service
+            android:name=".LaunchWatchJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

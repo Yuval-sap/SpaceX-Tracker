@@ -54,6 +54,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -144,6 +145,8 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState != null) webView.restoreState(savedInstanceState);
         else webView.loadUrl(urlFromIntent(getIntent()));
+        // the background check for the reminders' launches and the home screen widget (it does nothing without either)
+        LaunchWatchJob.schedule(this);
     }
 
     @Override
@@ -523,6 +526,30 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void cancelReminders(String missionId) {
             if (missionId != null) ReminderStore.cancel(MainActivity.this, missionId);
+        }
+
+        /** a launch with a reminder, watched with the app closed for a new time / a hold (LaunchWatch):
+         *  { name, net (ISO), locale, texts: { title, moved, hold, tbd } } - in the site's language */
+        @JavascriptInterface
+        public void watchLaunch(String missionId, String infoJson) {
+            if (missionId == null) return;
+            try {
+                LaunchWatch.watch(MainActivity.this, missionId, new JSONObject(infoJson));
+                LaunchWatchJob.schedule(MainActivity.this);
+            } catch (Exception ignored) { }
+        }
+
+        /** the home screen widget's launch: { id, name, t0 (ISO), image (URL), labels: { next, now, day, hour } } */
+        @JavascriptInterface
+        public void setNextLaunch(String json) {
+            final Context app = getApplicationContext();
+            new Thread(() -> {
+                try {
+                    JSONObject o = new JSONObject(json);
+                    NextLaunchWidget.setNext(app, o.optString("id", ""), o.optString("name", ""),
+                            LaunchWatch.parseIso(o.optString("t0", "")), o.optString("image", ""), o.optJSONObject("labels"), true);
+                } catch (Exception ignored) { }
+            }).start();
         }
 
         /** Android 13+ asks the user once; earlier versions allow notifications by default */

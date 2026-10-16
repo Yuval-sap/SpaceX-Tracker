@@ -25,11 +25,14 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        String missionId = intent.getStringExtra(EXTRA_MISSION);
-        String title = intent.getStringExtra(EXTRA_TITLE);
-        String body = intent.getStringExtra(EXTRA_BODY);
-        int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, (int) (System.currentTimeMillis() & 0x7FFFFFFF));
+        notify(context, intent.getStringExtra(EXTRA_MISSION), intent.getStringExtra(EXTRA_TITLE), intent.getStringExtra(EXTRA_BODY),
+                intent.getIntExtra(EXTRA_NOTIFICATION_ID, (int) (System.currentTimeMillis() & 0x7FFFFFFF)));
+    }
+
+    /** a reminder's notification - and LaunchWatch's (a launch moved / on hold), the same way */
+    static void notify(Context context, String missionId, String title, String body, int notificationId) {
         if (title == null || title.isEmpty()) title = context.getString(R.string.app_name);
+        if (body == null) body = "";
 
         ensureChannel(context);
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)

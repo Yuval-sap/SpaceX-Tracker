@@ -227,6 +227,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- the browser tab's icon (without it the browser asked for /favicon.ico, which doesn't exist, and showed its own) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192x192.png">
     <link rel="apple-touch-icon" href="icon-192x192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18696,6 +18698,38 @@
         };
         REMINDER_SET_IN_APP_I18N.iw = REMINDER_SET_IN_APP_I18N.he;
         REMINDER_I18N.iw = REMINDER_I18N.he;
+        // The Android app's own words for a launch with a reminder that changed while the app was closed (LaunchWatch:
+        // a new time, a hold, no date yet - {name} and {when} filled in there) and for its home screen widget (the label
+        // over the next launch, and what it says once that launch is under way)
+        const LAUNCH_WATCH_I18N = {
+            en: { title: "Launch update", moved: "New time for {name}: {when}", hold: "{name} is on hold", tbd: "{name}: the new date isn't set yet", next: "Next launch", now: "Launching now" },
+            he: { title: "עדכון לשיגור", moved: "מועד חדש: {name} – {when}", hold: "{name} בהמתנה (Hold)", tbd: "{name}: מועד חדש עוד לא נקבע", next: "השיגור הבא", now: "השיגור מתבצע" },
+            es: { title: "Actualización del lanzamiento", moved: "Nueva hora para {name}: {when}", hold: "{name} está en espera", tbd: "{name}: aún no hay nueva fecha", next: "Próximo lanzamiento", now: "Lanzamiento en curso" },
+            fr: { title: "Mise à jour du lancement", moved: "Nouvel horaire pour {name} : {when}", hold: "{name} est en attente", tbd: "{name} : nouvelle date pas encore fixée", next: "Prochain lancement", now: "Lancement en cours" },
+            de: { title: "Start-Update", moved: "Neuer Termin für {name}: {when}", hold: "{name} ist angehalten", tbd: "{name}: neuer Termin steht noch nicht fest", next: "Nächster Start", now: "Start läuft" },
+            ru: { title: "Обновление запуска", moved: "Новое время для {name}: {when}", hold: "{name}: запуск приостановлен", tbd: "{name}: новая дата ещё не назначена", next: "Следующий запуск", now: "Идёт запуск" },
+            zh: { title: "发射更新", moved: "{name} 的新时间：{when}", hold: "{name} 已暂停", tbd: "{name}：新日期尚未确定", next: "下一次发射", now: "正在发射" },
+            it: { title: "Aggiornamento sul lancio", moved: "Nuovo orario per {name}: {when}", hold: "{name} è in attesa", tbd: "{name}: nuova data non ancora fissata", next: "Prossimo lancio", now: "Lancio in corso" },
+            cs: { title: "Aktualizace startu", moved: "Nový čas pro {name}: {when}", hold: "{name} je pozastaven", tbd: "{name}: nové datum zatím není stanoveno", next: "Příští start", now: "Probíhá start" },
+            sv: { title: "Uppdatering om uppskjutningen", moved: "Ny tid för {name}: {when}", hold: "{name} är pausad", tbd: "{name}: nytt datum är inte fastställt än", next: "Nästa uppskjutning", now: "Uppskjutning pågår" },
+            nl: { title: "Lanceringsupdate", moved: "Nieuwe tijd voor {name}: {when}", hold: "{name} staat on hold", tbd: "{name}: nieuwe datum nog niet bekend", next: "Volgende lancering", now: "Lancering bezig" },
+            da: { title: "Opsendelsesopdatering", moved: "Nyt tidspunkt for {name}: {when}", hold: "{name} er sat på pause", tbd: "{name}: ny dato er endnu ikke fastsat", next: "Næste opsendelse", now: "Opsendelse i gang" },
+            pt: { title: "Atualização do lançamento", moved: "Novo horário para {name}: {when}", hold: "{name} está em espera", tbd: "{name}: nova data ainda não definida", next: "Próximo lançamento", now: "Lançamento em andamento" },
+            pl: { title: "Aktualizacja startu", moved: "Nowy termin dla {name}: {when}", hold: "{name} jest wstrzymany", tbd: "{name}: nowy termin jeszcze nieustalony", next: "Następny start", now: "Trwa start" },
+            hi: { title: "लॉन्च अपडेट", moved: "{name} का नया समय: {when}", hold: "{name} रोका गया है", tbd: "{name}: नई तारीख अभी तय नहीं", next: "अगला लॉन्च", now: "लॉन्च जारी है" },
+            ar: { title: "تحديث الإطلاق", moved: "موعد جديد لـ {name}: {when}", hold: "{name} في وضع الانتظار", tbd: "{name}: لم يُحدَّد الموعد الجديد بعد", next: "الإطلاق التالي", now: "الإطلاق جارٍ" },
+            tr: { title: "Fırlatma güncellemesi", moved: "{name} için yeni saat: {when}", hold: "{name} beklemede", tbd: "{name}: yeni tarih henüz belli değil", next: "Sonraki fırlatma", now: "Fırlatma sürüyor" },
+        };
+        LAUNCH_WATCH_I18N.iw = LAUNCH_WATCH_I18N.he;
+        function launchWatchDict(lang) {
+            const key = String(lang || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            return LAUNCH_WATCH_I18N[key] || LAUNCH_WATCH_I18N.en;
+        }
+        // the site's language as a language tag the phone formats dates with ("iw" is Hebrew's old code)
+        function appLocaleTag() {
+            const l = document.documentElement.lang || 'en';
+            return l.toLowerCase().startsWith('iw') ? 'he' : l;
+        }
         function inAndroidApp() {
             return !!(window.AndroidApp && typeof window.AndroidApp.scheduleReminders === 'function');
         }
@@ -18732,6 +18766,15 @@
                     .filter(it => it.at > Date.now())
                     .map(it => ({ at: it.at, title: d.title, body: d.body.replace('{name}', reminderMissionName(name)).replace('{stage}', d.stages[it.stage] || '') }));
                 try { window.AndroidApp.scheduleReminders(String(id), JSON.stringify(items)); } catch (e) { }
+                // and watched with the app closed: a new time / a hold gets its own notification, and these reminders
+                // move with the launch (an older app has no watchLaunch - the reminders alone, as before)
+                if (typeof window.AndroidApp.watchLaunch === 'function') {
+                    const wd = launchWatchDict();
+                    try {
+                        window.AndroidApp.watchLaunch(String(id), JSON.stringify({ name: reminderMissionName(name), net: dateStr, locale: appLocaleTag(),
+                            texts: { title: wd.title, moved: wd.moved, hold: wd.hold, tbd: wd.tbd } }));
+                    } catch (e) { }
+                }
                 window._armedReminderTimers.set(id, { dateStr, lang: langNow, timeoutIds: [] });
                 return;
             }
@@ -19042,10 +19085,10 @@
         // small circles in a crewed mission's modal (#modal-crew-container) and the bigger photo
         // in an individual astronaut's own dossier (openAstronautModal, same URL) only ever set
         // their <img src> the moment that specific modal opened, so both paid the same ~2-3s
-        // network-fetch delay reported live. Bulk-preloaded like the patches (not per-card
-        // hover, like the hero photo above) since crewed missions are a small minority of the
-        // full mission list and their headshots are modest-sized portraits, not multi-MB hero
-        // photos - cheap to warm all of them at once. CUSTOM_ASTRONAUT_IMAGES is defined lower
+        // network-fetch delay reported live. Warmed per card, as the hero photo above is (pointerenter - a finger's
+        // touch too), not all at once at load: Launch Library's headshots are full-size originals (8.4 MB, 5.2 MB,
+        // 4.1 MB...) and warming every crew of the year cost each visitor tens of MB (2026-10-16: 52 MB of the
+        // page's 56 MB were images). CUSTOM_ASTRONAUT_IMAGES is defined lower
         // in this file (module-level, not the near-duplicate local copy inside
         // openMissionModal) - fine to reference here since this only ever runs later, once
         // mission data has actually loaded, by which point the whole script has parsed.
@@ -22856,7 +22899,8 @@
                         processLaunchData([]);
                     }
                 } else {
-                    processLaunchData([]);
+                    // a first visit with no live answer: keep the site's saved snapshot rather than an empty page
+                    processLaunchData(window._launchSnapshot ? keepNewestLaunchCopies(window._launchSnapshot) : []);
                 }
             }
         }
@@ -23260,8 +23304,7 @@
 
             preloadMissionPatches(dbMissions);
             preloadMissionPatches(rawPastMissions);
-            preloadMissionCrewImages(dbMissions);
-            preloadMissionCrewImages(rawPastMissions);
+            // (crew photos: per card as it is reached, not here - see preloadMissionCrewImages)
 
             // Launches-this-year counter is independent of the (7-item-capped) upcoming list
             // above - fetch and render it separately so it always reflects the true YTD total.
@@ -24523,16 +24566,6 @@
             });
 
             if (archiveChanged) savePatchArchive(archive);
-
-            // The archive built above is a superset of dbMissions/rawPastMissions - it also
-            // holds missions old enough to have rolled off the rolling past-launches window,
-            // still reachable via this strip's "Full Launch Details" link
-            // (findLaunchForPatchMission falls back to the archive entry itself once a mission
-            // isn't in either live list). Those crewed missions' avatars were never covered by
-            // the preloadMissionCrewImages(dbMissions)/(rawPastMissions) calls at data-load
-            // time, so they'd still hit the original click-time fetch delay - dedup means this
-            // costs nothing extra for the missions already covered there.
-            preloadMissionCrewImages(archive);
 
             const uniquePatchMissions = [...archive];
             // Newest first in DOM order - deliberately NOT reversed per language. #mission-
@@ -26463,6 +26496,9 @@ setTimeout(() => {
                 if (m.image) {
                     card.addEventListener('pointerenter', () => preloadMissionImage(m.image), { once: true });
                 }
+                if (m.crew && m.crew.length) {
+                    card.addEventListener('pointerenter', () => preloadMissionCrewImages([m]), { once: true });
+                }
                 // Protect "Starship" in the mission title (and anywhere else in the card,
                 // e.g. the description) before this card ever touches the live document.
                 // Google Translate's own MutationObserver watches document.body and can
@@ -26579,6 +26615,9 @@ setTimeout(() => {
                 }
                 if (m.image) {
                     card.addEventListener('pointerenter', () => preloadMissionImage(m.image), { once: true });
+                }
+                if (m.crew && m.crew.length) {
+                    card.addEventListener('pointerenter', () => preloadMissionCrewImages([m]), { once: true });
                 }
                 // Same fix as renderMissions() above: protect "Starship" in the title
                 // before this (re-rendered, e.g. from a filter change) card is inserted
@@ -31640,6 +31679,21 @@ setTimeout(() => {
                 fetchLiveLaunches({ fetchUpcoming: true, fetchPrevious: previousNeedsRefresh });
             } else {
                 fetchLiveLaunches();
+                // Nothing saved on this device (a first visit): the upcoming launches the 4-hourly GitHub job saved on
+                // the site (launches-snapshot.json, update_launches_snapshot.py) at once - same origin, no rate limit -
+                // instead of the loading skeleton until the live sources answer one after another (9+ s measured). Only
+                // while nothing live has arrived; the live answer replaces it. Not live itself: a passed T-0 in it shows
+                // "checking status", not a liftoff, until a live source answers.
+                fetch('launches-snapshot.json', { cache: 'no-cache' })
+                    .then(r => (r.ok ? r.json() : null))
+                    .then(snap => {
+                        if (!snap || !Array.isArray(snap.results) || !snap.results.length) return;
+                        window._launchSnapshot = snap.results;
+                        if (typeof dbMissions !== 'undefined' && dbMissions.length) return;   // the live answer came first
+                        awaitingFirstLiveCheck = true;
+                        processLaunchData(keepNewestLaunchCopies(snap.results));
+                    })
+                    .catch(() => { });
             }
 
             const currentLang = document.documentElement.lang.toLowerCase() || 'en';
@@ -32419,8 +32473,29 @@ if (heroNameEl) {
         }
 
         // the cards' countdowns: hours, minutes and seconds on the last day, otherwise the days left
+        // The home screen widget (NextLaunchWidget in the app): the next launch - its name in the site's language, its
+        // photo, its T-0 and the words around them - handed over whenever any of them changes (checked with the
+        // countdowns, every second; an older app has no setNextLaunch)
+        function appSyncWidget() {
+            if (!window.AndroidApp || typeof window.AndroidApp.setNextLaunch !== 'function' || typeof dbMissions === 'undefined') return;
+            const now = Date.now();
+            const m = dbMissions.find(x => new Date(x.date).getTime() > now);
+            if (!m) return;
+            const wd = launchWatchDict();
+            // the abbreviation a plural count takes (Hebrew: "ימ׳" / "שע׳" - with 2 it was the dual "יומיים")
+            const unit = u => { try { return appUnitParts(5, u, 'short').unit; } catch (e) { return u[0]; } };
+            let image = '';
+            try { image = m.image ? new URL(m.image, location.href).href : ''; } catch (e) { }
+            const data = JSON.stringify({ id: String(m.id), name: reminderMissionName(m.name), t0: m.date, image,
+                labels: { next: wd.next, now: wd.now, day: unit('day'), hour: unit('hour') } });
+            if (data === window._appWidgetSent) return;
+            window._appWidgetSent = data;
+            try { window.AndroidApp.setNextLaunch(data); } catch (e) { }
+        }
+
         function paintAppCountdowns() {
             appFitCardEnds();
+            appSyncWidget();
             appAlignFilterLabel();
             if (window.currentMainTab === 'more') appFitEpisodeTitles();
             const now = Date.now();
