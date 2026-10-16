@@ -80,7 +80,8 @@ public class LaunchListWidget extends AppWidgetProvider {
             RemoteViews v = new RemoteViews(context.getPackageName(), R.layout.widget_list);
             if (bg != null) v.setImageViewBitmap(R.id.widget_list_bg, bg);
             int[] size = NextLaunchWidget.sizeDp(context, m, wid, 250, 200);
-            v.setImageViewBitmap(R.id.widget_header, drawHeader(context, size[0], d, rtl, st, header));
+            v.setImageViewBitmap(R.id.widget_header, drawHeader(context, size[0], d, rtl, st, header,
+                    site.optString("title", "SPACEX LAUNCH TRACKER")));
             v.setContentDescription(R.id.widget_header, header);
             v.setOnClickPendingIntent(R.id.widget_header, NextLaunchWidget.openApp(context, 3, null, null));
             // the list: its rows from LaunchListService (one per widget - each its own width)
@@ -137,17 +138,41 @@ public class LaunchListWidget extends AppWidgetProvider {
     }
 
     /** the header: the words at the start, in the label's look (the mode's font and accent) */
-    private static Bitmap drawHeader(Context c, int wDp, float d, boolean rtl, NextLaunchWidget.Style st, String text) {
+    /**
+     * The header: the words at the start, in the label's look (the mode's font and accent), and the site's title at the
+     * other end of the same line, as the large widget and the site's header have it (smaller to fit what's left)
+     */
+    private static Bitmap drawHeader(Context c, int wDp, float d, boolean rtl, NextLaunchWidget.Style st, String text, String title) {
         float k = NextLaunchWidget.textScale(c, d);
         int W = Math.round(wDp * d), H = Math.round(HEADER_DP * d);
         Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
         Canvas cv = new Canvas(b);
-        float pad = 16 * d;
+        float pad = 16 * d, gap = 12 * d;
         int fullW = Math.max(1, Math.round(W - 2 * pad));
-        StaticLayout l = NextLaunchWidget.layout(
-                NextLaunchWidget.mixed(text, NextLaunchWidget.font(c, st.boldLatin), st.cover, NextLaunchWidget.font(c, st.boldOther)),
-                NextLaunchWidget.paint(NextLaunchWidget.font(c, st.boldOther), 13 * k, st.accent, st.labelSpacing), fullW, 1, rtl);
-        NextLaunchWidget.draw(cv, l, pad, H - 4 * d - l.getHeight());
+
+        CharSequence labelText = NextLaunchWidget.mixed(text, NextLaunchWidget.font(c, st.boldLatin), st.cover,
+                NextLaunchWidget.font(c, st.boldOther));
+        TextPaint lp = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.boldOther), 13 * k, st.accent, st.labelSpacing);
+        int labelW = Math.max(1, Math.min(Math.round(fullW * 0.55f), (int) Math.ceil(Layout.getDesiredWidth(labelText, lp)) + 1));
+        StaticLayout l = NextLaunchWidget.layout(labelText, lp, labelW, 1, rtl);
+        float baseline = H - 4 * d - l.getHeight() + l.getLineBaseline(0);
+        NextLaunchWidget.draw(cv, l, rtl ? W - pad - labelW : pad, baseline - l.getLineBaseline(0));
+
+        // the title in the room left, its baseline on the words'
+        float room = fullW - labelW - gap;
+        if (room > 20 * d) {
+            CharSequence titleText = NextLaunchWidget.mixed(title, NextLaunchWidget.font(c, st.boldLatin), st.cover,
+                    NextLaunchWidget.font(c, st.boldOther));
+            TextPaint tp = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.boldOther), 12 * k, st.title, -0.025f);
+            float tw = Layout.getDesiredWidth(titleText, tp);
+            if (tw > room) {
+                tp.setTextSize(tp.getTextSize() * room / tw);
+                tw = Layout.getDesiredWidth(titleText, tp);
+            }
+            int twi = (int) Math.ceil(tw) + 1;
+            StaticLayout t = NextLaunchWidget.layout(titleText, tp, twi, 1, false);
+            NextLaunchWidget.draw(cv, t, rtl ? pad : W - pad - twi, baseline - t.getLineBaseline(0));
+        }
         return b;
     }
 

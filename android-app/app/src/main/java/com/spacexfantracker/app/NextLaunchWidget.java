@@ -826,9 +826,11 @@ public class NextLaunchWidget extends AppWidgetProvider {
         SharedPreferences p = prefs(context);
         java.util.List<JSONObject> list = upcoming(context);
         String url = list.isEmpty() ? "" : list.get(0).optString("image", "");
-        if (url.isEmpty() || url.equals(p.getString("listImageFor", ""))) return;
+        // "v2|": the photo once more after the blur changed (the softer one)
+        String key = "v2|" + url;
+        if (url.isEmpty() || key.equals(p.getString("listImageFor", ""))) return;
         if (downloadImage(context, url, LIST_IMAGE_FILE, true)) {
-            p.edit().putString("listImageFor", url).apply();
+            p.edit().putString("listImageFor", key).apply();
             render(context);
         }
     }
@@ -868,11 +870,16 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 bmp = scaled;
             }
             if (blur) {
-                // a soft blur: down to an eighth and back up, smoothed both ways
+                // a light blur: halved twice and doubled twice, each step smoothed (one jump down to an eighth and back
+                // was too much - blocky)
                 int w = bmp.getWidth(), h = bmp.getHeight();
-                Bitmap small = Bitmap.createScaledBitmap(bmp, Math.max(1, w / 8), Math.max(1, h / 8), true);
-                Bitmap soft = Bitmap.createScaledBitmap(small, w, h, true);
-                small.recycle();
+                Bitmap half = Bitmap.createScaledBitmap(bmp, Math.max(1, w / 2), Math.max(1, h / 2), true);
+                Bitmap quarter = Bitmap.createScaledBitmap(half, Math.max(1, w / 4), Math.max(1, h / 4), true);
+                half.recycle();
+                Bitmap up = Bitmap.createScaledBitmap(quarter, Math.max(1, w / 2), Math.max(1, h / 2), true);
+                quarter.recycle();
+                Bitmap soft = Bitmap.createScaledBitmap(up, w, h, true);
+                up.recycle();
                 bmp.recycle();
                 bmp = soft;
             }
