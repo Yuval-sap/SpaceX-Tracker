@@ -182,25 +182,25 @@ public class MainActivity extends Activity {
     /**
      * Back from the background by a tap on the home screen widget: the app grows out of the widget to the full screen
      * (from its place and size, with its rounded corners, over the wallpaper), as it shrinks back into it when it's left -
-     * the system's own opening animation is turned off for it. Not where the home screen does this itself (Pixel /
-     * AOSP launchers, Android 12+), which would play it twice.
+     * the system's own opening animation is turned off for it. A home screen that doesn't tell where the widget is
+     * (Samsung's One UI: no source bounds) gets the same growth from the middle of the screen, fading in. Not where the
+     * home screen does this itself (Pixel / AOSP launchers, Android 12+), which would play it twice.
      */
     private void expandFromWidget(Intent intent) {
         if (intent == null || !intent.getBooleanExtra(EXTRA_FROM_WIDGET, false)) return;
         intent.removeExtra(EXTRA_FROM_WIDGET);
-        Rect from = intent.getSourceBounds();
+        Rect bounds = intent.getSourceBounds();
         int w = root.getWidth(), h = root.getHeight();
-        if (from == null || from.isEmpty() || w == 0 || h == 0 || launcherAnimatesWidgets()) {
-            // TEMPORARY - why the growth didn't run on this phone (to be removed once it's seen working)
-            Toast.makeText(this, "widget: " + (from == null ? "no bounds" : from.isEmpty() ? "empty bounds"
-                    : (w == 0 || h == 0) ? "no size" : "home animates"), Toast.LENGTH_LONG).show();
-            return;
-        }
+        if (w == 0 || h == 0 || launcherAnimatesWidgets()) return;
         if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0);
         else overridePendingTransition(0, 0);
 
         int[] at = new int[2];
         root.getLocationOnScreen(at);
+        // where the widget is - or, not told, a card of the whole page at 90% in the middle of the screen
+        boolean fromWidget = bounds != null && !bounds.isEmpty();
+        Rect from = fromWidget ? bounds : new Rect(at[0] + Math.round(w * 0.05f), at[1] + Math.round(h * 0.05f),
+                at[0] + Math.round(w * 0.95f), at[1] + Math.round(h * 0.95f));
         // the whole page scaled to the widget's width, cut to its height, moved onto it
         float s0 = from.width() / (float) w;
         float clipH0 = Math.min(h, from.height() / s0);
@@ -225,7 +225,7 @@ public class MainActivity extends Activity {
         root.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(500);
+        a.setDuration(fromWidget ? 500 : 350);   // across the screen from the widget; a short way from the middle
         a.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         a.addUpdateListener(an -> {
             float f = (float) an.getAnimatedValue();
@@ -237,6 +237,7 @@ public class MainActivity extends Activity {
             clip[0] = clipH0 + (h - clipH0) * f;
             clip[1] = r0 * (1 - f);
             root.invalidateOutline();
+            if (!fromWidget) root.setAlpha(Math.min(1f, f / 0.5f));   // from the middle it also fades in
         });
         a.addListener(new AnimatorListenerAdapter() {
             @Override
@@ -245,6 +246,7 @@ public class MainActivity extends Activity {
                 root.setScaleY(1f);
                 root.setTranslationX(0f);
                 root.setTranslationY(0f);
+                root.setAlpha(1f);
                 root.setClipToOutline(false);
                 root.setOutlineProvider(before);
                 root.setLayerType(View.LAYER_TYPE_NONE, null);
