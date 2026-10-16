@@ -238,7 +238,8 @@ public class NextLaunchWidget extends AppWidgetProvider {
         String[] status = flying ? flightStatus(site, id, labels, elapsedMs / 1000.0) : null;
 
         Bitmap photo = loadImage(context);
-        Intent open = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent open = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(MainActivity.EXTRA_FROM_WIDGET, true);
         PendingIntent tap = PendingIntent.getActivity(context, 0, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         boolean landscape = context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -250,7 +251,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         String liveText = live != null ? live.optString("label", "Watch live") : "Watch live";
         Bitmap pill = liveOn ? drawLivePill(context, liveText, rtl) : null;
         Intent watchIntent = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(MainActivity.EXTRA_WATCH_LIVE, id);
+                .putExtra(MainActivity.EXTRA_WATCH_LIVE, id).putExtra(MainActivity.EXTRA_FROM_WIDGET, true);
         PendingIntent watch = PendingIntent.getActivity(context, 1, watchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         for (int wid : ids) {

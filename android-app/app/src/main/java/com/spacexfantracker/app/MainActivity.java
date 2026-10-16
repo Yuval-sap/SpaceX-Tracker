@@ -1,6 +1,9 @@
 package com.spacexfantracker.app;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -12,6 +15,9 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.Uri;
@@ -29,7 +35,9 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
+import android.view.animation.PathInterpolator;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -85,6 +93,8 @@ public class MainActivity extends Activity {
     private static final String SITE_HOST = "spacexfantracker.com";
     /** the home screen widget's "Watch live": the launch whose broadcast to open (NextLaunchWidget) */
     static final String EXTRA_WATCH_LIVE = "watch_live";
+    /** a tap on the home screen widget: the app grows out of the widget (expandFromWidget) */
+    static final String EXTRA_FROM_WIDGET = "from_widget";
     private static final int REQUEST_NOTIFICATIONS = 1;
     // the splash stays at least this long (no flash of the logo on a fast load), and at most this long
     private static final long SPLASH_MIN_MS = 700;
@@ -105,6 +115,7 @@ public class MainActivity extends Activity {
     private String offlineUrl;   // the page that failed to load while the phone was offline, loaded again once it's back
     private String pendingWatchLive;   // the widget's "Watch live" launch, played once the page is there
     private boolean pageLoaded;
+    private ValueAnimator pendingExpand;   // the growth out of the widget, started with the first frame on the screen
     private ConnectivityManager.NetworkCallback networkCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
@@ -159,11 +170,99 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         takeWatchLive(intent);
+        expandFromWidget(intent);
         if (intent != null && intent.getData() != null) {
             pageLoaded = false;
             webView.loadUrl(urlFromIntent(intent));
         } else {
             deliverWatchLive();
+        }
+    }
+
+    /**
+     * Back from the background by a tap on the home screen widget: the app grows out of the widget to the full screen
+     * (from its place and size, with its rounded corners, over the wallpaper), as it shrinks back into it when it's left -
+     * the system's own opening animation is turned off for it. Not where the home screen does this itself (Pixel /
+     * AOSP launchers, Android 12+), which would play it twice.
+     */
+    private void expandFromWidget(Intent intent) {
+        if (intent == null || !intent.getBooleanExtra(EXTRA_FROM_WIDGET, false)) return;
+        intent.removeExtra(EXTRA_FROM_WIDGET);
+        Rect from = intent.getSourceBounds();
+        int w = root.getWidth(), h = root.getHeight();
+        if (from == null || from.isEmpty() || w == 0 || h == 0 || launcherAnimatesWidgets()) return;
+        if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0);
+        else overridePendingTransition(0, 0);
+
+        int[] at = new int[2];
+        root.getLocationOnScreen(at);
+        // the whole page scaled to the widget's width, cut to its height, moved onto it
+        float s0 = from.width() / (float) w;
+        float clipH0 = Math.min(h, from.height() / s0);
+        float dx0 = from.exactCenterX() - (at[0] + w / 2f), dy0 = from.exactCenterY() - (at[1] + h / 2f);
+        float r0 = 22 * getResources().getDisplayMetrics().density / s0;   // the widget's corners (widget_bg)
+        float[] clip = { clipH0, r0 };
+
+        Window win = getWindow();
+        win.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+        win.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        ViewOutlineProvider before = root.getOutlineProvider();
+        root.setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, Outline o) {
+                int top = Math.round((h - clip[0]) / 2);
+                o.setRoundRect(0, top, w, Math.round(top + clip[0]), clip[1]);
+            }
+        });
+        root.setClipToOutline(true);
+        root.setPivotX(w / 2f);
+        root.setPivotY(h / 2f);
+        root.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+        ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
+        a.setDuration(350);
+        a.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
+        a.addUpdateListener(an -> {
+            float f = (float) an.getAnimatedValue();
+            float sc = s0 + (1 - s0) * f;
+            root.setScaleX(sc);
+            root.setScaleY(sc);
+            root.setTranslationX(dx0 * (1 - f));
+            root.setTranslationY(dy0 * (1 - f));
+            clip[0] = clipH0 + (h - clipH0) * f;
+            clip[1] = r0 * (1 - f);
+            root.invalidateOutline();
+        });
+        a.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                root.setScaleX(1f);
+                root.setScaleY(1f);
+                root.setTranslationX(0f);
+                root.setTranslationY(0f);
+                root.setClipToOutline(false);
+                root.setOutlineProvider(before);
+                root.setLayerType(View.LAYER_TYPE_NONE, null);
+                win.setBackgroundDrawable(new ColorDrawable(Color.parseColor("#09090B")));
+                win.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            }
+        });
+        // its first frame now, so the screen never shows the whole page before it - it runs from the first frame shown
+        a.setCurrentFraction(0f);
+        if (pendingExpand != null) pendingExpand.end();
+        pendingExpand = a;
+    }
+
+    /** the home screens that open an app out of its widget themselves (the widget's frame is @android:id/background) */
+    private boolean launcherAnimatesWidgets() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false;
+        try {
+            android.content.pm.ResolveInfo home = getPackageManager().resolveActivity(
+                    new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY);
+            String pkg = home != null && home.activityInfo != null ? home.activityInfo.packageName : "";
+            return pkg.equals("com.google.android.apps.nexuslauncher") || pkg.equals("com.android.launcher3");
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -205,6 +304,12 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         webView.onResume();
+        if (pendingExpand != null) {
+            // with the next frame - the first one on the screen
+            ValueAnimator a = pendingExpand;
+            pendingExpand = null;
+            root.postOnAnimation(a::start);
+        }
     }
 
     @Override
