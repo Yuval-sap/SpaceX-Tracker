@@ -8,10 +8,31 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.os.Bundle;
+import android.os.SystemClock;
+import android.text.Layout;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.StaticLayout;
+import android.text.TextDirectionHeuristics;
+import android.text.TextPaint;
+import android.text.TextUtils;
+import android.text.style.AbsoluteSizeSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.MetricAffectingSpan;
+import android.util.SparseArray;
 import android.view.View;
 import android.widget.RemoteViews;
+
+import androidx.core.content.res.ResourcesCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,15 +46,26 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * The home screen widget: the next launch's photo, its name and the time left, in the language, direction and display
- * font the owner reads the site in. The site keeps it up to date while the app is open (window.AndroidApp.setNextLaunch:
- * the launch, the next few launches' names in its language, its words, its direction and mode); with the app closed,
- * LaunchWatchJob does every 30 minutes (the site's name for that launch when it gave one, Launch Library's otherwise).
- * The name and the time left share one row, at its two ends; a long name takes two lines and the row grows upward.
- * The time left exactly as the site's launch cards show it - "4d 8h 28m", English letters in any language, the
- * mode's colors and font - drawn again every minute while the phone is awake (a timer that doesn't wake it).
- * The label and the name: Latin text in the mode's own font (Orbitron / Zen Dots / Audiowide), any other script in
- * Rubik - as the site does (those fonts have Latin letters only). A tap opens the app.
+ * The home screen widget: the next launch's photo, its name and the time left, in the language, direction and fonts
+ * the owner reads the site in. The site keeps it up to date while the app is open (window.AndroidApp.setNextLaunch:
+ * the launch, the next few launches, its words, its direction and mode, and the launch's flight timeline); with the
+ * app closed, LaunchWatchJob does every 30 minutes (the site's name for that launch when it gave one, Launch
+ * Library's otherwise).
+ *
+ * Before T-0: the site's title ("SPACEX LAUNCH TRACKER", as its header has it) at the top left; at the bottom the
+ * label, then one row with the name (two lines when it's long - the row grows upward) and the time
+ * left at its other end, exactly as the site's launch cards show it ("4d 8h 28m", English letters in any language),
+ * drawn again every minute while the phone is awake (an alarm that doesn't wake it).
+ * From T-0 until the launch leaves the site's hero (missionInFlightWindowMs): at the top "Current launch" with the
+ * T+ clock at the other end and the name under it; at the bottom "Status" over the hero's own status - the
+ * timeline's current event and its explanation, LIFTOFF in the first 3 minutes without one, MISSION IN PROGRESS after
+ * the last - each one drawn at its moment. Then the next launch.
+ *
+ * The text is drawn here into a picture: a widget can't use the app's fonts (the home screen shows a widget's text in
+ * the phone's own font), and the site's look is its fonts - every letter in the first font that has it, as a browser
+ * does with "Orbitron, Rubik" (Latin letters and digits in the mode's font, Hebrew, Cyrillic, Arabic in Rubik). Only
+ * the T+ clock is the phone's: it ticks every second on its own, which a picture can't. A tap opens the app; while
+ * the site's live button is red the widget has one too ("Watch live"), which opens the app playing the broadcast.
  */
 public class NextLaunchWidget extends AppWidgetProvider {
     private static final String PREFS = "next_launch_widget";
@@ -41,11 +73,43 @@ public class NextLaunchWidget extends AppWidgetProvider {
     private static final long DAY_MS = 24 * 60 * 60 * 1000L;
     private static final String IMAGE_FILE = "widget_launch.jpg";
     private static final int IMAGE_MAX_WIDTH = 720;
+    /** the site's own for a Falcon flight when it gave none (missionInFlightWindowMs) */
+    private static final long DEFAULT_FLIGHT_MS = 75 * 60 * 1000L;
+    /** the site's live button turns red this long before T-0 (renderHeroLiveButton) */
+    private static final long LIVE_BEFORE_MS = 60 * 60 * 1000L;
+    /** the site shows LIFTOFF this long when no timeline event has come yet */
+    private static final int LIFTOFF_SEC = 180;
+    /** the text picture's size cap (pixels) - the home screen takes a widget's pictures through a limited channel */
+    private static final int MAX_TEXT_PIXELS = 700_000;
+
+    // the glyphs each Latin-only font has (from their cmap tables): code point ranges, first / last
+    private static final int[] ORBITRON = { 0x20, 0x5D, 0x5F, 0x7E, 0xA0, 0xA3, 0xA8, 0xA8, 0xAF, 0xB0, 0xB4, 0xB4,
+            0xB6, 0xB6, 0xB8, 0xB8, 0xBF, 0xCF, 0xD1, 0xD7, 0xD9, 0xDD, 0xDF, 0xEF, 0xF1, 0xF7, 0xF9, 0xFD, 0xFF, 0xFF,
+            0x131, 0x131, 0x152, 0x153, 0x160, 0x161, 0x178, 0x178, 0x17D, 0x17E, 0x2013, 0x2014, 0x2018, 0x2019,
+            0x201C, 0x201D, 0x2022, 0x2022, 0x2026, 0x2026, 0x20AC, 0x20AC, 0x2212, 0x2212 };
+    private static final int[] ZEN_DOTS = { 0x20, 0x7E, 0xA0, 0xFF, 0x131, 0x131, 0x152, 0x153, 0x174, 0x178,
+            0x1E80, 0x1E85, 0x1E9E, 0x1E9E, 0x1EF2, 0x1EF3, 0x2013, 0x2014, 0x2018, 0x201A, 0x201C, 0x201E,
+            0x2022, 0x2022, 0x2026, 0x2026, 0x2039, 0x203A, 0x20AC, 0x20AC, 0x2122, 0x2122, 0x2212, 0x2212 };
+    private static final int[] AUDIOWIDE = { 0x20, 0x7E, 0xA0, 0x17E, 0x192, 0x192, 0x1FC, 0x1FF, 0x1E80, 0x1E85,
+            0x1EF2, 0x1EF3, 0x2013, 0x2014, 0x2018, 0x201A, 0x201C, 0x201E, 0x2020, 0x2022, 0x2026, 0x2026,
+            0x2030, 0x2030, 0x2039, 0x203A, 0x20AC, 0x20AC, 0x2122, 0x2122, 0x2212, 0x2212 };
+    private static final int[] SPACE_GROTESK = { 0x20, 0x7E, 0xA0, 0x180, 0x18F, 0x18F, 0x192, 0x192, 0x1A0, 0x1A1,
+            0x1AF, 0x1B0, 0x1C4, 0x1DC, 0x1E6, 0x1E7, 0x1EA, 0x1EB, 0x1FA, 0x21B, 0x22A, 0x22D, 0x230, 0x233,
+            0x1E08, 0x1EF9, 0x2010, 0x2010, 0x2012, 0x2015, 0x2018, 0x201A, 0x201C, 0x201E, 0x2020, 0x2022,
+            0x2026, 0x2026, 0x2030, 0x2030, 0x2032, 0x2033, 0x2039, 0x203A, 0x20AC, 0x20AC, 0x2122, 0x2122,
+            0x2190, 0x2199, 0x2212, 0x2212 };
+
+    private static final SparseArray<Typeface> FONTS = new SparseArray<>();
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
         render(context);
         LaunchWatchJob.schedule(context);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int appWidgetId, Bundle newOptions) {
+        render(context);   // a new size: the text drawn again for it
     }
 
     @Override
@@ -62,7 +126,22 @@ public class NextLaunchWidget extends AppWidgetProvider {
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
-        if (ACTION_REFRESH.equals(intent.getAction())) render(context);
+        if (!ACTION_REFRESH.equals(intent.getAction())) return;
+        if (flightOver(context)) {
+            // the flight has left the site's hero: the next launch (its photo is downloaded - off this thread)
+            PendingResult result = goAsync();
+            Context app = context.getApplicationContext();
+            new Thread(() -> {
+                try {
+                    advance(app);
+                } catch (Exception ignored) {
+                } finally {
+                    result.finish();
+                }
+            }).start();
+        } else {
+            render(context);
+        }
     }
 
     static boolean hasWidgets(Context context) {
@@ -75,6 +154,13 @@ public class NextLaunchWidget extends AppWidgetProvider {
         if (id == null || id.isEmpty() || t0 <= 0) return;
         SharedPreferences p = prefs(context);
         if (!fromSite) {
+            // a launch in flight stays until it leaves the hero - Launch Library lists only the ones still ahead
+            long curT0 = p.getLong("t0", 0);
+            long now = System.currentTimeMillis();
+            if (!id.equals(p.getString("id", "")) && curT0 > 0 && now >= curT0 && now < curT0 + flightMs(p, siteOf(p))) {
+                render(context);
+                return;
+            }
             // Launch Library's own name ("Falcon 9 Block 5 | ..."): the site's (translated) one for that launch when the site
             // gave it - its own launch or one of the next few it listed - and its photo
             JSONObject known = siteLaunch(p, id);
@@ -94,7 +180,39 @@ public class NextLaunchWidget extends AppWidgetProvider {
             if (downloadImage(context, imageUrl)) p.edit().putString("imageFor", imageUrl).apply();
         }
         render(context);
-        scheduleTicks(context, t0);
+        scheduleBackups(context, t0, flightMs(p, siteOf(p)));
+    }
+
+    /** the flight over: the next of the launches the site listed, or Launch Library's when it listed none ahead */
+    private static void advance(Context context) {
+        SharedPreferences p = prefs(context);
+        JSONArray list = siteOf(p).optJSONArray("upcoming");
+        long now = System.currentTimeMillis();
+        String cur = p.getString("id", "");
+        if (list != null) {
+            for (int i = 0; i < list.length(); i++) {
+                JSONObject l = list.optJSONObject(i);
+                if (l == null || cur.equals(l.optString("id"))) continue;
+                long t0 = LaunchWatch.parseIso(l.optString("t0", ""));
+                if (t0 <= now) continue;
+                setNext(context, l.optString("id", ""), l.optString("name", ""), t0, l.optString("image", ""), null, true);
+                return;
+            }
+        }
+        LaunchWatchJob.refreshNextLaunch(context);
+        if (flightOver(context)) render(context);
+    }
+
+    private static boolean flightOver(Context context) {
+        SharedPreferences p = prefs(context);
+        long t0 = p.getLong("t0", 0);
+        return t0 > 0 && System.currentTimeMillis() >= t0 + flightMs(p, siteOf(p));
+    }
+
+    /** how long after T-0 the site keeps the launch in its hero - its own figure for this launch, when it gave one */
+    private static long flightMs(SharedPreferences p, JSONObject site) {
+        long ms = p.getString("id", "").equals(site.optString("id")) ? site.optLong("flightMs", 0) : 0;
+        return ms > 0 ? ms : DEFAULT_FLIGHT_MS;
     }
 
     static void render(Context context) {
@@ -103,127 +221,502 @@ public class NextLaunchWidget extends AppWidgetProvider {
         int[] ids = m.getAppWidgetIds(new ComponentName(context, NextLaunchWidget.class));
         if (ids.length == 0) return;
         SharedPreferences p = prefs(context);
-        JSONObject site;
-        try {
-            site = new JSONObject(p.getString("site", "{}"));
-        } catch (JSONException e) {
-            site = new JSONObject();
-        }
+        JSONObject site = siteOf(p);
         JSONObject labels = site.optJSONObject("labels");
         if (labels == null) labels = new JSONObject();
-        String mode = site.optString("mode", "night");
-        RemoteViews v = new RemoteViews(context.getPackageName(), layoutFor(site.optBoolean("rtl", false), mode));
-
-        int accent = "mars".equals(mode) ? 0xFFFF8C5A : "moon".equals(mode) ? 0xFF6ABFFB : 0xFF34D399;
-        showText(v, R.id.widget_label_latin, R.id.widget_label_other, labels.optString("next", "Next launch"));
-        v.setTextColor(R.id.widget_label_latin, accent);
-        v.setTextColor(R.id.widget_label_other, accent);
+        Style st = new Style(site.optString("mode", "night"));
+        boolean rtl = site.optBoolean("rtl", false);
+        String id = p.getString("id", "");
         String name = p.getString("name", "");
-        showText(v, R.id.widget_name_latin, R.id.widget_name_other, name.isEmpty() ? context.getString(R.string.app_name) : name);
+        if (name.isEmpty()) name = context.getString(R.string.app_name);
+        long t0 = p.getLong("t0", 0);
+        long now = System.currentTimeMillis();
+        long flightMs = flightMs(p, site);
+        boolean ahead = t0 > 0 && now < t0;
+        boolean flying = t0 > 0 && !ahead && now < t0 + flightMs;
+        long elapsedMs = now - t0;
+        String[] status = flying ? flightStatus(site, id, labels, elapsedMs / 1000.0) : null;
 
         Bitmap photo = loadImage(context);
-        if (photo != null) v.setImageViewBitmap(R.id.widget_image, photo);
-
-        // the site's launch cards' colors for this mode: the numbers in its accent, the d / h / m letters muted (the
-        // night's on the day mode too - the widget sits on a dark photo, where the day's slate would not read)
-        int digits = "mars".equals(mode) ? 0xFFFF6B35 : "moon".equals(mode) ? 0xFF3FA9F5 : 0xFF34D399;
-        int units = "mars".equals(mode) ? 0xFFC4A080 : "moon".equals(mode) ? 0xFF8FA3BC : 0xFFA1A1AA;
-        int[] nums = { R.id.widget_cd_n1, R.id.widget_cd_n2, R.id.widget_cd_n3 };
-        int[] unitIds = { R.id.widget_cd_u1, R.id.widget_cd_u2, R.id.widget_cd_u3 };
-        for (int id : nums) v.setTextColor(id, digits);
-        for (int id : unitIds) v.setTextColor(id, units);
-        v.setTextColor(R.id.widget_cd_text, digits);
-        long t0 = p.getLong("t0", 0);
-        long diff = t0 - System.currentTimeMillis();
-        if (t0 > 0 && diff > 0) {
-            long d = diff / DAY_MS;
-            long h = (diff % DAY_MS) / (60 * 60 * 1000L);
-            long min = (diff % (60 * 60 * 1000L)) / (60 * 1000L);
-            v.setTextViewText(R.id.widget_cd_n1, String.valueOf(d));
-            v.setTextViewText(R.id.widget_cd_n2, String.valueOf(h));
-            v.setTextViewText(R.id.widget_cd_n3, String.valueOf(min));
-            for (int id : nums) v.setViewVisibility(id, View.VISIBLE);
-            for (int id : unitIds) v.setViewVisibility(id, View.VISIBLE);
-            v.setViewVisibility(R.id.widget_cd_text, View.GONE);
-        } else {
-            for (int id : nums) v.setViewVisibility(id, View.GONE);
-            for (int id : unitIds) v.setViewVisibility(id, View.GONE);
-            v.setViewVisibility(R.id.widget_cd_text, View.VISIBLE);
-            // the cards' own words for it, English like their time left
-            v.setTextViewText(R.id.widget_cd_text, t0 > 0 ? "IN PROGRESS" : "\u2014");
+        Intent open = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent tap = PendingIntent.getActivity(context, 0, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        boolean landscape = context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        float density = context.getResources().getDisplayMetrics().density;
+        // "Watch live" while the site's own button is red: from an hour before T-0 (earlier when the site already has
+        // the broadcast) until the flight leaves the hero - a tap opens the app and starts the broadcast in it
+        JSONObject live = id.equals(site.optString("id")) ? site.optJSONObject("live") : null;
+        boolean liveOn = (ahead || flying) && (now >= t0 - LIVE_BEFORE_MS || (live != null && live.optBoolean("early")));
+        String liveText = live != null ? live.optString("label", "Watch live") : "Watch live";
+        Bitmap pill = liveOn ? drawLivePill(context, liveText, rtl) : null;
+        Intent watchIntent = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(MainActivity.EXTRA_WATCH_LIVE, id);
+        PendingIntent watch = PendingIntent.getActivity(context, 1, watchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        for (int wid : ids) {
+            RemoteViews v = new RemoteViews(context.getPackageName(), rtl ? R.layout.widget_rtl : R.layout.widget_ltr);
+            if (photo != null) v.setImageViewBitmap(R.id.widget_image, photo);
+            // the size it has on the screen now: width x height of the orientation showing
+            Bundle o = m.getAppWidgetOptions(wid);
+            int wDp = o.getInt(landscape ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+            int hDp = o.getInt(landscape ? AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT : AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+            if (wDp <= 0) wDp = 250;
+            if (hDp <= 0) hDp = 110;
+            float[] pillDp = pill != null ? new float[] { pill.getWidth() / density, pill.getHeight() / density } : null;
+            float[] pillAt = new float[2];
+            Bitmap text = flying
+                    ? drawFlight(context, wDp, hDp, rtl, st, labels.optString("current", "Current launch"), name,
+                            labels.optString("status", "STATUS"), status[0], status[1], pillDp, pillAt)
+                    : drawCountdown(context, wDp, hDp, rtl, st, site.optString("title", "SPACEX LAUNCH TRACKER"),
+                            labels.optString("next", "Next launch"), name, ahead ? t0 - now : -1, pillDp, pillAt);
+            v.setImageViewBitmap(R.id.widget_text, text);
+            if (pill != null) {
+                v.setImageViewBitmap(R.id.widget_live, pill);
+                v.setContentDescription(R.id.widget_live, liveText);
+                v.setViewPadding(R.id.widget_live_wrap, Math.round(pillAt[0] * density), Math.round(pillAt[1] * density), 0, 0);
+                v.setOnClickPendingIntent(R.id.widget_live, watch);
+                v.setViewVisibility(R.id.widget_live, View.VISIBLE);
+            } else {
+                v.setViewVisibility(R.id.widget_live, View.GONE);
+            }
+            // what the picture says, for the screen reader
+            v.setContentDescription(R.id.widget_text, flying
+                    ? labels.optString("current", "Current launch") + ": " + name + ". " + status[0]
+                    : labels.optString("next", "Next launch") + ": " + name);
+            if (flying) {
+                // "T+00:08:39" as the site's: the clock gives "08:39" in the first hour, "1:08:39" after it
+                String format = elapsedMs < 3600_000L ? "T+00:%s" : elapsedMs < 36_000_000L ? "T+0%s" : "T+%s";
+                v.setChronometer(R.id.widget_tplus, SystemClock.elapsedRealtime() - elapsedMs, format, true);
+                v.setTextColor(R.id.widget_tplus, st.muted);
+                v.setViewVisibility(R.id.widget_tplus, View.VISIBLE);
+            } else {
+                v.setChronometer(R.id.widget_tplus, SystemClock.elapsedRealtime(), null, false);
+                v.setViewVisibility(R.id.widget_tplus, View.GONE);
+            }
+            v.setOnClickPendingIntent(R.id.widget_root, tap);
+            m.updateAppWidget(wid, v);
         }
 
-        Intent open = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 0, open,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
-        m.updateAppWidget(ids, v);
-        scheduleMinuteTick(context, t0 > 0 && diff > 0);
+        // the next redraw: the next minute ahead of T-0 (and T-0 itself), the next status change in flight
+        long next = 0;
+        if (ahead) {
+            next = Math.min((now / 60000L + 1) * 60000L + 500, t0 + 300);
+        } else if (flying) {
+            next = t0 + nextFlightChangeSec(site, id, elapsedMs / 1000.0, flightMs) * 1000L + 300;
+        }
+        scheduleTick(context, next);
     }
 
-    /** the next minute's redraw - an alarm that doesn't wake the phone: it comes while the screen is on, waits if not */
-    private static void scheduleMinuteTick(Context context, boolean ahead) {
+    /** the hero's status at that second of the flight: {its text, its explanation} */
+    private static String[] flightStatus(JSONObject site, String id, JSONObject labels, double elapsed) {
+        JSONArray tl = id.equals(site.optString("id")) ? site.optJSONArray("timeline") : null;
+        if (tl != null && tl.length() > 0) {
+            JSONObject cur = null;
+            int at = -1;
+            for (int i = 0; i < tl.length(); i++) {
+                JSONObject e = tl.optJSONObject(i);
+                if (e == null) continue;
+                if (e.optDouble("t", 0) > elapsed) break;
+                cur = e;
+                at = i;
+            }
+            // the last event stays up only so long (a minute on a Falcon flight, 5 on Starship)
+            if (cur != null && at == tl.length() - 1 && elapsed - cur.optDouble("t", 0) > site.optDouble("tail", 60)) cur = null;
+            if (cur != null) return new String[] { cur.optString("title", ""), cur.optString("explain", "") };
+        }
+        if (elapsed < LIFTOFF_SEC) return new String[] { labels.optString("liftoff", "LIFTOFF"), "" };
+        return new String[] { labels.optString("inProgress", "MISSION IN PROGRESS"), "" };
+    }
+
+    /** the next second of the flight anything shown changes at: an event, LIFTOFF's end, the clock's hour, the end */
+    private static long nextFlightChangeSec(JSONObject site, String id, double elapsed, long flightMs) {
+        double next = flightMs / 1000.0;
+        JSONArray tl = id.equals(site.optString("id")) ? site.optJSONArray("timeline") : null;
+        double tail = site.optDouble("tail", 60);
+        if (tl != null) {
+            for (int i = 0; i < tl.length(); i++) {
+                JSONObject e = tl.optJSONObject(i);
+                if (e == null) continue;
+                double t = e.optDouble("t", 0);
+                if (t > elapsed) next = Math.min(next, t);
+                if (i == tl.length() - 1 && t + tail + 1 > elapsed) next = Math.min(next, t + tail + 1);
+            }
+        }
+        for (double t : new double[] { LIFTOFF_SEC, 3600, 36000 }) if (t > elapsed) next = Math.min(next, t);
+        return (long) Math.ceil(next);
+    }
+
+    // ---- drawing ----
+
+    /** the mode's fonts and colors - the site's, the night's on the day mode (the widget sits on a dark photo) */
+    private static final class Style {
+        final int nameLatin, nameOther, boldLatin, boldOther, counter;
+        final int[] cover;
+        final float labelSpacing;
+        final int accent, digits, units, status, muted, title;
+
+        Style(String mode) {
+            if ("mars".equals(mode)) {
+                nameLatin = R.font.zen_dots;
+                boldLatin = R.font.zen_dots;
+                counter = R.font.zen_dots;
+                nameOther = R.font.rubik_regular;
+                boldOther = R.font.rubik_regular;
+                cover = ZEN_DOTS;
+                labelSpacing = 0.1f;
+                accent = 0xFFFF8C5A;
+                digits = 0xFFFF6B35;
+                units = 0xFFC4A080;
+                status = 0xFFF9AE8D;
+                muted = 0xFFC4A080;
+                title = 0xFFF8EFE6;
+            } else if ("moon".equals(mode)) {
+                nameLatin = R.font.audiowide;
+                boldLatin = R.font.audiowide;
+                counter = R.font.audiowide;
+                nameOther = R.font.rubik_regular;
+                boldOther = R.font.rubik_regular;
+                cover = AUDIOWIDE;
+                labelSpacing = 0.1f;
+                accent = 0xFF6ABFFB;
+                digits = 0xFF3FA9F5;
+                units = 0xFF8FA3BC;
+                status = 0xFF3FA9F5;
+                muted = 0xFF8FA3BC;
+                title = 0xFFEEF3FA;
+            } else {
+                nameLatin = R.font.orbitron_semibold;
+                boldLatin = R.font.orbitron_bold;
+                counter = R.font.orbitron_bold;
+                nameOther = R.font.rubik_semibold;
+                boldOther = R.font.rubik_bold;
+                cover = ORBITRON;
+                labelSpacing = 0.04f;
+                accent = 0xFF34D399;
+                digits = 0xFF34D399;
+                units = 0xFFA1A1AA;
+                status = 0xFF34D399;
+                muted = 0xFFA1A1AA;
+                title = 0xFFFFFFFF;
+            }
+        }
+    }
+
+    /** the picture's scale: the screen's density, less for a very large widget */
+    private static float scale(Context c, int wDp, int hDp) {
+        float s = c.getResources().getDisplayMetrics().density;
+        if (wDp * hDp * s * s > MAX_TEXT_PIXELS) s = (float) Math.sqrt(MAX_TEXT_PIXELS / (double) (wDp * hDp));
+        return s;
+    }
+
+    /** text sizes are sp - the phone's text size setting counts, within reason (the widget doesn't grow with it) */
+    private static float textScale(Context c, float s) {
+        return s * Math.min(1.3f, Math.max(0.85f, c.getResources().getConfiguration().fontScale));
+    }
+
+    /**
+     * Before T-0 (and after the flight, until the next launch): the title at the top; at the bottom the label row and
+     * the name / time-left row. The live button (pillDp: its width and height, or null) goes at the label row's far end,
+     * just above the time left; where it goes is written to pillAt (dp).
+     */
+    private static Bitmap drawCountdown(Context c, int wDp, int hDp, boolean rtl, Style st, String title, String label,
+                                        String name, long leftMs, float[] pillDp, float[] pillAt) {
+        float s = scale(c, wDp, hDp), k = textScale(c, s);
+        int W = Math.round(wDp * s), H = Math.round(hDp * s);
+        Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(b);
+        float pad = 16 * s, padT = 14 * s, padB = 14 * s;
+        int fullW = Math.max(1, Math.round(W - 2 * pad));
+        float pillW = pillDp != null ? pillDp[0] * s : 0, pillH = pillDp != null ? pillDp[1] * s : 0;
+
+        // the site's title at the top left in any language, as its header (smaller when the widget is too narrow for it)
+        CharSequence titleText = mixed(title, font(c, st.boldLatin), st.cover, font(c, st.boldOther));
+        TextPaint titlePaint = paint(font(c, st.boldOther), 14 * k, st.title, -0.025f);
+        float tw = Layout.getDesiredWidth(titleText, titlePaint);
+        if (tw > fullW) titlePaint.setTextSize(titlePaint.getTextSize() * fullW / tw);
+        StaticLayout titleL = layout(titleText, titlePaint, fullW, 1, false);
+        draw(cv, titleL, pad, padT);
+        float titleBottom = padT + titleL.getHeight();
+
+        // the time left as the cards': the numbers in the mode's color, the letters smaller and muted, left to right
+        TextPaint cdPaint = paint(font(c, st.counter), 17 * k, st.digits, 0);
+        CharSequence cd = leftMs > 0 ? counterText(leftMs, Math.round(13 * k), st.units) : "\u2014";
+        int cw = (int) Math.ceil(Layout.getDesiredWidth(cd, cdPaint)) + 1;
+        StaticLayout cdL = layout(cd, cdPaint, cw, 1, false);
+
+        int nameW = Math.max(1, Math.round(W - 2 * pad - cw - 12 * s));
+        CharSequence nameText = mixed(name, font(c, st.nameLatin), st.cover, font(c, st.nameOther));
+        TextPaint namePaint = paint(font(c, st.nameOther), 17 * k, 0xFFFFFFFF, 0);
+        int labelW = Math.max(1, Math.round(fullW - (pillW > 0 ? pillW + 8 * s : 0)));
+        StaticLayout labelL = layout(mixed(label, font(c, st.boldLatin), st.cover, font(c, st.boldOther)),
+                paint(font(c, st.boldOther), 11 * k, st.accent, st.labelSpacing), labelW, 1, rtl);
+        float rowH = Math.max(labelL.getHeight(), pillH);
+        // a long name takes two lines - one when two would reach up into the title
+        StaticLayout nameL = layout(nameText, namePaint, nameW, 2, rtl);
+        if (H - padB - nameL.getHeight() - 3 * s - rowH < titleBottom + 4 * s) {
+            nameL = layout(nameText, namePaint, nameW, 1, rtl);
+        }
+        float nameTop = H - padB - nameL.getHeight();
+        float baseline = nameTop + nameL.getLineBaseline(nameL.getLineCount() - 1);
+        draw(cv, nameL, rtl ? W - pad - nameW : pad, nameTop);
+        draw(cv, cdL, rtl ? pad : W - pad - cw, baseline - cdL.getLineBaseline(0));
+        float rowTop = nameTop - 3 * s - rowH;
+        draw(cv, labelL, rtl ? W - pad - labelW : pad, rowTop + (rowH - labelL.getHeight()) / 2);
+        if (pillW > 0) {
+            pillAt[0] = (rtl ? pad : W - pad - pillW) / s;
+            pillAt[1] = (rowTop + (rowH - pillH) / 2) / s;
+        }
+        return b;
+    }
+
+    /**
+     * In flight: "Current launch" and the name at the top (the T+ clock is the layout's own view, at the top's far
+     * end); at the bottom "Status", the status, its explanation. The live button at the "Status" row's far end.
+     */
+    private static Bitmap drawFlight(Context c, int wDp, int hDp, boolean rtl, Style st, String label, String name,
+                                     String statusLabel, String status, String explain, float[] pillDp, float[] pillAt) {
+        float s = scale(c, wDp, hDp), k = textScale(c, s);
+        int W = Math.round(wDp * s), H = Math.round(hDp * s);
+        Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(b);
+        float pad = 16 * s, padT = 14 * s, padB = 14 * s;
+        int fullW = Math.max(1, Math.round(W - 2 * pad));
+        float pillW = pillDp != null ? pillDp[0] * s : 0, pillH = pillDp != null ? pillDp[1] * s : 0;
+
+        // top: "Current launch", the T+ clock at the other end (room kept for it)
+        int labelW = Math.max(1, Math.round(fullW - 96 * s));
+        TextPaint labelPaint = paint(font(c, st.boldOther), 11 * k, st.accent, st.labelSpacing);
+        StaticLayout labelL = layout(mixed(label, font(c, st.boldLatin), st.cover, font(c, st.boldOther)), labelPaint, labelW, 1, rtl);
+        draw(cv, labelL, rtl ? W - pad - labelW : pad, padT);
+        float nameTop = padT + labelL.getHeight() + 3 * s;
+
+        CharSequence nameText = mixed(name, font(c, st.nameLatin), st.cover, font(c, st.nameOther));
+        TextPaint namePaint = paint(font(c, st.nameOther), 17 * k, 0xFFFFFFFF, 0);
+        CharSequence statusText = mixed(status, font(c, st.boldLatin), st.cover, font(c, st.boldOther));
+        TextPaint statusPaint = paint(font(c, st.boldOther), 17 * k, st.status, -0.02f);
+        CharSequence statusLabelText = mixed(statusLabel, font(c, st.boldLatin), st.cover, font(c, st.boldOther));
+        CharSequence explainText = mixed(explain, font(c, R.font.space_grotesk_regular), SPACE_GROTESK, font(c, R.font.rubik_regular));
+        TextPaint explainPaint = paint(font(c, R.font.rubik_regular), 12 * k, st.muted, 0);
+        int statusLabelW = Math.max(1, Math.round(fullW - (pillW > 0 ? pillW + 8 * s : 0)));
+
+        // bottom: "Status" (and the live button), the status, its explanation - as many of the explanation's lines
+        // (and the name's) as fit
+        for (int nameLines = 2; nameLines >= 1; nameLines--) {
+            StaticLayout nameL = layout(nameText, namePaint, fullW, nameLines, rtl);
+            float nameBottom = nameTop + nameL.getHeight();
+            for (int explainLines = explain.isEmpty() ? 0 : 2; explainLines >= 0; explainLines--) {
+                StaticLayout slL = layout(statusLabelText, labelPaint, statusLabelW, 1, rtl);
+                float rowH = Math.max(slL.getHeight(), pillH);
+                StaticLayout sL = layout(statusText, statusPaint, fullW, 1, rtl);
+                StaticLayout eL = explainLines > 0 ? layout(explainText, explainPaint, fullW, explainLines, rtl) : null;
+                float total = rowH + 2 * s + sL.getHeight() + (eL != null ? 2 * s + eL.getHeight() : 0);
+                float top = H - padB - total;
+                if (top < nameBottom + 6 * s && !(nameLines == 1 && explainLines == 0)) continue;
+                draw(cv, nameL, pad, nameTop);
+                draw(cv, slL, rtl ? W - pad - statusLabelW : pad, top + (rowH - slL.getHeight()) / 2);
+                if (pillW > 0) {
+                    pillAt[0] = (rtl ? pad : W - pad - pillW) / s;
+                    pillAt[1] = (top + (rowH - pillH) / 2) / s;
+                }
+                top += rowH + 2 * s;
+                draw(cv, sL, pad, top);
+                if (eL != null) draw(cv, eL, pad, top + sL.getHeight() + 2 * s);
+                return b;
+            }
+        }
+        return b;
+    }
+
+    /**
+     * The site's red live button, small: a red pill with a play mark and its words ("Watch live" in the site's
+     * language), drawn at the screen's own density - shown as it is, not stretched.
+     */
+    private static Bitmap drawLivePill(Context c, String text, boolean rtl) {
+        float d = c.getResources().getDisplayMetrics().density;
+        float k = textScale(c, d);
+        TextPaint tp = paint(font(c, R.font.rubik_semibold), 11 * k, 0xFFFFFFFF, 0);
+        CharSequence label = mixed(text, font(c, R.font.space_grotesk_semibold), SPACE_GROTESK, font(c, R.font.rubik_semibold));
+        int textW = (int) Math.ceil(Layout.getDesiredWidth(label, tp)) + 1;
+        StaticLayout tl = layout(label, tp, textW, 1, rtl);
+        float h = Math.max(22 * d, tl.getHeight() + 8 * d), padX = 9 * d, tri = 7 * d, gap = 5 * d;
+        int W = Math.round(padX + tri + gap + textW + padX), H = Math.round(h);
+        Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(b);
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        RectF r = new RectF(0.5f * d, 0.5f * d, W - 0.5f * d, H - 0.5f * d);
+        fill.setColor(0xFFDC2626);
+        cv.drawRoundRect(r, H / 2f, H / 2f, fill);
+        fill.setStyle(Paint.Style.STROKE);
+        fill.setStrokeWidth(d);
+        fill.setColor(0xFFEF4444);
+        cv.drawRoundRect(r, H / 2f, H / 2f, fill);
+        // the play mark at the start, the words after it - the start is the right in a right-to-left language
+        float triX = rtl ? W - padX - tri : padX, textX = rtl ? padX : padX + tri + gap;
+        Path play = new Path();
+        float cy = H / 2f, th = tri * 1.1f;
+        // pointing right in every language, as a play mark does
+        play.moveTo(triX, cy - th / 2);
+        play.lineTo(triX + tri, cy);
+        play.lineTo(triX, cy + th / 2);
+        play.close();
+        fill.setStyle(Paint.Style.FILL);
+        fill.setColor(0xFFFFFFFF);
+        cv.drawPath(play, fill);
+        draw(cv, tl, textX, (H - tl.getHeight()) / 2f);
+        return b;
+    }
+
+    /** "4d 8h 28m" - the cards' time left: days, hours, minutes */
+    private static CharSequence counterText(long leftMs, int unitPx, int unitColor) {
+        long d = leftMs / DAY_MS;
+        long h = (leftMs % DAY_MS) / (60 * 60 * 1000L);
+        long m = (leftMs % (60 * 60 * 1000L)) / (60 * 1000L);
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        long[] values = { d, h, m };
+        String[] units = { "d", "h", "m" };
+        for (int i = 0; i < 3; i++) {
+            if (i > 0) sb.append(' ');
+            sb.append(String.valueOf(values[i]));
+            int start = sb.length();
+            sb.append(units[i]);
+            sb.setSpan(new AbsoluteSizeSpan(unitPx), start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            sb.setSpan(new ForegroundColorSpan(unitColor), start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return sb;
+    }
+
+    /** each letter in the first of the two fonts that has it, as the browser does with "Orbitron, Rubik" */
+    private static CharSequence mixed(String text, Typeface latin, int[] cover, Typeface other) {
+        SpannableStringBuilder sb = new SpannableStringBuilder(text);
+        int i = 0;
+        while (i < text.length()) {
+            boolean in = covers(cover, text.codePointAt(i));
+            int j = i;
+            while (j < text.length()) {
+                int cp = text.codePointAt(j);
+                if (covers(cover, cp) != in) break;
+                j += Character.charCount(cp);
+            }
+            sb.setSpan(new FontSpan(in ? latin : other), i, j, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            i = j;
+        }
+        return sb;
+    }
+
+    private static boolean covers(int[] ranges, int cp) {
+        for (int i = 0; i < ranges.length; i += 2) {
+            if (cp < ranges[i]) return false;
+            if (cp <= ranges[i + 1]) return true;
+        }
+        return false;
+    }
+
+    private static final class FontSpan extends MetricAffectingSpan {
+        private final Typeface typeface;
+
+        FontSpan(Typeface typeface) {
+            this.typeface = typeface;
+        }
+
+        @Override
+        public void updateMeasureState(TextPaint p) {
+            p.setTypeface(typeface);
+        }
+
+        @Override
+        public void updateDrawState(TextPaint p) {
+            p.setTypeface(typeface);
+        }
+    }
+
+    private static TextPaint paint(Typeface typeface, float sizePx, int color, float letterSpacing) {
+        TextPaint p = new TextPaint(TextPaint.ANTI_ALIAS_FLAG | TextPaint.SUBPIXEL_TEXT_FLAG);
+        p.setTypeface(typeface);
+        p.setTextSize(sizePx);
+        p.setColor(color);
+        p.setLetterSpacing(letterSpacing);
+        return p;
+    }
+
+    /** the text in the site's direction, starting at the start side of its box, cut with "…" past its lines */
+    private static StaticLayout layout(CharSequence text, TextPaint paint, int width, int maxLines, boolean rtl) {
+        return StaticLayout.Builder.obtain(text, 0, text.length(), paint, Math.max(1, width))
+                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                .setTextDirection(rtl ? TextDirectionHeuristics.RTL : TextDirectionHeuristics.LTR)
+                .setIncludePad(false)
+                .setMaxLines(maxLines)
+                .setEllipsize(TextUtils.TruncateAt.END)
+                .build();
+    }
+
+    private static void draw(Canvas cv, StaticLayout l, float x, float y) {
+        cv.save();
+        cv.translate(x, y);
+        l.draw(cv);
+        cv.restore();
+    }
+
+    private static Typeface font(Context c, int res) {
+        synchronized (FONTS) {
+            Typeface t = FONTS.get(res);
+            if (t == null) {
+                try {
+                    t = ResourcesCompat.getFont(c, res);
+                } catch (Exception ignored) { }
+                if (t == null) t = Typeface.DEFAULT_BOLD;
+                FONTS.put(res, t);
+            }
+            return t;
+        }
+    }
+
+    // ---- data and timers ----
+
+    private static JSONObject siteOf(SharedPreferences p) {
+        try {
+            return new JSONObject(p.getString("site", "{}"));
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
+    }
+
+    /** the launch with that id as the site last listed it (its name in the site's language, its photo), or null */
+    private static JSONObject siteLaunch(SharedPreferences p, String id) {
+        JSONArray list = siteOf(p).optJSONArray("upcoming");
+        if (list == null) return null;
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject l = list.optJSONObject(i);
+            if (l != null && id.equals(l.optString("id"))) return l;
+        }
+        return null;
+    }
+
+    /** the next redraw - an alarm that doesn't wake the phone: it comes while the screen is on, waits if not */
+    private static void scheduleTick(Context context, long at) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         Intent intent = new Intent(context, NextLaunchWidget.class).setAction(ACTION_REFRESH);
         PendingIntent pi = PendingIntent.getBroadcast(context, 7710, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        if (!ahead) {
+        if (at <= 0) {
             am.cancel(pi);
             return;
         }
-        long next = (System.currentTimeMillis() / 60000L + 1) * 60000L + 500;
         boolean exact = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S || am.canScheduleExactAlarms();
         try {
-            if (exact) am.setExact(AlarmManager.RTC, next, pi);
-            else am.set(AlarmManager.RTC, next, pi);
+            if (exact) am.setExact(AlarmManager.RTC, at, pi);
+            else am.set(AlarmManager.RTC, at, pi);
         } catch (SecurityException e) {
-            am.set(AlarmManager.RTC, next, pi);
+            am.set(AlarmManager.RTC, at, pi);
         }
     }
 
-    /** the layout for the site's direction and the mode's display font */
-    private static int layoutFor(boolean rtl, String mode) {
-        if ("mars".equals(mode)) return rtl ? R.layout.widget_rtl_zendots : R.layout.widget_ltr_zendots;
-        if ("moon".equals(mode)) return rtl ? R.layout.widget_rtl_audiowide : R.layout.widget_ltr_audiowide;
-        return rtl ? R.layout.widget_rtl_orbitron : R.layout.widget_ltr_orbitron;
-    }
-
-    /** a text in the mode's font when it's all Latin, in Rubik otherwise (the mode fonts have Latin letters only) */
-    private static void showText(RemoteViews v, int latinId, int otherId, String text) {
-        boolean latin = true;
-        for (int i = 0; i < text.length(); ) {
-            int cp = text.codePointAt(i);
-            if (Character.isLetter(cp) && cp >= 0x250) {
-                latin = false;
-                break;
-            }
-            i += Character.charCount(cp);
-        }
-        v.setTextViewText(latin ? latinId : otherId, text);
-        v.setViewVisibility(latinId, latin ? View.VISIBLE : View.GONE);
-        v.setViewVisibility(otherId, latin ? View.GONE : View.VISIBLE);
-    }
-
-    /** the launch with that id as the site last listed it (its name in the site's language, its photo), or null */
-    private static JSONObject siteLaunch(SharedPreferences p, String id) {
-        try {
-            JSONObject site = new JSONObject(p.getString("site", "{}"));
-            JSONArray list = site.optJSONArray("upcoming");
-            if (list == null) return null;
-            for (int i = 0; i < list.length(); i++) {
-                JSONObject l = list.optJSONObject(i);
-                if (l != null && id.equals(l.optString("id"))) return l;
-            }
-        } catch (JSONException ignored) { }
-        return null;
-    }
-
-    /** drawn again just after T-0 ("IN PROGRESS") - the minute ticks stop there */
-    private static void scheduleTicks(Context context, long t0) {
+    /** T-0 and the flight's end once more, in case the chain of redraws above was broken (the app updated, killed) */
+    private static void scheduleBackups(Context context, long t0, long flightMs) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         long now = System.currentTimeMillis();
-        long[] at = { 0, t0 + 60 * 1000L };
+        long[] at = { t0 + 1000, t0 + flightMs + 1000 };
         for (int i = 0; i < at.length; i++) {
             Intent intent = new Intent(context, NextLaunchWidget.class).setAction(ACTION_REFRESH);
             PendingIntent pi = PendingIntent.getBroadcast(context, 7700 + i, intent,

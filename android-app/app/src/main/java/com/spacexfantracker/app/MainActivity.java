@@ -83,6 +83,8 @@ import java.util.Map;
 public class MainActivity extends Activity {
     static final String SITE_URL = "https://spacexfantracker.com/";
     private static final String SITE_HOST = "spacexfantracker.com";
+    /** the home screen widget's "Watch live": the launch whose broadcast to open (NextLaunchWidget) */
+    static final String EXTRA_WATCH_LIVE = "watch_live";
     private static final int REQUEST_NOTIFICATIONS = 1;
     // the splash stays at least this long (no flash of the logo on a fast load), and at most this long
     private static final long SPLASH_MIN_MS = 700;
@@ -101,6 +103,8 @@ public class MainActivity extends Activity {
     // the phone's own bottom bar (the gesture line / the buttons): the page goes on under it - see edgeToEdge
     private int navInsetPx = 0;
     private String offlineUrl;   // the page that failed to load while the phone was offline, loaded again once it's back
+    private String pendingWatchLive;   // the widget's "Watch live" launch, played once the page is there
+    private boolean pageLoaded;
     private ConnectivityManager.NetworkCallback networkCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
@@ -143,6 +147,7 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new SiteClient());
         webView.setWebChromeClient(new ChromeClient());
 
+        takeWatchLive(getIntent());
         if (savedInstanceState != null) webView.restoreState(savedInstanceState);
         else webView.loadUrl(urlFromIntent(getIntent()));
         // the background check for the reminders' launches and the home screen widget (it does nothing without either)
@@ -153,7 +158,30 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (intent != null && intent.getData() != null) webView.loadUrl(urlFromIntent(intent));
+        takeWatchLive(intent);
+        if (intent != null && intent.getData() != null) {
+            pageLoaded = false;
+            webView.loadUrl(urlFromIntent(intent));
+        } else {
+            deliverWatchLive();
+        }
+    }
+
+    /** the widget's "Watch live" tap: its launch, kept until the page can open its broadcast */
+    private void takeWatchLive(Intent intent) {
+        String id = intent != null ? intent.getStringExtra(EXTRA_WATCH_LIVE) : null;
+        if (id == null || id.isEmpty()) return;
+        intent.removeExtra(EXTRA_WATCH_LIVE);   // not again when the activity is recreated with this intent
+        pendingWatchLive = id;
+    }
+
+    /** the site opens that launch's broadcast as its own red button does (window.appWatchLive - it waits for its data) */
+    private void deliverWatchLive() {
+        if (pendingWatchLive == null || !pageLoaded) return;
+        String id = pendingWatchLive;
+        pendingWatchLive = null;
+        webView.evaluateJavascript("(function(){try{if(window.appWatchLive)window.appWatchLive(" + JSONObject.quote(id)
+                + ");}catch(e){}})()", null);
     }
 
     /** a link to the site (a shared mission link, or a reminder's notification) opens that page; anything else the home page */
@@ -459,6 +487,8 @@ public class MainActivity extends Activity {
         public void onPageFinished(WebView view, String url) {
             pushNavInset();
             hideSplash();
+            pageLoaded = true;
+            deliverWatchLive();
         }
 
         @Override

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the home screen widget (NextLaunchWidget) in the site's right-to-left direction: the next launch's photo, dark fades
+     for the text at the top (the title / the launch in flight) and the bottom, and the text itself - a picture the widget draws in the site's fonts (a widget can't use the app's
+     own). The live button and the T+ clock of a launch in flight are views of their own at the top's far end: it ticks every second. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:clipToOutline="true">
+
+    <ImageView
+        android:id="@+id/widget_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:id="@+id/widget_scrim_top"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_scrim_top" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_scrim" />
+
+    <ImageView
+        android:id="@+id/widget_text"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY" />
+
+    <!-- "Watch live" while the site's live button is red: placed by its padding where the drawn text leaves room -->
+    <FrameLayout
+        android:id="@+id/widget_live_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/widget_live"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|left"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <Chronometer
+        android:id="@+id/widget_tplus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|left"
+        android:layout_marginTop="12dp"
+        android:layout_marginLeft="16dp"
+        android:fontFamily="sans-serif-medium"
+        android:fontFeatureSettings="tnum"
+        android:letterSpacing="0.04"
+        android:textColor="#A1A1AA"
+        android:textDirection="ltr"
+        android:textSize="12sp"
+        android:visibility="gone" />
+</FrameLayout>
