@@ -429,11 +429,13 @@ public class NextLaunchWidget extends AppWidgetProvider {
         int fullW = Math.max(1, Math.round(W - 2 * pad));
         float pillW = pillDp != null ? pillDp[0] * s : 0, pillH = pillDp != null ? pillDp[1] * s : 0;
 
-        // the site's title at the top left in any language, as its header (smaller when the widget is too narrow for it)
+        // the site's title at the top left in any language, as its header - kept to the left 45% of the widget, clear of
+        // the rocket in the middle of most launch photos (smaller to fit there)
         CharSequence titleText = mixed(title, font(c, st.boldLatin), st.cover, font(c, st.boldOther));
         TextPaint titlePaint = paint(font(c, st.boldOther), 14 * k, st.title, -0.025f);
         float tw = Layout.getDesiredWidth(titleText, titlePaint);
-        if (tw > fullW) titlePaint.setTextSize(titlePaint.getTextSize() * fullW / tw);
+        float titleMax = W * 0.45f - pad;
+        if (tw > titleMax) titlePaint.setTextSize(titlePaint.getTextSize() * titleMax / tw);
         StaticLayout titleL = layout(titleText, titlePaint, fullW, 1, false);
         draw(cv, titleL, pad, padT);
         float titleBottom = padT + titleL.getHeight();
