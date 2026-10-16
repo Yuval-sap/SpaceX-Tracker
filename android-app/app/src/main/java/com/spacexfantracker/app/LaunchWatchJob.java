@@ -18,8 +18,6 @@ import org.json.JSONObject;
 public class LaunchWatchJob extends JobService {
     private static final int JOB_ID = 4417;
     private static final long PERIOD_MS = 30 * 60 * 1000L;
-    private static final String UPCOMING_URL =
-            "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp__id=121&limit=6&mode=list";
 
     static void schedule(Context context) {
         JobScheduler js = context.getSystemService(JobScheduler.class);
@@ -38,11 +36,14 @@ public class LaunchWatchJob extends JobService {
     public boolean onStartJob(JobParameters params) {
         Context context = getApplicationContext();
         new Thread(() -> {
+            // one request for both - the site's shared copy, not Launch Library (LaunchWatch.SHARED_UPCOMING_URL)
+            boolean widgets = NextLaunchWidget.hasWidgets(context), reminders = !LaunchWatch.isEmpty(context);
+            JSONObject data = widgets || reminders ? LaunchWatch.fetchJson(LaunchWatch.SHARED_UPCOMING_URL) : null;
             try {
-                refreshNextLaunch(context);
+                if (widgets) refreshNextLaunch(context, data);
             } catch (Exception ignored) { }
             try {
-                if (!LaunchWatch.isEmpty(context)) LaunchWatch.checkAll(context);
+                if (reminders) LaunchWatch.checkAll(context, data);
             } catch (Exception ignored) { }
             jobFinished(params, false);
         }).start();
@@ -54,10 +55,15 @@ public class LaunchWatchJob extends JobService {
         return true;
     }
 
-    /** the widget's next launch from Launch Library (in English - the site's own name for it is kept when it's the same) */
+    /** the widgets' next launch from the site's shared copy of Launch Library's (in English - the site's own name kept for the ones it listed) */
     static void refreshNextLaunch(Context context) {
         if (!NextLaunchWidget.hasWidgets(context)) return;
-        JSONObject data = LaunchWatch.fetchJson(UPCOMING_URL);
+        refreshNextLaunch(context, LaunchWatch.fetchJson(LaunchWatch.SHARED_UPCOMING_URL));
+    }
+
+    /** the same with the site's shared copy already asked for (null: no answer) */
+    static void refreshNextLaunch(Context context, JSONObject data) {
+        if (!NextLaunchWidget.hasWidgets(context)) return;
         JSONArray results = data != null ? data.optJSONArray("results") : null;
         if (results == null) {
             NextLaunchWidget.render(context);   // at least the countdown moves on

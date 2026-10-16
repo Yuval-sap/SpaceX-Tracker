@@ -24,7 +24,9 @@ import java.util.TimeZone;
  * The launches with a reminder, watched while the app is closed: a launch pushed back (or brought forward), put on hold,
  * or left with no date gets a notification, and its reminders move with it - they were set for the old time. The site
  * hands each one over as its reminder is set (window.AndroidApp.watchLaunch: its name, the time it knows, the texts in
- * the site's language); LaunchWatchJob asks Launch Library about each every 30 minutes - one small request each.
+ * the site's language); LaunchWatchJob checks each every 30 minutes in the site's own shared copy of the upcoming
+ * launches (SHARED_UPCOMING_URL - no request to Launch Library from the phone), and asks Launch Library itself only
+ * about one that isn't in it while still ahead (one far off).
  *
  * Stored as { missionId: { "name", "net", "status", "locale", "texts": { "title", "moved", "hold", "tbd" } } }.
  */
@@ -32,6 +34,12 @@ final class LaunchWatch {
     private static final String PREFS = "launch_watch";
     private static final String KEY = "watched";
     static final String LAUNCH_URL = "https://ll.thespacedevs.com/2.2.0/launch/";
+    /**
+     * The site's worker: one copy of Launch Library's next 15 SpaceX launches for everyone, asked again at most every 4
+     * minutes - the phone's own Launch Library requests (about 15 an hour from one address) stay the site's, which times
+     * them on a launch day
+     */
+    static final String SHARED_UPCOMING_URL = "https://spacex-weather.yuvisapir24.workers.dev/launches";
     // a launch time that moved by less than this is the same launch time (Launch Library adds seconds)
     private static final long MOVE_THRESHOLD_MS = 5 * 60 * 1000L;
     // after this long past T-0 a launch is not watched any more
@@ -59,8 +67,19 @@ final class LaunchWatch {
         return load(context).length() == 0;
     }
 
-    /** on a background thread (LaunchWatchJob): each watched launch as Launch Library has it now */
-    static void checkAll(Context context) {
+    /**
+     * on a background thread (LaunchWatchJob): each watched launch as Launch Library has it now - from the shared copy
+     * (upcoming: its answer, or null), Launch Library itself only for one ahead and not in it
+     */
+    static void checkAll(Context context, JSONObject upcoming) {
+        java.util.Map<String, JSONObject> shared = new java.util.HashMap<>();
+        org.json.JSONArray results = upcoming != null ? upcoming.optJSONArray("results") : null;
+        if (results != null) {
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject l = results.optJSONObject(i);
+                if (l != null) shared.put(l.optString("id", ""), l);
+            }
+        }
         JSONObject all;
         synchronized (LaunchWatch.class) {
             all = load(context);
@@ -72,7 +91,16 @@ final class LaunchWatch {
         for (String id : ids) {
             JSONObject w = all.optJSONObject(id);
             if (w == null) continue;
-            JSONObject launch = fetchJson(LAUNCH_URL + id + "/?mode=list");
+            JSONObject launch = shared.get(id);
+            if (launch == null) {
+                long knownNet = parseIso(w.optString("net", ""));
+                // not among the next launches any more and its time is past: it has flown - nothing to watch
+                if (results != null && knownNet > 0 && now > knownNet) {
+                    unwatch(context, id);
+                    continue;
+                }
+                launch = fetchJson(LAUNCH_URL + id + "/?mode=list");
+            }
             if (launch == null) continue;   // no answer (its limit, no network): next time
             String netStr = launch.optString("net", "");
             long net = parseIso(netStr);
