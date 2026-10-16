@@ -1482,6 +1482,26 @@
             }
         }
 
+        /* The info tab's boxes (Starlink, Good to know, the milestones, the patches strip, the booster table, the recovery
+           fleet) rest on the documentary cards' shadow - .mission-card's own values in each mode, the milestones only
+           while not hovered / pressed (their glow keeps those) */
+        .info-shadow,
+        .milestone-card:not(:hover):not(:active) {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        body:not(.light-theme) .info-shadow,
+        body:not(.light-theme) .milestone-card:not(:hover):not(:active) {
+            box-shadow: 0 15px 30px -8px rgba(148, 163, 184, 0.12), 0 6px 14px -6px rgba(148, 163, 184, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+        }
+        body.mars-theme .info-shadow,
+        body.mars-theme .milestone-card:not(:hover):not(:active) {
+            box-shadow: 0 18px 34px -8px rgba(0, 0, 0, 0.6), 0 8px 18px -6px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 140, 80, 0.08) inset !important;
+        }
+        body.moon-theme .info-shadow,
+        body.moon-theme .milestone-card:not(:hover):not(:active) {
+            box-shadow: 0 18px 34px -8px rgba(0, 0, 0, 0.65), 0 8px 18px -6px rgba(0, 0, 0, 0.48), 0 1px 0 rgba(106, 191, 251, 0.08) inset !important;
+        }
+
         .milestone-card {
             transition: background-color 0.5s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
         }
@@ -2789,6 +2809,7 @@
 
         body.light-theme .ai3d-legend-row {
             background: rgba(0, 0, 0, 0.02);
+            border-color: rgba(15, 23, 42, 0.08);
         }
 
         body.light-theme .ai3d-legend-row:hover,
@@ -2982,7 +3003,8 @@
             padding: 15px 18px;
             border-radius: 16px;
             background: rgba(255, 255, 255, 0.02);
-            border: 1px solid transparent;
+            /* a thin, quiet outline marking each customer's row (hover / active make it stronger) */
+            border: 1px solid rgba(255, 255, 255, 0.08);
             cursor: pointer;
             transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
@@ -3657,6 +3679,7 @@
         }
         body.mars-theme .ai3d-legend-row {
             background: rgba(255, 107, 53, 0.04) !important;
+            border-color: rgba(255, 107, 53, 0.12);
         }
         body.mars-theme .ai3d-legend-row:hover,
         body.mars-theme .ai3d-legend-row.ai3d-active {
@@ -3949,6 +3972,7 @@
         }
         body.moon-theme .ai3d-legend-row {
             background: rgba(63, 169, 245, 0.04) !important;
+            border-color: rgba(63, 169, 245, 0.12);
         }
         body.moon-theme .ai3d-legend-row:hover,
         body.moon-theme .ai3d-legend-row.ai3d-active {
@@ -14722,7 +14746,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <!-- Satellite Deployment card -->
                 <div
-                    class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative group">
+                    class="info-shadow bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative group">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-globe text-cyan-500"></i>
@@ -14787,7 +14811,7 @@
 
                 <!-- Customers (Private + Business) card -->
                 <div id="starlink-customers-card"
-                    class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative">
+                    class="info-shadow bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-5 sm:p-6 transition-colors duration-500 flex flex-col justify-between h-full relative">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-users text-cyan-500"></i>
@@ -14874,7 +14898,7 @@
                 </h3>
             </div>
             <div
-                class="bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between gap-4 transition-colors duration-500">
+                class="info-shadow bg-zinc-900 border border-zinc-800/80 rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between gap-4 transition-colors duration-500">
                 <div class="flex items-start gap-4 sm:gap-5">
                     <div
                         class="w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
@@ -15176,7 +15200,7 @@
                 </span>
             </div>
 
-            <div class="relative bg-zinc-900 border border-zinc-800/80 rounded-3xl p-4 sm:p-6 transition-colors duration-500">
+            <div class="info-shadow relative bg-zinc-900 border border-zinc-800/80 rounded-3xl p-4 sm:p-6 transition-colors duration-500">
                 <!-- No fixed/max height here on purpose: a flex row with no height constraint
                      of its own sizes to its tallest child automatically, so once a tile's name
                      wraps past one line (see the line-clamp removal below), the whole card just
@@ -15237,7 +15261,7 @@
                     translate="no" lang="en">Most-flown Falcon 9 &amp; Super Heavy boosters from live mission data</p>
             </div>
             <div id="booster-leaderboard"
-                class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 space-y-3.5 transition-colors duration-500 notranslate"
+                class="info-shadow bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 space-y-3.5 transition-colors duration-500 notranslate"
                 translate="no" lang="en">
                 <div class="flex items-center gap-3 sm:gap-4">
                     <div class="skel w-7 sm:w-8 h-5 rounded shrink-0"></div>
@@ -15351,7 +15375,7 @@
                     drone ships, via public AIS data</p>
             </div>
             <div class="flex overflow-x-auto gap-4 -mx-4 px-4 pb-2 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:mx-0 md:px-0 md:pb-0 md:snap-none">
-                <div id="fleet-card-asog" class="w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
+                <div id="fleet-card-asog" class="info-shadow w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
                     <div class="p-4 sm:p-5 pb-3">
                         <h4 class="font-space font-bold text-white text-base">A Shortfall of Gravitas</h4>
                         <p class="text-xs text-zinc-500 notranslate" translate="no">ASOG · MARMAC 302</p>
@@ -15367,7 +15391,7 @@
                             VesselFinder →</a>
                     </div>
                 </div>
-                <div id="fleet-card-jrti" class="w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
+                <div id="fleet-card-jrti" class="info-shadow w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
                     <div class="p-4 sm:p-5 pb-3">
                         <h4 class="font-space font-bold text-white text-base">Just Read the Instructions</h4>
                         <p class="text-xs text-zinc-500 notranslate" translate="no">JRTI · MARMAC 303</p>
@@ -15383,7 +15407,7 @@
                             VesselFinder →</a>
                     </div>
                 </div>
-                <div id="fleet-card-ocisly" class="w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
+                <div id="fleet-card-ocisly" class="info-shadow w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
                     <div class="p-4 sm:p-5 pb-3">
                         <h4 class="font-space font-bold text-white text-base">Of Course I Still Love You</h4>
                         <p class="text-xs text-zinc-500 notranslate" translate="no">OCISLY · MARMAC 304</p>
