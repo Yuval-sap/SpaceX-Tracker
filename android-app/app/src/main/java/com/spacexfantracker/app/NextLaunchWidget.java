@@ -393,11 +393,12 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 boldOther = R.font.rubik_bold;
                 cover = ORBITRON;
                 labelSpacing = 0.04f;
-                // the label and the numbers in the darker green of the hero's countdown on the site's day mode (#047857),
-                // on the night too - the rest the night's (the widget sits on a dark photo)
-                accent = 0xFF047857;
-                digits = 0xFF047857;
-                units = 0xFFA1A1AA;
+                // the label and the numbers in the darker green the hero's countdown shows on the site's day mode, on the
+                // night too - as it looks on the screen (#407659: its #047857 under the page's own effects over it), the
+                // rest the night's (the widget sits on a dark photo)
+                accent = 0xFF407659;
+                digits = 0xFF407659;
+                units = 0xFFD4D4D8;   // the d / h / m a little lighter than the site's (#A1A1AA), on the dark photo
                 status = 0xFF34D399;
                 muted = 0xFFA1A1AA;
                 title = 0xFFFFFFFF;
@@ -454,7 +455,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         TextPaint namePaint = paint(font(c, st.nameOther), 17 * k, 0xFFFFFFFF, 0);
         int labelW = Math.max(1, Math.round(fullW - (pillW > 0 ? pillW + 8 * s : 0)));
         StaticLayout labelL = layout(mixed(label, font(c, st.boldLatin), st.cover, font(c, st.boldOther)),
-                paint(font(c, st.boldOther), 11 * k, st.accent, st.labelSpacing), labelW, 1, rtl);
+                paint(font(c, st.boldOther), 13 * k, st.accent, st.labelSpacing), labelW, 1, rtl);
         float rowH = Math.max(labelL.getHeight(), pillH);
         // a long name takes two lines - one when two would reach up into the title
         StaticLayout nameL = layout(nameText, namePaint, nameW, 2, rtl);
@@ -491,7 +492,9 @@ public class NextLaunchWidget extends AppWidgetProvider {
         // top: "Current launch", the T+ clock at the other end (room kept for it)
         int labelW = Math.max(1, Math.round(fullW - 96 * s));
         TextPaint labelPaint = paint(font(c, st.boldOther), 11 * k, st.accent, st.labelSpacing);
-        StaticLayout labelL = layout(mixed(label, font(c, st.boldLatin), st.cover, font(c, st.boldOther)), labelPaint, labelW, 1, rtl);
+        // the label over the name a little larger, as before T-0
+        TextPaint topLabelPaint = paint(font(c, st.boldOther), 13 * k, st.accent, st.labelSpacing);
+        StaticLayout labelL = layout(mixed(label, font(c, st.boldLatin), st.cover, font(c, st.boldOther)), topLabelPaint, labelW, 1, rtl);
         draw(cv, labelL, rtl ? W - pad - labelW : pad, padT);
         float nameTop = padT + labelL.getHeight() + 3 * s;
 
