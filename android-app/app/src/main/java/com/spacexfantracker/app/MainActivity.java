@@ -190,7 +190,12 @@ public class MainActivity extends Activity {
         intent.removeExtra(EXTRA_FROM_WIDGET);
         Rect from = intent.getSourceBounds();
         int w = root.getWidth(), h = root.getHeight();
-        if (from == null || from.isEmpty() || w == 0 || h == 0 || launcherAnimatesWidgets()) return;
+        if (from == null || from.isEmpty() || w == 0 || h == 0 || launcherAnimatesWidgets()) {
+            // TEMPORARY - why the growth didn't run on this phone (to be removed once it's seen working)
+            Toast.makeText(this, "widget: " + (from == null ? "no bounds" : from.isEmpty() ? "empty bounds"
+                    : (w == 0 || h == 0) ? "no size" : "home animates"), Toast.LENGTH_LONG).show();
+            return;
+        }
         if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0);
         else overridePendingTransition(0, 0);
 
@@ -220,7 +225,7 @@ public class MainActivity extends Activity {
         root.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(350);
+        a.setDuration(500);
         a.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         a.addUpdateListener(an -> {
             float f = (float) an.getAnimatedValue();
@@ -251,6 +256,19 @@ public class MainActivity extends Activity {
         a.setCurrentFraction(0f);
         if (pendingExpand != null) pendingExpand.end();
         pendingExpand = a;
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) startPendingExpand();
+    }
+
+    private void startPendingExpand() {
+        if (pendingExpand == null) return;
+        ValueAnimator a = pendingExpand;
+        pendingExpand = null;
+        a.start();
     }
 
     /** the home screens that open an app out of its widget themselves (the widget's frame is @android:id/background) */
@@ -304,12 +322,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         webView.onResume();
-        if (pendingExpand != null) {
-            // with the next frame - the first one on the screen
-            ValueAnimator a = pendingExpand;
-            pendingExpand = null;
-            root.postOnAnimation(a::start);
-        }
+        // the growth starts once the window is on the screen (it has the focus), or shortly after this at the latest
+        if (pendingExpand != null) root.postDelayed(this::startPendingExpand, 300);
     }
 
     @Override
