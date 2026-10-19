@@ -7140,16 +7140,16 @@
         /* The info tab's boxes rest on the site's card shadow too (its documentary cards', each mode's own - the phone-size
            values the site uses in its scrolling strips); the two scrolling rows get room below for it, taken back by
            a negative margin so nothing under them moves */
-        html.in-app #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
+        html.in-app #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-info-block:is([data-key="patches"], [data-key="milestones"]) > .app-info-body, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
             box-shadow: 0 8px 10px -4px rgba(0, 0, 0, 0.1), 0 3px 4px -3px rgba(0, 0, 0, 0.1);
         }
-        html.in-app body:not(.light-theme) #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
+        html.in-app body:not(.light-theme) #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-info-block:is([data-key="patches"], [data-key="milestones"]) > .app-info-body, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
             box-shadow: 0 6px 12px -5px rgba(148, 163, 184, 0.12), 0 3px 6px -4px rgba(148, 163, 184, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
         }
-        html.in-app body.mars-theme #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
+        html.in-app body.mars-theme #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-info-block:is([data-key="patches"], [data-key="milestones"]) > .app-info-body, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
             box-shadow: 0 8px 14px -6px rgba(0, 0, 0, 0.6), 0 3px 8px -4px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 140, 80, 0.08) inset !important;
         }
-        html.in-app body.moon-theme #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
+        html.in-app body.moon-theme #app-info :is(.app-feature-slide, .app-tile, .app-fact, .app-info-block:is([data-key="patches"], [data-key="milestones"]) > .app-info-body, .app-shelf-card, .app-rank-list, .app-fleet-host .info-shadow) {
             box-shadow: 0 8px 14px -6px rgba(0, 0, 0, 0.65), 0 3px 8px -4px rgba(0, 0, 0, 0.48), 0 1px 0 rgba(106, 191, 251, 0.08) inset !important;
         }
         html.in-app #app-info :is(.app-feature-track, .app-info-row) {
@@ -7167,6 +7167,15 @@
             border: 1px solid var(--app-border);
             color: var(--app-text);
             touch-action: pan-y;
+        }
+        /* the mission patches and the milestones in the same box as Good to know's card (its accent tint, border,
+           corners and shadow - see the shadow rules above) */
+        html.in-app #app-info .app-info-block:is([data-key="patches"], [data-key="milestones"]) > .app-info-body {
+            padding: 1rem;
+            border-radius: var(--app-r-lg);
+            background: linear-gradient(160deg, rgba(var(--app-accent-rgb), 0.18), rgba(var(--app-accent-rgb), 0.03) 75%), var(--app-surface);
+            border: 1px solid var(--app-border);
+            color: var(--app-text);
         }
         html.in-app .app-fact-top {
             display: flex;
