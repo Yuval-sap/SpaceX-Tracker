@@ -530,6 +530,46 @@
             opacity: 0.1;
         }
 
+        /* The site (not the app): the Info Station's boxes and the hero's countdown box in the app's box - the Good to know
+           card's look there (a hint of the mode's accent over its surface, a thin border, its shadow), with no scanlines in
+           them. Each mode's colors as the app's own (--app-*), here on the site's page. */
+        html:not(.in-app) body {
+            --box-rgb: 16, 185, 129;
+            --box-surface: #111114;
+            --box-border: rgba(255, 255, 255, 0.07);
+            --box-shadow: 0 6px 12px -5px rgba(148, 163, 184, 0.12), 0 3px 6px -4px rgba(148, 163, 184, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+        }
+        html:not(.in-app) body.light-theme {
+            --box-rgb: 4, 120, 87;
+            --box-surface: #ffffff;
+            --box-border: #e2e8f0;
+            --box-shadow: 0 8px 10px -4px rgba(0, 0, 0, 0.1), 0 3px 4px -3px rgba(0, 0, 0, 0.1);
+        }
+        html:not(.in-app) body.mars-theme {
+            --box-rgb: 255, 107, 53;
+            --box-surface: #1d0e0a;
+            --box-border: rgba(140, 65, 35, 0.4);
+            --box-shadow: 0 8px 14px -6px rgba(0, 0, 0, 0.6), 0 3px 8px -4px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 140, 80, 0.08) inset;
+        }
+        html:not(.in-app) body.moon-theme {
+            --box-rgb: 63, 169, 245;
+            --box-surface: #0e1420;
+            --box-border: rgba(80, 100, 140, 0.4);
+            --box-shadow: 0 8px 14px -6px rgba(0, 0, 0, 0.65), 0 3px 8px -4px rgba(0, 0, 0, 0.48), 0 1px 0 rgba(106, 191, 251, 0.08) inset;
+        }
+        html:not(.in-app) body #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card):not(input),
+        html:not(.in-app) body #tab-panel-more .ai3d-card,
+        html:not(.in-app) body #tab-panel-launches #countdown-box {
+            background: linear-gradient(160deg, rgba(var(--box-rgb), 0.18), rgba(var(--box-rgb), 0.03) 75%), var(--box-surface) !important;
+            border: 1px solid var(--box-border) !important;
+            box-shadow: var(--box-shadow) !important;
+        }
+        html:not(.in-app) body #tab-panel-more [class~="bg-zinc-900"]:not(.mission-card):not(input)::before,
+        html:not(.in-app) body #tab-panel-more .ai3d-card::before,
+        html:not(.in-app) body #tab-panel-launches #countdown-box::before {
+            display: none !important;
+        }
+
         /* #search-box-wrap/#patches-search-box-wrap's scanline pseudo sits behind ALL of the
            wrapper's children (icon + input), but the input itself is an opaque bg-zinc-900 box
            that fills almost the entire wrapper - so in practice the scanlines were only ever
