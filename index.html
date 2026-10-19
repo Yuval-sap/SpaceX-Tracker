@@ -10327,6 +10327,79 @@
             if (typeof applyVehicleGalleryLabel === 'function') applyVehicleGalleryLabel();
         }
 
+        // The empty results' messages - the upcoming launches' search / filter, the mission patches, the past launches -
+        // written by hand in each language: through Google they came out broken (Hebrew: "לא נמצאו שיגורים עתידיות
+        // תואמות"). Kept in step with the language by applyCountdownToLaunchLabels, as the cards' own labels.
+        const EMPTY_I18N = {
+            upcoming: {
+                en: 'No matching upcoming launches found.',
+                he: 'לא נמצאו שיגורים מתוכננים מתאימים.',
+                es: 'No se encontraron próximos lanzamientos que coincidan.',
+                fr: 'Aucun lancement à venir ne correspond.',
+                de: 'Keine passenden bevorstehenden Starts gefunden.',
+                ru: 'Подходящих предстоящих запусков не найдено.',
+                zh: '未找到匹配的即将发射任务。',
+                it: 'Nessun lancio in programma corrispondente.',
+                cs: 'Nenalezeny žádné odpovídající nadcházející starty.',
+                sv: 'Inga matchande kommande uppskjutningar hittades.',
+                nl: 'Geen overeenkomende komende lanceringen gevonden.',
+                da: 'Ingen matchende kommende opsendelser fundet.',
+                pt: 'Nenhum lançamento futuro correspondente encontrado.',
+                pl: 'Nie znaleziono pasujących nadchodzących startów.',
+                hi: 'कोई मेल खाता आगामी लॉन्च नहीं मिला।',
+                ar: 'لم يتم العثور على عمليات إطلاق قادمة مطابقة.',
+                tr: 'Eşleşen yaklaşan fırlatma bulunamadı.',
+            },
+            patches: {
+                en: 'No mission patches available yet.',
+                he: 'אין עדיין תגי משימה.',
+                es: 'Todavía no hay parches de misión.',
+                fr: 'Aucun écusson de mission pour le moment.',
+                de: 'Noch keine Missionsabzeichen verfügbar.',
+                ru: 'Эмблем миссий пока нет.',
+                zh: '暂无任务徽章。',
+                it: 'Ancora nessuna patch di missione.',
+                cs: 'Zatím nejsou k dispozici žádné nášivky misí.',
+                sv: 'Inga uppdragsemblem ännu.',
+                nl: 'Nog geen missie-emblemen beschikbaar.',
+                da: 'Ingen missionsemblemer endnu.',
+                pt: 'Ainda não há emblemas de missão.',
+                pl: 'Brak jeszcze naszywek misji.',
+                hi: 'अभी कोई मिशन पैच उपलब्ध नहीं है।',
+                ar: 'لا توجد شارات مهام بعد.',
+                tr: 'Henüz görev arması yok.',
+            },
+            past: {
+                en: 'No recent past launches found.',
+                he: 'לא נמצאו שיגורים מהשנה האחרונה.',
+                es: 'No se encontraron lanzamientos recientes.',
+                fr: 'Aucun lancement récent trouvé.',
+                de: 'Keine kürzlichen Starts gefunden.',
+                ru: 'Недавних запусков не найдено.',
+                zh: '未找到近期的发射记录。',
+                it: 'Nessun lancio recente trovato.',
+                cs: 'Nenalezeny žádné nedávné starty.',
+                sv: 'Inga nyligen genomförda uppskjutningar hittades.',
+                nl: 'Geen recente lanceringen gevonden.',
+                da: 'Ingen nylige opsendelser fundet.',
+                pt: 'Nenhum lançamento recente encontrado.',
+                pl: 'Nie znaleziono ostatnich startów.',
+                hi: 'हाल का कोई लॉन्च नहीं मिला।',
+                ar: 'لم يتم العثور على عمليات إطلاق حديثة.',
+                tr: 'Yakın zamanda yapılmış fırlatma bulunamadı.',
+            },
+        };
+        function emptyText(kind, lang) {
+            const m = EMPTY_I18N[kind] || EMPTY_I18N.upcoming;
+            let key = String(lang || 'en').toLowerCase().split('-')[0];
+            if (key === 'iw') key = 'he';
+            return m[key] || m.en;
+        }
+        // the element for one of them: kept out of Google's reach, written again on a language change
+        function emptyMessageHtml(kind, cls) {
+            return `<div class="${cls} notranslate" translate="no" data-i18n-empty="${kind}">${escapeHtml(emptyText(kind, document.documentElement.lang || 'en'))}</div>`;
+        }
+
         function applyCountdownToLaunchLabels(currentLang) {
             let key = currentLang.split('-')[0];
             if (key === 'zh') key = 'zh';
@@ -10334,6 +10407,10 @@
             const text = dict.countdownToLaunch || LAUNCH_LABEL_I18N.en.countdownToLaunch;
             document.querySelectorAll('[data-i18n-countdown-to-launch="1"]').forEach(el => {
                 el.innerText = text;
+            });
+            document.querySelectorAll('[data-i18n-empty]').forEach(el => {
+                const t = emptyText(el.dataset.i18nEmpty, currentLang);
+                if (el.textContent !== t) el.textContent = t;
             });
         }
 
@@ -24601,7 +24678,7 @@
             uniquePatchMissions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (uniquePatchMissions.length === 0) {
-                strip.innerHTML = `<div class="text-sm text-zinc-500 py-4">No mission patches available yet.</div>`;
+                strip.innerHTML = emptyMessageHtml('patches', 'text-sm text-zinc-500 py-4');
                 return;
             }
 
@@ -26464,7 +26541,7 @@ setTimeout(() => {
                 if (currentFilter === 'favorites') {
                     grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500 flex flex-col items-center justify-center w-full"><i class="fa-regular fa-star text-3xl mb-3 text-zinc-600"></i><p>Your watchlist is empty.<br>Click the star icon on any mission to save it here.</p></div>`;
                 } else {
-                    grid.innerHTML = `<div class="col-span-full py-10 text-center text-zinc-500">No matching upcoming launches found.</div>`;
+                    grid.innerHTML = emptyMessageHtml('upcoming', 'col-span-full py-10 text-center text-zinc-500');
                 }
                 if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
                 return;
@@ -26619,7 +26696,7 @@ setTimeout(() => {
                 if (currentFilter === 'favorites') {
                     pastGrid.innerHTML = `<div class="py-10 text-center text-zinc-500 w-full flex flex-col items-center justify-center"><i class="fa-regular fa-star text-3xl mb-3 text-zinc-600"></i><p>No past missions in your watchlist.</p></div>`;
                 } else {
-                    pastGrid.innerHTML = `<div class="py-10 text-zinc-500 text-center w-full">No recent past launches found in the database.</div>`;
+                    pastGrid.innerHTML = emptyMessageHtml('past', 'py-10 text-zinc-500 text-center w-full');
                 }
                 if (typeof appDecoratePast === 'function') appDecoratePast(pastGrid, filteredPast);
                 if (typeof scheduleCrtHoleUpdate === 'function') scheduleCrtHoleUpdate();
