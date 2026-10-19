@@ -163,9 +163,9 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /**
-     * The launches still ahead, soonest first ({id, name, t0 (ms), image}): the site's list in its language, the times
-     * from Launch Library when it was asked later than the site last gave its list, and its launches the site's list
-     * doesn't have (their English names).
+     * The launches still ahead, soonest first ({id, name, t0 (ms), image}): the site's list in its language - only the
+     * launches that have a card on the site, so a tap opens one in the app - with the times from Launch Library when it
+     * was asked later than the site last gave its list (a launch it has that the site doesn't list is left out).
      */
     static java.util.List<JSONObject> upcoming(Context context) {
         SharedPreferences p = prefs(context);
@@ -186,13 +186,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
                 JSONObject l = ll.optJSONObject(i);
                 if (l == null || l.optString("id").isEmpty()) continue;
                 JSONObject known = byId.get(l.optString("id"));
-                if (known == null) {
-                    byId.put(l.optString("id"), new JSONObject().put("id", l.optString("id"))
-                            .put("name", l.optString("name").replace(" Block 5", "")).put("image", l.optString("image"))
-                            .put("t0", l.optLong("t0")));
-                } else if (llNewer && l.optLong("t0") > 0) {
-                    known.put("t0", l.optLong("t0"));
-                }
+                if (known != null && llNewer && l.optLong("t0") > 0) known.put("t0", l.optLong("t0"));
             }
         } catch (JSONException ignored) { }
         long now = System.currentTimeMillis();

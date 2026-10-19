@@ -32587,9 +32587,10 @@ if (heroNameEl) {
                 // when the hero already has the broadcast (early)
                 live: { label: (MODAL_LIVE_BTN_I18N[heroLiveDict().key] || MODAL_LIVE_BTN_I18N.en).watch,
                     early: !!(hero && String(hero.id) === String(m.id) && heroLiveButtonState === 'live') },
-                // the next few launches in the site's language: the background update names the next one with these, and the
-                // widget moves on to the next of them when a flight is over
-                upcoming: dbMissions.filter(x => at(x) > now).slice(0, 6)
+                // the launches ahead that have a card here (each opens in the app - the upcoming launches widget shows only
+                // these), in the site's language: the background update names the next one with these, and the widget moves
+                // on to the next of them when a flight is over
+                upcoming: dbMissions.filter(x => at(x) > now).slice(0, 25)
                     .map(x => ({ id: String(x.id), name: reminderMissionName(x.name), image: abs(x.image), t0: x.date })) });
             if (data === window._appWidgetSent) return;
             window._appWidgetSent = data;
