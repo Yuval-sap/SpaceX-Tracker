@@ -1269,6 +1269,11 @@
             overflow: visible;
         }
 
+        /* .is-hover: kept by initCardHoverHold while the pointer is still where the card lifted from - lifting it away
+           from a pointer on its bottom edge dropped the :hover, the card fell back under the pointer, was hovered
+           again - up and down without end */
+        .mission-card.is-hover,
+        body:not(.light-theme) .mission-card.is-hover,
         .mission-card:hover,
         .mission-card:active,
         /* dark mode's resting shadow (body:not(.light-theme) .mission-card, further down) outranks a plain
@@ -33743,6 +33748,30 @@ if (heroNameEl) {
             if (meta) new MutationObserver(repaint).observe(meta, { attributes: true, attributeFilter: ['content'] });
             new MutationObserver(repaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
         }
+        // A card lifted by its hover (translateY(-6px)) moved away from a pointer resting near its bottom edge: :hover
+        // dropped, the card fell back under the pointer, was hovered again - up and down without end. With a mouse,
+        // .is-hover holds the lift until the pointer has really left: outside the card and the strip it lifted from.
+        (function initCardHoverHold() {
+            const HOLD_PX = 10;
+            let held = null;
+            const release = () => { if (held) held.classList.remove('is-hover'); held = null; document.removeEventListener('mousemove', check, true); };
+            const check = e => {
+                if (!held) return;
+                const r = held.getBoundingClientRect();
+                if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom + HOLD_PX) release();
+            };
+            document.addEventListener('pointerover', e => {
+                if (e.pointerType !== 'mouse') return;
+                const card = e.target.closest && e.target.closest('.mission-card');
+                if (!card || card === held) return;
+                release();
+                held = card;
+                card.classList.add('is-hover');
+                document.addEventListener('mousemove', check, true);
+            }, true);
+            // the pointer leaving the window altogether
+            document.addEventListener('mouseleave', release);
+        })();
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAndroidAppShell);
         else initAndroidAppShell();
 
