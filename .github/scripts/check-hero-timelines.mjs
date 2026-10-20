@@ -16,6 +16,10 @@
 // Writes the findings to timeline-report.md and exits 1 when there is a problem (the workflow then alerts),
 // 0 when all is well, and 0 with a note when the page itself could not be checked (no launch data loaded -
 // e.g. Launch Library rate-limited this runner) so a passing hiccup does not raise a false alarm.
+// SpaceX's server sometimes doesn't answer this runner for a while (2026-10-20: no upcoming tiles and a 404 for a
+// page that had been up for 7 hours): a problem is checked again (ATTEMPTS times, ATTEMPT_WAIT_MS apart) before it
+// counts, and a run in which SpaceX's upcoming tiles came back empty is a note, not an alarm - SpaceX always lists
+// some, so an empty list means it didn't answer, not that the pages are missing.
 
 import puppeteer from 'puppeteer-core';
 import { writeFileSync } from 'node:fs';
@@ -24,6 +28,8 @@ const SITE = 'https://spacexfantracker.com/';
 const WINDOW_HOURS = 48;
 const TILE_NEAR_DAYS = 3;
 const CHROME = process.env.CHROME_PATH || '/usr/bin/google-chrome';
+const ATTEMPTS = 3;
+const ATTEMPT_WAIT_MS = 90 * 1000;
 
 const report = (lines) => writeFileSync('timeline-report.md', lines.join('\n') + '\n');
 
@@ -40,7 +46,7 @@ try {
         report(['## Hero status timeline check', '', 'Could not check: the site loaded no launches this time (Launch Library may have rate-limited this run). Nothing to report.']);
         console.log('No launch data loaded - skipped.');
     } else {
-        const result = await page.evaluate(async (windowHours, nearDays) => {
+        const checkOnce = () => page.evaluate(async (windowHours, nearDays) => {
             const need = ['candidateSlugsFromMissionName', 'pickHeroTimelineTile', 'namesReferToSameMission',
                 'parseCmsPostLaunchTimeline', 'fetchSpacexCms'];
             const missing = need.filter(n => typeof window[n] !== 'function');
@@ -77,11 +83,21 @@ try {
                 });
             return { launches, unmatchedTiles, tiles: (Array.isArray(tiles) ? tiles : []).map(t => t && t.link) };
         }, WINDOW_HOURS, TILE_NEAR_DAYS);
+        const hasProblem = r => !r.broken && (r.launches.some(l => l.inWindow && !l.found) || r.unmatchedTiles.some(t => t.near));
+        let result = await checkOnce();
+        for (let attempt = 2; attempt <= ATTEMPTS && (hasProblem(result) || (!result.broken && !result.tiles.length)); attempt++) {
+            console.log(`Attempt ${attempt - 1}: ${result.tiles.length ? 'a problem' : 'no answer from SpaceX'} - checking again in ${ATTEMPT_WAIT_MS / 1000} s`);
+            await new Promise(r => setTimeout(r, ATTEMPT_WAIT_MS));
+            result = await checkOnce();
+        }
+        const noAnswer = !result.broken && !result.tiles.length;
 
         const lines = ['## Hero status timeline check', '', `Checked ${new Date().toISOString()} against ${SITE}`, ''];
         if (result.broken) {
             lines.push('**The check itself broke:** ' + result.broken);
             exitCode = 1;
+        } else if (noAnswer) {
+            lines.push(`Could not check: SpaceX's server gave no upcoming launches in ${ATTEMPTS} tries (it didn't answer this runner). Nothing to report.`);
         } else {
             const problems = result.launches.filter(l => l.inWindow && !l.found);
             if (problems.length) {
