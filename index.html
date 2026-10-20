@@ -9374,6 +9374,29 @@
             // rideshare flights list every satellite as "<satellite> deploys, manifested by <company>" -
             // one template for all of them ({payload} / {company} filled in here)
             const m = /^(.+?) deploys, manifested by (.+)$/i.exec(norm);
+            // written by hand, not Gemini's (its Hebrew read "בארגון"): the satellite and the company it is of - the one
+            // SpaceX names after "via" when it gives one ("T.MicroSat-3 via Tron Future Tech ..., manifested by Exolaunch":
+            // Exolaunch only booked its ride), otherwise the "manifested by" one
+            const RIDESHARE_DEPLOY_I18N = {
+                he: '{payload} של חברת {company} משתחרר למסלול',
+                ar: 'انفصال {payload} التابع لشركة {company} في المدار',
+                ru: '{payload} компании {company} выводится на орбиту',
+                de: '{payload} von {company} wird ausgesetzt',
+                es: '{payload} de {company} se despliega en órbita',
+                fr: '{payload} de {company} est déployé en orbite',
+                it: '{payload} di {company} viene rilasciato in orbita',
+                pt: '{payload} da {company} é liberado em órbita',
+                nl: '{payload} van {company} wordt in een baan gebracht',
+                sv: '{payload} från {company} släpps ut i omloppsbana',
+                da: '{payload} fra {company} sættes i kredsløb',
+                pl: '{payload} firmy {company} zostaje wypuszczony na orbitę',
+                cs: '{payload} společnosti {company} je vypuštěn na oběžnou dráhu',
+                tr: '{company} şirketinin {payload} uydusu yörüngeye bırakılıyor',
+                hi: '{company} का {payload} कक्षा में छोड़ा जाता है',
+                zh: '{company} 的 {payload} 部署入轨',
+            };
+            const via = m && /^(.+?)\s+via\s+(.+)$/i.exec(m[1].trim());
+            if (m && RIDESHARE_DEPLOY_I18N[lang]) return RIDESHARE_DEPLOY_I18N[lang].replace('{payload}', via ? via[1] : m[1].trim()).replace('{company}', via ? via[2] : m[2].trim());
             const tpl = m && _geminiTimelineMap['{payload} deploys, manifested by {company}'];
             if (tpl && tpl[lang]) return tpl[lang].replace('{payload}', m[1]).replace('{company}', m[2]);
             return '';
