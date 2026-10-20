@@ -34,6 +34,8 @@ final class LaunchWatch {
     private static final String PREFS = "launch_watch";
     private static final String KEY = "watched";
     static final String LAUNCH_URL = "https://ll.thespacedevs.com/2.2.0/launch/";
+    /** the shared copy is too old to go by after this (see checkAll) */
+    static final long STALE_MS = 20 * 60 * 1000L;
     /**
      * The site's worker: one copy of Launch Library's next 15 SpaceX launches for everyone, asked again at most every 4
      * minutes - the phone's own Launch Library requests (about 15 an hour from one address) stay the site's, which times
@@ -74,6 +76,12 @@ final class LaunchWatch {
     static void checkAll(Context context, JSONObject upcoming) {
         java.util.Map<String, JSONObject> shared = new java.util.HashMap<>();
         org.json.JSONArray results = upcoming != null ? upcoming.optJSONArray("results") : null;
+        // a copy older than this is not a launch's current time - an hours-old one (Launch Library refusing the worker on
+        // a launch day) gave a launch whose time had moved its old time back: a false "new time" and reminders moved
+        // to it. Nothing is decided on it; the next check, with a fresh copy, does.
+        if (upcoming != null && System.currentTimeMillis() - upcoming.optLong("_fetchedAt", System.currentTimeMillis()) > STALE_MS) {
+            return;
+        }
         if (results != null) {
             for (int i = 0; i < results.length(); i++) {
                 JSONObject l = results.optJSONObject(i);
@@ -182,11 +190,17 @@ final class LaunchWatch {
             conn.setRequestProperty("Accept", "application/json");
             conn.setRequestProperty("User-Agent", "SpaceXTrackerApp");
             if (conn.getResponseCode() != 200) return null;
+            String fetchedAt = conn.getHeaderField("X-Fetched-At");
             try (InputStream in = conn.getInputStream()) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 byte[] buf = new byte[8192];
                 for (int n; (n = in.read(buf)) != -1; ) out.write(buf, 0, n);
-                return new JSONObject(new String(out.toByteArray(), StandardCharsets.UTF_8));
+                JSONObject json = new JSONObject(new String(out.toByteArray(), StandardCharsets.UTF_8));
+                // the site's worker: when it asked Launch Library for this copy - it serves an old one while Launch
+                // Library refuses it (its limit), even hours old on a launch day
+                long at = parseIso(fetchedAt);
+                if (at > 0) json.put("_fetchedAt", at);
+                return json;
             }
         } catch (Exception e) {
             return null;

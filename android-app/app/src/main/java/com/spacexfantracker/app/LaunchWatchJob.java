@@ -70,6 +70,14 @@ public class LaunchWatchJob extends JobService {
             return;
         }
         long now = System.currentTimeMillis();
+        long fetchedAt = data.optLong("_fetchedAt", now);
+        // An old copy (the worker serves its last one while Launch Library refuses it - on a launch day even hours old)
+        // or one older than what the site last said: the launch times in it are out of date - a launch whose time had
+        // moved later read as already gone, and the widget jumped to the launch after it. Nothing is changed by it.
+        if (now - fetchedAt > LaunchWatch.STALE_MS || fetchedAt < NextLaunchWidget.siteAt(context)) {
+            NextLaunchWidget.render(context);
+            return;
+        }
         // all of them for the upcoming launches widget (the site's names kept for the ones it listed)
         JSONArray list = new JSONArray();
         for (int i = 0; i < results.length(); i++) {
@@ -80,8 +88,23 @@ public class LaunchWatchJob extends JobService {
                         .put("image", l.optString("image", "")).put("t0", LaunchWatch.parseIso(l.optString("net", ""))));
             } catch (org.json.JSONException ignored) { }
         }
-        NextLaunchWidget.setLaunchLibraryList(context, list);
+        NextLaunchWidget.setLaunchLibraryList(context, list, fetchedAt);
         NextLaunchWidget.listImage(context);
+        // the widget's launch, while still ahead (or flying): it moves on only when the copy has it later than now - a
+        // copy that doesn't (or no longer lists it) and still says T-0 is ahead is wrong about it, so it stays
+        String cur = NextLaunchWidget.currentId(context);
+        long curT0 = NextLaunchWidget.currentT0(context);
+        if (!cur.isEmpty() && curT0 > now) {
+            boolean ahead = false;
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject l = results.optJSONObject(i);
+                if (l != null && cur.equals(l.optString("id")) && LaunchWatch.parseIso(l.optString("net", "")) > now) ahead = true;
+            }
+            if (!ahead) {
+                NextLaunchWidget.render(context);
+                return;
+            }
+        }
         for (int i = 0; i < results.length(); i++) {
             JSONObject l = results.optJSONObject(i);
             if (l == null) continue;

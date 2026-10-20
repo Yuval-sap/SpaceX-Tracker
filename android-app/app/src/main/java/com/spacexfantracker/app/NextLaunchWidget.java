@@ -158,8 +158,22 @@ public class NextLaunchWidget extends AppWidgetProvider {
     }
 
     /** Launch Library's next launches (LaunchWatchJob, with the app closed) - the list widget's when the site's are old */
-    static void setLaunchLibraryList(Context context, JSONArray list) {
-        prefs(context).edit().putString("ll", list.toString()).putLong("llAt", System.currentTimeMillis()).apply();
+    static void setLaunchLibraryList(Context context, JSONArray list, long fetchedAt) {
+        // as old as the copy is (when the worker asked Launch Library), not when the phone got it
+        prefs(context).edit().putString("ll", list.toString()).putLong("llAt", fetchedAt).apply();
+    }
+
+    /** when the site last handed its launches over (the app open) */
+    static long siteAt(Context context) {
+        return prefs(context).getLong("siteAt", 0);
+    }
+
+    static String currentId(Context context) {
+        return prefs(context).getString("id", "");
+    }
+
+    static long currentT0(Context context) {
+        return prefs(context).getLong("t0", 0);
     }
 
     /**
