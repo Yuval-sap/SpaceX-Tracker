@@ -22890,6 +22890,15 @@
                             const data = await res.json();
                             if (data.results && data.results.length > 0) {
                                 upcomingSource = 'launch-library';
+                                // the Worker's copy was old (Launch Library refusing it): this fresh answer handed to it, so
+                                // other visitors get it from there instead of each asking Launch Library (POST /launches -
+                                // it checks the copy and takes at most one every 3 minutes)
+                                try {
+                                    fetch('https://spacex-weather.yuvisapir24.workers.dev/launches', {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: false,
+                                        body: JSON.stringify({ fetchedAt: new Date().toISOString(), data })
+                                    }).catch(() => { });
+                                } catch (e) { }
                                 return (freshUpcoming = data.results);
                             }
                         } else upcomingSource = 'launch-library ' + res.status;

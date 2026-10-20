@@ -31,6 +31,10 @@
 //    address; a phone that opens the app often went past it, fell back to the backup server's stale copy and showed a
 //    launch still on the pad as flying (2026-10-13: "SECO" for a Starlink whose T-0 had moved 1.5 hours later). When
 //    Launch Library doesn't answer, the last good copy is served (its time in X-Fetched-At, so the page knows how old it is).
+//    POST /launches - a visitor's fresh copy: Launch Library refuses this worker for hours on launch days (Cloudflare's
+//    addresses are shared - others use up the limit, 2026-10-20: a copy 10 hours old), while a visitor's own browser
+//    asking it directly is usually answered. The page then hands that answer here (KV "ll-upcoming-relay"), checked,
+//    and every other visitor gets it instead of asking Launch Library themselves.
 //
 // Needs (Cloudflare dashboard -> this worker -> Settings):
 //   - KV namespace binding  NEWS_KV   (Storage & databases -> KV -> create one, then bind it here)
@@ -63,7 +67,11 @@ export default {
       return updates(request, env);
     }
     if (url.pathname === '/yt-live') return ytLive(url, env, ctx);
-    if (url.pathname === '/launches') return launches(ctx);
+    if (url.pathname === '/launches' && request.method === 'POST') {
+      if (!SITE_ORIGINS.test(request.headers.get('Origin') || '')) return json({ error: 'forbidden' }, 403);
+      return launchesRelay(request, env);
+    }
+    if (url.pathname === '/launches') return launches(env, ctx);
     return new Response('Not found', { status: 404, headers: CORS });
   },
 };
@@ -366,7 +374,17 @@ const LL_UPCOMING_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp_
 const LAUNCHES_FRESH_SECONDS = 240;        // at most 15 requests an hour to Launch Library from one Cloudflare location
 const LAUNCHES_RETRY_SECONDS = 60;         // after a failed request, the last good copy for a minute before asking again
 const LAUNCHES_KEEP_SECONDS = 2 * 86400;   // the last good copy, for when Launch Library doesn't answer
-async function launches(ctx) {
+// a visitor's copy (POST /launches), as {at, text} - KV, so every Cloudflare location sees it (the cache is per location)
+const RELAY_KEY = 'll-upcoming-relay';
+const RELAY_MIN_GAP_MS = 3 * 60 * 1000;     // at most one stored every 3 minutes (KV allows ~1000 writes a day)
+const RELAY_MAX_BYTES = 3 * 1024 * 1024;
+async function readRelay(env) {
+  try {
+    const r = env.NEWS_KV ? await env.NEWS_KV.get(RELAY_KEY, 'json') : null;
+    return r && r.text && r.at ? r : null;
+  } catch (e) { return null; }
+}
+async function launches(env, ctx) {
   const cache = caches.default;
   const freshKey = new Request('https://cache.internal/ll-upcoming-v1');
   const lastKey = new Request('https://cache.internal/ll-upcoming-last-v1');
@@ -376,6 +394,15 @@ async function launches(ctx) {
   // Launch Library refused a minute ago and there is no good copy yet: the same answer, without asking it again
   const failed = await cache.match(failKey);
   if (failed) return withCors(failed);
+  // a visitor's copy from the last few minutes: served as it is - Launch Library isn't asked for what was just fetched
+  const relay = await readRelay(env);
+  const relayAge = relay ? Date.now() - Date.parse(relay.at) : Infinity;
+  const serveRelay = () => {
+    const make = (maxAge) => new Response(relay.text, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${maxAge}`, 'X-Fetched-At': relay.at, 'X-Source': 'visitor' } });
+    ctx.waitUntil(cache.put(freshKey, make(LAUNCHES_RETRY_SECONDS)));
+    return withCors(make(LAUNCHES_RETRY_SECONDS));
+  };
+  if (relayAge >= 0 && relayAge < LAUNCHES_FRESH_SECONDS * 1000) return serveRelay();
   let text = null, why = '';
   try {
     const r = await fetch(LL_UPCOMING_URL, { headers: { 'User-Agent': 'spacexfantracker launches cache' } });
@@ -392,8 +419,10 @@ async function launches(ctx) {
     ctx.waitUntil(Promise.all([cache.put(freshKey, make(LAUNCHES_FRESH_SECONDS)), cache.put(lastKey, make(LAUNCHES_KEEP_SECONDS))]));
     return withCors(make(LAUNCHES_FRESH_SECONDS));
   }
-  // Launch Library didn't answer (its limit, or down): the last good copy, and not asked again for a minute
+  // Launch Library didn't answer (its limit, or down): the last good copy, and not asked again for a minute -
+  // a visitor's, when it's newer than this location's own
   const last = await cache.match(lastKey);
+  if (relay && (!last || Date.parse(relay.at) > Date.parse(last.headers.get('X-Fetched-At') || '') )) return serveRelay();
   // what Launch Library said, to tell its limit from a refusal - and not asked again for a minute
   if (!last) {
     const res = json({ error: 'upstream unavailable', upstream: why, at: new Date().toISOString() }, 502, { 'Cache-Control': `public, max-age=${LAUNCHES_RETRY_SECONDS}` });
@@ -404,6 +433,51 @@ async function launches(ctx) {
   const at = last.headers.get('X-Fetched-At') || '';
   ctx.waitUntil(cache.put(freshKey, new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${LAUNCHES_RETRY_SECONDS}`, 'X-Fetched-At': at } })));
   return withCors(new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Fetched-At': at } }));
+}
+// A visitor's fresh copy of Launch Library's answer (the page sends it after asking Launch Library itself, when this
+// worker's copy was old). Taken only when it looks like Launch Library's own: SpaceX's launches (provider 121), each
+// with a Launch Library id, a name, a time and a status, fetched within the last 10 minutes - and, when a copy is
+// already kept, mostly the same launches (a stranger's made-up list doesn't pass). At most one every 3 minutes.
+async function launchesRelay(request, env) {
+  if (!env.NEWS_KV) return json({ error: 'no storage' }, 503);
+  const len = +(request.headers.get('Content-Length') || 0);
+  if (len > RELAY_MAX_BYTES) return json({ error: 'too large' }, 413);
+  let body;
+  try {
+    const raw = await request.text();
+    if (raw.length > RELAY_MAX_BYTES) return json({ error: 'too large' }, 413);
+    body = JSON.parse(raw);
+  } catch (e) { return json({ error: 'bad json' }, 400); }
+  const now = Date.now();
+  const at = Date.parse(body && body.fetchedAt);
+  const data = body && body.data;
+  const results = data && Array.isArray(data.results) ? data.results : null;
+  if (isNaN(at) || at > now + 60 * 1000 || now - at > 10 * 60 * 1000) return json({ error: 'stale' }, 422);
+  if (!results || results.length < 1 || results.length > 50) return json({ error: 'no launches' }, 422);
+  const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const valid = results.every(l => l && ID.test(String(l.id || '')) && typeof l.name === 'string' && l.name.length < 300
+    && !isNaN(Date.parse(l.net)) && l.status && typeof l.status.abbrev === 'string'
+    && (!l.launch_service_provider || l.launch_service_provider.id === 121));
+  if (!valid) return json({ error: 'not Launch Library' }, 422);
+  const prev = await readRelay(env);
+  if (prev && now - Date.parse(prev.at) < RELAY_MIN_GAP_MS) return new Response(null, { status: 204, headers: CORS });
+  // the launches it lists: mostly ones a kept copy has too (new ones join a few at a time)
+  let known = null;
+  try {
+    let keptText = prev ? prev.text : null;
+    if (!keptText) {
+      const last = await caches.default.match(new Request('https://cache.internal/ll-upcoming-last-v1'));
+      if (last) keptText = await last.text();
+    }
+    const kept = keptText ? JSON.parse(keptText) : null;
+    if (kept && Array.isArray(kept.results)) known = new Set(kept.results.map(l => l && l.id));
+  } catch (e) { }
+  if (known && known.size) {
+    const same = results.filter(l => known.has(l.id)).length;
+    if (same < Math.min(3, results.length) || same < results.length / 2) return json({ error: 'not the same launches' }, 422);
+  }
+  await env.NEWS_KV.put(RELAY_KEY, JSON.stringify({ at: new Date(at).toISOString(), text: JSON.stringify(data) }), { expirationTtl: 2 * 86400 });
+  return new Response(null, { status: 204, headers: CORS });
 }
 function withCors(res) {
   const out = new Response(res.body, res);
