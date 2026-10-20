@@ -114,9 +114,10 @@ public class SmallLaunchWidget extends AppWidgetProvider {
         if (status != null) {
             // the status just above the T+ clock (about 18dp at the bottom)
             TextPaint sp = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.boldOther), 13 * k, st.status, -0.02f);
-            bottomL = NextLaunchWidget.layout(
-                    NextLaunchWidget.mixed(status, NextLaunchWidget.font(c, st.boldLatin), st.cover, NextLaunchWidget.font(c, st.boldOther)),
-                    sp, fullW, 1, rtl);
+            CharSequence statusText = NextLaunchWidget.mixed(status, NextLaunchWidget.font(c, st.boldLatin), st.cover,
+                    NextLaunchWidget.font(c, st.boldOther));
+            NextLaunchWidget.fitToWidth(statusText, sp, fullW);   // one line, all of it - smaller rather than cut
+            bottomL = NextLaunchWidget.layout(statusText, sp, fullW, 1, rtl);
             bottomTop = H - padB - 18 * s - 2 * s - bottomL.getHeight();
             NextLaunchWidget.draw(cv, bottomL, pad, bottomTop);
         } else {

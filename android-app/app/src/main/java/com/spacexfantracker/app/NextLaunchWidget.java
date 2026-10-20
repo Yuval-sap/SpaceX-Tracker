@@ -596,6 +596,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         TextPaint namePaint = paint(font(c, st.nameOther), 17 * k, 0xFFFFFFFF, 0);
         CharSequence statusText = mixed(status, font(c, st.boldLatin), st.cover, font(c, st.boldOther));
         TextPaint statusPaint = paint(font(c, st.boldOther), 17 * k, st.status, -0.02f);
+        fitToWidth(statusText, statusPaint, fullW);   // one line, all of it - smaller rather than cut
         CharSequence statusLabelText = mixed(statusLabel, font(c, st.boldLatin), st.cover, font(c, st.boldOther));
         CharSequence explainText = mixed(explain, font(c, R.font.space_grotesk_regular), SPACE_GROTESK, font(c, R.font.rubik_regular));
         TextPaint explainPaint = paint(font(c, R.font.rubik_regular), 12 * k, st.muted, 0);
@@ -682,6 +683,12 @@ public class NextLaunchWidget extends AppWidgetProvider {
     /** the site's word that its hero's launch - this one - is on hold or scrubbed */
     static boolean onHold(JSONObject site, String id) {
         return id != null && id.equals(site.optString("id")) && site.optBoolean("hold", false);
+    }
+
+    /** the text's size made smaller (never larger) until it fits the width on one line */
+    static void fitToWidth(CharSequence text, TextPaint paint, float width) {
+        float w = Layout.getDesiredWidth(text, paint);
+        if (w > width && w > 0) paint.setTextSize(paint.getTextSize() * width / w * 0.98f);
     }
 
     /** "4d 8h 28m" - the cards' time left: days, hours, minutes */
