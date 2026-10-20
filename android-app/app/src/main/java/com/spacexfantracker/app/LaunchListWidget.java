@@ -178,14 +178,15 @@ public class LaunchListWidget extends AppWidgetProvider {
 
     /** a row: the name over the date and time at the start, the time left at the end, a thin line under it */
     static Bitmap drawRow(Context c, int wDp, float d, boolean rtl, NextLaunchWidget.Style st, String name, String when,
-                                  long leftMs, boolean line) {
+                                  long leftMs, boolean hold, boolean line) {
         float k = NextLaunchWidget.textScale(c, d);
         int W = Math.round(wDp * d), H = Math.round(ROW_DP * d);
         Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
         Canvas cv = new Canvas(b);
         float pad = 16 * d;
 
-        TextPaint cdPaint = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.counter), 15 * k, st.digits, 0);
+        TextPaint cdPaint = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.counter), 15 * k,
+                NextLaunchWidget.countdownColor(st, leftMs, hold), 0);
         CharSequence cd = leftMs > 0 ? shortCounter(leftMs, Math.round(11 * k), st.units) : "";
         int cw = leftMs > 0 ? (int) Math.ceil(Layout.getDesiredWidth(cd, cdPaint)) + 1 : 0;
 

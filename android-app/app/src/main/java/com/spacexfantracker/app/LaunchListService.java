@@ -69,7 +69,7 @@ public class LaunchListService extends RemoteViewsService {
             long now = System.currentTimeMillis();
             String when = t0 > 0 ? LaunchListWidget.formatWhen(t0, locale) : "";
             row.setImageViewBitmap(R.id.widget_row, LaunchListWidget.drawRow(context, wDp, d, rtl, st, name, when,
-                    t0 > now ? t0 - now : -1, position < launches.size() - 1));
+                    t0 > now ? t0 - now : -1, NextLaunchWidget.onHold(site, l.optString("id")), position < launches.size() - 1));
             row.setContentDescription(R.id.widget_row, name + (when.isEmpty() ? "" : ", " + when));
             row.setOnClickFillInIntent(R.id.widget_row, new Intent().putExtra(MainActivity.EXTRA_OPEN_LAUNCH, l.optString("id")));
             return row;

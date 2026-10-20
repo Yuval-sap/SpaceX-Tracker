@@ -343,7 +343,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
                     ? drawFlight(context, wDp, hDp, rtl, st, labels.optString("current", "Current launch"), name,
                             labels.optString("status", "STATUS"), status[0], status[1], pillDp, pillAt)
                     : drawCountdown(context, wDp, hDp, rtl, st, site.optString("title", "SPACEX LAUNCH TRACKER"),
-                            labels.optString("next", "Next launch"), name, ahead ? t0 - now : -1, pillDp, pillAt);
+                            labels.optString("next", "Next launch"), name, ahead ? t0 - now : -1, onHold(site, id), pillDp, pillAt);
             v.setImageViewBitmap(R.id.widget_text, text);
             if (pill != null) {
                 v.setImageViewBitmap(R.id.widget_live, pill);
@@ -504,7 +504,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
      * just above the time left; where it goes is written to pillAt (dp).
      */
     private static Bitmap drawCountdown(Context c, int wDp, int hDp, boolean rtl, Style st, String title, String label,
-                                        String name, long leftMs, float[] pillDp, float[] pillAt) {
+                                        String name, long leftMs, boolean hold, float[] pillDp, float[] pillAt) {
         float s = scale(c, wDp, hDp), k = textScale(c, s);
         int W = Math.round(wDp * s), H = Math.round(hDp * s);
         Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
@@ -525,7 +525,7 @@ public class NextLaunchWidget extends AppWidgetProvider {
         float titleBottom = padT + titleL.getHeight();
 
         // the time left as the cards': the numbers in the mode's color, the letters smaller and muted, left to right
-        TextPaint cdPaint = paint(font(c, st.counter), 17 * k, st.digits, 0);
+        TextPaint cdPaint = paint(font(c, st.counter), 17 * k, countdownColor(st, leftMs, hold), 0);
         CharSequence cd = leftMs > 0 ? counterText(leftMs, Math.round(13 * k), st.units) : "\u2014";
         int cw = (int) Math.ceil(Layout.getDesiredWidth(cd, cdPaint)) + 1;
         StaticLayout cdL = layout(cd, cdPaint, cw, 1, false);
@@ -652,6 +652,22 @@ public class NextLaunchWidget extends AppWidgetProvider {
         cv.drawPath(play, fill);
         draw(cv, tl, textX, (H - tl.getHeight()) / 2f);
         return b;
+    }
+
+    /**
+     * The numbers' color as the site's hero countdown has it (updateHeroCountdown's timeColor): the mode's own more than
+     * a day ahead, amber in the last day (and on a hold), red in the last hour
+     */
+    static int countdownColor(Style st, long leftMs, boolean hold) {
+        if (hold) return 0xFFF59E0B;
+        if (leftMs > 0 && leftMs < 60 * 60 * 1000L) return 0xFFEF4444;
+        if (leftMs > 0 && leftMs < DAY_MS) return 0xFFF59E0B;
+        return st.digits;
+    }
+
+    /** the site's word that its hero's launch - this one - is on hold or scrubbed */
+    static boolean onHold(JSONObject site, String id) {
+        return id != null && id.equals(site.optString("id")) && site.optBoolean("hold", false);
     }
 
     /** "4d 8h 28m" - the cards' time left: days, hours, minutes */

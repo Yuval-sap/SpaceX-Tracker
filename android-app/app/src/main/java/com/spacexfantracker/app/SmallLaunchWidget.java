@@ -72,7 +72,8 @@ public class SmallLaunchWidget extends AppWidgetProvider {
             RemoteViews v = new RemoteViews(context.getPackageName(), rtl ? R.layout.widget_small_rtl : R.layout.widget_small_ltr);
             if (photo != null) v.setImageViewBitmap(R.id.widget_image, photo);
             int[] size = NextLaunchWidget.sizeDp(context, m, wid, 120, 120);
-            v.setImageViewBitmap(R.id.widget_text, draw(context, size[0], size[1], rtl, st, label, name, ahead ? t0 - now : -1, status));
+            v.setImageViewBitmap(R.id.widget_text, draw(context, size[0], size[1], rtl, st, label, name, ahead ? t0 - now : -1,
+                    NextLaunchWidget.onHold(site, id), status));
             v.setContentDescription(R.id.widget_text, label + ": " + name + (status != null ? ". " + status : ""));
             if (flying) {
                 String format = elapsedMs < 3600_000L ? "T+00:%s" : elapsedMs < 36_000_000L ? "T+0%s" : "T+%s";
@@ -94,7 +95,7 @@ public class SmallLaunchWidget extends AppWidgetProvider {
      * the name over the status, above the T+ clock (the layout's own view, the bottom kept for it).
      */
     private static Bitmap draw(Context c, int wDp, int hDp, boolean rtl, NextLaunchWidget.Style st, String label, String name,
-                               long leftMs, String status) {
+                               long leftMs, boolean hold, String status) {
         float s = NextLaunchWidget.scale(c, wDp, hDp), k = NextLaunchWidget.textScale(c, s);
         int W = Math.round(wDp * s), H = Math.round(hDp * s);
         Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
@@ -120,7 +121,8 @@ public class SmallLaunchWidget extends AppWidgetProvider {
             NextLaunchWidget.draw(cv, bottomL, pad, bottomTop);
         } else {
             // the time left, left to right, at the start side - smaller when it doesn't fit the width
-            TextPaint cdPaint = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.counter), 17 * k, st.digits, 0);
+            TextPaint cdPaint = NextLaunchWidget.paint(NextLaunchWidget.font(c, st.counter), 17 * k,
+                    NextLaunchWidget.countdownColor(st, leftMs, hold), 0);
             CharSequence cd = leftMs > 0 ? NextLaunchWidget.counterText(leftMs, Math.round(13 * k), st.units) : "—";
             float cw = Layout.getDesiredWidth(cd, cdPaint);
             if (cw > fullW) {

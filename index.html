@@ -31445,6 +31445,7 @@ setTimeout(() => {
                 const sLower = currentStatus.toLowerCase();
                 const flyingNow = apiStatusMeansActuallyFlying(sLower);
                 const isHoldLike = apiStatusMeansHoldOrScrub(sLower);
+                window.appHeroHold = isHoldLike;   // the app's widgets show the countdown amber on a hold too (appSyncWidget)
 
                 // T-5 alert mode: on from 5 minutes before the target time through 1 minute
                 // after it, so it covers the final approach and the moment of liftoff itself.
@@ -32696,6 +32697,8 @@ if (heroNameEl) {
                 // the site's title, as its header shows it (upper case), at the widget's top before liftoff
                 title: ((document.getElementById('site-title') || {}).textContent || '').trim().toUpperCase() || 'SPACEX LAUNCH TRACKER',
                 flightMs: missionInFlightWindowMs(m), timeline, tail,
+                // the hero's countdown is amber on a hold or a scrub - the widgets' too
+                hold: !!(hero && String(hero.id) === String(m.id) && window.appHeroHold),
                 // "Watch live" - the widget shows it while this button is red here: an hour before T-0 on its own, earlier
                 // when the hero already has the broadcast (early)
                 live: { label: (MODAL_LIVE_BTN_I18N[heroLiveDict().key] || MODAL_LIVE_BTN_I18N.en).watch,
