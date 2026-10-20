@@ -32469,6 +32469,13 @@ if (heroNameEl) {
             document.addEventListener('touchstart', e => {
                 if (refreshing || e.touches.length !== 1 || window.scrollY > 0 || windowOpen()) { startY = null; return; }
                 if (e.target.closest && e.target.closest('#main-tabs-bar, #mode-menu, iframe')) { startY = null; return; }
+                // inside a box of its own that scrolls (the hero's list of the flight's statuses, its popups): a drag there
+                // scrolls that box - it read as a pull and reloaded the page
+                if (e.target.closest && e.target.closest('#mission-status-breakdown, #sticky-status-breakdown')) { startY = null; return; }
+                for (let el = e.target; el && el !== document.body && el.nodeType === 1; el = el.parentElement) {
+                    const oy = getComputedStyle(el).overflowY;
+                    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1) { startY = null; return; }
+                }
                 startY = e.touches[0].clientY;
                 startX = e.touches[0].clientX;
                 active = false;
