@@ -163,8 +163,17 @@
     <script>
         // The Android app (android-app/ in this repo) puts window.AndroidApp in place before the page's own scripts
         // run - so its own look (the html.in-app rules at the end of the main <style>) is there from the first paint.
-        // No browser ever has it: the site on a computer or a phone's browser is untouched.
-        if (window.AndroidApp) document.documentElement.classList.add('in-app');
+        // A phone's browser gets the same look (html.web-phone too): a touch screen whose short side is under 600px -
+        // decided once, at load. Tablets and computers (a narrowed window too) keep the site as it is.
+        (function () {
+            let phone = false;
+            try {
+                phone = !window.AndroidApp && window.matchMedia('(pointer: coarse)').matches
+                    && Math.min(screen.width, screen.height) < 600;
+            } catch (e) { }
+            if (window.AndroidApp || phone) document.documentElement.classList.add('in-app');
+            if (phone) document.documentElement.classList.add('web-phone');
+        })();
     </script>
     <title>SpaceX Launch Tracker • Mission Control</title>
 
@@ -5820,6 +5829,13 @@
         html.in-app #i18n-tab-launches,
         html.in-app #i18n-tab-more {
             font-size: 0.68rem;
+        }
+
+        /* A phone's browser with the app's look (html.web-phone): its own pull-to-refresh and bounce off - the app's
+           pull-to-refresh is there (initAppPullToRefresh), and the windows' pull-down-to-close (initAppSheets) */
+        html.web-phone,
+        html.web-phone body {
+            overscroll-behavior-y: none;
         }
 
         /* The footer (support, follow, copyright) at the end of the Info tab only - not under the launch list */
@@ -33712,6 +33728,27 @@ if (heroNameEl) {
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAndroidAppShell);
         else initAndroidAppShell();
+
+        // A phone's browser with the app's look: its Back button closes an open window / pop-up first, as the app's
+        // Back does (appHandleBack) - one page of history kept in hand for it (added at the first tap: a browser skips
+        // history added without one), taken again after each close; with nothing open, Back leaves as usual.
+        (function initWebPhoneBack() {
+            if (!document.documentElement.classList.contains('web-phone')) return;
+            let held = false;
+            const hold = () => {
+                if (held) return;
+                try { history.pushState({ sxBack: 1 }, ''); held = true; } catch (e) { }
+            };
+            document.addEventListener('pointerdown', hold, true);
+            window.addEventListener('popstate', () => {
+                if (!held) return;
+                held = false;
+                let closed = false;
+                try { closed = !!(window.appHandleBack && window.appHandleBack()); } catch (e) { }
+                if (closed) hold();
+                else history.back();
+            });
+        })();
 
         window.onload = init;
     </script>
