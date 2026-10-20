@@ -17232,6 +17232,13 @@
                             class="w-12 shrink-0 items-center justify-center bg-zinc-800 border border-zinc-700 rounded-2xl text-zinc-200 transition-all duration-300">
                             <i class="fa-solid fa-expand text-base"></i>
                         </button>
+                        <!-- SpaceX's broadcast plays from X; this plays the YouTube coverage in the player instead (X's
+                             player is sometimes down - studio.x.com answered 503 during Bandwagon 5). Shown only with X. -->
+                        <button type="button" id="modal-live-yt-play"
+                            class="hidden w-1/4 min-w-0 flex items-center justify-center text-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
+                            <i class="fa-brands fa-youtube text-red-500 shrink-0"></i>
+                            <span id="modal-live-yt-play-label" class="notranslate leading-tight" translate="no">Watch on YouTube</span>
+                        </button>
                         <a id="modal-live-yt-link" href="#" target="_blank" rel="noopener"
                             class="w-1/4 min-w-0 flex items-center justify-center text-center gap-1 py-2.5 px-1 bg-zinc-800 border border-zinc-700 md:hover:border-red-600 md:hover:shadow-[0_0_18px_rgba(220,38,38,0.6)] rounded-2xl text-[10px] sm:text-sm font-semibold text-zinc-300 transition-all duration-300 no-underline">
                             <i id="modal-live-yt-icon" class="fa-brands fa-youtube text-red-500 shrink-0"></i>
@@ -27340,6 +27347,14 @@ setTimeout(() => {
             ar: { watch: "شاهد البث المباشر", close: "أغلق المشغل" },
             tr: { watch: "CANLI İZLE", close: "OYNATICIYI KAPAT" },
         };
+        const WATCH_YT_I18N = {
+            en: 'Watch on YouTube', he: 'צפייה ב-YouTube', es: 'Ver en YouTube', fr: 'Regarder sur YouTube',
+            de: 'Auf YouTube ansehen', ru: 'Смотреть на YouTube', zh: '在 YouTube 观看', it: 'Guarda su YouTube',
+            cs: 'Sledovat na YouTube', sv: 'Se på YouTube', nl: 'Bekijk op YouTube', da: 'Se på YouTube',
+            pt: 'Assistir no YouTube', pl: 'Oglądaj na YouTube', hi: 'YouTube पर देखें', ar: 'شاهد على YouTube',
+            tr: "YouTube'da izle",
+        };
+        WATCH_YT_I18N.iw = WATCH_YT_I18N.he;
         function syncModalLiveButtonLabel() {
             const label = document.getElementById('modal-watch-live-label');
             if (!label) return;
@@ -27487,6 +27502,7 @@ setTimeout(() => {
             // SpaceX's website a few seconds after the page loads, so a WATCH LIVE tapped right after (re)opening the
             // site found none yet and stayed on the YouTube fallback (Spaceflight Now) for the rest of the flight.
             let xId = null;
+            let preferYoutube = false;   // the YouTube button: YouTube's coverage in the player instead of X's
             const applyXId = function () {
                 const heroX = window._heroXBroadcast;
                 // the latest Launch Library data for this mission too - `m` is the copy the modal was opened with, from
@@ -27496,6 +27512,17 @@ setTimeout(() => {
                     || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
                     || savedXBroadcastFor(m.patchTagName || m.name);
                 window._liveOnX = !!xId;
+                const ytPlay = document.getElementById('modal-live-yt-play');
+                if (ytPlay) {
+                    ytPlay.classList.toggle('hidden', !xId);
+                    const lk = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+                    const ytLabel = document.getElementById('modal-live-yt-play-label');
+                    if (ytLabel) ytLabel.textContent = WATCH_YT_I18N[lk] || WATCH_YT_I18N.en;
+                }
+                if (liveBtn) {
+                    liveBtn.classList.toggle('w-1/2', !!xId);
+                    liveBtn.classList.toggle('w-3/4', !xId);
+                }
                 const liveYtIcon = document.getElementById('modal-live-yt-icon');
                 if (liveYtIcon) liveYtIcon.className = xId ? 'fa-brands fa-x-twitter text-zinc-200 shrink-0' : 'fa-brands fa-youtube text-red-500 shrink-0';
                 // back to YouTube too once NASA's broadcast turns up after X's (lookUpNasaLiveOnYoutube below)
@@ -27522,7 +27549,7 @@ setTimeout(() => {
                 resetVideoControlsOverlay();
                 applyXId();
 
-                if (xId) {
+                if (xId && !preferYoutube) {
                     // X's broadcast player, always in English: in Hebrew/Arabic X lays its own pre-show countdown out right
                     // to left (seconds : minutes : hours : days), which read as reversed. The YouTube player is stopped
                     // and hidden meanwhile.
@@ -27542,6 +27569,8 @@ setTimeout(() => {
                     return;
                 }
 
+                // (from X's player, the YouTube button's choice: X's stopped, YouTube's player shown again)
+                stopXBroadcast();
                 // NASA's broadcast checked again on opening: Launch Library often attaches it after the modal opened
                 const liveYoutubeId = nasaLiveStreamFor(m) || confirmedYoutubeId;
                 if (liveYoutubeId) {
@@ -27614,7 +27643,7 @@ setTimeout(() => {
             window._onHeroXBroadcast = function () {
                 const had = xId;
                 applyXId();
-                if (!had && xId && videoSection && !videoSection.classList.contains('hidden') && !videoSection.classList.contains('x-live')) {
+                if (!had && xId && !preferYoutube && videoSection && !videoSection.classList.contains('hidden') && !videoSection.classList.contains('x-live')) {
                     openLiveVideo();
                 }
             };
@@ -27633,8 +27662,16 @@ setTimeout(() => {
                 if (videoSection && !videoSection.classList.contains('hidden')) {
                     closeLiveVideo();
                 } else {
+                    preferYoutube = false;   // the live button opens SpaceX's own broadcast (on X when it has one)
                     openLiveVideo();
                 }
+                syncModalLiveButtonLabel();
+            };
+            // the YouTube button: the player (opened, or already open on X) plays YouTube's coverage instead
+            const ytPlayBtn = document.getElementById('modal-live-yt-play');
+            if (ytPlayBtn) ytPlayBtn.onclick = function () {
+                preferYoutube = true;
+                openLiveVideo();
                 syncModalLiveButtonLabel();
             };
             if (videoCloseBtn) {
