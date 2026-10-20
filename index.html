@@ -171,8 +171,16 @@
                 phone = !window.AndroidApp && window.matchMedia('(pointer: coarse)').matches
                     && Math.min(screen.width, screen.height) < 600;
             } catch (e) { }
+            // not a page laid out wider than the phone (the browser's "desktop site"): the site's own look there
+            if (phone && window.innerWidth > 600) phone = false;
             if (window.AndroidApp || phone) document.documentElement.classList.add('in-app');
-            if (phone) document.documentElement.classList.add('web-phone');
+            if (phone) {
+                document.documentElement.classList.add('web-phone');
+                // never zoomed out to fit: a phone's browser shrank the whole page when anything reached past the
+                // screen's edge (the app's own page is never zoomed out - its WebView's overview mode is off)
+                const vp = document.querySelector('meta[name="viewport"]');
+                if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, minimum-scale=1.0');
+            }
         })();
     </script>
     <title>SpaceX Launch Tracker • Mission Control</title>
