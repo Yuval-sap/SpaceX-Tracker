@@ -9849,8 +9849,15 @@
                 const banner = document.getElementById('hero-banner');
                 const box = document.getElementById('countdown-box');
                 const bRect = banner ? banner.getBoundingClientRect() : null;
-                const clipTop = bRect ? Math.max(bRect.top, 0) : 0;
-                const clipBottom = bRect ? Math.min(bRect.bottom, window.innerHeight) : window.innerHeight;
+                // Below the page's header that stays on top while scrolling (and, in the app, above its tab bar fixed at
+                // the bottom): measured against the window's top alone, a page scrolled down a little put the panel's
+                // first rows under that header - out of sight, and no scrolling inside the panel could bring them back
+                const nav = document.querySelector('body > nav');
+                const navBottom = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+                const tabs = document.documentElement.classList.contains('in-app') ? document.getElementById('main-tabs-bar') : null;
+                const tabsTop = tabs && tabs.offsetParent !== null ? tabs.getBoundingClientRect().top : window.innerHeight;
+                const clipTop = bRect ? Math.max(bRect.top, navBottom) : navBottom;
+                const clipBottom = bRect ? Math.min(bRect.bottom, window.innerHeight, tabsTop) : Math.min(window.innerHeight, tabsTop);
 
                 if (!bRect) return;
                 let desiredTop = clipTop + pad;
