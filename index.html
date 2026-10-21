@@ -549,26 +549,26 @@
 
         /* The site (not the app): the hero's countdown box in the app's box - the Good to know
            card's look there (a hint of the mode's accent over its surface, a thin border, its shadow), with no scanlines in
-           them. Each mode's colors as the app's own (--app-*), here on the site's page. */
-        html:not(.in-app) body {
+           them. Each mode's colors as the app's own (--app-*), here on the site's page - and the app's panel takes them too. */
+        html body {
             --box-rgb: 16, 185, 129;
             --box-surface: #111114;
             --box-border: rgba(255, 255, 255, 0.07);
             --box-shadow: 0 6px 12px -5px rgba(148, 163, 184, 0.12), 0 3px 6px -4px rgba(148, 163, 184, 0.08), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
         }
-        html:not(.in-app) body.light-theme {
+        html body.light-theme {
             --box-rgb: 4, 120, 87;
             --box-surface: #ffffff;
             --box-border: #e2e8f0;
             --box-shadow: 0 8px 10px -4px rgba(0, 0, 0, 0.1), 0 3px 4px -3px rgba(0, 0, 0, 0.1);
         }
-        html:not(.in-app) body.mars-theme {
+        html body.mars-theme {
             --box-rgb: 255, 107, 53;
             --box-surface: #1d0e0a;
             --box-border: rgba(140, 65, 35, 0.4);
             --box-shadow: 0 8px 14px -6px rgba(0, 0, 0, 0.6), 0 3px 8px -4px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 140, 80, 0.08) inset;
         }
-        html:not(.in-app) body.moon-theme {
+        html body.moon-theme {
             --box-rgb: 63, 169, 245;
             --box-surface: #0e1420;
             --box-border: rgba(80, 100, 140, 0.4);
@@ -580,6 +580,18 @@
             box-shadow: var(--box-shadow) !important;
         }
         html:not(.in-app) body #tab-panel-launches #countdown-box::before {
+            display: none !important;
+        }
+        /* Day mode (site and app): frosted glass instead - on a launch photo of blue sky the accent's dark green read as
+           a greyish-green; the glass takes the photo's own tint behind it, whatever the photo */
+        html body.light-theme #tab-panel-launches #countdown-box {
+            background: rgba(255, 255, 255, 0.72) !important;
+            -webkit-backdrop-filter: blur(14px) saturate(1.3);
+            backdrop-filter: blur(14px) saturate(1.3);
+            border: 1px solid rgba(255, 255, 255, 0.9) !important;
+            box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.25), 0 2px 6px -2px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+        }
+        html body.light-theme #tab-panel-launches #countdown-box::before {
             display: none !important;
         }
 
@@ -6320,9 +6332,26 @@
         html.in-app #hero-banner.app-hero.t5-alert {
             animation: none;
         }
-        html.in-app body.light-theme #hero-banner.app-hero #countdown-box { background: #ffffff !important; border-color: #e2e8f0 !important; }
+        /* (day: the frosted glass the site's day mode has - see "Day mode (site and app)" near the top) */
+        html.in-app body.light-theme #hero-banner.app-hero #countdown-box {
+            background: rgba(255, 255, 255, 0.72) !important;
+            -webkit-backdrop-filter: blur(14px) saturate(1.3);
+            backdrop-filter: blur(14px) saturate(1.3);
+            border-color: rgba(255, 255, 255, 0.9) !important;
+            box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.25), 0 2px 6px -2px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+        }
         html.in-app body.mars-theme #hero-banner.app-hero #countdown-box { background: #1d0e0a !important; border-color: rgba(140, 65, 35, 0.4) !important; }
         html.in-app body.moon-theme #hero-banner.app-hero #countdown-box { background: #0e1420 !important; border-color: rgba(80, 100, 140, 0.4) !important; }
+        /* night, Mars, Moon: the site's countdown box (a hint of the mode's accent over its surface, a thin border, its
+           shadow, no scanlines - see "The site (not the app): the hero's countdown box") - day has the frosted glass */
+        html.in-app body:not(.light-theme) #hero-banner.app-hero #countdown-box {
+            background: linear-gradient(160deg, rgba(var(--box-rgb), 0.18), rgba(var(--box-rgb), 0.03) 75%), var(--box-surface) !important;
+            border: 1px solid var(--box-border) !important;
+            box-shadow: var(--box-shadow) !important;
+        }
+        html.in-app body:not(.light-theme) #hero-banner.app-hero #countdown-box::before {
+            display: none !important;
+        }
         html.in-app #hero-banner.app-hero #hero-launch-window-block > div:first-child {
             margin: 0.8rem 0;
         }
@@ -6431,6 +6460,12 @@
         html.in-app *::after {
             -webkit-backdrop-filter: none !important;
             backdrop-filter: none !important;
+        }
+        /* one exception: the day mode's countdown panel, the frosted glass the site has there (a single panel at the
+           top of the opening screen, not a thousand) */
+        html.in-app body.light-theme #hero-banner.app-hero #countdown-box {
+            -webkit-backdrop-filter: blur(14px) saturate(1.3) !important;
+            backdrop-filter: blur(14px) saturate(1.3) !important;
         }
         html.in-app body > nav,
         html.in-app #news-ticker-wrap { background-color: #09090b !important; }
