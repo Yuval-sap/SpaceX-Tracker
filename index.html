@@ -7555,11 +7555,26 @@
             height: 100%;
             object-fit: cover;
         }
+        /* the site's fade (.modal-hero-fade): the photo melts into the mode's card color, solid behind the name -
+           in px, as these cards are short (the site's is in % of tall ones); day mode white, the name dark */
         html.in-app .app-shelf-card::after {
             content: "";
             position: absolute;
-            inset: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent 60%);
+            inset: -1px;
+            pointer-events: none;
+            background: linear-gradient(to top,
+                rgb(var(--app-fade)) 0,
+                rgb(var(--app-fade)) 22px,
+                rgba(var(--app-fade), 0.75) 42px,
+                rgba(var(--app-fade), 0.35) 62px,
+                rgba(var(--app-fade), 0.08) 82px,
+                transparent 104px);
+        }
+        html.in-app body.light-theme .app-shelf-card::after {
+            --app-fade: 255, 255, 255;
+        }
+        html.in-app body.light-theme .app-shelf-card b {
+            color: var(--app-text);
         }
         html.in-app .app-shelf-card b {
             position: absolute;
