@@ -595,6 +595,54 @@
             display: none !important;
         }
 
+        /* The site on a computer (not the app, not a phone's browser): every box in frosted glass - the countdown
+           box's day look, in each mode's own colors (a hint of the mode's accent in the dark ones), no scanlines on
+           them. The launch cards, the hero's photo card and the buttons stay as they are. */
+        html:not(.in-app) body {
+            --glass-bg: rgba(24, 24, 27, 0.55);
+            --glass-tint: 0.1;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6), 0 2px 6px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        html:not(.in-app) body.light-theme {
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-tint: 0;
+            --glass-border: rgba(255, 255, 255, 0.9);
+            --glass-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.25), 0 2px 6px -2px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+        html:not(.in-app) body.mars-theme {
+            --glass-bg: rgba(39, 21, 16, 0.9);
+            --glass-border: rgba(255, 140, 80, 0.18);
+            --glass-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.65), 0 2px 6px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 140, 80, 0.1);
+        }
+        html:not(.in-app) body.moon-theme {
+            --glass-bg: rgba(18, 24, 38, 0.9);
+            --glass-border: rgba(106, 191, 251, 0.16);
+            --glass-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.65), 0 2px 6px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(106, 191, 251, 0.1);
+        }
+        html:not(.in-app) body :is(#tab-panel-launches :is(#countdown-box, #category-filter-bar, #search-box-wrap, #year-count-box, #launch-cadence-desktop-btn),
+            #tab-panel-more :is([class~="bg-zinc-900"]:not(.mission-card), .ai3d-card, #patches-search-box-wrap), #main-tabs) {
+            background: linear-gradient(160deg, rgba(var(--box-rgb), var(--glass-tint)), transparent 75%), var(--glass-bg) !important;
+            -webkit-backdrop-filter: blur(14px) saturate(1.3);
+            backdrop-filter: blur(14px) saturate(1.3);
+            border: 1px solid var(--glass-border) !important;
+            box-shadow: var(--glass-shadow) !important;
+        }
+        html:not(.in-app) body :is(#tab-panel-launches :is(#countdown-box, #category-filter-bar, #search-box-wrap, #year-count-box, #launch-cadence-desktop-btn),
+            #tab-panel-more :is([class~="bg-zinc-900"]:not(.mission-card), .ai3d-card, #patches-search-box-wrap), #main-tabs)::before {
+            display: none !important;
+        }
+        /* the search fields: the glass box around them (its corners theirs) shows through, its border theirs */
+        html:not(.in-app) body :is(#search-box-wrap, #patches-search-box-wrap) {
+            border-radius: 1rem;
+        }
+        html:not(.in-app) body :is(#search-input, #patches-search-input) {
+            background: transparent !important;
+        }
+        html:not(.in-app) body :is(#search-input, #patches-search-input):not(:focus) {
+            border-color: transparent !important;
+        }
+
         /* #search-box-wrap/#patches-search-box-wrap's scanline pseudo sits behind ALL of the
            wrapper's children (icon + input), but the input itself is an opaque bg-zinc-900 box
            that fills almost the entire wrapper - so in practice the scanlines were only ever
@@ -27226,6 +27274,9 @@ setTimeout(() => {
             const on = window.matchMedia('(min-width: 768px)').matches && !document.documentElement.classList.contains('in-app');
             grid.classList.toggle('desk-months', on);
             if (!on) return;
+            // the row hidden (the Info tab open while the list was redrawn - a data refresh): its cards have no place
+            // yet, every month would sit at 0 on top of the others - placed when it's shown (the observer below)
+            if (!grid.offsetWidth) return;
             const lang = document.documentElement.lang || 'en';
             let fmt;
             try { fmt = new Intl.DateTimeFormat(dateLocaleForLang(lang), { month: 'long', year: 'numeric' }); } catch (e) { fmt = null; }
@@ -27261,6 +27312,16 @@ setTimeout(() => {
         }
         window.addEventListener('resize', scheduleDeskPastMonths);
         try { window.matchMedia('(min-width: 768px)').addEventListener('change', scheduleDeskPastMonths); } catch (e) { }
+        // the row shown again (back to the Launches tab) - its size changes from nothing
+        try {
+            const pastGrid = document.getElementById('past-launches-grid');
+            let pastGridW = pastGrid ? pastGrid.offsetWidth : 0;
+            if (pastGrid) new ResizeObserver(() => {
+                const w = pastGrid.offsetWidth;
+                if (w && w !== pastGridW) scheduleDeskPastMonths();
+                pastGridW = w;
+            }).observe(pastGrid);
+        } catch (e) { }
         // a new language: the months' names in it, and right-to-left the row runs the other way
         new MutationObserver(scheduleDeskPastMonths).observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
 
