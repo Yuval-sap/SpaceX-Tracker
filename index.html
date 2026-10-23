@@ -14257,6 +14257,10 @@
                     mode = computeTimeBasedMode();
                     sessionStorage.setItem('spacex-visual-mode-auto', '1');
                 }
+            } else if ((mode === 'day' || mode === 'night') && sessionStorage.getItem('spacex-visual-mode-auto') === '1') {
+                // a reload (the app's pull-to-refresh) of a clock-picked mode: the clock again, not the stored one -
+                // the app left open in the background from the afternoon reloaded at night still in day mode
+                mode = computeTimeBasedMode();
             }
             const html = document.documentElement;
             const body = document.body;
@@ -18786,6 +18790,10 @@
             document.addEventListener('visibilitychange', function () {
                 if (document.visibilityState === 'visible') checkAutoTheme();
             });
+            // the app back from the background doesn't always fire visibilitychange (its timers frozen meanwhile) -
+            // focus and pageshow too, as catchUpLaunchRefreshIfDue does
+            window.addEventListener('focus', checkAutoTheme);
+            window.addEventListener('pageshow', checkAutoTheme);
         }
 
         // Back-compat shims (in case anything still calls the old names)
