@@ -4903,6 +4903,11 @@
             filter: drop-shadow(0 0 5px var(--orbit-accent));
             animation: orbit-selected-pulse 1.8s ease-in-out infinite;
         }
+        /* SSO's and GTO's dots (moved by CSS in the app - convertOrbitMotionToCss) stand still while their ring is hidden:
+           unlike the turning ones, a moving point is drawn again every frame */
+        #orbit-modal svg g[visibility="hidden"] [id^="orbit-dot-"] {
+            animation-play-state: paused !important;
+        }
         #orbit-modal svg .orbit-selected[id^="orbit-dot-"] {
             fill: var(--orbit-accent) !important;
             filter: drop-shadow(0 0 5px var(--orbit-accent)) !important;
@@ -31080,9 +31085,67 @@ setTimeout(() => {
             });
         })();
 
+        // The app (and a phone's browser with its look): the dots' SMIL motion (<animateTransform>/<animateMotion>)
+        // re-drew the whole diagram every frame - at a phone's resolution the rings moved in jerks (2026-10-25), while
+        // a CSS animation of transform moves them on the GPU without drawing anything. Each SMIL motion is turned
+        // into CSS keyframes once, at the first opening: its own path (or turn), duration and pace (GTO's
+        // keyTimes/keyPoints - fast near the Earth), sampled into 72 points, so the picture is the same.
+        let orbitMotionConverted = false;
+        function convertOrbitMotionToCss(modalEl) {
+            if (orbitMotionConverted || !document.documentElement.classList.contains('in-app')) return;
+            orbitMotionConverted = true;
+            const N = 72;
+            let css = '';
+            modalEl.querySelectorAll('animateTransform, animateMotion').forEach((anim, i) => {
+                try {
+                    const dot = anim.parentElement;
+                    const dur = parseFloat(anim.getAttribute('dur')) || 10;
+                    let pointAt;   // fraction of the time (0..1) -> [x, y] offset of the dot, in the drawing's units
+                    if (anim.tagName === 'animateTransform') {
+                        // a turn around the Earth: a plain CSS rotation around the same point (the drawing's units)
+                        const from = (anim.getAttribute('from') || '0 0 0').split(/[\s,]+/).map(Number);
+                        const to = (anim.getAttribute('to') || '360 0 0').split(/[\s,]+/).map(Number);
+                        const name = 'orbit-dot-turn-' + i;
+                        css += `@keyframes ${name}{from{transform:rotate(${from[0]}deg)}to{transform:rotate(${to[0]}deg)}}`;
+                        anim.remove();
+                        dot.style.transformBox = 'view-box';
+                        dot.style.transformOrigin = `${from[1]}px ${from[2]}px`;
+                        dot.style.animation = `${name} ${dur}s linear infinite`;
+                        return;
+                    } else {
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', anim.getAttribute('path'));
+                        const len = path.getTotalLength();
+                        const kt = (anim.getAttribute('keyTimes') || '0;1').split(';').map(Number);
+                        const kp = (anim.getAttribute('keyPoints') || '0;1').split(';').map(Number);
+                        pointAt = f => {
+                            let j = 1;
+                            while (j < kt.length - 1 && f > kt[j]) j++;
+                            const g = kp[j - 1] + (kp[j] - kp[j - 1]) * ((f - kt[j - 1]) / ((kt[j] - kt[j - 1]) || 1));
+                            const pt = path.getPointAtLength(Math.min(len, Math.max(0, g * len)));
+                            return [pt.x, pt.y];
+                        };
+                    }
+                    const name = 'orbit-dot-move-' + i;
+                    css += `@keyframes ${name}{`;
+                    for (let k = 0; k <= N; k++) {
+                        const [x, y] = pointAt(k / N);
+                        css += `${(k / N * 100).toFixed(3)}%{transform:translate(${x.toFixed(2)}px,${y.toFixed(2)}px)}`;
+                    }
+                    css += '}';
+                    anim.remove();
+                    dot.style.animation = `${name} ${dur}s linear infinite`;
+                } catch (e) { }
+            });
+            const st = document.createElement('style');
+            st.textContent = css;
+            document.head.appendChild(st);
+        }
+
         function openOrbitSpecs() {
             const modalEl = document.getElementById('orbit-modal');
             if (modalEl) {
+                convertOrbitMotionToCss(modalEl);
                 window._orbitSelectedCode = null;   // every opening starts with only the mission's own ring lit
                 renderOrbitDossier(window.currentActiveOrbitCode || 'LEO');
 
