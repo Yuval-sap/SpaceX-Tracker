@@ -10223,7 +10223,7 @@
                 requestAnimationFrame(function () { positionStickyStatusBreakdown(anchor); });
             }
             [document.getElementById('sticky-countdown-wrap'), document.getElementById('sticky-countdown-wrap-mobile')].forEach(el => {
-                if (el) el.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (el && el.getAttribute('aria-expanded') !== (open ? 'true' : 'false')) el.setAttribute('aria-expanded', open ? 'true' : 'false');
             });
         }
         function closeStickyStatusBreakdown() {
@@ -13169,26 +13169,25 @@
         // row's (section, row-within-section) pair, matching how the DOM ids were generated.
         const STARLINK_SPECS_SECTION_ROW_COUNTS = [4, 7, 10, 7, 6];
 
+        // Writes only a change: the 500ms sweep calls these every tick, and every write - the same words too - is a
+        // change to the page that Tailwind and the page's watchers each go over (on a phone: the app's animations
+        // stopped for a moment twice a second, 2026-10-25)
+        function setTextIfChanged(el, text) {
+            if (el && el.textContent !== text) el.textContent = text;
+        }
+
         function applyStarlinkSpecsTranslations(lang) {
             const key = (lang || 'en').toLowerCase().split('-')[0];
             const dict = STARLINK_SPECS_I18N[key] || STARLINK_SPECS_I18N.en;
-            const titleEl = document.getElementById('ss-title');
-            if (titleEl) titleEl.textContent = dict.t;
-            dict.s.forEach((secTitle, i) => {
-                const el = document.getElementById('ss-sec-' + i);
-                if (el) el.textContent = secTitle;
-            });
+            setTextIfChanged(document.getElementById('ss-title'), dict.t);
+            dict.s.forEach((secTitle, i) => setTextIfChanged(document.getElementById('ss-sec-' + i), secTitle));
             let flatIdx = 0;
             STARLINK_SPECS_SECTION_ROW_COUNTS.forEach((count, i) => {
                 for (let j = 0; j < count; j++) {
                     const row = dict.r[flatIdx];
                     if (row) {
-                        const lblEl = document.getElementById('ss-lbl-' + i + '-' + j);
-                        if (lblEl) lblEl.textContent = row[0];
-                        for (let k = 0; k < 3; k++) {
-                            const valEl = document.getElementById('ss-val-' + i + '-' + j + '-' + k);
-                            if (valEl) valEl.textContent = row[k + 1];
-                        }
+                        setTextIfChanged(document.getElementById('ss-lbl-' + i + '-' + j), row[0]);
+                        for (let k = 0; k < 3; k++) setTextIfChanged(document.getElementById('ss-val-' + i + '-' + j + '-' + k), row[k + 1]);
                     }
                     flatIdx++;
                 }
@@ -14224,8 +14223,7 @@
             // unconditionally but writes only on an actual difference, so the steady-state cost
             // is two getElementById calls and a string compare per tick.
             applyPhraseFixes(currentLang);
-            localizeStarshipTerm(document.body);
-            protectRomanTelescopeName(document.body);
+            sweepVehicleTerms(currentLang);
             // Skipped while a tab-switch transition is in flight (see switchMainTab's own
             // settleAfterPanelTransition) - this runs on a fixed 500ms tick regardless of tab
             // switching, and fitTitleOneLine's forced-reflow path (see its own comment) is
@@ -14298,6 +14296,48 @@
                 updateUnitsDisplay();
             }
         }, 500);
+
+        // The names Google Translate garbles (Starship, Falcon/Dragon, the Roman telescope) were looked for in ALL of
+        // the page's text on every 500ms tick - its whole text read, walked and matched twice a second, ~15ms on a
+        // computer and two or three times that on a phone: the app's animations (the orbit window's rings) jerked
+        // twice a second (2026-10-25). Now the whole page only when the language changes (or the first time), and
+        // otherwise only what changed since the last tick - every change to the page's text is seen by a
+        // MutationObserver (new nodes, edited text: Google's translation, a re-drawn list, a ticking clock).
+        const termDirtyRoots = new Set();
+        let termSweepLang = null;
+        function sweepVehicleTerms(lang) {
+            if (!document.body) return;
+            if (termSweepLang !== lang || !termSweepObserver) {
+                termSweepLang = lang;
+                termDirtyRoots.clear();
+                startTermSweepObserver();
+                localizeStarshipTerm(document.body);
+                protectRomanTelescopeName(document.body);
+                return;
+            }
+            if (!termDirtyRoots.size) return;
+            const roots = [...termDirtyRoots];
+            termDirtyRoots.clear();
+            roots.forEach(root => {
+                if (!root.isConnected || roots.some(other => other !== root && other.contains(root))) return;
+                localizeStarshipTerm(root);
+                protectRomanTelescopeName(root);
+            });
+        }
+        let termSweepObserver = null;
+        function startTermSweepObserver() {
+            if (termSweepObserver || !document.body || typeof MutationObserver !== 'function') return;
+            termSweepObserver = new MutationObserver(records => {
+                records.forEach(r => {
+                    if (r.type === 'characterData') { if (r.target.parentElement) termDirtyRoots.add(r.target.parentElement); return; }
+                    r.addedNodes.forEach(n => {
+                        const el = n.nodeType === 1 ? n : n.parentElement;
+                        if (el && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') termDirtyRoots.add(el);
+                    });
+                });
+            });
+            termSweepObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
+        }
 
         // The setInterval above only starts protecting text every 500ms, which can lose
         // the race against Google Translate's very first translation pass on content
@@ -17251,6 +17291,7 @@
       // setInterval loop that calls applyLaunchLabelTranslations & friends) - updates the
       // static i18n spans below AND re-renders the dynamic chart text/labels in the new
       // language. Safe to call before the modal has ever been opened.
+      var lcTranslatedLang = null;
       window.applyLaunchCadenceTranslations = function (currentLang) {
         var lang = (currentLang || 'en').split('-')[0];
         LC_LANG = lang;
@@ -17263,9 +17304,12 @@
         };
         Object.keys(map).forEach(function (id) {
           var el = document.getElementById(id);
-          if (el && map[id]) el.textContent = map[id];
+          // only a change: called on every 500ms tick, and a write of the same words is still a change to the page
+          if (el && map[id] && el.textContent !== map[id]) el.textContent = map[id];
         });
-        if (lcInitialized) {
+        // the chart drawn again in a new language only - not on every tick
+        if (lcInitialized && lcTranslatedLang !== lang) {
+          lcTranslatedLang = lang;
           // Competitor checkbox labels are built once, not re-rendered each frame - patch the
           // "China" one directly (the only translated provider name; every other company,
           // including Arianespace, stays in English and never needs this).
@@ -22187,9 +22231,9 @@
             const key = (lang || 'en').toLowerCase().split('-')[0];
             const dict = STARLINK_DEPLOYMENT_LABELS_I18N[key] || STARLINK_DEPLOYMENT_LABELS_I18N.en;
             const v2El = document.getElementById('starlink-gen2-label');
-            if (v2El) v2El.textContent = dict.v2;
+            setTextIfChanged(v2El, dict.v2);
             const v3El = document.getElementById('starlink-gen3-label');
-            if (v3El) v3El.textContent = dict.v3;
+            setTextIfChanged(v3El, dict.v3);
         }
 
         function updateStarlinkGenerationCounts(totalActive) {
@@ -31635,7 +31679,7 @@ setTimeout(() => {
                 if (!tplusEl) return;
                 if (!show) {
                     tplusEl.classList.add('hidden');
-                    tplusEl.setAttribute('aria-hidden', 'true');
+                    if (tplusEl.getAttribute('aria-hidden') !== 'true') tplusEl.setAttribute('aria-hidden', 'true');
                     return;
                 }
                 const valueEl = document.getElementById('hero-tplus-value');
@@ -31696,9 +31740,9 @@ setTimeout(() => {
                 [document.getElementById('i18n-next-launch-sticky'), document.getElementById('i18n-next-launch-sticky-mobile')]
                     .forEach(stickyLabelEl => {
                         if (!stickyLabelEl) return;
-                        stickyLabelEl.textContent = showMissionStatus
+                        setTextIfChanged(stickyLabelEl, showMissionStatus
                             ? (dict.status || LAUNCH_LABEL_I18N.en.status)
-                            : (dict.nextLaunch || LAUNCH_LABEL_I18N.en.nextLaunch);
+                            : (dict.nextLaunch || LAUNCH_LABEL_I18N.en.nextLaunch));
                     });
                 // The whole status card is the hover/tap target (see initHeroStatusBreakdown).
                 // The (i) icon is shown only when a timeline list actually exists - see
@@ -32043,7 +32087,8 @@ setTimeout(() => {
                 // timeColor on the whole span, which made the "d"/"h"/"m"/"s" letters the same
                 // bright color as the numbers instead of the intended quieter gray.
                 stickyEls.forEach(stEl => {
-                    stEl.className = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate no-starship-protect${pulseOuter ? ' animate-pulse-calm' : ''}`;
+                    const stCls = `font-space text-xs sm:text-sm font-bold tabular-nums tracking-tight notranslate no-starship-protect${pulseOuter ? ' animate-pulse-calm' : ''}`;
+                    if (stEl.className !== stCls) stEl.className = stCls;
                     stEl.innerHTML = `
                         <span class="${timeColor}">${d}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">d</span>
                         <span class="${timeColor} tracking-[1px]">${h.toString().padStart(2, '0')}</span><span class="text-[10px] sm:text-xs font-normal ml-0.5 mr-1 text-zinc-400">h</span>
@@ -33457,8 +33502,8 @@ if (heroNameEl) {
         function appInfoHead(block, title, aside) {
             const head = block.querySelector('.app-info-head');
             if (!head) return;
-            head.querySelector('h3').textContent = title;
-            head.querySelector('span').textContent = aside || '';
+            setTextIfChanged(head.querySelector('h3'), title);
+            setTextIfChanged(head.querySelector('span'), aside || '');
         }
 
         function renderAppFeatured(block, body) {
@@ -33791,7 +33836,7 @@ if (heroNameEl) {
                 starship: STARSHIP_I18N[lang] || STARSHIP_I18N.en,
                 numbers: appInfoDict().numbers,
             });
-            appInfoItems.forEach(({ key, chip }) => { chip.textContent = names[key] || key; });
+            appInfoItems.forEach(({ key, chip }) => setTextIfChanged(chip, names[key] || key));
         }
         function syncAppInfoNav() {
             const bar = document.getElementById('app-info-nav');
