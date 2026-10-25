@@ -632,6 +632,25 @@
             #tab-panel-more :is([class~="bg-zinc-900"]:not(.mission-card), .ai3d-card, #patches-search-box-wrap), #main-tabs)::before {
             display: none !important;
         }
+        /* the hero's buttons (Details, the reminder bell, Watch live) keep their look, without the scanlines either */
+        html:not(.in-app) body :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
+            display: none !important;
+        }
+        /* The footer's Donate and @SpaceXFanTrack buttons above the page's scanlines (body::before, z-index 50) too: the
+           footer keeps its place in the page (z-index auto - the stars layer, the only one under it, comes before it) so
+           the two can rise past the scanlines on their own; the rest of the footer keeps them */
+        html:not(.in-app) body > footer {
+            z-index: auto;
+        }
+        html:not(.in-app) body > footer :is(#community-donate-link, a[href="https://x.com/SpaceXFanTrack"]) {
+            position: relative;
+            z-index: 51;
+        }
+        /* the X button is see-through: the scanlines under it would show through - blurred away behind it */
+        html:not(.in-app) body > footer a[href="https://x.com/SpaceXFanTrack"] {
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
         /* their hover as before the glass (the glass's border and shadow above would hide it): the milestones' glow and
            the Launch Cadence button's border - and the launches-this-year box beside it the same - in each mode's color
            (body:not(#_) only to outrank the glass rule) */
