@@ -5963,6 +5963,13 @@
             display: none;
         }
 
+        /* A window open (lockBodyScroll): the page's animations under it paused - unseen, and each frame of them cost
+           the phone a style pass over the whole page (the orbit window's rings moved in jerks); a window's own go on */
+        html.in-app.windows-open body *:not([id$="-modal"], [id$="-lightbox"], :is([id$="-modal"], [id$="-lightbox"]) *),
+        html.in-app.windows-open body *:not([id$="-modal"], [id$="-lightbox"], :is([id$="-modal"], [id$="-lightbox"]) *)::before,
+        html.in-app.windows-open body *:not([id$="-modal"], [id$="-lightbox"], :is([id$="-modal"], [id$="-lightbox"]) *)::after {
+            animation-play-state: paused !important;
+        }
         /* The card windows: full screens, like an app's pages - they slide up from the bottom, and close with Back,
            their X, or a pull down from their top (see initAppSheets) */
         html.in-app #mission-modal,
@@ -18074,7 +18081,8 @@
                         <!-- GTO: the transfer ellipse with the Earth at one focus - its low point on the LEO ring
                              (left), its high point on the GEO ring (right). Dashed: a path the satellite leaves,
                              not a place it stays. The dot moves fast near the Earth and slowly far out, as on a
-                             real elliptical orbit. -->
+                             real elliptical orbit. Its name inside it, between the MEO ring and its far end (on
+                             the ellipse itself the dashes ran through the letters). -->
                         <g id="orbit-group-GTO" visibility="hidden">
                             <ellipse id="orbit-ring-GTO" cx="242.5" cy="150" rx="97.5" ry="87.75" fill="none"
                                 stroke="#3f3f46" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.6" />
@@ -18084,7 +18092,7 @@
                                     path="M145,150 A97.5,87.75 0 1,1 340,150 A97.5,87.75 0 1,1 145,150" />
                             </circle>
                         </g>
-                        <text id="orbit-label-GTO" x="300" y="80" text-anchor="middle" fill="#52525b" font-size="9"
+                        <text id="orbit-label-GTO" x="318" y="153" text-anchor="middle" fill="#52525b" font-size="9"
                             letter-spacing="1" visibility="hidden">GTO</text>
                 </svg>
                 <!-- Bottom fade is handled by .orbit-hero-area::after (theme-matched to the
@@ -29377,13 +29385,27 @@ setTimeout(() => {
             window._openModalCount++;
             document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
+            if (window._openModalCount === 1) pauseAnimationsBehindWindows();
         }
         function unlockBodyScroll() {
             window._openModalCount = Math.max(0, window._openModalCount - 1);
             if (window._openModalCount === 0) {
                 document.documentElement.style.overflow = '';
                 document.body.style.overflow = '';
+                resumeAnimationsBehindWindows();
             }
+        }
+
+        // The app (and a phone's browser with its look): a window covers the whole screen, while the page under it
+        // kept all its animations going - ~60 twinkling stars, the news ticker, the pulsing icons - each frame a
+        // style pass over the whole page, about half a phone's time: the orbit window's rings moved in jerks
+        // (2026-10-25). Paused while a window is open (html.windows-open, the CSS beside the app's windows - ones
+        // that start meanwhile too; a window's own go on), running again when the last one closes.
+        function pauseAnimationsBehindWindows() {
+            document.documentElement.classList.add('windows-open');
+        }
+        function resumeAnimationsBehindWindows() {
+            document.documentElement.classList.remove('windows-open');
         }
 
         // Forwards mouse-wheel scrolling anywhere over a card modal's overlay (including
