@@ -6753,17 +6753,17 @@
             to { opacity: 1; transform: none; }
         }
 
-        /* the upcoming launches' title and those two buttons share one row: less margin at the screen's side
-           (as the cards have), the title takes what's left - a language whose title doesn't fit wraps it to a
-           second line rather than shrinking it out of reading size, and long button words wrap too */
+        /* the upcoming launches' title, and under it those two buttons side by side across the screen's width - the
+           cards' width (less margin at the screen's side, as they have); a language whose title doesn't fit wraps it
+           to a second line rather than shrinking it out of reading size, and long button words wrap too */
         html.in-app .app-launches-head {
-            flex-wrap: nowrap !important;
+            flex-wrap: wrap !important;
             align-items: center;
             gap: 0.6rem;
             margin-inline: -0.5rem;
         }
         html.in-app .app-launches-head > div:first-child {
-            flex: 1;
+            flex: 1 1 100%;
             min-width: 0;
         }
         html.in-app .app-launches-head h3 > span {
@@ -6776,10 +6776,12 @@
             overflow: hidden;
         }
         html.in-app .app-launches-head .app-head-actions {
-            flex-shrink: 0;
-            max-width: 50%;
-            /* the two buttons always the same height, also where one's words wrap */
+            flex: 1 1 100%;
+            max-width: none;
+            margin-inline-start: 0;
+            /* two equal halves, always the same height, also where one's words wrap */
             display: grid;
+            grid-template-columns: 1fr 1fr;
             grid-auto-rows: 1fr;
         }
         html.in-app .app-launches-head .app-head-actions #i18n-upcoming-launches,
@@ -7695,6 +7697,11 @@
         /* The recovery fleet: the site's own live-position cards, in the same card look */
         /* no scroll bar, as no other row in the app has one (the site's row shows a thin one); room under the cards for
            their shadow, taken back below like the other rows (.app-info-row) */
+        /* the three ships' cards: no scanlines, as every other box in the app (they're the site's own cards, which
+           carry them there) */
+        html.in-app .app-fleet-host [id^="fleet-card-"]::before {
+            display: none !important;
+        }
         html.in-app .app-fleet-host > div {
             margin: 0 -1rem -0.75rem !important;
             padding: 0 1rem 1rem !important;
@@ -14035,6 +14042,7 @@
             if (typeof applyStarlinkSpecsTranslations === 'function') applyStarlinkSpecsTranslations(currentLang);
             if (typeof applyLaunchCadenceTranslations === 'function') applyLaunchCadenceTranslations(currentLang);
             if (typeof applyStarlinkDeploymentLabels === 'function') applyStarlinkDeploymentLabels(currentLang);
+            if (typeof applyFleetVesselFinderLabels === 'function') applyFleetVesselFinderLabels(currentLang);
             if (typeof applyAIComputeTranslations === 'function') applyAIComputeTranslations(currentLang);
             // Catches up the CRT-cutout hole over the AI Compute donut (see updateAIComputeCrtHole)
             // after any layout shift that isn't a scroll/resize event - e.g. async content loading
@@ -15805,8 +15813,7 @@
                     </div>
                     <div class="p-3 text-center">
                         <a href="https://www.vesselfinder.com/vessels/details/368219910" target="_blank" rel="noopener"
-                            class="text-[11px] text-zinc-500 md:hover:text-emerald-400 transition-colors">View live on
-                            VesselFinder →</a>
+                            class="text-[11px] text-zinc-500 md:hover:text-emerald-400 transition-colors"><span class="fleet-vf-label notranslate" translate="no">View live on VesselFinder →</span></a>
                     </div>
                 </div>
                 <div id="fleet-card-jrti" class="info-shadow w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
@@ -15821,8 +15828,7 @@
                     </div>
                     <div class="p-3 text-center">
                         <a href="https://www.vesselfinder.com/vessels/details/368219920" target="_blank" rel="noopener"
-                            class="text-[11px] text-zinc-500 md:hover:text-emerald-400 transition-colors">View live on
-                            VesselFinder →</a>
+                            class="text-[11px] text-zinc-500 md:hover:text-emerald-400 transition-colors"><span class="fleet-vf-label notranslate" translate="no">View live on VesselFinder →</span></a>
                     </div>
                 </div>
                 <div id="fleet-card-ocisly" class="info-shadow w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none md:shrink bg-zinc-900 border border-zinc-800/80 rounded-3xl overflow-hidden transition-colors duration-500">
@@ -15837,8 +15843,7 @@
                     </div>
                     <div class="p-3 text-center">
                         <a href="https://www.vesselfinder.com/vessels/details/368351350" target="_blank" rel="noopener"
-                            class="text-[11px] text-zinc-500 md:hover:text-emerald-400 transition-colors">View live on
-                            VesselFinder →</a>
+                            class="text-[11px] text-zinc-500 md:hover:text-emerald-400 transition-colors"><span class="fleet-vf-label notranslate" translate="no">View live on VesselFinder →</span></a>
                     </div>
                 </div>
             </div>
@@ -22226,6 +22231,23 @@
             ar: { v2: "أقمار V2 Mini الصناعية", v3: "أقمار V3 الصناعية" },
             tr: { v2: "V2 Mini Uyduları", v3: "V3 Uyduları" },
         };
+
+        // The recovery fleet cards' link: Google's on-page translation garbled the name ("VesselFinder" -> "Shiffair"), and
+        // with the name alone protected it dropped the "on" and the spaces round it - so the phrase is ours, the name
+        // unchanged (Hebrew as Google had it on the site)
+        const FLEET_VF_LABEL_I18N = {
+            en: 'View live on VesselFinder', he: 'צפה בשידור חי ב-VesselFinder', iw: 'צפה בשידור חי ב-VesselFinder',
+            es: 'Ver en vivo en VesselFinder', fr: 'Voir en direct sur VesselFinder', de: 'Live auf VesselFinder ansehen',
+            ru: 'Смотреть в реальном времени на VesselFinder', zh: '在 VesselFinder 上实时查看', it: 'Guarda in diretta su VesselFinder',
+            cs: 'Sledovat živě na VesselFinder', sv: 'Se live på VesselFinder', nl: 'Live bekijken op VesselFinder',
+            da: 'Se live på VesselFinder', pt: 'Ver ao vivo no VesselFinder', pl: 'Zobacz na żywo w VesselFinder',
+            hi: 'VesselFinder पर लाइव देखें', ar: 'شاهد مباشرة على VesselFinder', tr: "VesselFinder'da canlı izle",
+        };
+        function applyFleetVesselFinderLabels(lang) {
+            const key = (lang || 'en').toLowerCase().split('-')[0];
+            const text = FLEET_VF_LABEL_I18N[key] || FLEET_VF_LABEL_I18N.en;
+            document.querySelectorAll('.fleet-vf-label').forEach(el => setTextIfChanged(el, text + ' →'));
+        }
 
         function applyStarlinkDeploymentLabels(lang) {
             const key = (lang || 'en').toLowerCase().split('-')[0];
@@ -33724,6 +33746,17 @@ if (heroNameEl) {
             if (!row) return;
             body.classList.add('app-fleet-host');
             body.appendChild(row);
+            // the site's own cards, which Google's translation translates there - here they sat inside the app's
+            // notranslate blocks and stayed in English. Open to it from the page down to them: the Info tab's root
+            // (its other blocks keep their own notranslate) and this block - its heading (our own words, already
+            // translated) still closed
+            [document.getElementById('app-info'), block].forEach(el => {
+                if (!el) return;
+                el.classList.remove('notranslate');
+                el.removeAttribute('translate');
+            });
+            const head = block.querySelector('.app-info-head');
+            if (head) { head.classList.add('notranslate'); head.setAttribute('translate', 'no'); }
         }
 
         function renderAppInfo() {
