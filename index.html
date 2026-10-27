@@ -5909,6 +5909,36 @@
             margin: 0;
             padding: 0;
         }
+        /* The bottom bar set apart from the page in every mode (in day mode it was white on near-white): a thin line in
+           the mode's color along its top, and a shadow cast up over the page, as if it lay above it - drawn as a soft
+           fade over the content just above it (a box-shadow doesn't show on the dark modes' near-black page). No
+           scanlines on it, as nowhere else in the app. */
+        html.in-app #main-tabs::before {
+            display: none !important;
+        }
+        html.in-app #main-tabs {
+            border-top: 1px solid rgba(16, 185, 129, 0.3) !important;
+        }
+        html.in-app body.light-theme #main-tabs { border-top-color: rgba(4, 120, 87, 0.28) !important; }
+        html.in-app body.mars-theme #main-tabs { border-top-color: rgba(255, 107, 53, 0.38) !important; }
+        html.in-app body.moon-theme #main-tabs { border-top-color: rgba(63, 169, 245, 0.35) !important; }
+        html.in-app #main-tabs-bar::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 100%;
+            height: 1.75rem;
+            pointer-events: none;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.18) 45%, transparent);
+        }
+        html.in-app body.light-theme #main-tabs-bar::before {
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.14), rgba(15, 23, 42, 0.05) 45%, transparent);
+        }
+        /* (hidden with the bar itself when a window covers the page) */
+        html.in-app.windows-open #main-tabs-bar::before {
+            display: none;
+        }
         html.in-app #main-tabs {
             gap: 0;
             /* down to the screen's edge, under the phone's gesture line / buttons (the app draws under them) */
