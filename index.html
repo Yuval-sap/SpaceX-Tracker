@@ -15773,7 +15773,8 @@
                     onclick="openLaunchSiteSpecs('starbase')" onkeydown="activateOnEnterOrSpace(event)"
                     class="launch-site-card mission-card relative w-[85vw] max-w-[320px] shrink-0 snap-start md:w-auto md:max-w-none bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 rounded-3xl overflow-hidden cursor-pointer"
                     style="animation-delay: 0ms;">
-                    <img src="https://pbs.twimg.com/media/Gy51cDhWgAAPPRK.jpg" alt="Starbase, Texas"
+                    <!-- referrerpolicy: Twitter's image server answers a request carrying another site's address with an error page (since late Oct 2026); the same on the rocket / site / landing windows' photos and the app's copy of these cards -->
+                    <img src="https://pbs.twimg.com/media/Gy51cDhWgAAPPRK.jpg" referrerpolicy="no-referrer" alt="Starbase, Texas"
                         class="absolute inset-0 w-full h-full object-cover object-[center_19%] scale-[1.1] origin-bottom">
                     <div class="absolute inset-0 z-10 modal-hero-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[240px] sm:min-h-[280px] p-4 sm:p-5 pt-[120px]">
@@ -17934,7 +17935,7 @@
                 </button>
             </div>
             <div class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
-                <img id="rocket-modal-img" src="" class="absolute inset-0 w-full h-full object-cover" alt="Vehicle">
+                <img id="rocket-modal-img" src="" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full object-cover" alt="Vehicle">
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div id="rocket-modal-name" translate="no"
@@ -18023,7 +18024,7 @@
                 </button>
             </div>
             <div class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
-                <img id="site-modal-img" src="" class="absolute inset-0 w-full h-full object-cover" alt="Launch Facility">
+                <img id="site-modal-img" src="" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full object-cover" alt="Launch Facility">
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div id="site-modal-name" translate="no"
@@ -18275,7 +18276,7 @@
                 </button>
             </div>
             <div class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
-                <img id="landing-modal-img" src="" class="absolute inset-0 w-full h-full object-cover" alt="Landing Zone">
+                <img id="landing-modal-img" src="" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full object-cover" alt="Landing Zone">
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div id="landing-modal-name"
@@ -18949,6 +18950,9 @@
                 Object.values(ROCKET_DATABASE).forEach(entry => {
                     if (!entry || !entry.image) return;
                     const img = new Image();
+                    // as #rocket-modal-img: Starship's photo is on Twitter's server, which refuses a request carrying
+                    // another site's address (an error page instead of the photo, since late Oct 2026)
+                    img.referrerPolicy = 'no-referrer';
                     img.src = entry.image;
                     preloadedRocketDossierImages.push(img);
                 });
@@ -33768,7 +33772,7 @@ if (heroNameEl) {
             const cards = [...document.querySelectorAll('#launch-sites-grid .launch-site-card')];
             appSetHtml(body, `<div class="app-info-row">${cards.map((c, i) => {
                 const img = c.querySelector('img');
-                return `<div class="app-shelf-card" data-i="${i}"><img src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy"><b dir="auto">${escapeHtml(c.getAttribute('aria-label') || '')}</b></div>`;
+                return `<div class="app-shelf-card" data-i="${i}"><img referrerpolicy="no-referrer" src="${escapeHtml(img ? img.getAttribute('src') : '')}" alt="" loading="lazy"><b dir="auto">${escapeHtml(c.getAttribute('aria-label') || '')}</b></div>`;
             }).join('')}</div>`);
             appBindTaps(body, '.app-shelf-card', el => document.querySelectorAll('#launch-sites-grid .launch-site-card')[+el.dataset.i]);
         }
