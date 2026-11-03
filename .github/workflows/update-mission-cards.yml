@@ -114,6 +114,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd "$RUNNER_TEMP/watch"
+          # (a crash before the report was written - shouldn't happen now - still opens the alert, pointing to the log)
+          [ -f timeline-report.md ] || echo "The check stopped before writing its report - see the run log: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > timeline-report.md
           gh label create timeline-watch --color D93F0B --description "Hero status timeline missing" -R "$GITHUB_REPOSITORY" 2>/dev/null || true
           NUM=$(gh issue list -R "$GITHUB_REPOSITORY" --label timeline-watch --state open --json number --jq '.[0].number')
           if [ -n "$NUM" ]; then

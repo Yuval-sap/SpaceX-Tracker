@@ -33,7 +33,22 @@ const ATTEMPT_WAIT_MS = 90 * 1000;
 
 const report = (lines) => writeFileSync('timeline-report.md', lines.join('\n') + '\n');
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--lang=en-US'] });
+// Chrome not coming up on GitHub's runner (2026-11-03: the launch gave up after its default 30 s, before any report was
+// written - the alert step then failed on the missing file) is the runner's hiccup, not the site's: tried twice with
+// more time, and if it still doesn't start, a note, not an alarm, as when Launch Library didn't answer.
+let browser = null;
+for (let attempt = 1; attempt <= 2 && !browser; attempt++) {
+    try {
+        browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--lang=en-US'], timeout: 90000 });
+    } catch (e) {
+        console.error(`Chrome did not start (attempt ${attempt}): ${e && e.message}`);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 15000));
+    }
+}
+if (!browser) {
+    report(['## Hero status timeline check', '', "Could not check: Chrome didn't start on GitHub's runner this time. Nothing to report."]);
+    process.exit(0);
+}
 let exitCode = 0;
 try {
     const page = await browser.newPage();
