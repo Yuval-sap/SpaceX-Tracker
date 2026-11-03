@@ -23143,11 +23143,12 @@
                     // server's stale copy below and showed a Starlink still on the pad as flying ("SECO", 2026-10-13:
                     // the backup's T-0 was 1.5 hours old). A live answer only while fresh; an older one is kept in case
                     // Launch Library itself doesn't answer either (still its own data, newer than the backup's).
-                    let workerRows = null;
+                    let workerRows = null, workerAt = NaN;
                     try {
                         const wr = await fetchWithTimeout('https://spacex-weather.yuvisapir24.workers.dev/launches', { timeout: 8000 });
                         if (wr.ok) {
-                            const age = Date.now() - Date.parse(wr.headers.get('X-Fetched-At') || '');
+                            workerAt = Date.parse(wr.headers.get('X-Fetched-At') || '');
+                            const age = Date.now() - workerAt;
                             const data = await wr.json();
                             if (data.results && data.results.length > 0) {
                                 if (age >= -60000 && age <= 10 * 60 * 1000) {
@@ -23177,6 +23178,24 @@
                                 return (freshUpcoming = data.results);
                             }
                         } else upcomingSource = 'launch-library ' + res.status;
+                    } catch (e) { }
+
+                    // The GitHub job's copy on the site itself (launches-snapshot.json, every 4 hours, from GitHub's servers -
+                    // same origin, no rate limit), when it's newer than the Worker's old copy: a Cloudflare location whose
+                    // Launch Library requests are refused kept serving a week-old copy, and a phone over its own hourly limit
+                    // kept counting down to a T-0 moved three days later (2026-11-03: USSF-432 "in 5 hours" - the snapshot
+                    // already had the new date)
+                    try {
+                        const sr = await fetchWithTimeout('launches-snapshot.json', { timeout: 8000, cache: 'no-cache' });
+                        if (sr.ok) {
+                            const snap = await sr.json();
+                            const snapAt = Date.parse(snap && snap.fetchedAt);
+                            if (snap && Array.isArray(snap.results) && snap.results.length && !isNaN(snapAt)
+                                && (!workerRows || isNaN(workerAt) || snapAt > workerAt)) {
+                                upcomingSource = 'site snapshot';
+                                return snap.results;
+                            }
+                        }
                     } catch (e) { }
 
                     // the Worker's older copy - Launch Library's own data - before the backup server's
