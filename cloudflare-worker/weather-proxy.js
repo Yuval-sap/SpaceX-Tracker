@@ -374,6 +374,7 @@ const LL_UPCOMING_URL = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?lsp_
 const LAUNCHES_FRESH_SECONDS = 240;        // at most 15 requests an hour to Launch Library from one Cloudflare location
 const LAUNCHES_RETRY_SECONDS = 60;         // after a failed request, the last good copy for a minute before asking again
 const LAUNCHES_KEEP_SECONDS = 2 * 86400;   // the last good copy, for when Launch Library doesn't answer
+const SITE_SNAPSHOT_URL = 'https://spacexfantracker.com/launches-snapshot.json';
 // a visitor's copy (POST /launches), as {at, text} - KV, so every Cloudflare location sees it (the cache is per location)
 const RELAY_KEY = 'll-upcoming-relay';
 const RELAY_MIN_GAP_MS = 3 * 60 * 1000;     // at most one stored every 3 minutes (KV allows ~1000 writes a day)
@@ -382,6 +383,36 @@ async function readRelay(env) {
   try {
     const r = env.NEWS_KV ? await env.NEWS_KV.get(RELAY_KEY, 'json') : null;
     return r && r.text && r.at ? r : null;
+  } catch (e) { return null; }
+}
+// The site's own copy of the same answer (launches-snapshot.json: the GitHub job fetches it every 4 hours, from GitHub's
+// servers, which Launch Library doesn't refuse), as {at, text}. Used only when Launch Library didn't answer this
+// location and it's newer than every other copy kept: a location Launch Library refused for a week kept serving a copy
+// of 27 Oct, once no visitor had handed in a fresh one for 2 days (2026-11-03: a phone counted down to USSF-432's
+// T-0 of 3 days before). Read through Cloudflare's cache, at most every 5 minutes per location.
+// How new a copy's CONTENT is: the latest last_updated of its launches (Launch Library's own field). A copy's
+// fetch time says nothing about it - 2026-11-03 a visitor handed in, at 20:11, a list of 27 Oct (its first "upcoming"
+// launch had flown a week before), and every visitor got it as fresh.
+function contentAt(results) {
+  let max = NaN;
+  for (const l of Array.isArray(results) ? results : []) {
+    const t = Date.parse(l && l.last_updated);
+    if (!isNaN(t) && !(t <= max)) max = t;
+  }
+  return max;
+}
+function contentAtText(text) {
+  try { return contentAt(JSON.parse(text).results); } catch (e) { return NaN; }
+}
+async function readSiteSnapshot() {
+  try {
+    const r = await fetch(SITE_SNAPSHOT_URL, { cf: { cacheTtl: 300, cacheEverything: true } });
+    if (!r.ok) return null;
+    const text = await r.text();
+    const data = JSON.parse(text);
+    const at = Date.parse(data && data.fetchedAt);
+    if (isNaN(at) || !Array.isArray(data.results) || !data.results.length) return null;
+    return { at: new Date(at).toISOString(), text };
   } catch (e) { return null; }
 }
 async function launches(env, ctx) {
@@ -419,10 +450,21 @@ async function launches(env, ctx) {
     ctx.waitUntil(Promise.all([cache.put(freshKey, make(LAUNCHES_FRESH_SECONDS)), cache.put(lastKey, make(LAUNCHES_KEEP_SECONDS))]));
     return withCors(make(LAUNCHES_FRESH_SECONDS));
   }
-  // Launch Library didn't answer (its limit, or down): the last good copy, and not asked again for a minute -
-  // a visitor's, when it's newer than this location's own
+  // Launch Library didn't answer (its limit, or down): the newest copy there is, and not asked again for a minute -
+  // this location's own last good one, a visitor's, or the site's own snapshot
+  // (compared by their content - the newest last_updated in each - not by when each was fetched)
   const last = await cache.match(lastKey);
-  if (relay && (!last || Date.parse(relay.at) > Date.parse(last.headers.get('X-Fetched-At') || '') )) return serveRelay();
+  const lastText = last ? await last.clone().text() : null;
+  const num = (t) => (isNaN(t) ? -Infinity : t);
+  const lastAt = lastText ? num(contentAtText(lastText)) : -Infinity;
+  const relayAt = relay ? num(contentAtText(relay.text)) : -Infinity;
+  const snap = await readSiteSnapshot();
+  if (snap && num(contentAtText(snap.text)) > Math.max(lastAt, relayAt)) {
+    const make = (maxAge) => new Response(snap.text, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${maxAge}`, 'X-Fetched-At': snap.at, 'X-Source': 'site-snapshot' } });
+    ctx.waitUntil(cache.put(freshKey, make(LAUNCHES_RETRY_SECONDS)));
+    return withCors(make(LAUNCHES_RETRY_SECONDS));
+  }
+  if (relay && (!last || relayAt >= lastAt)) return serveRelay();
   // what Launch Library said, to tell its limit from a refusal - and not asked again for a minute
   if (!last) {
     const res = json({ error: 'upstream unavailable', upstream: why, at: new Date().toISOString() }, 502, { 'Cache-Control': `public, max-age=${LAUNCHES_RETRY_SECONDS}` });
@@ -459,12 +501,17 @@ async function launchesRelay(request, env) {
     && !isNaN(Date.parse(l.net)) && l.status && typeof l.status.abbrev === 'string'
     && (!l.launch_service_provider || l.launch_service_provider.id === 121));
   if (!valid) return json({ error: 'not Launch Library' }, 422);
+  // an "upcoming" list whose launches have mostly flown already, or whose content is older than a copy already kept
+  // (this location's, the last visitor's, the site's snapshot): an old answer under a new time - not taken
+  const pastCount = results.filter(l => Date.parse(l.net) < now - 6 * 3600 * 1000).length;
+  if (pastCount > 1) return json({ error: 'launches already past' }, 422);
+  const postedAt = contentAt(results);
+  if (isNaN(postedAt) || postedAt > now + 5 * 60 * 1000) return json({ error: 'no last_updated' }, 422);
   const prev = await readRelay(env);
   if (prev && now - Date.parse(prev.at) < RELAY_MIN_GAP_MS) return new Response(null, { status: 204, headers: CORS });
   // the launches it lists: mostly ones a kept copy has too (new ones join a few at a time)
-  let known = null;
+  let known = null, keptText = prev ? prev.text : null;
   try {
-    let keptText = prev ? prev.text : null;
     if (!keptText) {
       const last = await caches.default.match(new Request('https://cache.internal/ll-upcoming-last-v1'));
       if (last) keptText = await last.text();
@@ -472,6 +519,11 @@ async function launchesRelay(request, env) {
     const kept = keptText ? JSON.parse(keptText) : null;
     if (kept && Array.isArray(kept.results)) known = new Set(kept.results.map(l => l && l.id));
   } catch (e) { }
+  const snap = await readSiteSnapshot();
+  const keptAt = Math.max(...[keptText, snap && snap.text].map(t => (t ? contentAtText(t) : NaN)).filter(t => !isNaN(t)), -Infinity);
+  if (postedAt < keptAt) return json({ error: 'older than the copy kept' }, 422);
+  // the site's snapshot's launches count as known too - so an old copy kept here can't turn away a fresh list
+  try { for (const l of JSON.parse(snap ? snap.text : '{}').results || []) { if (!known) known = new Set(); known.add(l && l.id); } } catch (e) { }
   if (known && known.size) {
     const same = results.filter(l => known.has(l.id)).length;
     if (same < Math.min(3, results.length) || same < results.length / 2) return json({ error: 'not the same launches' }, 422);
