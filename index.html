@@ -475,6 +475,7 @@
         #hero-banner,
         #countdown-box,
         #hero-details-btn,
+        #hero-sim-btn,
         #hero-remind-btn,
         #hero-watch-live-btn,
         #category-filter-bar,
@@ -516,6 +517,7 @@
         #hero-banner::before,
         #countdown-box::before,
         #hero-details-btn::before,
+        #hero-sim-btn::before,
         #hero-remind-btn::before,
         #hero-watch-live-btn.bg-zinc-800::before,   /* grey state only - the red live button stays clean */
         #category-filter-bar::before,
@@ -537,6 +539,7 @@
         body.light-theme #hero-banner::before,
         body.light-theme #countdown-box::before,
         body.light-theme #hero-details-btn::before,
+        body.light-theme #hero-sim-btn::before,
         body.light-theme #hero-remind-btn::before,
         body.light-theme #hero-watch-live-btn.bg-zinc-800::before,
         body.light-theme #category-filter-bar::before,
@@ -633,7 +636,7 @@
             display: none !important;
         }
         /* the hero's buttons (Details, the reminder bell, Watch live) keep their look, without the scanlines either */
-        html:not(.in-app) body :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
+        html:not(.in-app) body :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
             display: none !important;
         }
         /* The footer's Donate and @SpaceXFanTrack buttons above the page's scanlines (body::before, z-index 50) too: the
@@ -3351,12 +3354,14 @@
         @media (min-width: 768px) {
 
             body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover,
+            body.light-theme #hero-sim-btn.md\:hover\:bg-emerald-500:hover,
             body.light-theme #hero-watch-live-btn.md\:hover\:bg-emerald-500:hover,
             body.light-theme #hero-remind-btn.md\:hover\:bg-emerald-500:hover {
                 background-color: #047857 !important;
             }
 
             body.light-theme #hero-details-btn.md\:hover\:border-emerald-500:hover,
+            body.light-theme #hero-sim-btn.md\:hover\:border-emerald-500:hover,
             body.light-theme #hero-watch-live-btn.md\:hover\:border-emerald-500:hover,
             body.light-theme #hero-remind-btn.md\:hover\:border-emerald-500:hover {
                 border-color: #047857 !important;
@@ -3367,6 +3372,7 @@
                hover rule (.md:group-hover:text-black) still turns it black, which is invisible
                against a dark green background. White instead keeps it visible on-theme. */
             body.light-theme #hero-details-btn:hover .fa-circle-info,
+            body.light-theme #hero-sim-btn:hover .lsim-ic,
             body.light-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #ffffff !important;
             }
@@ -3572,6 +3578,7 @@
            768px to begin with, touch devices don't have real :hover). */
         @media (min-width: 768px) {
             body.mars-theme #hero-details-btn:hover .fa-circle-info,
+            body.mars-theme #hero-sim-btn:hover .lsim-ic,
             body.mars-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #7a2e0f !important;
             }
@@ -3987,6 +3994,7 @@
            "View Brief" button's (i) icon stays on-theme against its own hover background. */
         @media (min-width: 768px) {
             body.moon-theme #hero-details-btn:hover .fa-circle-info,
+            body.moon-theme #hero-sim-btn:hover .lsim-ic,
             body.moon-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #0a4a75 !important;
             }
@@ -6511,7 +6519,7 @@
             justify-content: space-around;
             gap: 0.25rem;
         }
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
@@ -6531,7 +6539,12 @@
             white-space: normal;
             text-align: center;
         }
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+        /* five of them with Watch live up (the launch simulation's button too): they share the row instead of overflowing it */
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+            flex: 0 1 4.6rem;
+            min-width: 0;
+        }
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -6545,10 +6558,10 @@
             animation: none;
         }
         /* night: the same look, but solid - the night sky's stars showed through the see-through fill */
-        html.in-app body:where(:not(.light-theme):not(.mars-theme):not(.moon-theme)) #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+        html.in-app body:where(:not(.light-theme):not(.mars-theme):not(.moon-theme)) #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             background: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)), var(--app-bg);
         }
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
             display: none;
         }
         html.in-app #hero-banner.app-hero #hero-remind-btn[data-reminded="1"] > i {
@@ -6568,10 +6581,10 @@
         html.in-app #hero-banner.app-hero #hero-remind-btn::after {
             content: attr(data-app-caption);
         }
-        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
             color: #334155 !important;
         }
-        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             background: #ffffff;
             border-color: #e2e8f0;
             color: #0f172a;
@@ -6580,6 +6593,9 @@
             background: #047857;
             border-color: #047857;
             color: #fff;
+        }
+        html.in-app #hero-banner.app-hero #hero-sim-btn {
+            order: 5;   /* where Share was: after Details, the reminder and Watch live */
         }
         #app-hero-share {
             display: none;
@@ -8440,7 +8456,15 @@
                 .filter(e => !isNaN(e.seconds) && e.event);
             if (!postLaunchTimeline.length) return null;
             applyTimelineTimeOverrides(postLaunchTimeline, mission.title, slug);
-            return { title: mission.title || '', slug: slug || '', postLaunchTimeline };
+            // the orbit's altitude, when SpaceX's own text for the flight states it ("an altitude of ~275 km") - the launch
+            // simulation flies to it instead of a typical one
+            let orbitAltKm = null;
+            try {
+                const text = (Array.isArray(mission.paragraphs) ? mission.paragraphs : []).map(p => (p && p.content) || '').join(' ').replace(/<[^>]+>/g, ' ');
+                const m = /altitude of (?:approximately |about |around |roughly |nearly )?~?\s*([\d,.]+)\s*(km|kilometers|kilometres|miles|mi)\b/i.exec(text);
+                if (m) { const v = parseFloat(m[1].replace(/,/g, '')); if (isFinite(v)) orbitAltKm = /^k/i.test(m[2]) ? v : v * 1.609344; }
+            } catch (e) { }
+            return { title: mission.title || '', slug: slug || '', postLaunchTimeline, orbitAltKm };
         }
 
         function applyRealMissionTimelineData(data) {
@@ -9321,6 +9345,7 @@
             'super heavy landing burn shutdown': 'superHeavyLandingBurnShutdown',
             'super heavy landing burn shutdown and catch': 'superHeavyShutdownCatch',
             'starship landing burn shutdown and catch': 'shipShutdownCatch',
+            'payload deployment': 'payloadDeploy',
             'payload deploy start': 'payloadDeployStart',
             'payload deploy complete': 'payloadDeployComplete',
             'starship engine cutoff': 'shipEngineCutoff',
@@ -9519,6 +9544,10 @@
             },
             shipShutdownCatch: {
                 en: "Starship shuts off its engines and is caught by the launch tower's arms", he: "המנועים כבים וסטארשיפ נתפסת בזרועות מגדל השיגור", es: "Starship apaga sus motores y es atrapada por los brazos de la torre de lanzamiento", fr: "Starship coupe ses moteurs et est attrapé par les bras de la tour de lancement", de: "Starship schaltet seine Triebwerke ab und wird von den Armen des Startturms gefangen", ru: "Starship выключает двигатели, и его ловят захваты стартовой башни", zh: "Starship关闭发动机，被发射塔的机械臂捕获", it: "Starship spegne i motori e viene afferrato dai bracci della torre di lancio", cs: "Starship vypíná motory a zachytí ji ramena startovní věže", sv: "Starship stänger av motorerna och fångas av startornets armar", nl: "Starship schakelt de motoren uit en wordt gevangen door de armen van de lanceertoren", da: "Starship slukker motorerne og bliver grebet af affyringstårnets arme", pt: "A Starship desliga os motores e é capturada pelos braços da torre de lançamento", pl: "Starship wyłącza silniki i zostaje przechwycony przez ramiona wieży startowej", hi: "Starship अपने इंजन बंद करता है और लॉन्च टावर की भुजाएँ उसे पकड़ लेती हैं", ar: "تُطفئ Starship محركاتها وتُمسك بها أذرع برج الإطلاق", tr: "Starship motorlarını kapatıyor ve fırlatma kulesinin kollarıyla yakalanıyor",
+            },
+            // a Falcon payload leaving the second stage (the launch simulation's estimate, when SpaceX's timeline leaves it out)
+            payloadDeploy: {
+                en: "The payload separates from the second stage into its orbit", he: "המטען נפרד מהשלב השני ויוצא למסלולו", es: "La carga útil se separa de la segunda etapa hacia su órbita", fr: "La charge utile se sépare du deuxième étage vers son orbite", de: "Die Nutzlast trennt sich von der zweiten Stufe und erreicht ihren Orbit", ru: "Полезная нагрузка отделяется от второй ступени и выходит на свою орбиту", zh: "有效载荷与第二级分离，进入其轨道", it: "Il carico utile si separa dal secondo stadio verso la sua orbita", cs: "Náklad se odděluje od druhého stupně na svou oběžnou dráhu", sv: "Nyttolasten separeras från andra steget till sin omloppsbana", nl: "De lading scheidt zich van de tweede trap naar zijn baan", da: "Nyttelasten adskilles fra andet trin og når sit kredsløb", pt: "A carga útil se separa do segundo estágio rumo à sua órbita", pl: "Ładunek oddziela się od drugiego stopnia i trafia na swoją orbitę", hi: "पेलोड दूसरे चरण से अलग होकर अपनी कक्षा में जाता है", ar: "تنفصل الحمولة عن المرحلة الثانية متجهة إلى مدارها", tr: "Faydalı yük ikinci kademeden ayrılarak yörüngesine geçiyor",
             },
             payloadDeployStart: {
                 en: "Starship begins releasing its payload into orbit", he: "סטארשיפ מתחילה לשחרר את המטען שלה למסלול", es: "Starship comienza a liberar su carga útil en órbita", fr: "Starship commence à libérer sa charge utile en orbite", de: "Starship beginnt, seine Nutzlast im Orbit auszusetzen", ru: "Starship начинает выводить полезную нагрузку на орбиту", zh: "Starship开始将有效载荷释放入轨", it: "Starship inizia a rilasciare il suo carico utile in orbita", cs: "Starship začíná vypouštět svůj náklad na oběžnou dráhu", sv: "Starship börjar släppa ut sin nyttolast i omloppsbana", nl: "Starship begint zijn lading in een baan los te laten", da: "Starship begynder at frigive sin nyttelast i kredsløb", pt: "A Starship começa a liberar sua carga útil em órbita", pl: "Starship zaczyna wypuszczać ładunek na orbitę", hi: "Starship अपना पेलोड कक्षा में छोड़ना शुरू करता है", ar: "تبدأ Starship بإطلاق حمولتها إلى المدار", tr: "Starship faydalı yükünü yörüngeye bırakmaya başlıyor",
@@ -12308,8 +12337,71 @@
                 } catch (e) { }
             }
         }
+        // 3D simulation of the hero's launch (launch-sim.html) in a full-screen same-origin iframe, loaded only on
+        // the button's click. The sim pulls everything from here: the launch (getLaunchSimConfig), SpaceX's own
+        // timeline for it, the event texts in the site language (launchSimLocalizeEvent), the language and units.
+        const LAUNCH_SIM_VERSION = '1';
+        const LAUNCH_SIM_LABEL_I18N = { en: 'Launch Sim', he: 'סימולציית שיגור', es: 'Simulación', fr: 'Simulation', de: 'Simulation', ru: 'Симуляция', zh: '发射模拟', it: 'Simulazione', cs: 'Simulace', sv: 'Simulering', nl: 'Simulatie', da: 'Simulering', pt: 'Simulação', pl: 'Symulacja', hi: 'सिमुलेशन', ar: 'محاكاة الإطلاق', tr: 'Simülasyon' };
+        function applyLaunchSimLabel() {
+            const el = document.getElementById('hero-sim-label');
+            if (!el) return;
+            let k = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (k === 'iw') k = 'he';
+            setTextIfChanged(el, LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en);
+        }
+        new MutationObserver(applyLaunchSimLabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        document.addEventListener('DOMContentLoaded', applyLaunchSimLabel);
+        window.getLaunchSimConfig = function () {
+            const m = window.currentActiveHeroMission;
+            if (!m) return null;
+            const fullName = m.patchTagName || m.name;
+            const matches = realMissionTimelineData && (realTimelineMatchesMission(m.name) || realTimelineMatchesMission(fullName));
+            const sim = m.sim || {};
+            return {
+                name: fullName, displayName: m.name, vehicle: m.vehicle, t0: Date.parse(m.date), site: m.site,
+                pad: sim.pad || null, stages: sim.stages || [], orbitCode: sim.orbit || m.orbitCode || '',
+                landing: m.landing, landingShip: m.landingShipName, boosterSerial: m.boosterSerial,
+                orbitAltKm: matches ? (realMissionTimelineData.orbitAltKm || null) : null,
+                events: matches ? realMissionTimelineData.postLaunchTimeline.map(e => ({ t: e.seconds, raw: e.event })) : []
+            };
+        };
+        // one SpaceX timeline line (or an English line the sim made up for an event the timeline leaves out) in the
+        // site language: the same texts as the hero's own timeline (ensureRealMissionTimelineTranslated)
+        window.launchSimLocalizeEvent = function (raw, lang) {
+            const key = String(lang || 'en').split('-')[0];
+            const english = splitRealTimelineEventText(raw);
+            const localized = splitRealTimelineEventText(localizeRealTimelineEventLabel(raw, key));
+            let id = identifyRealTimelineEventId(raw);
+            const heroName = window.currentActiveHeroMissionName || '';
+            if ((id === 'payloadDeployStart' || id === 'payloadDeployComplete') && /starlink/i.test(heroName) && /starship/i.test(heroName))
+                id = id === 'payloadDeployStart' ? 'starlinkV3DeployStart' : 'starlinkV3DeployComplete';
+            let explain = localized.explain || fallbackRealTimelineExplain(id, key);
+            const gem = geminiTimelineExplain(raw, key);
+            if (gem && (!explain || (key !== 'en' && explain === english.explain))) explain = gem;
+            return { title: english.title, explain: explain || '' };   // the hero's own timeline also keeps SpaceX's title
+        };
+        function openLaunchSim() {
+            const modal = document.getElementById('launch-sim-modal');
+            const frame = document.getElementById('launch-sim-frame');
+            if (!modal || !frame || !window.currentActiveHeroMission) return;
+            modal.classList.remove('hidden');
+            modal.style.display = 'block';
+            frame.src = 'launch-sim.html?embed=1&v=' + LAUNCH_SIM_VERSION;
+            lockBodyScroll();
+            frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) {} }, { once: true });
+        }
+        function closeLaunchSim() {
+            const modal = document.getElementById('launch-sim-modal');
+            const frame = document.getElementById('launch-sim-frame');
+            if (!modal || modal.classList.contains('hidden')) return;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            if (frame) frame.src = 'about:blank';
+            unlockBodyScroll();
+        }
         window.addEventListener('message', e => {
             if (e.origin !== location.origin || !e.data) return;
+            if (e.data.type === 'launch-sim-close') closeLaunchSim();
             if (e.data.type === 'starship-sim-close') closeStarshipSim();
             // the sim's Share button (desktop): the launch cards' share menu, next to that button
             if (e.data.type === 'starship-sim-share' && e.data.payload) {
@@ -14849,6 +14941,13 @@
                                 class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
                                 <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i> View
                                 Brief
+                            </button>
+
+                            <!-- 3D launch simulation of the hero's launch (launch-sim.html, #launch-sim-modal) -->
+                            <button type="button" id="hero-sim-btn" translate="no" onclick="openLaunchSim()"
+                                class="notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
+                                <i class="lsim-ic fa-solid fa-earth-americas text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i>
+                                <span id="hero-sim-label">Launch Sim</span>
                             </button>
 
                             <button id="hero-remind-btn" data-reminder-bell="1" data-reminded="0" translate="no"
@@ -18002,6 +18101,9 @@
          from inside the mission modal and the rocket modal -->
     <div id="starship-sim-modal" class="hidden fixed inset-0 z-[300] bg-[#05070b]">
         <iframe id="starship-sim-frame" title="Starship 3D" class="block w-full h-full border-0"></iframe>
+    </div>
+    <div id="launch-sim-modal" class="hidden fixed inset-0 z-[300] bg-[#02040a]">
+        <iframe id="launch-sim-frame" title="Launch simulation" class="block w-full h-full border-0"></iframe>
     </div>
 
     <!-- Rocket Modal -->
@@ -24657,6 +24759,23 @@
                 landingSuccess: landingSuccess,
                 landingShipName: landingShipName,
                 launchSuccess: launchSuccess,
+                // for the 3D launch simulation (launch-sim.html): the pad's coordinates, every stage's landing (a
+                // Falcon Heavy has three) and the orbit. Missions without it (an old cache) fall back to the sim's
+                // own pad table and the landing text above.
+                sim: {
+                    pad: (launch.pad && isFinite(parseFloat(launch.pad.latitude)) && isFinite(parseFloat(launch.pad.longitude)))
+                        ? { lat: parseFloat(launch.pad.latitude), lon: parseFloat(launch.pad.longitude), name: launch.pad.name || '' } : null,
+                    stages: (launch.rocket && Array.isArray(launch.rocket.launcher_stage)) ? launch.rocket.launcher_stage.map(s => {
+                        const l = s.landing || null, loc = l && l.location;
+                        return {
+                            type: s.type || '', serial: (s.launcher && s.launcher.serial_number) || '',
+                            attempt: l ? l.attempt : null, landingType: (l && l.type && (l.type.abbrev || l.type.name)) || '',
+                            loc: (loc && (loc.abbrev || loc.name)) || '', locName: (loc && loc.name) || '',
+                            downrange: l && typeof l.downrange_distance === 'number' ? l.downrange_distance : null,
+                        };
+                    }) : [],
+                    orbit: (launch.mission && launch.mission.orbit && launch.mission.orbit.abbrev) || '',
+                },
                 // when the source last touched this launch (Launch Library's last_updated) - see processLaunchData
                 sourceUpdatedAt: launch.last_updated || null,
                 crew: crewArr,
@@ -26763,6 +26882,7 @@ setTimeout(() => {
                 // displayed one drops Starship's "(Starship Flight N)" - the only part that matches
                 // SpaceX's "Starship Flight N" / starship-flight-N
                 window.currentActiveHeroMissionName = nextLaunch.patchTagName || nextLaunch.name;
+                window.currentActiveHeroMission = nextLaunch;   // the launch simulation's data (getLaunchSimConfig)
                 window.currentActiveHeroLaunchAt = nextLaunch.date;   // T0 for applyTimelineTimeOverrides
                 if (typeof fetchRealMissionTimeline === 'function' &&
                     !realTimelineMatchesMission(nextLaunch.name)) {
@@ -32823,6 +32943,7 @@ if (heroNameEl) {
             return [
                 ['vehicle-gallery-modal', closeVehicleGallery],
                 ['starship-sim-modal', closeStarshipSim],
+                ['launch-sim-modal', closeLaunchSim],
                 ['launch-cadence-modal', closeLaunchCadenceModal],
                 ['doc-video-modal', closeDocVideoModal],
                 ['starlink-gen-lightbox', closeStarlinkGenLightbox],
@@ -33555,18 +33676,8 @@ if (heroNameEl) {
             status.className = `notranslate font-orbitron px-2.5 py-0.5 text-[11px] leading-[16px] whitespace-nowrap font-bold border rounded-full ${color}`;
             status.textContent = m.status || '';
             status.classList.toggle('hidden', !m.status);
-            // share, after the other buttons
-            const live = document.getElementById('hero-watch-live-btn');
-            if (live && !document.getElementById('app-hero-share')) {
-                const share = document.createElement('button');
-                share.type = 'button';
-                share.id = 'app-hero-share';
-                share.className = 'notranslate shrink-0';
-                share.setAttribute('translate', 'no');
-                share.innerHTML = '<i class="fa-solid fa-share-nodes"></i><span data-app-label="share"></span>';
-                share.onclick = () => { if (window._appHeroMission) shareMission(window._appHeroMission); };
-                live.parentElement.appendChild(share);
-            }
+            // (the hero's own Share button made way for the launch simulation's - a row of five was crowded on a
+            // phone, and a launch's details already have Share; the simulation's button takes its place, last in the row)
             appRelabelLists();
         }
 

@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#02040a">
+<title>Launch Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #02040a;
+    --panel: rgba(8, 12, 22, 0.62);
+    --panel-border: rgba(120, 190, 255, 0.16);
+    --text: #e7eef8;
+    --muted: #8ea0b8;
+    --accent: #5fd4ff;
+    --accent-2: #34d399;
+    --booster: #ffae42;
+    --est: #c9a2ff;
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'Rubik', system-ui, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  #scene { position: fixed; inset: 0; touch-action: none; }
+  .label3d { font: 500 12px/1.2 'Rubik', sans-serif; color: var(--text); background: rgba(5, 10, 20, 0.55); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 7px; border-radius: 999px; white-space: nowrap; pointer-events: none; transform: translateY(-14px); backdrop-filter: blur(4px); }
+  .label3d.ev { font-size: 11px; color: #cfe9ff; border-color: rgba(95, 212, 255, 0.35); }
+  .label3d.ev.booster { color: #ffd9a3; border-color: rgba(255, 174, 66, 0.4); }
+  .label3d.ev.est { color: #e3d0ff; border-color: rgba(201, 162, 255, 0.45); border-style: dashed; }
+  .label3d.veh { font-weight: 700; color: #fff; border-color: rgba(95, 212, 255, 0.6); }
+  .label3d.veh.booster { border-color: rgba(255, 174, 66, 0.7); }
+  .label3d.site { color: #b8f5d6; border-color: rgba(52, 211, 153, 0.45); }
+
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px; backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3); box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.7); }
+  #hud-top { top: 16px; inset-inline-start: 16px; padding: 14px 18px; min-width: 300px; max-width: 360px; }
+  #hud-top .mission { font: 700 13px 'Orbitron', 'Rubik', sans-serif; letter-spacing: 0.1em; color: var(--accent); direction: ltr; text-align: start; unicode-bidi: plaintext; }
+  #hud-top .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #clock { font: 700 38px/1.1 'Orbitron', sans-serif; letter-spacing: 0.04em; margin-top: 8px; direction: ltr; text-align: start; }
+  [dir="rtl"] #clock { text-align: right; }
+  #phase { font-size: 14px; margin-top: 6px; color: #fff; min-height: 2.6em; }
+  #phase small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #phase .est { color: var(--est); font-size: 11px; }
+  .tele { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .tele div { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 7px 8px; min-width: 0; }
+  .tele b { display: block; font: 700 17px 'Orbitron', sans-serif; direction: ltr; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  [dir="rtl"] .tele b { text-align: right; }
+  .tele span { font-size: 11px; color: var(--muted); }
+
+  #events { top: 16px; inset-inline-end: 72px; width: 300px; max-height: calc(100vh - 170px); overflow: auto; padding: 10px; scrollbar-width: thin; }
+  #events h3 { margin: 4px 8px 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
+  .ev-row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 8px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
+  .ev-row:hover { background: rgba(255, 255, 255, 0.05); }
+  .ev-row .t { font: 500 11.5px 'Orbitron', sans-serif; color: var(--muted); direction: ltr; text-align: start; padding-top: 2px; white-space: nowrap; }
+  .ev-row .n { font-size: 13px; overflow-wrap: anywhere; }
+  .ev-row .n small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+  .ev-row.done .n { color: var(--accent-2); }
+  .ev-row.now { background: rgba(95, 212, 255, 0.12); }
+  .ev-row.booster .n { color: #ffd9a3; }
+  .ev-row.booster.done .n { color: var(--booster); }
+  .ev-row .estTag { font-size: 11px; color: var(--est); }
+
+  #close { position: fixed; top: 16px; inset-inline-end: 16px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; line-height: 1; padding: 0; z-index: 5; background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
+
+  #controls { left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(1020px, calc(100vw - 32px)); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
+  .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  button { font: 500 13px 'Rubik', sans-serif; color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 7px 11px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+  @media (hover: hover) { button:hover { background: rgba(255, 255, 255, 0.12); } }
+  button.on { background: rgba(95, 212, 255, 0.18); border-color: rgba(95, 212, 255, 0.55); color: #fff; }
+  #play { width: 44px; font-size: 15px; }
+  #live { display: none; font-weight: 700; }
+  #live.avail { display: inline-block; }
+  #live::before { content: '●'; color: #ef4444; margin-inline-end: 5px; }
+  #live.on { background: rgba(239, 68, 68, 0.22); border-color: rgba(239, 68, 68, 0.75); color: #fff; }
+  #live.avail:not(.on)::before { animation: livePulse 1.2s ease-in-out infinite; }
+  @keyframes livePulse { 50% { opacity: 0.25; } }
+  .sep { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.12); margin: 0 3px; }
+  .lbl { font-size: 12px; color: var(--muted); }
+  .lbl .ico { display: none; }
+  #scrub { flex: 1; direction: ltr; accent-color: var(--accent); min-width: 0; }
+  #note { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  #credit { font-size: 10px; color: var(--muted); opacity: 0.75; direction: ltr; text-align: start; }
+  #credit a { color: inherit; }
+  #ev-toggle { display: none; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 10; font: 500 14px 'Rubik', sans-serif; color: var(--muted); transition: opacity 0.6s; text-align: center; padding: 24px; }
+  @media (max-width: 760px) {
+    #hud-top { top: 10px; inset-inline-start: 10px; inset-inline-end: 64px; min-width: 0; max-width: none; padding: 10px 12px; }
+    #hud-top .sub { display: none; }
+    #clock { font-size: 26px; margin-top: 4px; }
+    #phase { font-size: 13px; min-height: 0; }
+    #phase small { font-size: 11px; }
+    .tele { gap: 6px; margin-top: 8px; }
+    .tele div { padding: 5px 6px; }
+    .tele b { font-size: 14px; }
+    .tele span { font-size: 10px; }
+    #close { top: 10px; inset-inline-end: 10px; }
+    #events { display: none; top: auto; bottom: calc(env(safe-area-inset-bottom) + 150px); inset-inline-start: 10px; inset-inline-end: 10px; width: auto; max-height: 42vh; }
+    body.ev-open #events { display: block; }
+    #ev-toggle { display: inline-block; }
+    #controls { width: calc(100vw - 20px); bottom: max(10px, env(safe-area-inset-bottom)); padding: 8px 10px; gap: 6px; }
+    .row { gap: 4px; }
+    button { padding: 6px 8px; font-size: 12px; }
+    .sep, .lbl { display: none; }
+    /* the two Auto buttons told apart without their group labels */
+    #speed-auto::before { content: '⏩ '; }
+    [data-cam="auto"]::before { content: '🎥 '; }
+    #note { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="loading"></div>
+
+<div id="hud-top" class="panel">
+  <div class="mission" id="mission"></div>
+  <div class="sub" id="sub"></div>
+  <div id="clock">T-00:00:00</div>
+  <div id="phase"></div>
+  <div class="tele">
+    <div><b id="alt">0</b><span id="alt-l"></span></div>
+    <div><b id="spd">0</b><span id="spd-l"></span></div>
+    <div><b id="dr">0</b><span id="dr-l"></span></div>
+  </div>
+</div>
+
+<button id="close" type="button" aria-label="Close">×</button>
+<div id="events" class="panel"><h3 id="ev-h"></h3><div id="ev-list"></div></div>
+
+<div id="controls" class="panel">
+  <div class="row">
+    <button id="play" type="button">⏸</button>
+    <button type="button" id="live"></button>
+    <div class="sep"></div>
+    <span class="lbl"><span class="ico" aria-hidden="true">⏩</span><span id="speed-l"></span></span>
+    <button type="button" data-speed="auto" class="on" id="speed-auto"></button>
+    <button type="button" data-speed="1">x1</button>
+    <button type="button" data-speed="10">x10</button>
+    <button type="button" data-speed="100">x100</button>
+    <button type="button" data-speed="1000">x1000</button>
+    <div class="sep"></div>
+    <span class="lbl"><span class="ico" aria-hidden="true">🎥</span><span id="cam-l"></span></span>
+    <button type="button" data-cam="auto" class="on"></button>
+    <button type="button" data-cam="chase"></button>
+    <button type="button" data-cam="booster"></button>
+    <button type="button" data-cam="pad"></button>
+    <button type="button" data-cam="earth"></button>
+    <button type="button" id="ev-toggle"></button>
+  </div>
+  <div class="row"><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div>
+  <div id="note"></div>
+  <div id="credit">Imagery: <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017) · NASA Blue Marble</div>
+</div>
+
+<script>
+// Hand-written UI strings, one entry per language the main site offers (iw folded into he, zh-CN into zh).
+// "Falcon 9", "Falcon Heavy", "Starship", "Super Heavy" and SpaceX's acronyms stay as proper names.
+window.LSIM_I18N = {
+  en: { live: 'Live', dir: 'ltr', title: 'Launch simulation', loading: 'Loading Earth…', noGl: 'This device cannot show the 3D simulation (WebGL is unavailable).', countdown: 'Countdown', onPad: '{v} on the launch pad', alt: 'Altitude', spd: 'Speed', dr: 'Downrange', timeline: 'Timeline', speed: 'Speed:', auto: 'Auto', camera: 'Camera:', chase: 'Follow', booster: 'Booster', pad: 'Ground', earth: 'Earth', est: 'estimate', liftoff: 'Liftoff', liftoffD: 'The rocket leaves the launch pad', s2: 'Second stage', side: 'Side booster', center: 'Center core', landingShip: 'landing ship', landingZone: 'landing zone', tower: 'tower catch', pad2: 'launch pad', close: 'Close', play: 'Play', pause: 'Pause', events: 'Events', note: 'Reconstructed from SpaceX’s official timeline for this launch and a typical {v} flight profile. Events marked “estimate” are not in the official timeline. Vehicles are enlarged for visibility.', noteNoTl: 'SpaceX has not published the timeline for this launch yet, so every event is estimated from a typical {v} flight profile. Vehicles are enlarged for visibility.', none: 'No launch in the hero right now.' },
+  he: { live: 'חי', dir: 'rtl', title: 'סימולציית שיגור', loading: 'טוען את כדור הארץ…', noGl: 'המכשיר הזה לא יכול להציג את סימולציית התלת־ממד (WebGL לא זמין).', countdown: 'ספירה לאחור', onPad: '{v} על כן השיגור', alt: 'גובה', spd: 'מהירות', dr: 'טווח', timeline: 'ציר הזמן', speed: 'מהירות:', auto: 'אוטומטי', camera: 'מצלמה:', chase: 'מעקב', booster: 'בוסטר', pad: 'מהקרקע', earth: 'כדור הארץ', est: 'הערכה', liftoff: 'המראה', liftoffD: 'הרקטה עוזבת את כן השיגור', s2: 'שלב שני', side: 'בוסטר צד', center: 'ליבה מרכזית', landingShip: 'ספינת נחיתה', landingZone: 'אזור נחיתה', tower: 'תפיסה במגדל', pad2: 'כן שיגור', close: 'סגירה', play: 'נגן', pause: 'עצור', events: 'אירועים', note: 'משוחזר מציר הזמן הרשמי של SpaceX לשיגור זה ומפרופיל טיסה טיפוסי של {v}. אירועים שמסומנים "הערכה" לא מופיעים בציר הזמן הרשמי. כלי הטיס מוגדלים לצורך התצוגה.', noteNoTl: 'SpaceX עוד לא פרסמה את ציר הזמן של השיגור הזה, ולכן כל האירועים מוערכים לפי פרופיל טיסה טיפוסי של {v}. כלי הטיס מוגדלים לצורך התצוגה.', none: 'אין כרגע שיגור בכותרת.' },
+  es: { live: 'En vivo', dir: 'ltr', title: 'Simulación del lanzamiento', loading: 'Cargando la Tierra…', noGl: 'Este dispositivo no puede mostrar la simulación 3D (WebGL no está disponible).', countdown: 'Cuenta atrás', onPad: '{v} en la plataforma', alt: 'Altitud', spd: 'Velocidad', dr: 'Distancia', timeline: 'Cronología', speed: 'Velocidad:', auto: 'Auto', camera: 'Cámara:', chase: 'Seguir', booster: 'Propulsor', pad: 'Suelo', earth: 'Tierra', est: 'estimación', liftoff: 'Despegue', liftoffD: 'El cohete abandona la plataforma', s2: 'Segunda etapa', side: 'Propulsor lateral', center: 'Núcleo central', landingShip: 'barco de aterrizaje', landingZone: 'zona de aterrizaje', tower: 'captura en la torre', pad2: 'plataforma', close: 'Cerrar', play: 'Reproducir', pause: 'Pausa', events: 'Eventos', note: 'Reconstruido a partir de la cronología oficial de SpaceX para este lanzamiento y un perfil de vuelo típico de {v}. Los eventos marcados como «estimación» no figuran en la cronología oficial. Los vehículos están ampliados para verse mejor.', noteNoTl: 'SpaceX aún no ha publicado la cronología de este lanzamiento, así que todos los eventos se estiman con un perfil de vuelo típico de {v}. Los vehículos están ampliados para verse mejor.', none: 'Ahora no hay ningún lanzamiento destacado.' },
+  fr: { live: 'En direct', dir: 'ltr', title: 'Simulation du lancement', loading: 'Chargement de la Terre…', noGl: 'Cet appareil ne peut pas afficher la simulation 3D (WebGL indisponible).', countdown: 'Compte à rebours', onPad: '{v} sur le pas de tir', alt: 'Altitude', spd: 'Vitesse', dr: 'Distance', timeline: 'Chronologie', speed: 'Vitesse :', auto: 'Auto', camera: 'Caméra :', chase: 'Suivre', booster: 'Booster', pad: 'Sol', earth: 'Terre', est: 'estimation', liftoff: 'Décollage', liftoffD: 'La fusée quitte le pas de tir', s2: 'Deuxième étage', side: 'Booster latéral', center: 'Corps central', landingShip: 'barge d’atterrissage', landingZone: 'zone d’atterrissage', tower: 'capture par la tour', pad2: 'pas de tir', close: 'Fermer', play: 'Lecture', pause: 'Pause', events: 'Événements', note: 'Reconstitué à partir de la chronologie officielle de SpaceX pour ce lancement et d’un profil de vol typique de {v}. Les événements marqués « estimation » ne figurent pas dans la chronologie officielle. Les véhicules sont agrandis pour être visibles.', noteNoTl: 'SpaceX n’a pas encore publié la chronologie de ce lancement : tous les événements sont estimés d’après un profil de vol typique de {v}. Les véhicules sont agrandis pour être visibles.', none: 'Aucun lancement à la une pour le moment.' },
+  de: { live: 'Live', dir: 'ltr', title: 'Startsimulation', loading: 'Erde wird geladen…', noGl: 'Dieses Gerät kann die 3D-Simulation nicht anzeigen (WebGL nicht verfügbar).', countdown: 'Countdown', onPad: '{v} auf der Startrampe', alt: 'Höhe', spd: 'Geschwindigkeit', dr: 'Entfernung', timeline: 'Zeitplan', speed: 'Tempo:', auto: 'Auto', camera: 'Kamera:', chase: 'Folgen', booster: 'Booster', pad: 'Boden', earth: 'Erde', est: 'Schätzung', liftoff: 'Abheben', liftoffD: 'Die Rakete verlässt die Startrampe', s2: 'Zweite Stufe', side: 'Seitenbooster', center: 'Zentralstufe', landingShip: 'Landeschiff', landingZone: 'Landezone', tower: 'Fang am Turm', pad2: 'Startrampe', close: 'Schließen', play: 'Abspielen', pause: 'Pause', events: 'Ereignisse', note: 'Rekonstruiert aus dem offiziellen SpaceX-Zeitplan dieses Starts und einem typischen {v}-Flugprofil. Als „Schätzung“ markierte Ereignisse stehen nicht im offiziellen Zeitplan. Fahrzeuge sind zur besseren Sichtbarkeit vergrößert.', noteNoTl: 'SpaceX hat den Zeitplan dieses Starts noch nicht veröffentlicht, daher sind alle Ereignisse nach einem typischen {v}-Flugprofil geschätzt. Fahrzeuge sind zur besseren Sichtbarkeit vergrößert.', none: 'Derzeit ist kein Start hervorgehoben.' },
+  ru: { live: 'Эфир', dir: 'ltr', title: 'Симуляция запуска', loading: 'Загрузка Земли…', noGl: 'Это устройство не может показать 3D-симуляцию (WebGL недоступен).', countdown: 'Обратный отсчёт', onPad: '{v} на стартовой площадке', alt: 'Высота', spd: 'Скорость', dr: 'Дальность', timeline: 'Хронология', speed: 'Скорость:', auto: 'Авто', camera: 'Камера:', chase: 'Следовать', booster: 'Ускоритель', pad: 'С земли', earth: 'Земля', est: 'оценка', liftoff: 'Старт', liftoffD: 'Ракета покидает стартовую площадку', s2: 'Вторая ступень', side: 'Боковой ускоритель', center: 'Центральный блок', landingShip: 'посадочная платформа', landingZone: 'посадочная зона', tower: 'захват башней', pad2: 'стартовая площадка', close: 'Закрыть', play: 'Пуск', pause: 'Пауза', events: 'События', note: 'Восстановлено по официальной хронологии SpaceX для этого запуска и типичному профилю полёта {v}. События с пометкой «оценка» отсутствуют в официальной хронологии. Аппараты увеличены для наглядности.', noteNoTl: 'SpaceX ещё не опубликовала хронологию этого запуска, поэтому все события оценены по типичному профилю полёта {v}. Аппараты увеличены для наглядности.', none: 'Сейчас нет выделенного запуска.' },
+  zh: { live: '实时', dir: 'ltr', title: '发射模拟', loading: '正在加载地球…', noGl: '此设备无法显示 3D 模拟（WebGL 不可用）。', countdown: '倒计时', onPad: '{v} 位于发射台', alt: '高度', spd: '速度', dr: '航程', timeline: '时间线', speed: '速度：', auto: '自动', camera: '镜头：', chase: '跟随', booster: '助推器', pad: '地面', earth: '地球', est: '估计', liftoff: '升空', liftoffD: '火箭离开发射台', s2: '第二级', side: '侧助推器', center: '中央芯级', landingShip: '着陆船', landingZone: '着陆区', tower: '发射塔捕获', pad2: '发射台', close: '关闭', play: '播放', pause: '暂停', events: '事件', note: '根据 SpaceX 为本次发射发布的官方时间线以及 {v} 的典型飞行剖面重建。标注“估计”的事件不在官方时间线中。为便于观看，飞行器已放大显示。', noteNoTl: 'SpaceX 尚未发布本次发射的时间线，因此所有事件均按 {v} 的典型飞行剖面估计。为便于观看，飞行器已放大显示。', none: '目前没有焦点发射。' },
+  it: { live: 'In diretta', dir: 'ltr', title: 'Simulazione del lancio', loading: 'Caricamento della Terra…', noGl: 'Questo dispositivo non può mostrare la simulazione 3D (WebGL non disponibile).', countdown: 'Conto alla rovescia', onPad: '{v} sulla rampa', alt: 'Altitudine', spd: 'Velocità', dr: 'Distanza', timeline: 'Cronologia', speed: 'Velocità:', auto: 'Auto', camera: 'Telecamera:', chase: 'Segui', booster: 'Booster', pad: 'Da terra', earth: 'Terra', est: 'stima', liftoff: 'Decollo', liftoffD: 'Il razzo lascia la rampa', s2: 'Secondo stadio', side: 'Booster laterale', center: 'Stadio centrale', landingShip: 'nave di atterraggio', landingZone: 'zona di atterraggio', tower: 'cattura alla torre', pad2: 'rampa', close: 'Chiudi', play: 'Riproduci', pause: 'Pausa', events: 'Eventi', note: 'Ricostruito dalla cronologia ufficiale di SpaceX per questo lancio e da un profilo di volo tipico di {v}. Gli eventi segnati come «stima» non sono nella cronologia ufficiale. I veicoli sono ingranditi per essere visibili.', noteNoTl: 'SpaceX non ha ancora pubblicato la cronologia di questo lancio, quindi tutti gli eventi sono stimati da un profilo di volo tipico di {v}. I veicoli sono ingranditi per essere visibili.', none: 'Nessun lancio in evidenza al momento.' },
+  cs: { live: 'Živě', dir: 'ltr', title: 'Simulace startu', loading: 'Načítání Země…', noGl: 'Toto zařízení nemůže zobrazit 3D simulaci (WebGL není dostupné).', countdown: 'Odpočet', onPad: '{v} na rampě', alt: 'Výška', spd: 'Rychlost', dr: 'Vzdálenost', timeline: 'Časová osa', speed: 'Rychlost:', auto: 'Auto', camera: 'Kamera:', chase: 'Sledovat', booster: 'Booster', pad: 'Ze země', earth: 'Země', est: 'odhad', liftoff: 'Start', liftoffD: 'Raketa opouští rampu', s2: 'Druhý stupeň', side: 'Boční booster', center: 'Centrální stupeň', landingShip: 'přistávací loď', landingZone: 'přistávací zóna', tower: 'zachycení věží', pad2: 'rampa', close: 'Zavřít', play: 'Přehrát', pause: 'Pauza', events: 'Události', note: 'Rekonstruováno z oficiální časové osy SpaceX pro tento start a typického letového profilu {v}. Události označené „odhad“ v oficiální časové ose nejsou. Stroje jsou pro viditelnost zvětšeny.', noteNoTl: 'SpaceX zatím nezveřejnila časovou osu tohoto startu, proto jsou všechny události odhadnuty podle typického letového profilu {v}. Stroje jsou pro viditelnost zvětšeny.', none: 'Právě není zvýrazněn žádný start.' },
+  sv: { live: 'Live', dir: 'ltr', title: 'Uppskjutningssimulering', loading: 'Laddar jorden…', noGl: 'Den här enheten kan inte visa 3D-simuleringen (WebGL saknas).', countdown: 'Nedräkning', onPad: '{v} på startplattan', alt: 'Höjd', spd: 'Hastighet', dr: 'Avstånd', timeline: 'Tidslinje', speed: 'Hastighet:', auto: 'Auto', camera: 'Kamera:', chase: 'Följ', booster: 'Booster', pad: 'Marken', earth: 'Jorden', est: 'uppskattning', liftoff: 'Lyft', liftoffD: 'Raketen lämnar startplattan', s2: 'Andra steget', side: 'Sidobooster', center: 'Mittkärna', landingShip: 'landningsfartyg', landingZone: 'landningszon', tower: 'fångst i tornet', pad2: 'startplatta', close: 'Stäng', play: 'Spela', pause: 'Paus', events: 'Händelser', note: 'Rekonstruerad från SpaceX officiella tidslinje för den här uppskjutningen och en typisk flygprofil för {v}. Händelser märkta ”uppskattning” finns inte i den officiella tidslinjen. Farkosterna är förstorade för synlighet.', noteNoTl: 'SpaceX har ännu inte publicerat tidslinjen för den här uppskjutningen, så alla händelser är uppskattade utifrån en typisk flygprofil för {v}. Farkosterna är förstorade för synlighet.', none: 'Ingen uppskjutning visas just nu.' },
+  nl: { live: 'Live', dir: 'ltr', title: 'Lanceringssimulatie', loading: 'Aarde laden…', noGl: 'Dit apparaat kan de 3D-simulatie niet tonen (WebGL niet beschikbaar).', countdown: 'Aftellen', onPad: '{v} op het lanceerplatform', alt: 'Hoogte', spd: 'Snelheid', dr: 'Afstand', timeline: 'Tijdlijn', speed: 'Snelheid:', auto: 'Auto', camera: 'Camera:', chase: 'Volgen', booster: 'Booster', pad: 'Grond', earth: 'Aarde', est: 'schatting', liftoff: 'Lancering', liftoffD: 'De raket verlaat het lanceerplatform', s2: 'Tweede trap', side: 'Zijbooster', center: 'Centrale kern', landingShip: 'landingsschip', landingZone: 'landingszone', tower: 'vangst door de toren', pad2: 'lanceerplatform', close: 'Sluiten', play: 'Afspelen', pause: 'Pauze', events: 'Gebeurtenissen', note: 'Gereconstrueerd uit de officiële SpaceX-tijdlijn van deze lancering en een typisch vluchtprofiel van {v}. Gebeurtenissen met „schatting” staan niet in de officiële tijdlijn. Voertuigen zijn vergroot voor de zichtbaarheid.', noteNoTl: 'SpaceX heeft de tijdlijn van deze lancering nog niet gepubliceerd, dus alle gebeurtenissen zijn geschat op basis van een typisch vluchtprofiel van {v}. Voertuigen zijn vergroot voor de zichtbaarheid.', none: 'Er staat nu geen lancering uitgelicht.' },
+  da: { live: 'Live', dir: 'ltr', title: 'Opsendelsessimulering', loading: 'Indlæser Jorden…', noGl: 'Denne enhed kan ikke vise 3D-simuleringen (WebGL er ikke tilgængelig).', countdown: 'Nedtælling', onPad: '{v} på affyringsrampen', alt: 'Højde', spd: 'Hastighed', dr: 'Afstand', timeline: 'Tidslinje', speed: 'Hastighed:', auto: 'Auto', camera: 'Kamera:', chase: 'Følg', booster: 'Booster', pad: 'Jorden', earth: 'Jorden', est: 'skøn', liftoff: 'Letning', liftoffD: 'Raketten forlader affyringsrampen', s2: 'Andet trin', side: 'Sidebooster', center: 'Centerkerne', landingShip: 'landingsskib', landingZone: 'landingszone', tower: 'fangst i tårnet', pad2: 'affyringsrampe', close: 'Luk', play: 'Afspil', pause: 'Pause', events: 'Begivenheder', note: 'Rekonstrueret ud fra SpaceX’ officielle tidslinje for denne opsendelse og en typisk flyveprofil for {v}. Begivenheder markeret “skøn” er ikke i den officielle tidslinje. Fartøjerne er forstørret for synlighedens skyld.', noteNoTl: 'SpaceX har endnu ikke offentliggjort tidslinjen for denne opsendelse, så alle begivenheder er skønnet ud fra en typisk flyveprofil for {v}. Fartøjerne er forstørret for synlighedens skyld.', none: 'Der er ingen fremhævet opsendelse lige nu.' },
+  pt: { live: 'Ao vivo', dir: 'ltr', title: 'Simulação do lançamento', loading: 'Carregando a Terra…', noGl: 'Este dispositivo não consegue mostrar a simulação 3D (WebGL indisponível).', countdown: 'Contagem regressiva', onPad: '{v} na plataforma', alt: 'Altitude', spd: 'Velocidade', dr: 'Distância', timeline: 'Cronologia', speed: 'Velocidade:', auto: 'Auto', camera: 'Câmera:', chase: 'Seguir', booster: 'Propulsor', pad: 'Solo', earth: 'Terra', est: 'estimativa', liftoff: 'Decolagem', liftoffD: 'O foguete deixa a plataforma', s2: 'Segundo estágio', side: 'Propulsor lateral', center: 'Núcleo central', landingShip: 'navio de pouso', landingZone: 'zona de pouso', tower: 'captura na torre', pad2: 'plataforma', close: 'Fechar', play: 'Reproduzir', pause: 'Pausar', events: 'Eventos', note: 'Reconstruído a partir da cronologia oficial da SpaceX para este lançamento e de um perfil de voo típico do {v}. Eventos marcados como “estimativa” não estão na cronologia oficial. Os veículos estão ampliados para melhor visualização.', noteNoTl: 'A SpaceX ainda não publicou a cronologia deste lançamento, então todos os eventos são estimados por um perfil de voo típico do {v}. Os veículos estão ampliados para melhor visualização.', none: 'Nenhum lançamento em destaque agora.' },
+  pl: { live: 'Na żywo', dir: 'ltr', title: 'Symulacja startu', loading: 'Ładowanie Ziemi…', noGl: 'To urządzenie nie może wyświetlić symulacji 3D (WebGL niedostępny).', countdown: 'Odliczanie', onPad: '{v} na stanowisku startowym', alt: 'Wysokość', spd: 'Prędkość', dr: 'Odległość', timeline: 'Oś czasu', speed: 'Prędkość:', auto: 'Auto', camera: 'Kamera:', chase: 'Śledź', booster: 'Booster', pad: 'Z ziemi', earth: 'Ziemia', est: 'szacunek', liftoff: 'Start', liftoffD: 'Rakieta opuszcza stanowisko startowe', s2: 'Drugi stopień', side: 'Booster boczny', center: 'Rdzeń centralny', landingShip: 'statek do lądowania', landingZone: 'strefa lądowania', tower: 'przechwycenie przez wieżę', pad2: 'stanowisko startowe', close: 'Zamknij', play: 'Odtwórz', pause: 'Pauza', events: 'Zdarzenia', note: 'Odtworzone na podstawie oficjalnej osi czasu SpaceX dla tego startu i typowego profilu lotu {v}. Zdarzeń oznaczonych „szacunek” nie ma w oficjalnej osi czasu. Pojazdy są powiększone dla lepszej widoczności.', noteNoTl: 'SpaceX nie opublikowało jeszcze osi czasu tego startu, więc wszystkie zdarzenia są szacowane na podstawie typowego profilu lotu {v}. Pojazdy są powiększone dla lepszej widoczności.', none: 'Obecnie nie ma wyróżnionego startu.' },
+  hi: { live: 'लाइव', dir: 'ltr', title: 'लॉन्च सिमुलेशन', loading: 'पृथ्वी लोड हो रही है…', noGl: 'यह डिवाइस 3D सिमुलेशन नहीं दिखा सकता (WebGL उपलब्ध नहीं है)।', countdown: 'उलटी गिनती', onPad: '{v} लॉन्च पैड पर', alt: 'ऊँचाई', spd: 'गति', dr: 'दूरी', timeline: 'समयरेखा', speed: 'गति:', auto: 'ऑटो', camera: 'कैमरा:', chase: 'पीछा करें', booster: 'बूस्टर', pad: 'ज़मीन से', earth: 'पृथ्वी', est: 'अनुमान', liftoff: 'लिफ्टऑफ़', liftoffD: 'रॉकेट लॉन्च पैड छोड़ता है', s2: 'दूसरा चरण', side: 'साइड बूस्टर', center: 'सेंटर कोर', landingShip: 'लैंडिंग जहाज़', landingZone: 'लैंडिंग ज़ोन', tower: 'टावर द्वारा कैच', pad2: 'लॉन्च पैड', close: 'बंद करें', play: 'चलाएँ', pause: 'रोकें', events: 'घटनाएँ', note: 'इस लॉन्च के लिए SpaceX की आधिकारिक समयरेखा और {v} की एक सामान्य उड़ान प्रोफ़ाइल से पुनर्निर्मित। “अनुमान” वाली घटनाएँ आधिकारिक समयरेखा में नहीं हैं। दिखाई देने के लिए वाहनों को बड़ा किया गया है।', noteNoTl: 'SpaceX ने अभी इस लॉन्च की समयरेखा प्रकाशित नहीं की है, इसलिए सभी घटनाएँ {v} की सामान्य उड़ान प्रोफ़ाइल से अनुमानित हैं। दिखाई देने के लिए वाहनों को बड़ा किया गया है।', none: 'अभी कोई मुख्य लॉन्च नहीं है।' },
+  ar: { live: 'مباشر', dir: 'rtl', title: 'محاكاة الإطلاق', loading: 'جارٍ تحميل الأرض…', noGl: 'لا يستطيع هذا الجهاز عرض المحاكاة ثلاثية الأبعاد (WebGL غير متاح).', countdown: 'العد التنازلي', onPad: '{v} على منصة الإطلاق', alt: 'الارتفاع', spd: 'السرعة', dr: 'المدى', timeline: 'الجدول الزمني', speed: 'السرعة:', auto: 'تلقائي', camera: 'الكاميرا:', chase: 'تتبّع', booster: 'المعزز', pad: 'من الأرض', earth: 'الأرض', est: 'تقدير', liftoff: 'الإقلاع', liftoffD: 'الصاروخ يغادر منصة الإطلاق', s2: 'المرحلة الثانية', side: 'معزز جانبي', center: 'النواة المركزية', landingShip: 'سفينة الهبوط', landingZone: 'منطقة الهبوط', tower: 'الالتقاط بالبرج', pad2: 'منصة الإطلاق', close: 'إغلاق', play: 'تشغيل', pause: 'إيقاف مؤقت', events: 'الأحداث', note: 'أُعيد بناؤها من الجدول الزمني الرسمي لـ SpaceX لهذا الإطلاق ومن مسار طيران نموذجي لـ {v}. الأحداث المعلّمة بـ«تقدير» ليست في الجدول الرسمي. المركبات مكبّرة لتظهر بوضوح.', noteNoTl: 'لم تنشر SpaceX بعد الجدول الزمني لهذا الإطلاق، لذا كل الأحداث مقدّرة وفق مسار طيران نموذجي لـ {v}. المركبات مكبّرة لتظهر بوضوح.', none: 'لا يوجد إطلاق مميّز الآن.' },
+  tr: { live: 'Canlı', dir: 'ltr', title: 'Fırlatma simülasyonu', loading: 'Dünya yükleniyor…', noGl: 'Bu cihaz 3D simülasyonu gösteremiyor (WebGL kullanılamıyor).', countdown: 'Geri sayım', onPad: '{v} fırlatma rampasında', alt: 'İrtifa', spd: 'Hız', dr: 'Menzil', timeline: 'Zaman çizelgesi', speed: 'Hız:', auto: 'Otomatik', camera: 'Kamera:', chase: 'Takip', booster: 'Booster', pad: 'Yerden', earth: 'Dünya', est: 'tahmin', liftoff: 'Kalkış', liftoffD: 'Roket fırlatma rampasından ayrılıyor', s2: 'İkinci kademe', side: 'Yan booster', center: 'Merkez çekirdek', landingShip: 'iniş gemisi', landingZone: 'iniş bölgesi', tower: 'kule ile yakalama', pad2: 'fırlatma rampası', close: 'Kapat', play: 'Oynat', pause: 'Duraklat', events: 'Olaylar', note: 'Bu fırlatma için SpaceX’in resmi zaman çizelgesinden ve tipik bir {v} uçuş profilinden yeniden oluşturuldu. “Tahmin” olarak işaretlenen olaylar resmi çizelgede yok. Araçlar görünürlük için büyütüldü.', noteNoTl: 'SpaceX bu fırlatmanın zaman çizelgesini henüz yayımlamadı; bu yüzden tüm olaylar tipik bir {v} uçuş profiline göre tahmin edildi. Araçlar görünürlük için büyütüldü.', none: 'Şu anda öne çıkan bir fırlatma yok.' },
+};
+</script>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
+// ================================================================ language, units, embed
+// Embedded in the site (same-origin iframe): language and units follow the parent page live, the launch comes
+// from the parent's hero (getLaunchSimConfig), event texts from the parent's own timeline translations.
+const Q = new URLSearchParams(location.search);
+const P = (() => { try { return window.parent !== window && window.parent.document ? window.parent : null; } catch (e) { return null; } })();
+const langKey = (raw) => { let k = String(raw || 'en').toLowerCase().split('-')[0]; if (k === 'iw') k = 'he'; return LSIM_I18N[k] ? k : 'en'; };
+const readLang = () => langKey((P && P.document.documentElement.lang) || Q.get('lang') || 'en');
+const readUnits = () => { try { if (P && P.currentUnitSystem) return P.currentUnitSystem; } catch (e) {} return Q.get('units') === 'imperial' ? 'imperial' : 'metric'; };
+let LANG = readLang(), UNITS = readUnits(), I = LSIM_I18N[LANG];
+const $ = (id) => document.getElementById(id);
+function closeSim() { try { window.parent.postMessage({ type: 'launch-sim-close' }, location.origin); } catch (e) {} }
+$('close').onclick = closeSim;
+addEventListener('keydown', e => { if (e.key === 'Escape') closeSim(); });
+function applyDir() { document.documentElement.lang = LANG; document.documentElement.dir = I.dir; }
+applyDir();
+$('loading').textContent = I.loading;
+
+const cfg = (() => { try { return P && P.getLaunchSimConfig ? P.getLaunchSimConfig() : null; } catch (e) { console.warn(e); return null; } })();
+if (!cfg) { $('loading').textContent = I.none; throw new Error('no launch'); }
+const localizeEvent = (raw) => { try { if (P && P.launchSimLocalizeEvent) return P.launchSimLocalizeEvent(raw, LANG); } catch (e) {} const m = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(raw); return m ? { title: m[1], explain: m[2] } : { title: raw, explain: '' }; };
+
+// ================================================================ the launch
+const nameL = String(cfg.name || '').toLowerCase();
+const VEH = /starship/i.test(cfg.vehicle || cfg.name) ? 'ss' : /heavy/i.test(cfg.vehicle || '') ? 'fh' : 'f9';
+const VEH_NAME = VEH === 'ss' ? 'Starship' : VEH === 'fh' ? 'Falcon Heavy' : 'Falcon 9';
+const MISSION = String(cfg.displayName || cfg.name || '').split('|').pop().trim();
+// (a launch with no usable date still flies: lit as the Earth is right now, and never "live")
+const T0_KNOWN = isFinite(cfg.t0), T0 = T0_KNOWN ? +cfg.t0 : Date.now();
+const siteL = String(cfg.site || '').toLowerCase();
+const PADS = [
+  [/slc-?4e|space launch complex 4e/, 34.632, -120.611, 'SLC-4E'],
+  [/slc-?6|space launch complex 6/, 34.5813, -120.6266, 'SLC-6'],
+  [/slc-?40|space launch complex 40/, 28.5619, -80.5774, 'SLC-40'],
+  [/39a|launch complex 39a/, 28.6082, -80.6041, 'LC-39A'],
+  [/pad 2|launch pad 2|olp-?2|pad b/, 25.99677, -97.15799, 'Starbase Pad 2'],
+  [/starbase|boca chica|orbital launch pad|olp/, 25.9972, -97.1566, 'Starbase'],
+  [/vandenberg/, 34.632, -120.611, 'SLC-4E'],
+  [/cape canaveral/, 28.5619, -80.5774, 'SLC-40'],
+  [/kennedy/, 28.6082, -80.6041, 'LC-39A'],
+];
+const padName = String((cfg.pad && cfg.pad.name) || '').toLowerCase();
+const padKnown = !!cfg.pad && isFinite(cfg.pad.lat) && isFinite(cfg.pad.lon) && !/unknown/.test(padName) && (Math.abs(cfg.pad.lat) > 0.01 || Math.abs(cfg.pad.lon) > 0.01);
+const polarHint = /SSO|PO/.test(String(cfg.orbitCode || '').toUpperCase());
+const padByName = PADS.find(p => p[0].test(padName));
+const padHit = padByName || PADS.find(p => p[0].test(siteL)) || (VEH === 'ss' ? PADS[5] : polarHint ? PADS[0] : PADS[2]);
+const PAD = padKnown ? { lat: +cfg.pad.lat, lon: +cfg.pad.lon } : { lat: padHit[1], lon: padHit[2] };
+const PAD_LABEL = padByName ? padByName[3] : padKnown ? String(cfg.pad.name) : padHit[3];
+const isVSFB = PAD.lon < -110, isStarbase = PAD.lon < -95 && PAD.lon > -100;
+
+const isStarlink = /starlink/.test(nameL);
+const isCygnus = /cygnus|ng-\d/.test(nameL);
+const isDragon = !isCygnus && /\b(crew|crs|ax|axiom|fram\d*|dragon|vast|haven)\b|crew-\d|crs-\d|ax-\d/.test(nameL);
+const toISS = isDragon || isCygnus || /\biss\b/.test(nameL);
+const ORBIT = String(cfg.orbitCode || '').toUpperCase();
+const ESCAPE = /^(LO|HCO|HEO|L1|L2|TLI|MARS|SUN|HELIO.*|LUNAR.*|ESC.*)$/.test(ORBIT) || /\b(lunar|moon|mars)\b/.test(nameL);
+const orbitKind = toISS ? 'ISS' : /GTO|GEO/.test(ORBIT) || ESCAPE ? 'GTO' : /MEO/.test(ORBIT) || /gps/.test(nameL) ? 'MEO' : /SSO|PO/.test(ORBIT) || /transporter|sso/.test(nameL) ? 'SSO' : 'LEO';
+
+// inclination and launch azimuth
+function inclination() {
+  if (VEH === 'ss') return null;
+  if (orbitKind === 'ISS') return 51.6;
+  if (orbitKind === 'SSO') return 97.6;
+  if (orbitKind === 'GTO') return PAD.lat + 0.5;
+  if (orbitKind === 'MEO') return 55;
+  if (isStarlink) {
+    const g = /group\s*(\d+)/.exec(nameL), n = g ? +g[1] : 0;
+    if (isVSFB) return n === 15 ? 70 : n === 17 ? 97.6 : n === 11 ? 53 : 53;
+    return n === 6 || n === 10 || n === 12 ? 43 : 53;
+  }
+  return isVSFB ? 70 : 45;
+}
+const INC = inclination();
+function azimuthFor(inc) {
+  if (inc == null) return 97;                                   // Starship from Starbase: east, a touch south
+  const s = Math.cos(inc * Math.PI / 180) / Math.cos(PAD.lat * Math.PI / 180);
+  if (Math.abs(s) >= 1) return 90;
+  const ne = Math.asin(s) * 180 / Math.PI;                      // north-east branch (negative: north-west, retrograde)
+  if (isVSFB || inc > 90) return 180 - ne;                      // Vandenberg flies south over the Pacific; so does a polar flight from Florida
+  if (orbitKind === 'GTO') return 95;
+  return (ne + 360) % 360;
+}
+const AZIMUTH = azimuthFor(INC);
+
+// ---------------------------------------------------------------- boosters and their landings
+const stagesIn = (cfg.stages || []).filter(Boolean);
+const LZ = { 'LZ-4': [34.6332, -120.6152], 'LZ-1': [28.4858, -80.5444], 'LZ-2': [28.4875, -80.5428], 'LZ-40': [28.5605, -80.5745], 'LZ-39A': [28.6113, -80.6019] };
+const SHIPS = { OCISLY: 'OCISLY', ASOG: 'ASOG', JRTI: 'JRTI' };
+function landingFrom(st, fallbackStr) {
+  const type = String((st && st.landingType) || '').toUpperCase(), loc = String((st && st.loc) || ''), locName = String((st && st.locName) || '');
+  const str = String(fallbackStr || '').toLowerCase();
+  if (st && st.attempt === false) return { kind: 'expend' };
+  const isRtls = /RTLS/.test(type) || /^LZ|OLM/i.test(loc);
+  if (!isRtls && (/ASDS/.test(type) || SHIPS[loc.toUpperCase()] || (!type && /drone|asds/.test(str)))) return { kind: 'asds', name: loc || cfg.landingShip || '', dr: st && isFinite(st.downrange) && st.downrange > 50 ? st.downrange : null };
+  if (isRtls || /rtls|landing zone|tower|catch|mechazilla/.test(str)) {
+    const key = loc.toUpperCase().replace(/\s+/g, '');
+    const at = LZ[key] || null;
+    return { kind: VEH === 'ss' ? 'catch' : 'rtls', name: loc, at };
+  }
+  if (/expend/.test(str)) return { kind: 'expend' };
+  if (/ocean|splash/.test(str)) return { kind: 'expend' };
+  return null;
+}
+let boosterDefs = [];
+if (VEH === 'fh') {
+  const sides = stagesIn.filter(s => /strap|side/i.test(s.type || ''));
+  const core = stagesIn.find(s => /core/i.test(s.type || '') && !/strap|side/i.test(s.type || ''));
+  const sideL = (i) => landingFrom(sides[i], 'rtls') || { kind: 'rtls' };
+  boosterDefs = [
+    { id: 'sideA', side: 1, serial: sides[0] && sides[0].serial, land: sideL(0) },
+    { id: 'sideB', side: -1, serial: sides[1] && sides[1].serial, land: sideL(1) },
+    { id: 'center', serial: core && core.serial, land: landingFrom(core, '') || { kind: 'expend' } },
+  ];
+} else {
+  const st = stagesIn[0];
+  let land = landingFrom(st, cfg.landing) || (VEH === 'ss' ? { kind: 'catch' } : { kind: 'asds', name: cfg.landingShip || '' });
+  if (VEH === 'ss' && land.kind !== 'expend') land = { kind: 'catch', name: land.name };
+  if (land.kind === 'asds' && !land.name && cfg.landingShip) land.name = cfg.landingShip;
+  boosterDefs = [{ id: 'b', serial: (st && st.serial) || cfg.boosterSerial, land }];
+}
+
+// ================================================================ events: SpaceX's own, then estimates for the rest
+const KINDS = [
+  ['maxq', /max\s*-?q/],
+  ['beco', /\bbeco\b|side boosters?.*(engine )?(cut ?off|shut ?down)/],
+  ['sideSep', /side boosters?.*separ/],
+  ['meco', /\bmeco\b|main engine cut ?off/],
+  ['sep', /stages? separ|hot.?stag|stage separation|core.*separates?|separates? from (the )?center/],
+  ['ses2', /ses-2|orbital insertion burn start|relight|engine starts? \(ses-2|second burn/],
+  ['seco2', /seco-2|orbital insertion burn shut/],
+  ['ses1', /ses-1|2nd stage engine start|second stage engine start/],
+  ['fairing', /fairing/],
+  ['bbStart', /boostback.*(start|begin)/], ['bbEnd', /boostback.*(shut|end|complet)/],
+  ['entryStart', /entry burn.*(start|begin)/], ['entryEnd', /entry burn.*(end|shut|complet)/],
+  ['deorbit', /deorbit burn start/], ['deorbitEnd', /deorbit burn shut/],
+  ['shipEntry', /starship entry|re-?entry|entry interface/],
+  ['transonic', /transonic/], ['subsonic', /subsonic/],
+  ['flip', /landing flip/],
+  ['lbStart', /landing burns?.*(start|begin)/],
+  ['land', /landing$|landing and|and catch|landings?$|landing!|landing burn shut|splashdown|touchdown|lands?\b/],   // ("An exciting landing!" ends Starship's timelines)
+  ['seco1', /\bseco\b|seco-1|2nd stage engine cut|starship engine cut ?off|second stage engine cut/],
+  ['deployEnd', /deploy(ment)? complete/],
+  ['deploy', /deploy|separates? from (the )?2nd stage|dragon separat|payload separ|spacecraft separ|satellites? separ/],
+];
+function kindOf(raw) { const s = raw.toLowerCase(); for (const [k, re] of KINDS) if (re.test(s)) return k; return null; }
+function whoOf(raw, kind) {
+  const s = raw.toLowerCase();
+  if (kind === 'maxq' || kind === 'sep') return 'stack';
+  if (VEH === 'fh') { if (/side/.test(s)) return 'side'; if (/center|core/.test(s)) return 'center'; if (/1st stage|first stage/.test(s)) return 'center'; }
+  if (/super heavy|1st stage|first stage|booster/.test(s)) return 'b';
+  // "Boostback Burn Starts", "Entry burn": only a booster does these, whether the line names it or not; so is a
+  // Falcon's landing (a Starship timeline's bare "Landing burn start" is the ship's - its booster's says Super Heavy)
+  if (/^(bbStart|bbEnd|entryStart|entryEnd)$/.test(kind || '') || (VEH !== 'ss' && /^(lbStart|land)$/.test(kind || '') && !/dragon|capsule|2nd stage|second stage/.test(s))) return VEH === 'fh' ? 'side' : 'b';
+  return 's2';
+}
+const real = (cfg.events || []).filter(e => e && isFinite(e.t) && e.raw).map(e => {
+  const kind = kindOf(e.raw);
+  return { t: +e.t, raw: e.raw, kind, who: whoOf(e.raw, kind), est: false };
+});
+const HAS_TL = real.length > 0;
+if (VEH === 'f9' && HAS_TL) {
+  const b = boosterDefs[0], txt = real.map(e => e.raw.toLowerCase()).join(' | ');
+  const lz = /(?:lands? (?:on|at)|landing (?:on|at)) (landing zone|lz)[\s-]*(\d+)/.exec(txt) || /(landing zone|lz)[\s-]*(\d+)/.exec(txt);
+  if ((/boostback/.test(txt) || lz) && b.land.kind !== 'rtls') b.land = { kind: 'rtls', name: lz ? 'LZ-' + lz[2] : '', at: lz ? (LZ['LZ-' + lz[2]] || null) : null };
+  else if (/drone ?ship/.test(txt) && !/boostback/.test(txt) && b.land.kind !== 'asds') b.land = { kind: 'asds', name: cfg.landingShip || '', dr: null };
+}
+const A = { stack: {}, s2: {}, b: {}, side: {}, center: {} };      // anchors: A[who][kind] = seconds
+real.forEach(e => { if (e.kind && A[e.who][e.kind] == null) A[e.who][e.kind] = e.t; });
+// the stack's own events carry over to everyone
+const anyA = (k) => { for (const w of ['stack', 's2', 'b', 'center', 'side']) if (A[w][k] != null) return A[w][k]; return null; };
+const est = [];                                                  // generated, English text through the site's translations
+function need(who, kind, t, raw, show = true) {
+  if (A[who][kind] != null) return A[who][kind];
+  A[who][kind] = t;
+  if (show) est.push({ t, raw, kind, who, est: true });
+  return t;
+}
+const bw = VEH === 'fh' ? 'center' : 'b';                        // the core that stages with the second stage
+let meco = need(bw, 'meco', anyA('meco') ?? (VEH === 'ss' ? 139 : VEH === 'fh' ? 245 : 150), VEH === 'ss' ? 'Super Heavy MECO (most engines cut off)' : '1st stage main engine cutoff (MECO)');
+if (!(meco >= 60 && meco <= 700)) meco = VEH === 'ss' ? 139 : VEH === 'fh' ? 245 : 150;   // (a first stage burns for minutes, not seconds or hours)
+A.stack.meco = meco;
+let sepT = need('stack', 'sep', anyA('sep') ?? meco + (VEH === 'ss' ? 2 : 3), VEH === 'ss' ? 'Hot-staging (Starship Raptor ignition and stage separation)' : '1st and 2nd stages separate');
+if (!(sepT >= meco && sepT <= meco + 40)) sepT = meco + 3;
+need('stack', 'maxq', anyA('maxq') ?? (VEH === 'ss' ? 60 : 70), 'Max Q (moment of peak mechanical stress on the rocket)');
+let ses1 = VEH === 'ss' ? sepT : need('s2', 'ses1', A.s2.ses1 ?? anyA('ses1') ?? sepT + 7, '2nd stage engine starts (SES-1)');
+if (!(ses1 >= sepT && ses1 <= sepT + 60)) ses1 = sepT + 7;
+const hasFairing = VEH !== 'ss' && !isDragon;
+if (hasFairing) need('s2', 'fairing', anyA('fairing') ?? ses1 + (VEH === 'fh' ? 30 : 28), 'Fairing separation');
+let beco = null, sideSep = null;
+if (VEH === 'fh') {
+  beco = need('side', 'beco', A.side.beco ?? anyA('beco') ?? 150, 'Side booster engine cutoff (BECO)');
+  if (!(beco >= 60 && beco <= meco - 20)) beco = Math.round(meco * 0.61);
+  sideSep = need('side', 'sideSep', A.side.sideSep ?? anyA('sideSep') ?? beco + 4, 'Side boosters separate');
+  if (!(sideSep >= beco && sideSep <= meco - 5)) sideSep = Math.min(beco + 4, meco - 5);
+}
+// second stage / ship
+const secoDefault = VEH === 'ss' ? 489 : orbitKind === 'GTO' ? 515 : isDragon ? 530 : VEH === 'fh' ? 500 : 520;
+let seco1 = need('s2', 'seco1', A.s2.seco1 ?? anyA('seco1') ?? secoDefault, VEH === 'ss' ? 'Starship engine cutoff' : '2nd stage engine cutoff (SECO-1)');
+if (!(seco1 >= ses1 + 200 && seco1 <= ses1 + 900)) seco1 = meco + (secoDefault - (VEH === 'ss' ? 139 : VEH === 'fh' ? 245 : 150));   // (a second stage's burn is 5-7 minutes)
+A.s2.seco1 = seco1;
+if (VEH !== 'ss' && (orbitKind === 'GTO' || orbitKind === 'MEO')) {
+  need('s2', 'ses2', A.s2.ses2 ?? (orbitKind === 'GTO' ? 1590 : 3780), '2nd stage engine starts (SES-2)');
+  need('s2', 'seco2', A.s2.seco2 ?? A.s2.ses2 + (orbitKind === 'GTO' ? 60 : 100), '2nd stage engine cutoff (SECO-2)');
+}
+const deployDefault = VEH === 'ss' ? 1150 : isStarlink ? (isVSFB ? 3600 : 3900) : isDragon ? 720 : isCygnus ? 900 : orbitKind === 'GTO' ? 1960 : orbitKind === 'MEO' ? 5400 : orbitKind === 'SSO' ? 3300 : 3600;
+if (A.s2.deploy == null && A.s2.deployEnd != null) A.s2.deploy = A.s2.deployEnd;
+if (!(VEH === 'ss' && HAS_TL && A.s2.deploy == null)) need('s2', 'deploy', A.s2.deploy ?? deployDefault, isStarlink && VEH !== 'ss' ? 'Starlink satellites deploy' : isDragon ? 'Dragon separates from 2nd stage' : VEH === 'ss' ? 'Payload deploy start' : 'Payload deployment');
+// Starship: the ship comes home
+let shipCatch = false;
+if (VEH === 'ss') {
+  const landRaw = real.find(e => e.who === 's2' && e.kind === 'land');
+  shipCatch = !!(landRaw && /catch/i.test(landRaw.raw));
+  // a timeline that stops before the landing itself: it lands shortly after its last word on the ship
+  const lastShip = Math.max(0, ...real.filter(e => e.who === 's2' && e.t > seco1 + 300).map(e => e.t));
+  const noLand = A.s2.land == null;
+  let land = need('s2', 'land', A.s2.land ?? (A.s2.lbStart != null ? A.s2.lbStart + 20 : lastShip ? lastShip + 30 : 3920), 'Starship splashdown');
+  if (!(land >= seco1 + 900)) land = A.s2.land = seco1 + 3400;
+  need('s2', 'lbStart', A.s2.lbStart ?? land - 18, 'Landing burn start', noLand && !lastShip);
+  need('s2', 'transonic', A.s2.transonic ?? land - 160, '', false);
+  need('s2', 'shipEntry', A.s2.shipEntry ?? land - 1300, 'Starship entry', noLand && !lastShip);
+  if (!(A.s2.lbStart < land - 3 && A.s2.lbStart > land - 120)) A.s2.lbStart = land - 18;
+  if (!(A.s2.transonic < A.s2.lbStart - 20)) A.s2.transonic = A.s2.lbStart - 140;
+  if (!(A.s2.shipEntry < A.s2.transonic - 200)) A.s2.shipEntry = A.s2.transonic - 1100;
+  if (!(A.s2.shipEntry > seco1 + 120)) A.s2.shipEntry = seco1 + 120 + (A.s2.transonic - seco1 - 120) * 0.3;
+  if (A.s2.deorbit != null && !(A.s2.deorbit > seco1 + 60 && A.s2.deorbit < A.s2.shipEntry - 60)) { delete A.s2.deorbit; delete A.s2.deorbitEnd; }
+  if (A.s2.flip != null && !(A.s2.flip > A.s2.transonic && A.s2.flip < land)) delete A.s2.flip;
+}
+// boosters
+boosterDefs.forEach(bd => {
+  const w = bd.id === 'b' ? 'b' : bd.id === 'center' ? 'center' : 'side';
+  const sep0 = w === 'side' ? sideSep : sepT;
+  bd.who = w; bd.sep = sep0;
+  const k = bd.land.kind;
+  const nm = w === 'side' ? 'Side boosters' : w === 'center' ? 'Center core' : VEH === 'ss' ? 'Super Heavy' : '1st stage';
+  if (k === 'rtls' || k === 'catch') {
+    const ss = VEH === 'ss';
+    const fw = (a, b) => ss ? 'Super Heavy ' + a : nm + ' ' + b;   // Starship's wording, and Falcon's
+    bd.bbStart = need(w, 'bbStart', A[w].bbStart ?? sep0 + (ss ? 5 : 12), fw('boostback burn start', 'boostback burn begins'));
+    bd.bbEnd = need(w, 'bbEnd', A[w].bbEnd ?? sep0 + (ss ? 41 : 58), fw('boostback burn shutdown', 'boostback burn ends'));
+    if (!ss) { bd.entryStart = need(w, 'entryStart', A[w].entryStart ?? sep0 + 232, nm + ' entry burn begins'); bd.entryEnd = need(w, 'entryEnd', A[w].entryEnd ?? bd.entryStart + 18, nm + ' entry burn ends'); }
+    bd.land = Object.assign(bd.land, {});
+    bd.landT = need(w, 'land', A[w].land ?? sep0 + (ss ? 254 : 318), ss ? 'Super Heavy landing burn shutdown and catch' : nm + ' landing');
+    bd.lbStart = need(w, 'lbStart', A[w].lbStart ?? bd.landT - (ss ? 25 : 26), ss ? 'Super Heavy landing burn start' : w === 'side' ? 'Side boosters landing burns start' : nm + ' landing burn begins');
+  } else if (k === 'asds') {
+    bd.entryStart = need(w, 'entryStart', A[w].entryStart ?? sep0 + 216, nm + ' entry burn begins');
+    bd.entryEnd = need(w, 'entryEnd', A[w].entryEnd ?? bd.entryStart + 22, nm + ' entry burn ends');
+    bd.landT = need(w, 'land', A[w].land ?? sep0 + 352, nm + ' landing');
+    bd.lbStart = need(w, 'lbStart', A[w].lbStart ?? bd.landT - 22, nm + ' landing burn begins');
+  } else {
+    bd.landT = sep0 + 330;                                       // falls into the ocean: no event
+  }
+  // in the order a booster flies them, with room between: a burn cannot end before it starts, nor a landing come first
+  let prev = sep0;
+  ['bbStart', 'bbEnd', 'entryStart', 'entryEnd', 'lbStart', 'landT'].forEach(key => { if (bd[key] == null) return; if (!(bd[key] >= prev + 2)) bd[key] = prev + (key === 'landT' ? 18 : key === 'lbStart' ? 40 : 12); prev = bd[key]; });
+  if (bd.lbStart != null && bd.landT < bd.lbStart + 8) bd.landT = bd.lbStart + 18;
+  if (bd.landT < sep0 + 150) { const add = sep0 + 150 - bd.landT; ['bbEnd', 'entryStart', 'entryEnd', 'lbStart', 'landT'].forEach(key => { if (bd[key] != null) bd[key] += add; }); }   // (it cannot be down a minute after staging)
+});
+// liftoff, then everything in time order; texts from the site
+const EVENTS = [{ t: 0, kind: 'liftoff', who: 'stack', est: false, liftoff: true }].concat(real.filter(e => e.t > 0 || e.kind), est)
+  .filter((e, i, arr) => !(e.liftoff == null && /^liftoff$/i.test(e.raw || '')))
+  .sort((a, b) => a.t - b.t);
+// Starship: SpaceX's own "return check" calls etc. stay as plain rows (no anchor needed)
+const lastEvT = Math.max(...EVENTS.map(e => e.t));
+const END_T = VEH === 'ss' ? lastEvT + 180 : Math.max((A.s2.deploy ?? 0) + 900, lastEvT + 300, seco1 + 600);
+
+// ================================================================ physics helpers (km, s)
+const RE = 6371, MU = 398600.4418, SCALE = 1 / 1000;           // scene unit = 1000 km
+const DEG = Math.PI / 180;
+const julian = (ms) => ms / 86400000 + 2440587.5;
+const gmst = (ms) => { const d = julian(ms) - 2451545; return ((280.46061837 + 360.98564736629 * d) % 360) * DEG; };
+function sunDir(ms) {
+  const n = julian(ms) - 2451545;
+  const L = (280.46 + 0.9856474 * n) * DEG, g = (357.528 + 0.9856003 * n) * DEG;
+  const lam = L + (1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * DEG, eps = (23.439 - 4e-7 * n) * DEG;
+  const x = Math.cos(lam), y = Math.cos(eps) * Math.sin(lam), z = Math.sin(eps) * Math.sin(lam);
+  return new THREE.Vector3(x, z, -y).normalize();
+}
+function ecef(lat, lon, alt) {
+  const r = (RE + alt) * SCALE, la = lat * DEG, lo = lon * DEG;
+  return new THREE.Vector3(r * Math.cos(la) * Math.cos(lo), r * Math.sin(la), -r * Math.cos(la) * Math.sin(lo));
+}
+const latLonOf = (v) => { const r = v.length(); return [Math.asin(v.y / r) / DEG, Math.atan2(-v.z, v.x) / DEG]; };
+function destination(lat, lon, az, distKm) {
+  const d = distKm / RE, p1 = lat * DEG, l1 = lon * DEG, th = az * DEG;
+  const p2 = Math.asin(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(th));
+  const l2 = l1 + Math.atan2(Math.sin(th) * Math.sin(d) * Math.cos(p1), Math.cos(d) - Math.sin(p1) * Math.sin(p2));
+  return [p2 / DEG, l2 / DEG];
+}
+const rotY = (v, a) => new THREE.Vector3(v.x * Math.cos(a) + v.z * Math.sin(a), v.y, -v.x * Math.sin(a) + v.z * Math.cos(a));
+const toInertial = (v, tSec) => rotY(v, gmst(T0 + tSec * 1000));
+const toFixed = (v, tSec) => rotY(v, -gmst(T0 + tSec * 1000));
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const smooth = (x) => { x = clamp01(x); return x * x * (3 - 2 * x); };
+
+function monotone(points, col) {
+  const xs = points.map(p => p[0]), ys = points.map(p => p[col]), n = xs.length;
+  const dx = [], m = [], c1 = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = xs[i + 1] - xs[i]; m[i] = (ys[i + 1] - ys[i]) / dx[i]; }
+  c1[0] = m[0];
+  for (let i = 1; i < n - 1; i++) c1[i] = (m[i - 1] * m[i] <= 0) ? 0 : 3 * (dx[i - 1] + dx[i]) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]);
+  c1[n - 1] = m[n - 2];
+  return (x) => {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    let i = 0; while (x > xs[i + 1]) i++;
+    const h = dx[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * c1[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * c1[i + 1];
+  };
+}
+// the same, smooth (a monotone curve through the anchors): for the boosters, whose speed would otherwise step at every event
+function warpSmooth(pairs) {
+  const p = pairs.filter(x => x[1] != null && isFinite(x[1])).sort((a, b) => a[1] - b[1]);
+  const q = p.filter((x, i) => i === 0 || (x[1] > p[i - 1][1] + 0.5 && x[0] > p[i - 1][0])).map(x => [x[1], x[0]]);
+  if (q.length < 2) return (t) => q[0][1] + (t - q[0][0]);
+  const f = monotone(q, 1), a = q[0], l = q[q.length - 1];
+  return (t) => t <= a[0] ? a[1] + (t - a[0]) : t >= l[0] ? l[1] + (t - l[0]) : f(t);
+}
+// piecewise-linear time warp: real anchor times -> the base profile's anchor times
+function warp(pairs) {
+  const p = pairs.filter(x => x[1] != null && isFinite(x[1])).sort((a, b) => a[1] - b[1]);
+  const q = p.filter((x, i) => i === 0 || (x[1] > p[i - 1][1] && x[0] > p[i - 1][0]));
+  return (t) => {
+    if (t <= q[0][1]) return q[0][0] + (t - q[0][1]);
+    for (let i = 0; i < q.length - 1; i++) if (t <= q[i + 1][1]) return q[i][0] + (t - q[i][1]) * (q[i + 1][0] - q[i][0]) / (q[i + 1][1] - q[i][1]);
+    const l = q[q.length - 1]; return l[0] + (t - l[1]);
+  };
+}
+
+// ---------------------------------------------------------------- the ascent (base: a Falcon 9 to ~212 km, MECO 145 s, SECO 530 s)
+// downrange integrated from the speeds a Falcon 9 webcast shows (about 8,000 km/h at MECO, 27,000 at SECO)
+const ASC = [[-1, 0, 0], [0, 0, 0], [10, 0.15, 0], [30, 1.6, 0.3], [50, 6.5, 1.8], [67, 12.5, 4.6], [90, 24, 14.4], [120, 45, 43], [135, 58, 66], [145, 68, 85],
+  [160, 82, 117], [176, 100, 154], [210, 124, 238], [250, 145, 350], [300, 163, 517], [350, 178, 722], [400, 192, 970], [450, 203, 1265], [490, 208, 1535], [530, 212, 1829]];
+const ascAltB = monotone(ASC, 1), ascDrB = monotone(ASC, 2);
+// the orbit's altitude as SpaceX published it for this flight (the mission page's own text), when it did
+const OFFICIAL_ALT = isFinite(cfg.orbitAltKm) && cfg.orbitAltKm >= 140 && cfg.orbitAltKm <= 600 && (VEH === 'ss' || orbitKind === 'LEO' || orbitKind === 'SSO' || orbitKind === 'ISS') ? +cfg.orbitAltKm : null;
+const secoAlt = OFFICIAL_ALT ?? (VEH === 'ss' ? 190 : orbitKind === 'ISS' ? 205 : orbitKind === 'SSO' ? 300 : isStarlink ? 230 : 212);
+// (a Falcon Heavy: its side boosters let go at about the height a Falcon 9 stages at - 128 s into the base profile)
+const ascW = warp(VEH === 'fh' ? [[0, 0], [128, beco], [145, meco], [530, seco1]] : [[0, 0], [145, meco], [530, seco1]]);
+const rPre = VEH === 'fh' ? 128 / beco : 145 / meco, rMid = VEH === 'fh' ? 17 / (meco - beco) : rPre;   // base seconds per real second
+// altitude: the base climb to staging (a Falcon Heavy's core keeps climbing at the same rate after its side boosters
+// go), then one smooth curve from there to the orbit's altitude, flat at engine cutoff
+const ascAltPre = (tb) => VEH === 'fh' && tb > 128 ? ascAltB(128) + (ascAltB(tb) - ascAltB(128)) * (rPre / rMid) : ascAltB(tb);
+const altM = ascAltPre(145), vM = (ascAltPre(145) - ascAltPre(144)) * rMid;                    // km and km/s at staging
+const ascAlt = (t) => {
+  if (t <= meco) return ascAltPre(ascW(t));
+  const T = Math.max(30, seco1 - meco), u = Math.min(1, (t - meco) / T), d = secoAlt - altM, m0 = Math.max(0, Math.min(vM * T, 2.8 * Math.abs(d))), m1 = 0.03 * T, u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * altM + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * secoAlt + (u3 - u2) * m1;
+};
+// ground speed: the base profile's to staging, scaled to the speed SpaceX's webcasts show there for each kind of
+// flight (km/s); then on the base profile's shape up to the speed the orbit itself has over the ground
+const mainLand = ((boosterDefs.find(b => b.id === 'b' || b.id === 'center') || {}).land || {}).kind;
+const V_MECO = VEH === 'ss' ? 1.55 : VEH === 'fh' ? (mainLand === 'expend' ? 3.6 : 2.9) : mainLand === 'rtls' ? 1.65 : mainLand === 'expend' ? 2.6 : 2.25;
+const bp = (x) => ascDrB(x + 0.5) - ascDrB(x - 0.5);            // the base profile's ground speed, km per base second
+const vhM = Math.sqrt(Math.max(0.05, V_MECO * V_MECO - vM * vM));
+const vhB = VEH === 'fh' ? Math.sqrt(Math.max(0.05, 1.6 * 1.6 - Math.pow((ascAltB(128) - ascAltB(127)) * rPre, 2))) : 0;   // at the side boosters' separation
+const DR_K = VEH === 'fh' ? vhB / (bp(127.5) * rPre) : vhM / (bp(144.5) * rPre);
+const drPre = (() => { const out = new Float64Array(147); for (let i = 1; i < 147; i++) { const x = i - 0.5; out[i] = out[i - 1] + (VEH === 'fh' && x > 128 ? (vhB + (vhM - vhB) * (x - 128) / 17) / rMid : bp(x) * DR_K); } return out; })();
+let vhS = 7.4, drPost = null;                                   // vhS: the orbit's speed over the ground, set below
+function buildPost() {
+  const n = Math.ceil(Math.max(30, seco1 - meco)) + 2, out = new Float64Array(n), b0 = bp(145.5), b1 = bp(529);
+  for (let i = 1; i < n; i++) { const x = Math.min(529.5, ascW(meco + i - 0.5)); out[i] = out[i - 1] + vhM + (vhS - vhM) * clamp01((bp(x) - b0) / (b1 - b0)); }
+  drPost = out;
+}
+buildPost();
+const ascDr = (t) => {
+  if (t <= meco) { const tb = Math.max(0, Math.min(145, ascW(t))), i = Math.min(145, Math.floor(tb)); return drPre[i] + (drPre[i + 1] - drPre[i]) * (tb - i); }
+  const f = Math.min(drPost.length - 1.001, t - meco), i = Math.floor(f);
+  return drPre[145] + drPost[i] + (drPost[i + 1] - drPost[i]) * (f - i);
+};
+const fixedOnTrack = (alt, dr) => { const [la, lo] = destination(PAD.lat, PAD.lon, AZIMUTH, dr); return ecef(la, lo, alt); };
+
+// ---------------------------------------------------------------- the second stage / ship: ascent, orbit, and home again
+const vcirc = (rk) => Math.sqrt(MU / rk);
+const ascentInertial = (t) => toInertial(fixedOnTrack(ascAlt(t), ascDr(t)), t);
+const ORB_K = VEH === 'ss' ? (OFFICIAL_ALT ? 1.0 : 0.997) : orbitKind === 'GTO' || orbitKind === 'MEO' ? 1.0 : 1.003;   // of the circular speed, at engine cutoff
+{ // the ascent ends at the speed its orbit has over the turning ground, so nothing jumps at engine cutoff
+  const a = ascentInertial(seco1 - 1), b = ascentInertial(seco1), r = b.clone().divideScalar(SCALE), up = r.clone().normalize();
+  const dir = b.clone().sub(a); dir.sub(up.clone().multiplyScalar(dir.dot(up))).normalize();
+  vhS = dir.multiplyScalar(vcirc(r.length()) * ORB_K).sub(new THREE.Vector3(0, 7.2921e-5, 0).cross(r)).length() * RE / r.length();   // (downrange is counted along the ground, the stage is 200 km above it)
+  buildPost();
+}
+const ORB_H = 1;                                                // integration step (s)
+const orbN = Math.ceil((END_T - seco1) / ORB_H) + 2;
+const orb = new Float64Array(orbN * 3);                          // inertial km, one sample per second after SECO-1
+{
+  const a = ascentInertial(seco1 - 1).divideScalar(SCALE), b = ascentInertial(seco1).divideScalar(SCALE);
+  let v = b.clone().sub(a);
+  const radial = b.clone().normalize();
+  v.sub(radial.clone().multiplyScalar(v.dot(radial)));
+  v.setLength(vcirc(b.length()) * ORB_K);
+  const burns = [];
+  if (A.s2.ses2 != null && A.s2.seco2 != null && A.s2.seco2 > A.s2.ses2) {
+    const dv = VEH === 'ss' ? (OFFICIAL_ALT ? 0.003 : 0.06) : ESCAPE ? 3.1 : orbitKind === 'GTO' ? 2.45 : orbitKind === 'MEO' ? 1.9 : 0.05;
+    burns.push([A.s2.ses2, A.s2.seco2, dv / (A.s2.seco2 - A.s2.ses2)]);
+  }
+  let px = b.x, py = b.y, pz = b.z, vx = v.x, vy = v.y, vz = v.z;
+  const acc = (x, y, z, ux, uy, uz, t, out) => {
+    const r2 = x * x + y * y + z * z, r = Math.sqrt(r2), k = -MU / (r2 * r);
+    out[0] = k * x; out[1] = k * y; out[2] = k * z;
+    for (const [s, e, a] of burns) if (t >= s && t < e) { const vl = Math.hypot(ux, uy, uz); out[0] += a * ux / vl; out[1] += a * uy / vl; out[2] += a * uz / vl; }
+  };
+  const k1 = [0, 0, 0], k2 = [0, 0, 0], k3 = [0, 0, 0], k4 = [0, 0, 0], h = ORB_H;
+  for (let i = 0; i < orbN; i++) {
+    orb[i * 3] = px; orb[i * 3 + 1] = py; orb[i * 3 + 2] = pz;
+    const t = seco1 + i * h;
+    acc(px, py, pz, vx, vy, vz, t, k1);
+    const p2x = px + vx * h / 2, p2y = py + vy * h / 2, p2z = pz + vz * h / 2, v2x = vx + k1[0] * h / 2, v2y = vy + k1[1] * h / 2, v2z = vz + k1[2] * h / 2;
+    acc(p2x, p2y, p2z, v2x, v2y, v2z, t + h / 2, k2);
+    const p3x = px + v2x * h / 2, p3y = py + v2y * h / 2, p3z = pz + v2z * h / 2, v3x = vx + k2[0] * h / 2, v3y = vy + k2[1] * h / 2, v3z = vz + k2[2] * h / 2;
+    acc(p3x, p3y, p3z, v3x, v3y, v3z, t + h / 2, k3);
+    const p4x = px + v3x * h, p4y = py + v3y * h, p4z = pz + v3z * h, v4x = vx + k3[0] * h, v4y = vy + k3[1] * h, v4z = vz + k3[2] * h;
+    acc(p4x, p4y, p4z, v4x, v4y, v4z, t + h, k4);
+    px += h / 6 * (vx + 2 * v2x + 2 * v3x + v4x); py += h / 6 * (vy + 2 * v2y + 2 * v3y + v4y); pz += h / 6 * (vz + 2 * v2z + 2 * v3z + v4z);
+    vx += h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]); vy += h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]); vz += h / 6 * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]);
+  }
+}
+const orbitAt = (t) => {                                         // inertial km
+  const f = Math.max(0, Math.min(orbN - 1.001, (t - seco1) / ORB_H)), i = Math.floor(f), u = f - i;
+  return new THREE.Vector3(orb[i * 3] + (orb[i * 3 + 3] - orb[i * 3]) * u, orb[i * 3 + 1] + (orb[i * 3 + 4] - orb[i * 3 + 1]) * u, orb[i * 3 + 2] + (orb[i * 3 + 5] - orb[i * 3 + 2]) * u);
+};
+// Starship's way home: from the deorbit burn (or a few minutes before entry) it keeps to its own track, slowing down
+// (tau runs slower than t) and sinking on a typical entry profile; a tower catch bends the last part onto the pad.
+let homeA = null, tauOf = null, homeAlt = null;
+if (VEH === 'ss') {
+  const sE = A.s2.shipEntry, land = A.s2.land, tr = A.s2.transonic, lb = A.s2.lbStart;
+  homeA = A.s2.deorbit != null && A.s2.deorbit < sE ? A.s2.deorbit : sE - 300;
+  const altA = orbitAt(homeA).length() - RE;
+  const sf = (t) => t < sE ? 1 : t < tr ? 1 - 0.93 * Math.pow(smooth((t - sE) / (tr - sE)), 1.3) : 0.07 * (1 - clamp01((t - tr) / (land - tr)));
+  const N = Math.ceil(land - homeA) + 2, tauArr = new Float64Array(N);
+  tauArr[0] = homeA;
+  for (let i = 1; i < N; i++) tauArr[i] = tauArr[i - 1] + sf(homeA + i - 0.5);
+  tauOf = (t) => { const f = Math.max(0, Math.min(N - 1.001, t - homeA)), i = Math.floor(f); return tauArr[i] + (tauArr[i + 1] - tauArr[i]) * (f - i); };
+  const catchTop = shipCatch ? 0.12 : 0;
+  homeAlt = (t) => {
+    if (t <= sE) return altA + (120 - altA) * smooth((t - homeA) / (sE - homeA));
+    if (t <= tr) { const x = (t - sE) / (tr - sE); return 18 + 102 * (1 - Math.pow(smooth(x), 1.6)); }
+    if (t <= lb) return 1.4 + (18 - 1.4) * (1 - clamp01((t - tr) / (lb - tr)));
+    return catchTop + (1.4 - catchTop) * (1 - smooth((t - lb) / (land - lb)));
+  };
+}
+const shipCatchFixed = ecef(PAD.lat, PAD.lon, 0).normalize();
+function s2Inertial(t) {                                         // scene units
+  if (t < 0) return toInertial(ecef(PAD.lat, PAD.lon, 0), t);
+  if (t <= seco1) return ascentInertial(t);
+  if (homeA == null || t < homeA) return orbitAt(t).multiplyScalar(SCALE);
+  const land = A.s2.land;
+  const tt = Math.min(t, land);
+  const dir = orbitAt(tauOf(tt)).normalize();
+  let u = toFixed(dir, tt);
+  if (shipCatch) u = u.lerp(shipCatchFixed, smooth((tt - homeA) / (land - homeA))).normalize();
+  const fixed = u.multiplyScalar((RE + homeAlt(tt)) * SCALE);
+  return toInertial(fixed, t);
+}
+
+// ---------------------------------------------------------------- boosters
+// base profiles [t, altitude km, downrange km], anchored on their own events by warp()
+// (a droneship landing: the booster coasts at about 7,500 km/h to its entry burn, then the air slows it to ~1,200 by the landing burn)
+const B_ASDS = [[149, 71, 79], [180, 98, 138], [220, 118, 212], [260, 124, 286], [300, 118, 360], [340, 92, 436], [363, 66, 480], [386, 42, 524],
+  [400, 31, 548], [420, 19, 578], [440, 10.5, 590], [460, 5.2, 596], [480, 2.4, 598.8], [495, 0.45, 599.85], [500, 0.05, 599.99], [502, 0, 600]];
+const B_RTLS = [[149, 71, 79], [160, 80, 90], [185, 92, 98], [210, 103, 99], [240, 112, 92], [270, 116, 78], [300, 112, 62], [330, 98, 44], [360, 76, 27],
+  [380, 58, 17], [400, 40, 9], [420, 24, 4], [440, 8, 1.2], [455, 1.4, 0.2], [462, 0.12, 0.01], [465, 0, 0]];
+const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.6, 0.9], [385, 0.5, 0.12], [392, 0.16, 0.01], [395, 0.12, 0]];
+const B_EXP = [[149, 71, 79], [200, 108, 165], [260, 128, 280], [320, 118, 390], [380, 78, 495], [430, 30, 575], [479, 0, 625]];
+function makeBooster(bd) {
+  const k = bd.land.kind, sep = bd.sep;
+  let prof, W;
+  if (k === 'catch') { prof = B_SH; W = warpSmooth([[141, sep], [146, bd.bbStart], [182, bd.bbEnd], [370, bd.lbStart], [395, bd.landT]]); }
+  else if (k === 'rtls') { prof = B_RTLS; W = warpSmooth([[149, sep], [160, bd.bbStart], [210, bd.bbEnd], [380, bd.entryStart], [400, bd.entryEnd], [440, bd.lbStart], [465, bd.landT]]); }
+  else if (k === 'asds') { prof = B_ASDS; W = warpSmooth([[149, sep], [363, bd.entryStart], [386, bd.entryEnd], [480, bd.lbStart], [502, bd.landT]]); }
+  else { prof = B_EXP; W = warp([[149, sep], [479, bd.landT]]); }
+  const altF = monotone(prof, 1), drF = monotone(prof, 2);
+  const base0 = prof[0];
+  // from where the stack really is at separation: the profile's distances are scaled to start there and to end where
+  // it lands (back at the launch site; at the droneship's real distance; or, with no landing, as far as its speed takes it)
+  const altSep = ascAlt(sep), drSep = ascDr(sep), tEnd = prof[prof.length - 1][0], d0 = base0[2], dEnd = prof[prof.length - 1][2];
+  let drScale, drBase = 0;
+  if (k === 'rtls' || k === 'catch') drScale = drSep / d0;
+  else {
+    if (k === 'asds') { const want = bd.land.dr || (VEH === 'fh' ? (bd.who === 'side' ? 800 : 1200) : orbitKind === 'GTO' ? 650 : 600); drScale = (Math.max(drSep + 120, Math.min(drSep + 1600, want)) - drSep) / (dEnd - d0); }
+    else { const vS = ascDr(sep) - ascDr(sep - 1), vP = (drF(base0[0] + 4) - d0) / 4 * (W(sep + 1) - W(sep)); drScale = Math.max(0.6, Math.min(5, vS / Math.max(0.2, vP))); }
+    drBase = drSep - d0 * drScale;
+  }
+  bd.alt = (t) => { const tb = W(t), u = clamp01((tb - base0[0]) / (tEnd - base0[0])); return Math.max(0, altF(tb) + (altSep - base0[1]) * (1 - u) * (1 - u)); };
+  bd.dr = (t) => drBase + drF(W(t)) * drScale;
+  // where it comes down
+  let landAt = null;
+  if (k === 'rtls' || k === 'catch') {
+    if (bd.land.at) landAt = bd.land.at;
+    else if (k === 'catch') landAt = [PAD.lat, PAD.lon];
+    else if (isVSFB) landAt = LZ['LZ-4'];
+    else { const off = bd.side ? bd.side * 0.6 : 0.6; landAt = destination(PAD.lat, PAD.lon, 180 + off * 20, 1.2 + Math.abs(off)); }
+    if (VEH === 'fh' && !bd.land.at) landAt = bd.side > 0 ? LZ['LZ-1'] : LZ['LZ-2'];
+  }
+  bd.landAt = landAt;
+  const landFixed = landAt ? ecef(landAt[0], landAt[1], 0).normalize() : null;
+  bd.fixedAt = (t) => {
+    const tt = Math.min(t, bd.landT);
+    const p = fixedOnTrack(bd.alt(tt), bd.dr(tt));
+    if (!landFixed) return p;
+    const r = p.length(), u = p.clone().normalize().lerp(landFixed, smooth((tt - sep) / (bd.landT - sep))).normalize();
+    return u.multiplyScalar(r);
+  };
+  bd.landFixed = k === 'expend' ? null : bd.fixedAt(bd.landT);
+  bd.burns = [[0, bd.who === 'side' ? beco : meco]];
+  if (bd.bbStart != null) bd.burns.push([bd.bbStart, bd.bbEnd]);
+  if (bd.entryStart != null) bd.burns.push([bd.entryStart, bd.entryEnd]);
+  if (bd.lbStart != null) bd.burns.push([bd.lbStart, bd.landT]);
+}
+boosterDefs.forEach(makeBooster);
+function boosterInertial(bd, t) {
+  if (t < bd.sep) return s2Inertial(t);
+  if (t > bd.landT) return toInertial(bd.landFixed || bd.fixedAt(bd.landT), t);
+  return toInertial(bd.fixedAt(t), t);
+}
+
+// ---------------------------------------------------------------- precomputed paths (inertial, scene units), variable step
+function buildPath(fn, t0, t1) {
+  const out = [];
+  let t = t0;
+  const step = (t) => t < 1200 ? 0.5 : (homeA != null && t >= homeA - 60) ? 1 : t < 6000 ? 2 : 10;
+  while (t < t1) { out.push({ t, p: fn(t) }); t += step(t); }
+  out.push({ t: t1, p: fn(t1) });
+  return out;
+}
+function idxAt(path, t) { let lo = 0, hi = path.length - 1; if (t <= path[0].t) return 0; if (t >= path[hi].t) return hi; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (path[m].t <= t) lo = m; else hi = m; } return lo; }
+function sample(path, t) { const i = idxAt(path, t), a = path[i], b = path[Math.min(i + 1, path.length - 1)]; if (b === a || b.t === a.t) return a.p.clone(); return a.p.clone().lerp(b.p, clamp01((t - a.t) / (b.t - a.t))); }
+const s2Path = buildPath(s2Inertial, 0, END_T);
+const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, 0), t) : sample(s2Path, t));
+boosterDefs.forEach(bd => {
+  const tEnd = bd.landT + (bd.land.kind === 'expend' ? 0 : 0);
+  bd.path = buildPath(t => boosterInertial(bd, t), bd.sep, tEnd);
+  bd.at = (t) => (t < bd.sep ? s2At(t) : t > tEnd ? boosterInertial(bd, t) : sample(bd.path, t));
+});
+// distance flown over the ground (second stage)
+const s2Ground = (() => { const out = new Float64Array(s2Path.length); let prev = null; s2Path.forEach((s, i) => { const f = toFixed(s.p, s.t).normalize(); out[i] = i ? out[i - 1] + (prev ? Math.acos(Math.min(1, prev.dot(f))) * RE : 0) : 0; prev = f; }); return out; })();
+const s2DrAt = (t) => { if (t <= 0) return 0; const i = idxAt(s2Path, t), j = Math.min(i + 1, s2Path.length - 1), a = s2Path[i], b = s2Path[j]; return b.t === a.t ? s2Ground[i] : s2Ground[i] + (s2Ground[j] - s2Ground[i]) * clamp01((t - a.t) / (b.t - a.t)); };
+
+// burns of the second stage / ship
+const S2_BURNS = [[ses1, seco1]];
+if (A.s2.ses2 != null && A.s2.seco2 != null) S2_BURNS.push([A.s2.ses2, A.s2.seco2]);
+if (A.s2.deorbit != null) S2_BURNS.push([A.s2.deorbit, A.s2.deorbitEnd ?? A.s2.deorbit + 10]);
+if (VEH === 'ss') S2_BURNS.push([A.s2.lbStart, A.s2.land]);
+
+// ================================================================ scene
+const container = $('scene');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }); }
+catch (e) { $('loading').textContent = I.noGl; throw e; }
+const MOBILE = matchMedia('(max-width: 760px)').matches || matchMedia('(pointer: coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+container.appendChild(renderer.domElement);
+const labels = new CSS2DRenderer();
+labels.setSize(innerWidth, innerHeight);
+Object.assign(labels.domElement.style, { position: 'fixed', inset: '0', pointerEvents: 'none' });
+labels.domElement.setAttribute('dir', 'ltr');
+container.appendChild(labels.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.00001, 2000);
+// "Up" on the screen is away from the Earth at whatever the camera follows (north, in the whole-Earth view), so the
+// horizon lies level and a rocket leaving its pad climbs up the screen. OrbitControls takes its axis from camera.up
+// only when it is made, so it is remade when that direction has turned (never in the middle of a drag).
+let controls = null, dragging = false;
+const ctrlUp = new THREE.Vector3(0, 1, 0);
+function makeControls() {
+  const target = controls ? controls.target.clone() : new THREE.Vector3();
+  if (controls) controls.dispose();
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 0.002;
+  controls.maxDistance = 120;
+  controls.target.copy(target);
+  controls.addEventListener('start', () => { dragging = true; onCamStart(); });
+  controls.addEventListener('end', () => { dragging = false; });
+  ctrlUp.copy(camera.up);
+}
+makeControls();
+function setCamUp(up) { camera.up.copy(up); if (!dragging && ctrlUp.angleTo(up) > 0.035) makeControls(); }
+
+const loader = new THREE.TextureLoader();
+const IMG = 'https://unpkg.com/three-globe@2.31.0/example/img/';
+const load = (url) => new Promise((res) => loader.load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); res(t); }, undefined, () => res(null)));
+const [dayTex, nightTex, specTex, skyTex, cloudTex] = await Promise.all([
+  load(IMG + 'earth-blue-marble.jpg'), load(IMG + 'earth-night.jpg'), load(IMG + 'earth-water.png'), load(IMG + 'night-sky.png'),
+  MOBILE ? Promise.resolve(null) : load('https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/earthcloudmap.jpg'),
+]);
+[specTex, cloudTex].forEach(t => { if (t) t.colorSpace = THREE.NoColorSpace; });
+const blank = new THREE.DataTexture(new Uint8Array([20, 40, 80, 255]), 1, 1); blank.needsUpdate = true;
+
+const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 64, 32), new THREE.MeshBasicMaterial({ map: skyTex, color: skyTex ? 0x8899aa : 0x000000, side: THREE.BackSide }));
+scene.add(sky);
+const SUN = sunDir(T0);
+const earthGroup = new THREE.Group();
+scene.add(earthGroup);
+const R = RE * SCALE;
+const earthMat = new THREE.ShaderMaterial({
+  uniforms: { dayMap: { value: dayTex || blank }, nightMap: { value: nightTex || blank }, specMap: { value: specTex || blank }, sunDir: { value: SUN.clone() } },
+  vertexShader: `
+    varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+    void main() { vUv = uv; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w;
+#include <logdepthbuf_vertex>
+    }`,
+  fragmentShader: `
+    uniform sampler2D dayMap, nightMap, specMap; uniform vec3 sunDir;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+#include <logdepthbuf_pars_fragment>
+    void main() {
+#include <logdepthbuf_fragment>
+      vec3 n = normalize(vN);
+      float d = dot(n, sunDir);
+      float dayMix = smoothstep(-0.12, 0.18, d);
+      vec3 day = texture2D(dayMap, vUv).rgb;
+      vec3 night = texture2D(nightMap, vUv).rgb;
+      float lit = clamp(d, 0.0, 1.0);
+      vec3 col = day * (0.06 + 1.15 * lit);
+      col += vec3(1.0, 0.45, 0.2) * 0.12 * exp(-pow(d * 8.0, 2.0)) * day.g;
+      vec3 v = normalize(cameraPosition - vW);
+      float spec = texture2D(specMap, vUv).r;
+      vec3 h = normalize(sunDir + v);
+      col += vec3(1.0, 0.92, 0.8) * pow(max(dot(n, h), 0.0), 60.0) * spec * lit * 0.9;
+      vec3 lights = night * vec3(1.0, 0.82, 0.55) * 1.6 * (1.0 - dayMix);
+      col = mix(lights + day * 0.05, col, dayMix);
+      float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+      col += vec3(0.3, 0.6, 1.0) * rim * 0.35 * smoothstep(-0.2, 0.4, d);
+      gl_FragColor = vec4(col, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+});
+const earth = new THREE.Mesh(new THREE.SphereGeometry(R, MOBILE ? 384 : 640, MOBILE ? 192 : 320)   /* fine enough for the ground to sit under the pad: a coarse sphere sags a kilometre between its corners */, earthMat);
+earthGroup.add(earth);
+let clouds = null;
+if (cloudTex) {
+  clouds = new THREE.Mesh(new THREE.SphereGeometry(R * 1.0035, 128, 64), new THREE.ShaderMaterial({
+    uniforms: { map: { value: cloudTex }, sunDir: { value: SUN.clone() }, fadeNear: { value: 1 } },
+    transparent: true, depthWrite: false,
+    vertexShader: `varying vec2 vUv; varying vec3 vN;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+    void main(){ vUv = uv; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+#include <logdepthbuf_vertex>
+    }`,
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; uniform float fadeNear; varying vec2 vUv; varying vec3 vN;
+#include <logdepthbuf_pars_fragment>
+    void main(){
+#include <logdepthbuf_fragment>
+      float a = texture2D(map, vUv).r; float d = dot(normalize(vN), sunDir); float l = smoothstep(-0.15, 0.3, d);
+      gl_FragColor = vec4(vec3(0.95) * (0.05 + 0.95 * l), a * 0.85 * (0.25 + 0.75 * l) * fadeNear); }`,
+  }));
+  earthGroup.add(clouds);
+}
+const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.022, 128, 64), new THREE.ShaderMaterial({
+  uniforms: { sunDir: { value: SUN.clone() } },
+  side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  vertexShader: `varying vec3 vN; varying vec3 vW;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+  void main(){ vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w;
+#include <logdepthbuf_vertex>
+  }`,
+  fragmentShader: `uniform vec3 sunDir; varying vec3 vN; varying vec3 vW;
+#include <logdepthbuf_pars_fragment>
+  void main(){
+#include <logdepthbuf_fragment>
+    vec3 v = normalize(cameraPosition - vW); float i = pow(clamp(0.72 - dot(vN, v), 0.0, 1.0), 2.6);
+    float s = smoothstep(-0.35, 0.5, dot(normalize(vW), sunDir));
+    gl_FragColor = vec4(mix(vec3(0.15,0.25,0.6), vec3(0.35,0.65,1.0), s), 1.0) * i * (0.25 + 1.2 * s); }`,
+}));
+scene.add(atmo);
+const sunLight = new THREE.DirectionalLight(0xfff4e5, 2.6);
+sunLight.position.copy(SUN).multiplyScalar(100);
+scene.add(sunLight, new THREE.AmbientLight(0x334466, 0.35));
+const camLight = new THREE.PointLight(0xbcd6ff, 2.2, 0, 0);
+camera.add(camLight);
+scene.add(camera);
+
+function glowTexture(inner, outer) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, inner); gr.addColorStop(0.25, outer); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const glowSprite = (outer) => new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('#ffffff', outer), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('#fff6dd', '#ffcc66'), blending: THREE.AdditiveBlending, depthWrite: false }));
+sunSprite.position.copy(SUN).multiplyScalar(800);
+sunSprite.scale.setScalar(60);
+scene.add(sunSprite);
+function label(text, cls) { const d = document.createElement('div'); d.className = 'label3d ' + cls; d.dir = 'auto'; d.textContent = text; return new CSS2DObject(d); }
+
+const lineMats = [];
+// ground: the pad, the landing sites, the ground track
+const sites = [];
+function addSite(lat, lon, text, color) {
+  const s = glowSprite(color);
+  s.position.copy(ecef(lat, lon, 0));
+  const l = label(text, 'site'); s.add(l);
+  earthGroup.add(s); sites.push(s);
+  return { s, l };
+}
+const padSite = addSite(PAD.lat, PAD.lon, '', '#34d399');
+const landSites = [];
+boosterDefs.forEach(bd => {
+  if (!bd.landFixed) return;
+  const [la, lo] = latLonOf(bd.landFixed);
+  if (bd.land.kind === 'catch') return;                          // the tower is the pad
+  if (landSites.some(x => Math.abs(x.lat - la) < 0.003 && Math.abs(x.lon - lo) < 0.003)) return;
+  landSites.push({ lat: la, lon: lo, bd, ...addSite(la, lo, '', '#ffae42') });
+});
+function siteTexts() {
+  padSite.l.element.textContent = PAD_LABEL + ' · ' + (boosterDefs.some(b => b.land.kind === 'catch') ? I.pad2 + ' / ' + I.tower : I.pad2);
+  landSites.forEach(x => { const k = x.bd.land.kind; x.l.element.textContent = (x.bd.land.name || (k === 'asds' ? 'ASDS' : 'LZ')) + ' · ' + (k === 'asds' ? I.landingShip : I.landingZone); });
+}
+{
+  const pts = [];
+  const add = (a, b, st) => { for (let t = a; t <= b; t += st) { const p = toFixed(s2At(t), t).setLength(R * 1.0008); pts.push(p.x, p.y, p.z); } };
+  add(0, Math.min(END_T, 6000), 10);
+  const g = new LineGeometry(); g.setPositions(pts);
+  const gm = new LineMaterial({ color: 0x5fd4ff, linewidth: 1.2, transparent: true, opacity: 0.28, dashed: true, dashSize: 0.05, gapSize: 0.04 });
+  lineMats.push(gm);
+  const ground = new Line2(g, gm); ground.computeLineDistances(); earthGroup.add(ground);
+  if (homeA != null && homeA > 6000) {
+    const p2 = []; for (let t = homeA; t <= END_T; t += 5) { const p = toFixed(s2At(t), t).setLength(R * 1.0008); p2.push(p.x, p.y, p.z); }
+    const g2 = new LineGeometry(); g2.setPositions(p2);
+    const l2 = new Line2(g2, gm); l2.computeLineDistances(); earthGroup.add(l2);
+  }
+}
+function makeLine(path, color, width, opacity) {
+  const pts = []; path.forEach(s => pts.push(s.p.x, s.p.y, s.p.z));
+  const g = new LineGeometry(); g.setPositions(pts);
+  const m = new LineMaterial({ color, linewidth: width, transparent: true, opacity, depthWrite: false });
+  lineMats.push(m);
+  const l = new Line2(g, m); l.computeLineDistances(); scene.add(l);
+  return l;
+}
+const s2Ahead = makeLine(s2Path, 0x5fd4ff, 1.3, 0.22);
+const s2Done = makeLine(s2Path, 0x9ae6ff, 3.2, 0.95);
+boosterDefs.forEach(bd => { bd.ahead = makeLine(bd.path, 0xffae42, 1.3, 0.22); bd.done = makeLine(bd.path, 0xffc067, 3.0, 0.95); });
+// The bright line is drawn a whole stretch of the path at a time, so on its own it stops short of the vehicle and
+// catches up in steps. A last piece, redrawn every frame, takes it from the end of those stretches to the vehicle itself.
+function makeTip(done) { const g = new LineGeometry(); g.setPositions([0, 0, 0, 0, 0, 1e-6]); const l = new Line2(g, done.material); l.frustumCulled = false; l.visible = false; scene.add(l); return l; }
+function setTip(tip, a, b, on) {
+  tip.visible = on; if (!on) return;
+  const d = tip.geometry.attributes.instanceStart.data, arr = d.array;
+  arr[0] = a.x; arr[1] = a.y; arr[2] = a.z; arr[3] = b.x; arr[4] = b.y; arr[5] = b.z; d.needsUpdate = true;
+}
+const s2Tip = makeTip(s2Done);
+boosterDefs.forEach(bd => { bd.tip = makeTip(bd.done); });
+
+// event markers on the paths
+const whoPos = (e, t) => { if (e.who === 's2' || e.who === 'stack') return s2At(t); const bd = boosterDefs.find(b => b.who === e.who) || boosterDefs[0]; return bd.at(t); };
+const isBoosterWho = (w) => w === 'b' || w === 'side' || w === 'center';
+const evMarkers = EVENTS.filter(e => e.t > 0).map(e => {
+  const color = e.est ? '#c9a2ff' : isBoosterWho(e.who) ? '#ffae42' : '#5fd4ff';
+  const m = glowSprite(color);
+  m.position.copy(whoPos(e, e.t)); m.scale.setScalar(0.02);
+  const l = label('', 'ev' + (isBoosterWho(e.who) ? ' booster' : '') + (e.est ? ' est' : ''));
+  m.add(l); scene.add(m);
+  return { e, m, l };
+});
+
+// ================================================================ vehicles (enlarged x400: a 70 m rocket would vanish at orbit scale)
+const VS = 400 * SCALE / 1000;
+const matWhite = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, metalness: 0.25, roughness: 0.4, emissive: 0x1a2230, emissiveIntensity: 0.6 });
+const matBlack = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.6 });
+const matSteel = new THREE.MeshStandardMaterial({ color: 0xc7ccd3, metalness: 0.85, roughness: 0.32, emissive: 0x20262e, emissiveIntensity: 0.5 });
+const cyl = (r, len, mat, y) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, len * VS, 32), mat); m.position.y = y * VS + len * VS / 2; return m; };
+function makePlume(len, rad, color) {
+  const geo = new THREE.ConeGeometry(rad, len, 32, 1, true); geo.translate(0, -len / 2, 0);
+  const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { time: { value: 0 }, color: { value: new THREE.Color(color) }, spread: { value: 1 }, len: { value: 1 } },
+    vertexShader: `varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; uniform float spread; uniform float len;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+    void main(){ vUv = uv; vec3 p = position; p.xz *= mix(spread, 1.0, uv.y); p.y *= len; vec4 mv = modelViewMatrix * vec4(p,1.0); vNv = normalize(normalMatrix * normal); vVv = normalize(-mv.xyz); gl_Position = projectionMatrix * mv;
+#include <logdepthbuf_vertex>
+    }`,
+    fragmentShader: `uniform float time; uniform vec3 color; varying vec2 vUv; varying vec3 vNv; varying vec3 vVv;
+#include <logdepthbuf_pars_fragment>
+    void main(){
+#include <logdepthbuf_fragment>
+      float a = pow(vUv.y, 1.4); float f = 0.85 + 0.15 * sin(time * 40.0 + vUv.y * 30.0);
+      float core = pow(abs(dot(normalize(vNv), normalize(vVv))), 1.8); vec3 c = mix(vec3(1.0, 0.97, 0.9), color, smoothstep(0.0, 0.5, 1.0 - vUv.y)); gl_FragColor = vec4(c * (0.6 + 0.8 * core), a * f * core * 0.95); }` });
+  return new THREE.Mesh(geo, mat);
+}
+const plumes = [];
+function plumeOn(parent, len, rad, color) { const p = makePlume(len * VS, rad * VS, color); parent.add(p); plumes.push(p); return p; }
+const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.5, roughness: 0.55 });
+// the glow of re-entry heating, lit by the frame loop
+const heatSprite = (y, z, size) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('#ffd2a6', '#ff5a1f'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); s.position.set(0, y * VS, z * VS); s.scale.setScalar(size * VS); s.material.opacity = 0; s.visible = false; return s; };
+// Falcon core (42 m stage + interstage), optional nose cone for a Falcon Heavy side booster. Legs and grid fins
+// are folded against the body on hinges, and opened by the frame loop.
+function falconCore(nose) {
+  const g = new THREE.Group();
+  g.add(cyl(1.83, 42, matWhite, 0), cyl(1.86, 1.8, matBlack, 0));
+  if (nose) { const n = new THREE.Mesh(new THREE.ConeGeometry(1.83 * VS, 7 * VS, 32), matWhite); n.position.y = 45.5 * VS; g.add(n); }
+  else g.add(cyl(1.83, 6, matBlack, 42));
+  const legs = [], fins = [];
+  for (let i = 0; i < 4; i++) {
+    const piv = new THREE.Group(); piv.rotation.y = i * Math.PI / 2 + Math.PI / 4; g.add(piv);
+    const hinge = new THREE.Group(); hinge.position.set(0, 1.2 * VS, 1.85 * VS);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(1.1 * VS, 10 * VS, 0.4 * VS), matBlack); leg.position.set(0, 5 * VS, 0.2 * VS);
+    hinge.add(leg); piv.add(hinge); legs.push(hinge);
+    const fh = new THREE.Group(); fh.position.set(0, (nose ? 40 : 44.5) * VS, 1.85 * VS);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(1.5 * VS, 2.1 * VS, 0.2 * VS), matDark); fin.position.set(0, 1.05 * VS, 0.12 * VS);
+    fh.add(fin); piv.add(fh); fins.push(fh);
+  }
+  const heat = heatSprite(2, 0, 26); g.add(heat);
+  g.userData = { legs, fins, heat, plume: plumeOn(g, 80, 4, 0xff8a3d) };
+  return g;
+}
+function falconUpper() {
+  const g = new THREE.Group(), ud = g.userData;
+  g.add(cyl(1.83, 12.6, matWhite, 0));
+  const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.45 * VS, 1.3 * VS, 3.2 * VS, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x55504a, metalness: 0.7, roughness: 0.45, side: THREE.DoubleSide }));
+  noz.position.y = -1.6 * VS; g.add(noz);
+  if (isDragon) {
+    const cap = new THREE.Group();
+    cap.add(cyl(1.85, 3.7, matWhite, 12.6));
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(1.0 * VS, 1.85 * VS, 4.4 * VS, 32), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
+    c.position.y = 18.5 * VS; cap.add(c);
+    g.add(cap); ud.capsule = cap;
+  } else {
+    // the fairing: two half shells, thrown off sideways at fairing separation
+    const fm = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4, side: THREE.DoubleSide });
+    ud.fairing = [0, 1].map(i => {
+      const h = new THREE.Group();
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * VS, 2.6 * VS, 8 * VS, 24, 1, true, i * Math.PI, Math.PI), fm); c.position.y = 16.6 * VS;
+      const n = new THREE.Mesh(new THREE.SphereGeometry(2.6 * VS, 24, 12, Math.PI / 2 + i * Math.PI, Math.PI, 0, Math.PI / 2), fm); n.position.y = 20.6 * VS; n.scale.y = 1.9;
+      h.add(c, n); g.add(h); return h;
+    });
+    // what is under it: a stack of Starlink satellites, or one satellite with folded solar panels
+    if (isStarlink) {
+      const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
+      ud.sats = [];
+      for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(3.2 * VS, 0.24 * VS, 1.6 * VS), slab); g.add(m); ud.sats.push(m); }
+    } else {
+      const sat = new THREE.Group();
+      sat.add(new THREE.Mesh(new THREE.BoxGeometry(2.4 * VS, 3.4 * VS, 2.4 * VS), new THREE.MeshStandardMaterial({ color: 0xc9a44a, metalness: 0.8, roughness: 0.35, emissive: 0x3a2c0c, emissiveIntensity: 0.6 })));
+      const pm = new THREE.MeshStandardMaterial({ color: 0x1c3f8a, metalness: 0.5, roughness: 0.4, emissive: 0x0a1a40, emissiveIntensity: 0.7 });
+      ud.panels = [1, -1].map(sd => {
+        const geo = new THREE.BoxGeometry(6.5 * VS, 0.12 * VS, 2.2 * VS); geo.translate(3.25 * VS, 0, 0);
+        const m = new THREE.Mesh(geo, pm); m.position.x = sd * 1.2 * VS; if (sd < 0) m.rotation.y = Math.PI; sat.add(m); return m;
+      });
+      g.add(sat); ud.sat = sat;
+    }
+  }
+  ud.plume = plumeOn(g, 60, 2.2, 0x8fd3ff); ud.plume.position.y = -3.2 * VS;
+  return g;
+}
+function superHeavy() {
+  const g = new THREE.Group();
+  g.add(cyl(4.5, 71, matSteel, 0), cyl(4.53, 3, matDark, 0));
+  g.add(cyl(4.55, 1.8, new THREE.MeshStandardMaterial({ color: 0x3a3f46, metalness: 0.6, roughness: 0.5 }), 71));   // hot-stage ring
+  for (let i = 0; i < 3; i++) {                                  // grid fins
+    const piv = new THREE.Group(); piv.rotation.y = i * Math.PI * 2 / 3 + Math.PI / 2; g.add(piv);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(3.4 * VS, 0.35 * VS, 3.2 * VS), matDark); fin.position.set(0, 66 * VS, 6.1 * VS); piv.add(fin);
+  }
+  const heat = heatSprite(3, 0, 60); g.add(heat);
+  g.userData = { legs: [], fins: [], heat, plume: plumeOn(g, 140, 9, 0xff9a4a) };
+  return g;
+}
+function ship() {
+  const g = new THREE.Group(), ud = g.userData;
+  g.add(cyl(4.5, 40, matSteel, 0));
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(4.5 * VS, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), matSteel);
+  nose.position.y = 40 * VS; nose.scale.y = 3.0; g.add(nose);
+  const tile = new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.8 });
+  const belly = new THREE.Mesh(new THREE.CylinderGeometry(4.52 * VS, 4.52 * VS, 40 * VS, 32, 1, true, -Math.PI / 2, Math.PI), tile); belly.position.y = 20 * VS; g.add(belly);   // the +z side
+  const flap = (y, side, w, h) => { const f = new THREE.Mesh(new THREE.BoxGeometry(w * VS, h * VS, 0.4 * VS), tile); f.position.set(side * (4.5 + w / 2) * VS, y * VS, 0); g.add(f); };
+  flap(6, 1, 4.2, 9); flap(6, -1, 4.2, 9); flap(44, 1, 2.6, 6); flap(44, -1, 2.6, 6);
+  ud.heat = heatSprite(22, 5, 62); ud.heat2 = heatSprite(5, 4, 46); g.add(ud.heat, ud.heat2);
+  // the Starlink satellites it pushes out of its side, one after the other, from the deploy's start to its end
+  if (A.s2.deploy != null) {
+    const d0 = A.s2.deploy, d1 = A.s2.deployEnd != null && A.s2.deployEnd > d0 ? A.s2.deployEnd : d0 + 600, N = 10;
+    const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
+    ud.pez = []; ud.pezT = []; ud.pezEnd = d1 + 1500;
+    for (let i = 0; i < N; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.5 * VS, 6.5 * VS, 3.6 * VS), slab); m.visible = false; g.add(m); ud.pez.push(m); ud.pezT.push(d0 + (i + 0.5) / N * (d1 - d0)); }
+  }
+  ud.plume = plumeOn(g, 70, 4, 0x8fd3ff);
+  return g;
+}
+// bodies: the upper stage, and each booster. Stacked until they separate, then each flies on its own.
+const upper = VEH === 'ss' ? ship() : falconUpper();
+const upperBase = VEH === 'ss' ? 72.8 : 48;                     // metres above the stack's base
+scene.add(upper);
+const vehLabel = label(VEH_NAME, 'veh');
+const s2Label = label('', 'veh');
+upper.add(s2Label); scene.add(vehLabel);
+boosterDefs.forEach(bd => {
+  bd.obj = VEH === 'ss' ? superHeavy() : falconCore(bd.who === 'side');
+  bd.offset = bd.who === 'side' ? new THREE.Vector3(bd.side * 4.1 * VS, 0, 0) : new THREE.Vector3();
+  scene.add(bd.obj);
+  bd.label = label('', 'veh booster'); bd.obj.add(bd.label);
+  bd.label.position.y = (VEH === 'ss' ? 85 : 55) * VS;
+  bd.glow = glowSprite('#ffae42'); scene.add(bd.glow);
+  // enlarged models: a caught Super Heavy hangs from the tower's arms, a Falcon stands on its legs
+  bd.hang = bd.land.kind === 'catch' ? 22 : bd.land.kind === 'expend' ? 0 : 3.2;
+  bd.sideOff = bd.who === 'side' ? bd.side * 30 : 0;        // Falcon Heavy's two landing zones, apart enough to see both
+  bd.heatWin = bd.land.kind === 'expend' ? null : VEH === 'ss' ? [bd.bbEnd + 120, bd.lbStart] : bd.entryEnd != null ? [bd.entryEnd - 8, bd.entryEnd + 40] : null;
+});
+s2Label.position.y = (VEH === 'ss' ? 62 : 30) * VS;
+const glowS2 = glowSprite('#5fd4ff'); scene.add(glowS2);
+function vehTexts() {
+  s2Label.element.textContent = VEH === 'ss' ? 'Starship' : I.s2;
+  boosterDefs.forEach(bd => {
+    const base = VEH === 'ss' ? 'Super Heavy' : bd.who === 'side' ? I.side : bd.who === 'center' ? I.center : I.booster;
+    const sn = bd.serial && !/^unknown/i.test(bd.serial) ? ' ' + String(bd.serial).replace(/^booster\s*/i, VEH === 'ss' ? 'B' : '') : '';
+    bd.label.element.textContent = base + sn;
+  });
+}
+
+// ================================================================ sharp ground: satellite tiles where the camera looks
+// The globe's own picture is one image of the whole Earth (about 10 km a pixel): fine from orbit, a smear from near
+// by. Over it go tiles of Sentinel-2 cloudless imagery (EOX, down to 10 m a pixel), only for the ground the camera is
+// looking at: up to three levels of detail at a time, each a 4x4 block of tiles around that point, the finer on top
+// and fading out at its edge into the coarser one (and into the globe's own picture, and into the night side, whose
+// city lights are the globe's). Drawn right after the globe and before everything else, with no depth test of their
+// own - they lie exactly on the sphere, and its back side is culled.
+const TILE_URL = (z, y, x) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless/default/WGS84/${z}/${y}/${x}.jpg`;
+const TILE_MIN = 4, TILE_MAX = MOBILE ? 12 : 13, TILE_LEVELS = MOBILE ? 2 : 3, TILE_KEEP = MOBILE ? 70 : 160;
+earth.renderOrder = -20;
+const tiles = new Map();                                         // "z/y/x" -> { mesh, uOp, state, last }
+const tileLevel = {};                                            // z -> the uniforms its tiles share
+const levelOf = (z) => tileLevel[z] || (tileLevel[z] = { center: { value: new THREE.Vector3(1, 0, 0) }, fade: { value: new THREE.Vector2(0, 0) } });
+const tileLoader = new THREE.TextureLoader(); tileLoader.setCrossOrigin('anonymous');
+let tileLoading = 0, tilesOff = false, tileFails = 0;
+const tileQueue = [];
+function tileGeometry(z, y, x) {
+  const span = 180 / Math.pow(2, z), seg = Math.max(2, Math.min(48, Math.ceil(span / 0.2)));
+  const pos = [], uv = [], idx = [];
+  for (let j = 0; j <= seg; j++) for (let i = 0; i <= seg; i++) {
+    const v = ecef(90 - (y + j / seg) * span, -180 + (x + i / seg) * span, 0);
+    pos.push(v.x, v.y, v.z); uv.push(i / seg, 1 - j / seg);
+  }
+  for (let j = 0; j < seg; j++) for (let i = 0; i < seg; i++) { const a = j * (seg + 1) + i, b = a + seg + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  return g;
+}
+function makeTile(z, y, x) {
+  const lvl = levelOf(z), uOp = { value: 0 }, uMap = { value: blank };
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { map: uMap, sunDir: earthMat.uniforms.sunDir, center: lvl.center, fade: lvl.fade, opacity: uOp },
+    blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, depthTest: false, depthWrite: false,
+    vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
+      void main() { vUv = uv; vL = normalize(position); vN = normalize(mat3(modelMatrix) * position); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity;
+      varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
+      void main() {
+        vec3 n = normalize(vN);
+        float d = dot(n, sunDir), dayMix = smoothstep(-0.12, 0.18, d), lit = clamp(d, 0.0, 1.0);
+        vec3 day = texture2D(map, vUv).rgb;
+        // open water: Sentinel-2's sea is a patchwork of satellite passes, lighter and darker - the globe's own even blue stays there
+        float water = smoothstep(0.008, 0.035, day.b - max(day.r, day.g));
+        day = pow(day, vec3(0.86)) * 1.12;                        // Sentinel-2's picture is darker than the globe's
+        vec3 col = day * (0.06 + 1.15 * lit);
+        col += vec3(1.0, 0.45, 0.2) * 0.12 * exp(-pow(d * 8.0, 2.0)) * day.g;
+        vec3 v = normalize(cameraPosition - vW);
+        float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+        col += vec3(0.3, 0.6, 1.0) * rim * 0.35 * smoothstep(-0.2, 0.4, d);
+        gl_FragColor = vec4(col, opacity * (1.0 - water) * mix(0.55, 1.0, dayMix) * (1.0 - smoothstep(fade.y, fade.x, distance(normalize(vL), center))));   // (by distance, not by the angle's cosine: at 10 m a pixel that is 1 minus a ten-millionth)
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  });
+  const mesh = new THREE.Mesh(tileGeometry(z, y, x), mat);
+  mesh.renderOrder = -19 + z * 0.01; mesh.frustumCulled = true; mesh.visible = false;
+  earthGroup.add(mesh);
+  const t = { mesh, uOp, uMap, state: 'queued', last: 0, z, y, x };
+  tileQueue.push(t);
+  return t;
+}
+function pumpTiles() {
+  while (tileLoading < 6 && tileQueue.length) {
+    const t = tileQueue.pop();                                   // the newest asked for first: it is what is on screen now
+    if (t.state !== 'queued') continue;
+    t.state = 'loading'; tileLoading++;
+    tileLoader.load(TILE_URL(t.z, t.y, t.x), (tex) => {
+      tileLoading--; tileFails = 0;
+      tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      if (t.state === 'gone') { tex.dispose(); return; }
+      t.uMap.value = tex; t.state = 'ready';
+    }, undefined, () => { tileLoading--; t.state = 'failed'; if (++tileFails > 12) tilesOff = true; });   // the service is down: the globe's own picture stays
+  }
+}
+let tileClock = 0, tileFocus = null, tileFocusAt = 0, tileSpeed = 0;
+const tileWanted = new Set();
+function updateTiles(dt) {
+  tiles.forEach(t => { if (t.mesh.visible && t.state === 'ready' && t.uOp.value < 1) t.uOp.value = Math.min(1, t.uOp.value + dt * 2.5); });
+  tileClock += dt;
+  if (tilesOff || tileClock < 0.3) return;
+  tileClock = 0;
+  tileWanted.clear();
+  const tgt = controls.target;
+  if (tgt.lengthSq() > 1) {                                      // (the whole-Earth view looks at the centre: no tiles)
+    const focusW = tgt.clone().setLength(R), distKm = Math.max(0.5, camera.position.distanceTo(focusW) / SCALE);
+    const local = earthGroup.worldToLocal(focusW.clone()).normalize(), [lat, lon] = latLonOf(local);
+    // how fast the view sweeps over the ground: finer tiles than it can keep up with would never be seen sharp
+    const now = performance.now() / 1000;
+    if (tileFocus) { const v = Math.acos(Math.min(1, tileFocus.dot(local))) * RE / Math.max(0.05, now - tileFocusAt); tileSpeed += (v - tileSpeed) * 0.5; }
+    tileFocus = local.clone(); tileFocusAt = now;
+    const want = Math.ceil(Math.log2(78.27 / (distKm * 0.83 / innerHeight)));
+    const keepUp = Math.floor(Math.log2(20000 / Math.max(1e-6, tileSpeed * 6)));
+    const zf = Math.min(TILE_MAX, want, keepUp);
+    const cosLat = Math.max(0.2, Math.cos(lat * DEG));
+    for (let k = 0, z = zf; k < TILE_LEVELS && z >= TILE_MIN; k++, z -= 2) {
+      const n = Math.pow(2, z), span = 180 / n, lvl = levelOf(z);
+      const outer = 1.45 * span * DEG * cosLat;
+      lvl.center.value.copy(local); lvl.fade.value.set(outer, outer * 0.72);
+      const x0 = Math.round((lon + 180) / span) - 2, y0 = Math.round((90 - lat) / span) - 2;
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+        const y = y0 + j, x = ((x0 + i) % (2 * n) + 2 * n) % (2 * n);
+        if (y < 0 || y >= n) continue;
+        const key = z + '/' + y + '/' + x;
+        let t = tiles.get(key);
+        if (!t) { t = makeTile(z, y, x); tiles.set(key, t); }
+        if (t.state === 'failed') continue;
+        t.last = now; tileWanted.add(key);
+      }
+    }
+  }
+  tiles.forEach((t, key) => { t.mesh.visible = tileWanted.has(key) && t.state === 'ready'; if (!t.mesh.visible && t.state !== 'ready') t.uOp.value = 0; });
+  if (tiles.size > TILE_KEEP) {                                  // forget the ones not looked at for the longest
+    [...tiles.entries()].filter(([k]) => !tileWanted.has(k)).sort((a, b) => a[1].last - b[1].last).slice(0, tiles.size - TILE_KEEP).forEach(([k, t]) => {
+      earthGroup.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); if (t.uMap.value !== blank) t.uMap.value.dispose(); t.state = 'gone'; tiles.delete(k);
+    });
+  }
+  pumpTiles();
+}
+
+// ================================================================ on the ground: tower, pad, landing zone, droneship (enlarged like the vehicles)
+const UPY = new THREE.Vector3(0, 1, 0);
+const structures = [];
+function groundBasis(fixed) { const up = fixed.clone().normalize(), east = UPY.clone().cross(up).normalize(), south = east.clone().cross(up).normalize(); return { up, east, south }; }
+function addStructure(fixed, build) {
+  const g = new THREE.Group(), b = groundBasis(fixed);
+  build(g);
+  // floodlights: they come on when the Sun is down there
+  g.userData.up = b.up;
+  g.userData.lamps = [[70, 60], [-70, -45]].map(([x, z]) => { const l = new THREE.PointLight(0xfff0dc, 0, 1, 0); l.position.set(x * VS, 60 * VS, z * VS); g.add(l); return l; });
+  g.position.copy(fixed);
+  g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(b.east, b.up, b.south));   // x east, y up, z south
+  earthGroup.add(g); structures.push(g);
+  return g;
+}
+const box = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * VS, h * VS, d * VS), mat); m.position.set(x * VS, y * VS, z * VS); return m; };
+const matTower = new THREE.MeshStandardMaterial({ color: 0x3b4048, metalness: 0.6, roughness: 0.5, emissive: 0x11151b, emissiveIntensity: 0.6 });
+const matConcrete = new THREE.MeshStandardMaterial({ color: 0x7c8087, roughness: 0.9 });
+const matDeck = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.8, metalness: 0.3 });
+const matMark = new THREE.MeshBasicMaterial({ color: 0xf2c230, side: THREE.DoubleSide });
+const ring = (r0, r1, y, x) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0 * VS, r1 * VS, 48), matMark); m.rotation.x = -Math.PI / 2; m.position.set((x || 0) * VS, y * VS, 0); return m; };
+const slab = (r, h) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * 1.06 * VS, h * VS, 48), new THREE.MeshStandardMaterial({ color: 0x4a4e55, roughness: 0.95 })); m.position.y = -h / 2 * VS; return m; };
+const padFixed = ecef(PAD.lat, PAD.lon, 0);
+const padStruct = addStructure(padFixed, g => {
+  if (VEH === 'ss') {                                            // the launch tower and its two catch arms
+    const tower = [box(12, 146, 12, matTower, 0, 73, -17), box(2.6, 3.4, 14, matTower, 0, 88, -11)];
+    const base = slab(90, 14); g.add(...tower, base);
+    g.userData.arms = [1, -1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 5.9 * VS, 88 * VS, -11 * VS); piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); g.add(piv); return piv; });
+    g.userData.tall = tower.concat(g.userData.arms, base);
+  } else {                                                       // the pad and the strongback
+    const tall = [box(3.6, 60, 3.6, matTower, 0, 30, -5.5)];
+    if (/39A/.test(PAD_LABEL)) tall.push(box(8, 106, 8, matTower, -13, 53, -12));
+    const base = slab(70, 12); g.add(base, ...tall);
+    g.userData.tall = tall.concat(base);
+  }
+});
+boosterDefs.forEach(bd => {
+  if (!bd.landFixed || bd.land.kind === 'catch') return;
+  addStructure(bd.landFixed.clone().setLength(R), g => {
+    g.userData.showFrom = bd.landT - 90;   // away from the ground cameras: only when its booster is coming in
+    if (bd.land.kind === 'asds') g.add(box(52, 4, 91, matDeck, 0, -2, 0), ring(16, 18, 0.2), ring(6, 7, 0.2));
+    else {
+      const r = bd.sideOff ? 24 : 43;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, 0.8 * VS, 48), matConcrete); m.position.set(bd.sideOff * VS, -0.4 * VS, 0);
+      g.add(m, ring(r * 0.55, r * 0.62, 0.15, bd.sideOff), ring(r * 0.18, r * 0.24, 0.15, bd.sideOff));
+    }
+  });
+});
+// smoke and steam: at liftoff, and where something lands. Every puff's place comes from the clock alone, so it is
+// right after a jump in time too.
+const PUFF_N = MOBILE ? 90 : 170;
+const puffGeo = new THREE.BufferGeometry();
+const puffPos = new Float32Array(PUFF_N * 3), puffSize = new Float32Array(PUFF_N), puffAlpha = new Float32Array(PUFF_N), puffWarm = new Float32Array(PUFF_N);
+puffGeo.setAttribute('position', new THREE.BufferAttribute(puffPos, 3));
+puffGeo.setAttribute('size', new THREE.BufferAttribute(puffSize, 1));
+puffGeo.setAttribute('alpha', new THREE.BufferAttribute(puffAlpha, 1));
+puffGeo.setAttribute('warm', new THREE.BufferAttribute(puffWarm, 1));
+const puffs = new THREE.Points(puffGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
+  uniforms: { map: { value: glowTexture('#ffffff', 'rgba(255,255,255,0.75)') }, scale: { value: innerHeight * 1.2 }, tint: { value: new THREE.Color(0.9, 0.9, 0.9) } },
+  vertexShader: `attribute float size; attribute float alpha; attribute float warm; varying float vA; varying float vW; uniform float scale;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+  void main(){ vA = alpha; vW = warm; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = clamp(scale * size / -mv.z, 0.0, 420.0); gl_Position = projectionMatrix * mv;
+#include <logdepthbuf_vertex>
+  }`,
+  fragmentShader: `uniform sampler2D map; uniform vec3 tint; varying float vA; varying float vW;
+#include <logdepthbuf_pars_fragment>
+  void main(){
+#include <logdepthbuf_fragment>
+    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(mix(tint, vec3(1.0, 0.62, 0.3), vW), t.a * vA); }` }));
+puffs.frustumCulled = false;
+scene.add(puffs);
+const emitters = [{ fixed: padFixed, t0: -2.5, dur: 13, life: 15, R: 240, rise: 110, share: 3, a: 0.6 }];
+boosterDefs.forEach(bd => { if (bd.landFixed) emitters.push({ fixed: bd.landFixed.clone().setLength(R), t0: bd.landT - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 }); });
+if (VEH === 'ss') emitters.push({ fixed: toFixed(s2At(A.s2.land), A.s2.land).setLength(R), t0: A.s2.land - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 });
+emitters.forEach(e => { e.b = groundBasis(e.fixed); e.lit = THREE.MathUtils.smoothstep(toInertial(e.fixed, e.t0).normalize().dot(SUN), -0.1, 0.2); });
+const puffSeed = (() => { const tot = emitters.reduce((a, e) => a + e.share, 0), out = []; let k = 0;
+  emitters.forEach(e => { const n = Math.max(6, Math.round(PUFF_N * e.share / tot)); for (let i = 0; i < n && k < PUFF_N; i++, k++) out.push({ e, ang: Math.random() * Math.PI * 2, r: 0.35 + Math.random() * 0.65, b: Math.random(), k: 0.5 + Math.random() }); });
+  return out; })();
+function updatePuffs(t, vScale) {
+  let any = false, lit = 1;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < PUFF_N; i++) {
+    const s = puffSeed[i]; puffAlpha[i] = 0;
+    if (!s) continue;
+    const e = s.e, age = t - (e.t0 + s.b * e.dur);
+    if (age < 0 || age > e.life) continue;
+    const u = age / e.life, rad = e.R * s.r * (1 - Math.exp(-3 * u)) * VS * vScale;
+    v.copy(e.fixed).addScaledVector(e.b.east, Math.cos(s.ang) * rad).addScaledVector(e.b.south, Math.sin(s.ang) * rad).addScaledVector(e.b.up, (6 + e.rise * u * s.k) * VS * vScale).applyMatrix4(earthGroup.matrixWorld);
+    puffPos[i * 3] = v.x; puffPos[i * 3 + 1] = v.y; puffPos[i * 3 + 2] = v.z;
+    puffSize[i] = (60 + 220 * u) * VS * vScale;
+    puffAlpha[i] = e.a * (vScale < 1 ? 1 : 0.3) * Math.pow(1 - u, 1.5) * Math.min(1, age / 0.6);
+    puffWarm[i] = Math.max(0, 0.75 - u * 3.5);
+    any = true; lit = e.lit;
+  }
+  puffs.visible = any;
+  if (!any) return;
+  const c = 0.42 + 0.52 * lit; puffs.material.uniforms.tint.value.setRGB(c, c, c * (1.08 - 0.08 * lit));
+  puffs.material.uniforms.scale.value = innerHeight * 1.2;
+  puffGeo.attributes.position.needsUpdate = puffGeo.attributes.size.needsUpdate = puffGeo.attributes.alpha.needsUpdate = puffGeo.attributes.warm.needsUpdate = true;
+}
+
+// exhaust trail
+const TRAIL_N = MOBILE ? 500 : 900;
+const trailGeo = new THREE.BufferGeometry();
+const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3);
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setAttribute('age', new THREE.BufferAttribute(trailAge, 1));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
+const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight } },
+  vertexShader: `attribute float age; varying float vA; varying vec3 vC; uniform float scale;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+  void main(){ vA = age; vC = color; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = clamp(scale * (0.0009 + 0.004 * (1.0 - age)) / -mv.z, 0.0, 60.0); gl_Position = projectionMatrix * mv;
+#include <logdepthbuf_vertex>
+  }`,
+  fragmentShader: `uniform sampler2D map; varying float vA; varying vec3 vC;
+#include <logdepthbuf_pars_fragment>
+  void main(){
+#include <logdepthbuf_fragment>
+    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC, t.a * (1.0 - vA) * 0.55); }` }));
+trail.frustumCulled = false;
+scene.add(trail);
+let trailHead = 0;
+function resetTrail() { trailAge.fill(1); trailGeo.attributes.age.needsUpdate = true; }
+resetTrail();
+function emit(p, color) { const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; trailPos.set([p.x, p.y, p.z], i * 3); trailAge[i] = 0; trailCol.set(color, i * 3); }
+
+// ================================================================ UI
+const fmtT = (t) => { const s = Math.abs(Math.round(t)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (t < 0 ? 'T-' : 'T+') + [h, m, x].map(v => String(v).padStart(2, '0')).join(':'); };
+const evList = $('ev-list');
+EVENTS.forEach(e => {
+  const r = document.createElement('div');
+  r.className = 'ev-row' + (isBoosterWho(e.who) ? ' booster' : '');
+  r.onclick = () => { setLive(false); seek(e.t - (e.t > 600 ? 20 : 6)); if (camAuto) autoCamNow(true); };
+  e.row = r; evList.appendChild(r);
+});
+function eventTexts() {
+  EVENTS.forEach(e => {
+    if (e.liftoff) { e.title = I.liftoff; e.explain = I.liftoffD; }
+    else { const loc = localizeEvent(e.raw); e.title = loc.title || e.raw; e.explain = loc.explain || ''; }
+    const tTxt = (e.t >= 3600 ? fmtT(e.t) : fmtT(e.t).replace('T+00:', 'T+'));
+    e.row.innerHTML = '';
+    const tt = document.createElement('div'); tt.className = 't'; tt.textContent = tTxt;
+    const n = document.createElement('div'); n.className = 'n'; n.dir = 'auto';
+    n.append(document.createTextNode(e.title));
+    if (e.est) { const s = document.createElement('span'); s.className = 'estTag'; s.textContent = ' · ' + I.est; n.append(s); }
+    if (e.explain) { const sm = document.createElement('small'); sm.textContent = e.explain; n.append(sm); }
+    e.row.append(tt, n);
+  });
+  evMarkers.forEach(({ e, l }) => { l.element.textContent = e.title; });
+}
+function uiTexts() {
+  I = LSIM_I18N[LANG];
+  applyDir();
+  document.title = I.title + ' · ' + MISSION;
+  $('mission').textContent = MISSION + ' · ' + VEH_NAME.toUpperCase();
+  let dateTxt = '';
+  try { dateTxt = new Date(T0).toLocaleString(LANG === 'he' ? 'he-IL' : LANG, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'; } catch (e) {}
+  const sub = $('sub'); sub.textContent = '';
+  const b1 = document.createElement('bdi'); b1.textContent = PAD_LABEL;
+  const b2 = document.createElement('bdi'); b2.textContent = dateTxt;
+  sub.append(b1, ' · ', b2);
+  const mi = UNITS === 'imperial';
+  $('alt-l').textContent = I.alt + (mi ? ' (mi)' : ' (km)');
+  $('spd-l').textContent = I.spd + (mi ? ' (mph)' : ' (km/h)');
+  $('dr-l').textContent = I.dr + (mi ? ' (mi)' : ' (km)');
+  $('ev-h').textContent = I.timeline;
+  $('speed-l').textContent = I.speed;
+  $('cam-l').textContent = I.camera;
+  $('speed-auto').textContent = I.auto;
+  document.querySelector('[data-cam="auto"]').textContent = I.auto;
+  document.querySelector('[data-cam="chase"]').textContent = I.chase;
+  document.querySelector('[data-cam="booster"]').textContent = VEH === 'ss' ? 'Super Heavy' : I.booster;
+  document.querySelector('[data-cam="pad"]').textContent = I.pad;
+  document.querySelector('[data-cam="earth"]').textContent = I.earth;
+  $('ev-toggle').textContent = I.events;
+  $('live').textContent = I.live;
+  $('close').setAttribute('aria-label', I.close); $('close').title = I.close;
+  $('play').title = playing ? I.pause : I.play;
+  $('note').textContent = (HAS_TL ? I.note : I.noteNoTl).replace('{v}', VEH_NAME);
+  $('loading').textContent = I.loading;
+  siteTexts(); vehTexts(); eventTexts();
+}
+
+let simT = -20, speed = 10, speedSel = 10, speedAuto = true, playing = true, camMode = 'chase', camAuto = true;
+// live: the clock is the launch's own - T0 from the site's hero, the same one its countdown runs on. On offer from
+// an hour before liftoff to the end of the flight; any change of time or speed by the viewer leaves it.
+let live = false;
+const liveT = () => (Date.now() - T0) / 1000;
+const liveAvail = () => { const t = liveT(); return T0_KNOWN && t >= -3600 && t <= END_T; };
+function markSpeed() { document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('on', !live && (speedAuto ? x.dataset.speed === 'auto' : +x.dataset.speed === speedSel))); $('live').classList.toggle('on', live); }
+function setLive(on) {
+  live = !!on && liveAvail();
+  if (live) { playing = true; $('play').textContent = '⏸'; simT = liveT(); resetTrail(); lastTarget = null; if (camAuto) autoCamNow(true); else if (camMode === 'chase' || camMode === 'booster') setCam(camMode, camTarget); }
+  markSpeed();
+}
+$('live').onclick = () => setLive(!live);
+const scrub = $('scrub');
+scrub.max = END_T;
+scrub.addEventListener('input', () => { setLive(false); seek(+scrub.value); if (camAuto) autoCamNow(true); });
+$('play').onclick = () => { setLive(false); playing = !playing; $('play').textContent = playing ? '⏸' : '▶'; $('play').title = playing ? I.pause : I.play; };
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => {
+  live = false;
+  speedAuto = b.dataset.speed === 'auto'; if (!speedAuto) speed = speedSel = +b.dataset.speed;
+  markSpeed();
+});
+function markCam(mode) { document.querySelectorAll('[data-cam]').forEach(x => x.classList.toggle('on', x.dataset.cam === mode)); }
+document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => {
+  camAuto = b.dataset.cam === 'auto';
+  if (camAuto) autoCamNow(true); else setCam(b.dataset.cam);
+  markCam(b.dataset.cam);
+});
+$('ev-toggle').onclick = () => document.body.classList.toggle('ev-open');
+// a drag on the scene hands the camera to the viewer
+function onCamStart() { userCam = true; if (camAuto) { camAuto = false; markCam(camMode === 'orbit' || camMode === 'site' ? 'chase' : camMode); } }
+function seek(t) { simT = Math.max(-20, Math.min(END_T, t)); resetTrail(); lastTarget = null; if (camMode !== 'earth' && camMode !== 'pad') setCam(camMode, camTarget); }
+
+// ---------------------------------------------------------------- cameras
+let lastTarget = null, camTarget = null, userCam = false;
+const focusBooster = () => {
+  // the booster still flying (Falcon Heavy: the side boosters until they land, then the center core)
+  const flying = boosterDefs.filter(b => simT < b.landT + 20);
+  return (flying.find(b => b.who === 'side') || flying[0] || boosterDefs[0]);
+};
+function focusFn(target) {
+  if (target === 'booster') { const bd = focusBooster(); return bd ? bd.at : s2At; }
+  if (target === 'sides') { const a = boosterDefs.filter(b => b.who === 'side'); return (t) => a[0].at(t).add(a[1].at(t)).multiplyScalar(0.5); }
+  return s2At;
+}
+function setCam(mode, target) {
+  camMode = mode; camTarget = target || (mode === 'booster' ? 'booster' : 's2'); lastTarget = null; userCam = false;
+  if (mode === 'earth') {
+    const t = Math.max(1, simT), r = s2At(t), n = r.clone().cross(s2At(t + 1).sub(s2At(t - 1)));
+    const dir = r.clone().normalize(); if (n.lengthSq() > 1e-18) dir.multiplyScalar(0.8).addScaledVector(n.normalize(), 0.6).normalize();
+    controls.target.set(0, 0, 0); camera.position.copy(dir.multiplyScalar(19));
+  }
+  else if (mode === 'pad' || mode === 'site') { /* placed every frame */ }
+  else {
+    const fn = focusFn(camTarget), p = fn(simT), up = p.clone().normalize();
+    let v = fn(simT + 0.5).sub(fn(simT - 0.5));
+    if (v.lengthSq() < 1e-12) v = new THREE.Vector3(0, 1, 0).cross(up);
+    v.normalize();
+    const side = new THREE.Vector3().crossVectors(v, up).normalize();
+    controls.target.copy(p);
+    if (mode === 'orbit') camera.position.copy(p).addScaledVector(up, 0.6).addScaledVector(v, -1.5).addScaledVector(side, 0.55);
+    else camera.position.copy(p).addScaledVector(side, VEH === 'ss' ? 0.11 : 0.075).addScaledVector(up, 0.02).addScaledVector(v, -0.03);
+  }
+}
+// the automatic director: a schedule of shots from the events
+const SHOTS = (() => {
+  const s = [[-Infinity, 'pad', 's2'], [10, 'chase', 's2']];
+  const landers = boosterDefs.filter(b => b.land.kind !== 'expend');
+  if (VEH === 'fh') {
+    const sides = boosterDefs.filter(b => b.who === 'side' && b.land.kind !== 'expend');
+    if (sides.length === 2) { s.push([Math.max(sideSep + 5, sides[0].landT - 70), 'chase', 'sides']); s.push([sides[0].lbStart - 6, 'site', 'sides']); s.push([sides[0].landT + 8, 'chase', 's2']); }
+  } else if (landers.length) {
+    const bd = landers[0];
+    if (bd.land.kind === 'catch') { s.push([bd.landT - 60, 'chase', 'booster']); s.push([bd.lbStart - 10, 'site', 'booster']); s.push([bd.landT + 8, 'chase', 's2']); }
+    else { s.push([(bd.entryStart ?? bd.landT - 140) - 12, 'chase', 'booster']); s.push([bd.lbStart - 6, 'site', 'booster']); s.push([bd.landT + 6, 'chase', 's2']); }
+  }
+  s.push([seco1 + 20, 'orbit', 's2']);
+  const dep = A.s2.deploy; if (dep != null && dep > seco1 + 40) { s.push([dep - 25, 'chase', 's2']); s.push([dep + 150, 'orbit', 's2']); }
+  if (A.s2.ses2 != null && A.s2.ses2 > seco1 + 60) { s.push([A.s2.ses2 - 15, 'chase', 's2']); s.push([(A.s2.seco2 ?? A.s2.ses2 + 60) + 15, 'orbit', 's2']); }
+  if (VEH === 'ss') {
+    if (A.s2.deorbit != null) { s.push([A.s2.deorbit - 20, 'chase', 's2']); s.push([(A.s2.deorbitEnd ?? A.s2.deorbit + 10) + 20, 'orbit', 's2']); }
+    s.push([A.s2.shipEntry - 30, 'chase', 's2']);
+    s.push([A.s2.lbStart - 25, shipCatch ? 'site' : 'chase', 's2']);
+  }
+  return s.sort((a, b) => a[0] - b[0]);
+})();
+function shotAt(t) { let cur = SHOTS[0]; for (const s of SHOTS) if (t >= s[0]) cur = s; return cur; }
+let curShot = null;
+function autoCamNow(force) {
+  const s = shotAt(simT);
+  if (!force && s === curShot) return;
+  curShot = s;
+  setCam(s[1], s[2]);
+}
+// automatic pacing: slow near the events, fast through the long coasts
+const EV_TIMES = EVENTS.map(e => e.t).concat(boosterDefs.map(b => b.landT)).sort((a, b) => a - b);
+function autoSpeed(t) {
+  if (t < 0) return 2;
+  let prev = -Infinity, next = Infinity;
+  for (const x of EV_TIMES) { if (x <= t) prev = x; else { next = x; break; } }
+  const near = Math.min(t - prev, next - t);
+  if (t < seco1 + 30) return near < 6 ? 1.5 : 4;
+  if (near < 15) return 4;
+  const gap = Math.min(next, END_T) - t;
+  return Math.max(10, Math.min(2500, gap / 18));
+}
+
+// ================================================================ frame
+const clock = new THREE.Clock();
+const tmp = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), groundUp = new THREE.Vector3(0, 1, 0);
+function orient(obj, pos, dir) { obj.position.copy(pos); obj.quaternion.setFromUnitVectors(Y, dir.clone().normalize()); }
+const inBurn = (list, t) => list.some(([a, b]) => b != null && t >= a && t <= b);
+const vel = (fn, t) => fn(t + 0.5).sub(fn(t - 0.5));
+let speedNow = 2;
+
+function setHeat(s, h) { s.visible = h > 0.02; s.material.opacity = Math.min(1, h * 1.2); }
+// the fairing's halves flying off, the payload leaving the stage: all from the clock, so a jump in time is right too
+function animatePayload() {
+  const ud = upper.userData, dep = A.s2.deploy ?? Infinity, fT = A.s2.fairing ?? 0;
+  if (ud.fairing) ud.fairing.forEach((h, i) => { const age = simT - fT, a = Math.max(0, age), dir = i ? -1 : 1; h.visible = age < 30; h.position.set(dir * 3 * a * VS, -0.25 * a * a * VS, 0); h.rotation.z = -dir * Math.min(1.4, a * 0.1); });
+  if (ud.sats) { const age = simT - dep, sp = age > 0 ? 1 - Math.exp(-age / 90) : 0; ud.sats.forEach((m, i) => { m.visible = simT >= fT && age < 2400; m.position.y = (13 + i * 0.3 + sp * (10 + i * 3.4)) * VS; m.rotation.x = sp * 0.5 * (i % 2 ? 1 : -1); m.rotation.y = sp * i * 0.21; }); }
+  if (ud.sat) { const age = simT - dep, a = Math.max(0, age), open = smooth((age - 15) / 25); ud.sat.visible = simT >= fT && age < 2400; ud.sat.position.y = (15.5 + Math.min(90, a * 0.9)) * VS; ud.panels.forEach(p => { p.scale.x = 0.12 + 0.88 * open; }); }
+  if (ud.capsule) ud.capsule.position.y = Math.min(110, Math.max(0, simT - dep) * 0.8) * VS;
+  if (ud.pez) ud.pez.forEach((m, i) => { const age = simT - ud.pezT[i], a = Math.max(0, age); m.visible = age >= 0 && simT < ud.pezEnd; m.position.set((4.8 + 70 * (1 - Math.exp(-a / 45))) * VS, (30 - 110 * (1 - Math.exp(-a / 240))) * VS, 0); m.rotation.y = a * 0.01; });
+}
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (live) { if (liveAvail()) { simT = liveT(); speed = 1; } else setLive(false); }
+  else {
+    if (speedAuto) { const target = autoSpeed(simT); speedNow += (target - speedNow) * Math.min(1, dt * 2.5); speed = speedNow; }
+    if (playing) simT = Math.min(END_T, simT + dt * speed);
+  }
+  scrub.value = simT;
+  if (camAuto) autoCamNow(false);
+  earthGroup.rotation.y = gmst(T0 + simT * 1000);
+  // the Sun where it really is at this moment of the flight: day, night and twilight follow the clock
+  SUN.copy(sunDir(T0 + simT * 1000));
+  { // stars fade out for a camera in daylight low in the atmosphere
+    const camAlt = camera.position.length() / SCALE - RE, day = THREE.MathUtils.smoothstep(tmp.copy(camera.position).normalize().dot(SUN), -0.12, 0.1);
+    const k = 1 - 0.97 * day * (1 - THREE.MathUtils.smoothstep(camAlt, 15, 110));
+    if (skyTex) sky.material.color.setRGB(0.53 * k, 0.6 * k, 0.67 * k);
+    // the cloud picture is coarse (a cloud is tens of kilometres of one pixel): it is for the view from far away
+    if (clouds) { const f = THREE.MathUtils.smoothstep(camAlt, 400, 3000); clouds.material.uniforms.fadeNear.value = f; clouds.visible = f > 0.01; }
+  }
+  earthMat.uniforms.sunDir.value.copy(SUN); atmo.material.uniforms.sunDir.value.copy(SUN); if (clouds) clouds.material.uniforms.sunDir.value.copy(SUN);
+  sunLight.position.copy(SUN).multiplyScalar(100); sunSprite.position.copy(SUN).multiplyScalar(800);
+  if (clouds) clouds.rotation.y = simT * 2e-6;
+  earthGroup.updateMatrixWorld();
+
+  const pS2 = s2At(simT), vS2 = vel(s2At, simT), radial = pS2.clone().normalize();
+  const separated = simT >= sepT;
+  const ground = (camMode === 'pad' || camMode === 'site');
+  const vScale = ground ? (VEH === 'ss' ? 0.07 : 0.12) : 1;
+  // the stack: straight up while on the pad, then along its path
+  const dirStack = simT < 8 ? radial : vS2.lengthSq() > 1e-12 ? vS2.clone().normalize().lerp(radial, simT < 30 ? (30 - simT) / 30 * 0.6 : 0).normalize() : radial;
+  const qStack = new THREE.Quaternion().setFromUnitVectors(Y, dirStack);
+  // upper stage
+  if (!separated) {
+    upper.position.copy(pS2).add(new THREE.Vector3(0, upperBase * VS * vScale, 0).applyQuaternion(qStack));
+    upper.quaternion.copy(qStack);
+  } else {
+    let d = vS2.lengthSq() > 1e-12 ? vS2.clone() : radial.clone();
+    if (VEH === 'ss' && A.s2.shipEntry != null && simT > A.s2.shipEntry - 120 && simT < (A.s2.flip ?? A.s2.lbStart)) {
+      const v = vS2.clone().normalize(), horiz = v.clone().sub(radial.clone().multiplyScalar(v.dot(radial))).normalize();
+      d = horiz.multiplyScalar(0.5).add(radial.clone().multiplyScalar(0.87));          // belly-first, nose high
+    }
+    if (VEH === 'ss' && simT >= (A.s2.flip ?? A.s2.lbStart)) d = radial.clone();
+    // a caught ship hangs from the tower's arms
+    const shipHang = VEH === 'ss' && shipCatch && ground ? 50 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
+    orient(upper, pS2.clone().addScaledVector(radial, shipHang), d);
+    if (VEH === 'ss') {                                          // its belly (the model's +z) into the airflow
+      const y = d.clone().normalize(), z = vS2.clone().normalize(); z.sub(y.clone().multiplyScalar(z.dot(y)));
+      if (z.lengthSq() > 1e-6) { z.normalize(); upper.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(y, z), y, z)); }
+    }
+  }
+  upper.scale.setScalar(vScale);
+  animatePayload();
+  // boosters
+  const ptime = performance.now() / 1000;
+  const mi = UNITS === 'imperial';
+  boosterDefs.forEach(bd => {
+    const p = bd.at(simT);
+    const gone = (bd.land.kind === 'expend' && simT > bd.landT) || simT > bd.landT + 1800;
+    bd.obj.visible = !gone;
+    if (simT < bd.sep) {
+      bd.obj.position.copy(p).add(bd.offset.clone().multiplyScalar(vScale).applyQuaternion(qStack));
+      bd.obj.quaternion.copy(qStack);
+    } else {
+      const v = vel(bd.at, simT), up = p.clone().normalize();
+      const flip = clamp01((simT - bd.sep - 3) / 25);
+      const d0 = v.lengthSq() > 1e-12 ? v.clone().normalize() : up;
+      let d = d0.clone().multiplyScalar(1 - 2 * flip).add(up.clone().multiplyScalar(0.0001)).normalize();
+      d.lerp(up, smooth((simT - (bd.landT - 70)) / 40)).normalize();   // upright over its last minute
+      // still moving sideways after separation: keep the lateral offset (Falcon Heavy's two side boosters)
+      const away = clamp01((simT - bd.sep) / 40);
+      const lat = bd.offset.clone().multiplyScalar(vScale * (1 - away)).applyQuaternion(qStack);
+      if (bd.sideOff) lat.addScaledVector(UPY.clone().cross(up).normalize(), bd.sideOff * VS * vScale * away);
+      const hang = (bd.land.kind === 'catch' && !ground ? 0 : bd.hang) * VS * vScale * smooth((simT - (bd.landT - 40)) / 35);   // (the tower is only there in the ground views)
+      orient(bd.obj, p.clone().add(lat).addScaledVector(up, hang), d);
+    }
+    bd.obj.scale.setScalar(vScale);
+    const hangNow = simT < bd.sep ? 0 : (bd.land.kind === 'catch' && !ground ? 0 : bd.hang) * VS * vScale * smooth((simT - (bd.landT - 40)) / 35);
+    const burn = simT >= 0 && (simT < bd.sep ? simT <= (bd.who === 'side' ? beco : meco) : inBurn(bd.burns.slice(1), simT));
+    const pl = bd.obj.userData.plume; pl.visible = burn;
+    pl.material.uniforms.time.value = ptime;
+    const bAlt = p.length() / SCALE - RE;
+    pl.material.uniforms.spread.value = 1 + Math.min(4, bAlt / 18);
+    // near the ground the flame is only as long as the room under the engines (the models are enlarged, the altitude is not)
+    const onStack = simT < bd.sep, room = (bAlt * SCALE + (onStack ? 0 : hangNow)) / ((VEH === 'ss' ? 140 : 80) * VS * vScale);
+    pl.material.uniforms.len.value = Math.min(1 - 0.35 * clamp01(bAlt / 60), onStack ? 0.2 + room : Math.max(0.06, room));
+    const ud = bd.obj.userData, legA = bd.land.kind === 'expend' ? 0 : 2.0 * smooth((simT - (bd.landT - 10)) / 5), finA = Math.PI / 2 * smooth((simT - bd.sep - 8) / 5);
+    ud.legs.forEach(l => { l.rotation.x = legA; });
+    ud.fins.forEach(f => { f.rotation.x = finA; });
+    const hw = bd.heatWin, heat = hw && simT > hw[0] && simT < hw[1] ? Math.sin(Math.PI * (simT - hw[0]) / (hw[1] - hw[0])) * (VEH === 'ss' ? 0.8 : 0.6) : 0;
+    setHeat(ud.heat, heat);
+    bd.glow.position.copy(p); bd.glow.visible = separated && !gone && simT >= bd.sep && !ground;
+    bd.glow.scale.setScalar(Math.max(0.004, camera.position.distanceTo(p) * 0.025) * (burn ? 1 : 0.5));
+    const bi = simT <= bd.sep ? 0 : idxAt(bd.path, simT);
+    bd.done.geometry.instanceCount = bi;
+    setTip(bd.tip, bd.path[bi].p, p, simT > bd.sep && simT <= bd.landT && !gone);
+    bd.label.visible = simT >= bd.sep && !gone && !(camMode === 'earth' && simT > bd.landT + 10) && !(camMode === 'orbit');
+    if (playing && simT > bd.sep && burn) { const n = Math.min(6, Math.ceil(dt * speed * 2)); for (let k = 0; k < n; k++) emit(p, [1.0, 0.6, 0.3]); }
+  });
+  const s2Burn = simT >= 0 && (separated ? inBurn(S2_BURNS, simT) : false);
+  if (upper.userData.heat) {                                     // the ship's re-entry
+    const sE = A.s2.shipEntry, tr = A.s2.transonic, h = sE != null && simT > sE && simT < tr ? Math.sin(Math.PI * (simT - sE) / (tr - sE)) : 0;
+    setHeat(upper.userData.heat, h); setHeat(upper.userData.heat2, h * 0.7);
+    if (h > 0.2 && playing) emit(pS2, [1.0, 0.45, 0.2]);
+  }
+  // the ground: models as large as the vehicles, only from near by; the tower's arms close on a catch
+  // (a tower enlarged like the rocket would stand tens of kilometres out of the Earth: towers are for the ground cameras)
+  structures.forEach(g => {
+    g.scale.setScalar(vScale); g.visible = camera.position.distanceTo(g.getWorldPosition(tmp)) < 0.22 && (ground || g.userData.showFrom == null || simT > g.userData.showFrom);
+    (g.userData.tall || []).forEach(m => { m.visible = ground; });
+    const night = g.visible ? 1 - THREE.MathUtils.smoothstep(tmp.copy(g.userData.up).applyQuaternion(earthGroup.quaternion).dot(SUN), -0.1, 0.1) : 0;
+    g.userData.lamps.forEach(l => { l.intensity = 2.4 * night; l.distance = 900 * VS * vScale; });
+  });
+  if (padStruct.userData.arms) {
+    let close = shipCatch ? smooth((simT - (A.s2.land - 4)) / 4) : 0;
+    boosterDefs.forEach(bd => { if (bd.land.kind === 'catch' && simT < bd.landT + 1800) close = Math.max(close, smooth((simT - (bd.landT - 4)) / 4)); });
+    padStruct.userData.arms.forEach((a, i) => { a.rotation.y = (i ? -1 : 1) * (0.55 - 0.5 * close); });
+  }
+  updatePuffs(simT, vScale);
+  upper.userData.plume.visible = s2Burn;
+  upper.userData.plume.material.uniforms.time.value = ptime;
+  upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 5;
+  const stackBurn = simT >= 0 && simT <= meco;
+  vehLabel.visible = !separated;
+  vehLabel.position.copy(pS2).add(new THREE.Vector3(0, (VEH === 'ss' ? 135 : 70) * VS * vScale, 0).applyQuaternion(qStack));
+  s2Label.visible = separated && camMode !== 'orbit';
+  const camD = camera.position.distanceTo(pS2);
+  glowS2.visible = !ground;
+  glowS2.position.copy(pS2); glowS2.scale.setScalar(Math.max(0.004, camD * 0.03) * (stackBurn || s2Burn ? 1 : 0.55));
+  if (playing && simT > 0) {
+    const n = Math.min(8, Math.ceil(dt * speed * 2));
+    for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(pS2, [0.55, 0.8, 1.0]); }
+  }
+  for (let i = 0; i < TRAIL_N; i++) if (trailAge[i] < 1) trailAge[i] = Math.min(1, trailAge[i] + dt * (0.12 + Math.min(speed, 200) * 0.004));
+  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = true;
+  const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
+  s2Done.geometry.instanceCount = si;
+  setTip(s2Tip, s2Path[si].p, pS2, simT > 0);
+  lineMats.forEach(m => m.resolution.set(innerWidth, innerHeight));
+
+  sites.forEach(o => { const d = camera.position.distanceTo(o.getWorldPosition(tmp)); o.scale.setScalar(Math.max(0.0015, d * 0.012)); o.children[0].visible = d < 9; o.material.opacity = ground ? 0 : 1; });
+  evMarkers.forEach(({ e, m, l }) => {
+    m.material.opacity = simT >= e.t ? 1 : 0.45;
+    const d = camera.position.distanceTo(m.position);
+    m.scale.setScalar(Math.max(0.006, d * 0.018));
+    m.visible = !ground;
+    l.visible = !ground && !MOBILE && camMode !== 'earth' && camMode !== 'orbit' && d < 6 && simT - e.t > -12 && simT - e.t < 25;
+  });
+
+  // camera
+  if (camMode === 'orbit' && !userCam) {
+    const p = s2At(simT), up = p.clone().normalize();
+    let v = vel(s2At, simT); v.sub(up.clone().multiplyScalar(v.dot(up))).normalize();
+    const side = new THREE.Vector3().crossVectors(v, up).normalize();
+    camera.position.copy(p).addScaledVector(up, 0.6).addScaledVector(v, -1.5).addScaledVector(side, 0.55);
+    controls.target.copy(p);
+    lastTarget = p.clone();
+  } else if (camMode === 'chase' || camMode === 'booster' || camMode === 'orbit') {
+    const focus = focusFn(camTarget)(simT);
+    if (lastTarget) camera.position.add(tmp.copy(focus).sub(lastTarget));
+    controls.target.copy(focus);
+    lastTarget = focus.clone();
+  } else if ((camMode === 'pad' || camMode === 'site') && !userCam) {
+    // on the ground: at the pad, or at the landing site of what is landing
+    let base;
+    if (camMode === 'pad') base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
+    else if (camTarget === 'sides') { const sd = boosterDefs.filter(b => b.who === 'side'); base = earthGroup.localToWorld(sd[0].landFixed.clone().add(sd[1].landFixed).multiplyScalar(0.5)); }
+    else if (camTarget === 'booster') { const bd = focusBooster(); base = earthGroup.localToWorld((bd.landFixed || ecef(PAD.lat, PAD.lon, 0)).clone()); }
+    else base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
+    const up = base.clone().normalize(), east = Y.clone().cross(up).normalize(), north = up.clone().cross(east);
+    const far = VEH === 'ss' ? 0.013 : 0.012;
+    groundUp.copy(up);
+    camera.position.copy(base).addScaledVector(up, 0.0012).addScaledVector(east, far).addScaledVector(north, camMode === 'site' ? far * 0.35 : 0);
+    const look = camMode === 'pad' ? (simT < 4 ? base.clone().addScaledVector(up, VEH === 'ss' ? 0.0022 : 0.0019) : pS2) : focusFn(camTarget)(simT);
+    controls.target.copy(look);
+  }
+  setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
+  controls.update();
+  updateTiles(dt);
+
+  // HUD
+  $('clock').textContent = fmtT(simT);
+  const showB = camTarget === 'booster' || camTarget === 'sides';
+  const fb = showB ? focusBooster() : null;
+  const fpos = fb && simT >= fb.sep ? fb.at(simT) : pS2;
+  const ffn = fb && simT >= fb.sep ? fb.at : s2At;
+  const altKm = Math.max(0, fpos.length() / SCALE - RE);
+  const gs = simT <= 0 ? 0 : toFixed(ffn(simT + 0.5), simT + 0.5).distanceTo(toFixed(ffn(simT - 0.5), simT - 0.5)) / SCALE * 3600;
+  const drKm = fb && simT >= fb.sep ? Math.acos(Math.min(1, toFixed(fpos, simT).normalize().dot(ecef(PAD.lat, PAD.lon, 0).normalize()))) * RE : s2DrAt(simT);
+  const k = mi ? 0.621371 : 1;
+  $('alt').textContent = (altKm * k).toFixed(altKm < 10 ? 1 : 0);
+  $('spd').textContent = Math.round(gs * k).toLocaleString('en-US');
+  $('dr').textContent = Math.round(drKm * k).toLocaleString('en-US');
+  let cur = null;
+  EVENTS.forEach(e => { const done = simT >= e.t; e.row.classList.toggle('done', done); if (done) cur = e; });
+  EVENTS.forEach(e => { const on = e === cur && simT - e.t < (e.t > 600 ? 120 : 25); if (on && !e.row.classList.contains('now')) { e.row.classList.add('now'); e.row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else if (!on) e.row.classList.remove('now'); });
+  const phase = $('phase');
+  const key = simT < 0 ? 'cd' : cur ? cur.t + '|' + LANG : '';
+  if (phase.dataset.k !== key) {
+    phase.dataset.k = key; phase.innerHTML = '';
+    if (simT < 0) { phase.append(I.countdown); const s = document.createElement('small'); s.textContent = I.onPad.replace('{v}', VEH_NAME); phase.append(s); }
+    else if (cur) { const t = document.createElement('span'); t.dir = 'auto'; t.textContent = cur.title; phase.append(t); if (cur.est) { const e = document.createElement('span'); e.className = 'est'; e.textContent = ' · ' + I.est; phase.append(e); } if (cur.explain) { const s = document.createElement('small'); s.textContent = cur.explain; phase.append(s); } }
+  }
+  renderer.render(scene, camera);
+  labels.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight);
+  trail.material.uniforms.scale.value = innerHeight;
+});
+// follow the site's language / units live
+setInterval(() => { const l = readLang(), u = readUnits(); if (l !== LANG || u !== UNITS) { LANG = l; UNITS = u; uiTexts(); $('phase').dataset.k = ''; } }, 500);
+uiTexts();
+autoCamNow(true);
+markCam('auto');
+setInterval(() => {
+  $('live').classList.toggle('avail', liveAvail());
+  // the launch moved (a hold, a scrub): the hero has its new T-0 - start over on it
+  try { const c = P && P.getLaunchSimConfig && P.getLaunchSimConfig(); if (c && c.name === cfg.name && isFinite(c.t0) && (!T0_KNOWN || Math.abs(c.t0 - T0) > 999)) location.reload(); } catch (e) {}
+}, 1000);
+$('live').classList.toggle('avail', liveAvail());
+if (liveAvail() && Q.get('live') !== '0') setLive(true);
+$('loading').style.opacity = '0';
+setTimeout(() => $('loading').remove(), 700);
+window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
+  tiles: () => { const o = {}; tiles.forEach(t => { const k = 'z' + t.z; o[k] = o[k] || { vis: 0, ready: 0, loading: 0, failed: 0, queued: 0, fade: [levelOf(t.z).fade.value.x, levelOf(t.z).fade.value.y] }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff }; },
+  dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
+  sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
+  probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
