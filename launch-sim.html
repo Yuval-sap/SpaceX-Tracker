@@ -147,7 +147,7 @@
   </div>
   <div class="row"><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div>
   <div id="note"></div>
-  <div id="credit">Imagery: <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017) · NASA Blue Marble</div>
+  <div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
 </div>
 
 <script>
@@ -787,7 +787,7 @@ const earthGroup = new THREE.Group();
 scene.add(earthGroup);
 const R = RE * SCALE;
 const earthMat = new THREE.ShaderMaterial({
-  uniforms: { dayMap: { value: dayTex || blank }, nightMap: { value: nightTex || blank }, specMap: { value: specTex || blank }, sunDir: { value: SUN.clone() } },
+  uniforms: { dayMap: { value: dayTex || blank }, nightMap: { value: nightTex || blank }, specMap: { value: specTex || blank }, sunDir: { value: SUN.clone() }, lift: { value: 0 } },
   vertexShader: `
     varying vec2 vUv; varying vec3 vN; varying vec3 vW;
 #include <common>
@@ -796,7 +796,7 @@ const earthMat = new THREE.ShaderMaterial({
 #include <logdepthbuf_vertex>
     }`,
   fragmentShader: `
-    uniform sampler2D dayMap, nightMap, specMap; uniform vec3 sunDir;
+    uniform sampler2D dayMap, nightMap, specMap; uniform vec3 sunDir; uniform float lift;
     varying vec2 vUv; varying vec3 vN; varying vec3 vW;
 #include <logdepthbuf_pars_fragment>
     void main() {
@@ -805,6 +805,7 @@ const earthMat = new THREE.ShaderMaterial({
       float d = dot(n, sunDir);
       float dayMix = smoothstep(-0.12, 0.18, d);
       vec3 day = texture2D(dayMap, vUv).rgb;
+      day = mix(day, pow(day, vec3(0.86)) * 1.12, lift);          // (the Blue Marble mosaic, as its tiles are)
       vec3 night = texture2D(nightMap, vUv).rgb;
       float lit = clamp(d, 0.0, 1.0);
       vec3 col = day * (0.06 + 1.15 * lit);
@@ -1105,27 +1106,41 @@ function vehTexts() {
   });
 }
 
-// ================================================================ sharp ground: satellite tiles where the camera looks
-// The globe's own picture is one image of the whole Earth (about 10 km a pixel): fine from orbit, a smear from near
-// by. Over it go tiles of Sentinel-2 cloudless imagery (EOX, down to 10 m a pixel), only for the ground the camera is
-// looking at: up to three levels of detail at a time, each a 4x4 block of tiles around that point, the finer on top
-// and fading out at its edge into the coarser one (and into the globe's own picture, and into the night side, whose
-// city lights are the globe's). Drawn right after the globe and before everything else, with no depth test of their
-// own - they lie exactly on the sphere, and its back side is culled.
-const TILE_URL = (z, y, x) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless/default/WGS84/${z}/${y}/${x}.jpg`;
-const TILE_MIN = 4, TILE_MAX = MOBILE ? 12 : 13, TILE_LEVELS = MOBILE ? 2 : 3, TILE_KEEP = MOBILE ? 70 : 160;
+// ================================================================ sharp ground: map tiles, in every view
+// One picture of the whole Earth is about 10 km a pixel: a smear whenever the camera is nearer than a far orbit.
+// So the ground is drawn from map tiles, coarse to fine, as much as the view needs:
+//  - NASA's Blue Marble (GIBS), the whole globe in one even look, 7.8 km down to 500 m a pixel;
+//  - Sentinel-2 cloudless (EOX), land detail from 150 m down to 10 m a pixel (its sea is a patchwork of satellite
+//    passes, so over water the Blue Marble below stays).
+// Three things are drawn from them:
+//  1. the globe's own picture: a mosaic of the coarsest Blue Marble tiles, in place of the single image;
+//  2. a corridor along the flight's ground track, well ahead of the vehicle - so it is already there at any
+//     playback speed, where tiles asked for only when the camera arrives would never catch up;
+//  3. around what the camera looks at (straight below it, in the whole-Earth view), up to three finer levels, each a
+//     4x4 block fading out at its edge into the coarser one - as fine as the camera's distance asks for, and no
+//     finer than the view's own motion lets load in time.
+// All lie exactly on the sphere, drawn right after the globe and before everything else, with no depth test of
+// their own (the far side is culled). If a tile service does not answer, what is below simply stays.
+const GIBS = (z, y, x) => `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08/500m/${z}/${y}/${x}.jpeg`;
+const EOX = (z, y, x) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless/default/WGS84/${z}/${y}/${x}.jpg`;
+const gLevel = (z) => ({ id: 'g' + z, url: GIBS, z, span: 288 / Math.pow(2, z), res: 288 / Math.pow(2, z) * 111.32 / 512, land: 0 });
+const eLevel = (z) => ({ id: 'e' + z, url: EOX, z, span: 180 / Math.pow(2, z), res: 180 / Math.pow(2, z) * 111.32 / 256, land: 1 });
+const LADDER = [gLevel(4), gLevel(5), gLevel(6), gLevel(7), eLevel(9), eLevel(10), eLevel(11), eLevel(12)].concat(MOBILE ? [] : [eLevel(13)]);
+const TRACK = Object.assign(gLevel(4), { id: 'track' });          // the corridor's level: 18-degree tiles, 3.9 km a pixel
+const TILE_LEVELS = MOBILE ? 2 : 3, TILE_KEEP = MOBILE ? 110 : 230;
 earth.renderOrder = -20;
-const tiles = new Map();                                         // "z/y/x" -> { mesh, uOp, state, last }
-const tileLevel = {};                                            // z -> the uniforms its tiles share
-const levelOf = (z) => tileLevel[z] || (tileLevel[z] = { center: { value: new THREE.Vector3(1, 0, 0) }, fade: { value: new THREE.Vector2(0, 0) } });
+const tiles = new Map();                                         // "level/y/x" -> { mesh, uOp, state, last }
+const tileUni = {};                                              // level id -> the uniforms its tiles share
+const uniOf = (lv) => tileUni[lv.id] || (tileUni[lv.id] = { center: { value: new THREE.Vector3(1, 0, 0) }, fade: { value: new THREE.Vector2(9, 8) } });   // (9, 8: no fading - the corridor's)
 const tileLoader = new THREE.TextureLoader(); tileLoader.setCrossOrigin('anonymous');
-let tileLoading = 0, tilesOff = false, tileFails = 0;
+let tileLoading = 0;
+const tileFails = { g: 0, e: 0 }, tilesOff = { g: false, e: false };
 const tileQueue = [];
-function tileGeometry(z, y, x) {
-  const span = 180 / Math.pow(2, z), seg = Math.max(2, Math.min(48, Math.ceil(span / 0.2)));
+function tileGeometry(lv, y, x) {
+  const sp = lv.span, seg = Math.max(2, Math.min(48, Math.ceil(sp / 0.4)));
   const pos = [], uv = [], idx = [];
   for (let j = 0; j <= seg; j++) for (let i = 0; i <= seg; i++) {
-    const v = ecef(90 - (y + j / seg) * span, -180 + (x + i / seg) * span, 0);
+    const v = ecef(Math.max(-90, 90 - (y + j / seg) * sp), -180 + (x + i / seg) * sp, 0);
     pos.push(v.x, v.y, v.z); uv.push(i / seg, 1 - j / seg);
   }
   for (let j = 0; j < seg; j++) for (let i = 0; i < seg; i++) { const a = j * (seg + 1) + i, b = a + seg + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
@@ -1133,86 +1148,104 @@ function tileGeometry(z, y, x) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
   return g;
 }
-function makeTile(z, y, x) {
-  const lvl = levelOf(z), uOp = { value: 0 }, uMap = { value: blank };
+function makeTile(lv, y, x) {
+  const u = uniOf(lv), uOp = { value: 0 }, uMap = { value: blank };
   const mat = new THREE.ShaderMaterial({
-    uniforms: { map: uMap, sunDir: earthMat.uniforms.sunDir, center: lvl.center, fade: lvl.fade, opacity: uOp },
+    uniforms: { map: uMap, sunDir: earthMat.uniforms.sunDir, center: u.center, fade: u.fade, opacity: uOp, land: { value: lv.land } },
     blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, depthTest: false, depthWrite: false,
     vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
       void main() { vUv = uv; vL = normalize(position); vN = normalize(mat3(modelMatrix) * position); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity;
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity; uniform float land;
       varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
       void main() {
         vec3 n = normalize(vN);
         float d = dot(n, sunDir), dayMix = smoothstep(-0.12, 0.18, d), lit = clamp(d, 0.0, 1.0);
         vec3 day = texture2D(map, vUv).rgb;
-        // open water: Sentinel-2's sea is a patchwork of satellite passes, lighter and darker - the globe's own even blue stays there
-        float water = smoothstep(0.008, 0.035, day.b - max(day.r, day.g));
-        day = pow(day, vec3(0.86)) * 1.12;                        // Sentinel-2's picture is darker than the globe's
+        // Sentinel-2: its open water gives way to the Blue Marble below, and its picture is darker than the Blue Marble's
+        float water = land * smoothstep(0.008, 0.035, day.b - max(day.r, day.g));
+        day = pow(day, vec3(0.86)) * 1.12;                        // both pictures are darker on a screen than the Earth looks from orbit
         vec3 col = day * (0.06 + 1.15 * lit);
         col += vec3(1.0, 0.45, 0.2) * 0.12 * exp(-pow(d * 8.0, 2.0)) * day.g;
         vec3 v = normalize(cameraPosition - vW);
+        // the Sun's glint on the sea, as on the globe below (there from its water map, here from the Blue Marble's own blue)
+        float sea = (1.0 - land) * smoothstep(0.0, 0.06, day.b - day.r * 1.15) * smoothstep(0.55, 0.8, day.b / (day.g + 0.001));   // deep blue, and the shallows' turquoise
+        col += vec3(1.0, 0.92, 0.8) * pow(max(dot(n, normalize(sunDir + v)), 0.0), 60.0) * sea * lit * 0.9;
         float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
         col += vec3(0.3, 0.6, 1.0) * rim * 0.35 * smoothstep(-0.2, 0.4, d);
-        gl_FragColor = vec4(col, opacity * (1.0 - water) * mix(0.55, 1.0, dayMix) * (1.0 - smoothstep(fade.y, fade.x, distance(normalize(vL), center))));   // (by distance, not by the angle's cosine: at 10 m a pixel that is 1 minus a ten-millionth)
+        // (the night side keeps the globe's city lights showing through; the edge fades by distance, not by an angle's cosine)
+        gl_FragColor = vec4(col, opacity * (1.0 - water) * mix(0.55, 1.0, dayMix) * (1.0 - smoothstep(fade.y, fade.x, distance(normalize(vL), center))));
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
   });
-  const mesh = new THREE.Mesh(tileGeometry(z, y, x), mat);
-  mesh.renderOrder = -19 + z * 0.01; mesh.frustumCulled = true; mesh.visible = false;
+  const mesh = new THREE.Mesh(tileGeometry(lv, y, x), mat);
+  mesh.renderOrder = -19 + (lv.id === 'track' ? 0 : 0.01 + LADDER.indexOf(lv) * 0.01); mesh.visible = false;
   earthGroup.add(mesh);
-  const t = { mesh, uOp, uMap, state: 'queued', last: 0, z, y, x };
+  const t = { mesh, uOp, uMap, state: 'queued', last: 0, lv, y, x };
   tileQueue.push(t);
   return t;
 }
 function pumpTiles() {
-  while (tileLoading < 6 && tileQueue.length) {
+  while (tileLoading < 8 && tileQueue.length) {
     const t = tileQueue.pop();                                   // the newest asked for first: it is what is on screen now
     if (t.state !== 'queued') continue;
+    const src = t.lv.land ? 'e' : 'g';
+    if (tilesOff[src]) { t.state = 'failed'; continue; }
     t.state = 'loading'; tileLoading++;
-    tileLoader.load(TILE_URL(t.z, t.y, t.x), (tex) => {
-      tileLoading--; tileFails = 0;
+    tileLoader.load(t.lv.url(t.lv.z, t.y, t.x), (tex) => {
+      tileLoading--; tileFails[src] = 0;
       tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (t.state === 'gone') { tex.dispose(); return; }
       t.uMap.value = tex; t.state = 'ready';
-    }, undefined, () => { tileLoading--; t.state = 'failed'; if (++tileFails > 12) tilesOff = true; });   // the service is down: the globe's own picture stays
+    }, undefined, () => { tileLoading--; t.state = 'failed'; if (++tileFails[src] > 12) tilesOff[src] = true; });   // that service is down: what is below stays
   }
 }
-let tileClock = 0, tileFocus = null, tileFocusAt = 0, tileSpeed = 0;
 const tileWanted = new Set();
+function wantTile(lv, y, x, now) {
+  const cols = Math.round(360 / lv.span), rows = Math.ceil(180 / lv.span - 1e-9);
+  if (y < 0 || y >= rows) return;
+  x = (x % cols + cols) % cols;
+  const key = lv.id + '/' + y + '/' + x;
+  let t = tiles.get(key);
+  if (!t) { t = makeTile(lv, y, x); tiles.set(key, t); }
+  if (t.state === 'failed') return;
+  t.last = now; tileWanted.add(key);
+}
+let tileClock = 1, tileFocus = null, tileFocusAt = 0, tileSpeed = 0;
 function updateTiles(dt) {
   tiles.forEach(t => { if (t.mesh.visible && t.state === 'ready' && t.uOp.value < 1) t.uOp.value = Math.min(1, t.uOp.value + dt * 2.5); });
   tileClock += dt;
-  if (tilesOff || tileClock < 0.3) return;
+  if (tileClock < 0.3) return;
   tileClock = 0;
   tileWanted.clear();
-  const tgt = controls.target;
-  if (tgt.lengthSq() > 1) {                                      // (the whole-Earth view looks at the centre: no tiles)
-    const focusW = tgt.clone().setLength(R), distKm = Math.max(0.5, camera.position.distanceTo(focusW) / SCALE);
+  const now = performance.now() / 1000, tgt = controls.target;
+  // 2. the corridor: under the flight from a little behind the vehicle to well ahead of it - at least a quarter of
+  // an hour of flight, or twelve seconds of playback at the speed it is running at
+  {
+    const sp = TRACK.span, ahead = Math.max(900, Math.min(6000, speed * 12));
+    for (let t = Math.max(0, simT - 500); t <= Math.min(END_T, simT + ahead); t += 100) {
+      const [la, lo] = latLonOf(toFixed(s2At(t), t)), fx = (lo + 180) / sp, fy = (90 - la) / sp, x = Math.floor(fx), y = Math.floor(fy);
+      const x2 = fx - x < 0.5 ? x - 1 : x + 1, y2 = fy - y < 0.5 ? y - 1 : y + 1;     // and the neighbours it is nearer to
+      wantTile(TRACK, y, x, now); wantTile(TRACK, y, x2, now); wantTile(TRACK, y2, x, now); wantTile(TRACK, y2, x2, now);
+    }
+  }
+  // 3. around what the camera looks at
+  {
+    const focusW = (tgt.lengthSq() < R * R * 0.25 ? camera.position : tgt).clone().setLength(R);   // (the whole-Earth view looks at the centre: the ground straight below the camera)
+    const distKm = Math.max(0.5, camera.position.distanceTo(focusW) / SCALE);
     const local = earthGroup.worldToLocal(focusW.clone()).normalize(), [lat, lon] = latLonOf(local);
-    // how fast the view sweeps over the ground: finer tiles than it can keep up with would never be seen sharp
-    const now = performance.now() / 1000;
+    // how fast the view sweeps over the ground: tiles smaller than it crosses in six seconds would never be seen sharp
     if (tileFocus) { const v = Math.acos(Math.min(1, tileFocus.dot(local))) * RE / Math.max(0.05, now - tileFocusAt); tileSpeed += (v - tileSpeed) * 0.5; }
     tileFocus = local.clone(); tileFocusAt = now;
-    const want = Math.ceil(Math.log2(78.27 / (distKm * 0.83 / innerHeight)));
-    const keepUp = Math.floor(Math.log2(20000 / Math.max(1e-6, tileSpeed * 6)));
-    const zf = Math.min(TILE_MAX, want, keepUp);
+    const need = distKm * 0.83 / innerHeight;                    // km of ground in one pixel of the screen
+    let top = -1;
+    LADDER.forEach((lv, i) => { if (lv.res >= need * 0.7 && lv.span * 111.32 >= tileSpeed * 6) top = i; });
     const cosLat = Math.max(0.2, Math.cos(lat * DEG));
-    for (let k = 0, z = zf; k < TILE_LEVELS && z >= TILE_MIN; k++, z -= 2) {
-      const n = Math.pow(2, z), span = 180 / n, lvl = levelOf(z);
-      const outer = 1.45 * span * DEG * cosLat;
-      lvl.center.value.copy(local); lvl.fade.value.set(outer, outer * 0.72);
-      const x0 = Math.round((lon + 180) / span) - 2, y0 = Math.round((90 - lat) / span) - 2;
-      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
-        const y = y0 + j, x = ((x0 + i) % (2 * n) + 2 * n) % (2 * n);
-        if (y < 0 || y >= n) continue;
-        const key = z + '/' + y + '/' + x;
-        let t = tiles.get(key);
-        if (!t) { t = makeTile(z, y, x); tiles.set(key, t); }
-        if (t.state === 'failed') continue;
-        t.last = now; tileWanted.add(key);
-      }
+    for (let k = 0, i = top; k < TILE_LEVELS && i >= 0; k++, i -= 2) {
+      const lv = LADDER[i], u = uniOf(lv), outer = 1.45 * lv.span * DEG * cosLat;
+      u.center.value.copy(local); u.fade.value.set(outer, outer * 0.72);
+      const x0 = Math.round((lon + 180) / lv.span) - 2, y0 = Math.round((90 - lat) / lv.span) - 2;
+      for (let j = 0; j < 4; j++) for (let ii = 0; ii < 4; ii++) wantTile(lv, y0 + j, x0 + ii, now);
     }
   }
   tiles.forEach((t, key) => { t.mesh.visible = tileWanted.has(key) && t.state === 'ready'; if (!t.mesh.visible && t.state !== 'ready') t.uOp.value = 0; });
@@ -1223,6 +1256,24 @@ function updateTiles(dt) {
   }
   pumpTiles();
 }
+// 1. the globe's own picture, from the same Blue Marble: 10 x 5 tiles of 36 degrees. It takes the place of the single
+// image the page started with once every tile of it has arrived (all or nothing: a globe of two looks would be worse).
+(function buildMosaic() {
+  const W = Math.min(MOBILE ? 4096 : 5120, renderer.capabilities.maxTextureSize), H = W / 2, cw = W / 10, ch = H / 5;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  let left = 50, failed = false;
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 10; x++) {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      if (failed) return;
+      try { g.drawImage(im, x * cw, y * ch, cw + 0.5, ch + 0.5); } catch (e) { failed = true; return; }
+      if (--left === 0) { const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthMat.uniforms.dayMap.value = tex; earthMat.uniforms.lift.value = 1; }
+    };
+    im.onerror = () => { failed = true; };
+    im.src = GIBS(3, y, x);
+  }
+})();
 
 // ================================================================ on the ground: tower, pad, landing zone, droneship (enlarged like the vehicles)
 const UPY = new THREE.Vector3(0, 1, 0);
@@ -1711,7 +1762,15 @@ function frame() {
     controls.target.copy(look);
   }
   setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
+  // The whole-Earth view turns about the Earth's centre, so the wheel would take the camera straight through the
+  // ground: there it stops 30 km up, and zooming and turning slow down with the height, as they do on a map.
+  if (controls.target.lengthSq() < R * R * 0.25) {
+    const dist = camera.position.length(), h = Math.max(0.02, dist - R);
+    controls.minDistance = R + 0.03; controls.zoomSpeed = Math.max(0.06, Math.min(1, 1.6 * h / dist)); controls.rotateSpeed = Math.max(0.03, Math.min(1, 1.3 * h / dist));
+  } else { controls.minDistance = 0.002; controls.zoomSpeed = 1; controls.rotateSpeed = 1; }
   controls.update();
+  // (and no camera, however it is dragged, goes under the ground)
+  if (camera.position.length() < R + 0.0004) camera.position.setLength(R + 0.0004);
   updateTiles(dt);
 
   // HUD
@@ -1761,7 +1820,8 @@ if (liveAvail() && Q.get('live') !== '0') setLive(true);
 $('loading').style.opacity = '0';
 setTimeout(() => $('loading').remove(), 700);
 window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
-  tiles: () => { const o = {}; tiles.forEach(t => { const k = 'z' + t.z; o[k] = o[k] || { vis: 0, ready: 0, loading: 0, failed: 0, queued: 0, fade: [levelOf(t.z).fade.value.x, levelOf(t.z).fade.value.y] }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff }; },
+  tiles: () => { const o = {}; tiles.forEach(t => { const k = t.lv.id; o[k] = o[k] || { vis: 0 }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff: tilesOff.g || tilesOff.e, off: tilesOff, total: tiles.size }; },
+  lookDown: (lat, lon, altKm) => { document.querySelector('[data-cam="earth"]').click(); camera.position.copy(toInertial(ecef(lat, lon, altKm), simT)); },
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
