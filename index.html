@@ -24467,6 +24467,10 @@
                             // time instead. Frequently absent on far-out launches (no ship
                             // assigned yet), so every consumer must handle null.
                             landingShipName = locName || null;
+                        } else if (/RTLS/i.test(typeName) && (vLower.includes('starship') || nLower.includes('starship'))) {
+                            // Starship's "return to launch site" is the tower catching it at Starbase (Launch Library
+                            // names the launch mount, "Orbital Launch Mount B") - not a Falcon landing zone
+                            landingStr = "Tower Catch • Starbase Mechazilla";
                         } else if (locName) {
                             landingStr = `${typeName} • ${locName}`;
                         } else if (typeName) {
@@ -28484,7 +28488,9 @@ setTimeout(() => {
                 modalBoosterEl.classList.remove('notranslate');
                 modalBoosterEl.innerText = m.booster || "Falcon 9 Core";
             }
-            window.currentActiveLandingStr = m.landing || "Autonomous Spaceport Drone Ships (ASDS)";
+            // (a copy of a Starship launch saved before its landing was named the tower catch: "RTLS • Orbital Launch Mount B")
+            const savedStarshipRtls = /starship/i.test(m.vehicle || m.name || '') && /^\s*rtls\b/i.test(m.landing || '');
+            window.currentActiveLandingStr = savedStarshipRtls ? "Tower Catch • Starbase Mechazilla" : (m.landing || "Autonomous Spaceport Drone Ships (ASDS)");
             window.currentActiveLandingShipName = m.landingShipName || null;
             const modalLandingEl = document.getElementById('modal-landing');
             modalLandingEl.innerText = localizeLandingStr(window.currentActiveLandingStr, document.documentElement.lang);
@@ -31559,14 +31565,16 @@ setTimeout(() => {
                     descEl.innerText = "The spacecraft or booster executed a soft water landing in the ocean. This occurs during nominal Crew or Cargo Dragon returns, or when a booster recovery is aborted.";
                 }
             }
-            else if (str.includes('lz-') || str.includes('landing zone') || str.includes('rtls') || str.includes('40')) {
+            // (a Starship's return to the launch site is the tower's catch - even in a copy of the launch saved before
+            // its landing was named so, "RTLS • Orbital Launch Mount B")
+            else if (!(v.includes('starship') && !str.includes('expendable')) && (str.includes('lz-') || str.includes('landing zone') || str.includes('rtls') || str.includes('40'))) {
                 nameEl.innerText = ld.groundLandingZone;
                 imgEl.src = fixedGroundImg;
                 typeEl.innerText = ld.rtlsReturnToLaunchSite;
                 fleetEl.innerText = "Cape Canaveral / Vandenberg";
                 descEl.innerText = "SpaceX's onshore Landing Zones allow first-stage boosters to fly back through the Earth's atmosphere and land propulsively on concrete pads near the launch site.\n\nExecuting an RTLS requires the booster to perform a full 'Boostback Burn' to reverse its horizontal velocity. This consumes significantly more propellant than an ocean recovery, meaning it is only viable for lighter payloads.";
             }
-            else if (str.includes('catch') || str.includes('mechazilla')) {
+            else if (str.includes('catch') || str.includes('mechazilla') || (v.includes('starship') && (str.includes('rtls') || str.includes('olm') || str.includes('launch mount')))) {
                 nameEl.innerText = "Starbase Mechazilla";
                 // Was a pbs.twimg.com URL, which stopped serving (broken image in the Recovery
                 // Zone dossier for tower-catch landings).
