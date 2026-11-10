@@ -63,7 +63,7 @@
 
   #close { position: fixed; top: 16px; inset-inline-end: 16px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; line-height: 1; padding: 0; z-index: 5; background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
 
-  #controls { left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(1020px, calc(100vw - 32px)); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
+  #controls { left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(1020px, calc(100vw - 32px)); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
   .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   button { font: 500 13px 'Rubik', sans-serif; color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 7px 11px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
   @media (hover: hover) { button:hover { background: rgba(255, 255, 255, 0.12); } }
@@ -80,7 +80,8 @@
   .lbl .ico { display: none; }
   #scrub { flex: 1; direction: ltr; accent-color: var(--accent); min-width: 0; }
   #note { font-size: 11px; color: var(--muted); line-height: 1.4; }
-  #credit { font-size: 10px; color: var(--muted); opacity: 0.75; direction: ltr; text-align: start; }
+  /* the imagery's credit (its licence asks for one): a faint line under the controls, outside them */
+  #credit { position: fixed; left: 0; right: 0; bottom: 2px; font-size: 9px; color: var(--muted); opacity: 0.55; direction: ltr; text-align: center; pointer-events: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
   #credit a { color: inherit; }
   #ev-toggle { display: none; }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 10; font: 500 14px 'Rubik', sans-serif; color: var(--muted); transition: opacity 0.6s; text-align: center; padding: 24px; }
@@ -98,7 +99,7 @@
     #events { display: none; top: auto; bottom: calc(env(safe-area-inset-bottom) + 150px); inset-inline-start: 10px; inset-inline-end: 10px; width: auto; max-height: 42vh; }
     body.ev-open #events { display: block; }
     #ev-toggle { display: inline-block; }
-    #controls { width: calc(100vw - 20px); bottom: max(10px, env(safe-area-inset-bottom)); padding: 8px 10px; gap: 6px; }
+    #controls { width: calc(100vw - 20px); bottom: max(16px, env(safe-area-inset-bottom)); padding: 8px 10px; gap: 6px; }
     .row { gap: 4px; }
     button { padding: 6px 8px; font-size: 12px; }
     .sep, .lbl { display: none; }
@@ -150,9 +151,8 @@
     <button type="button" id="ev-toggle"></button>
   </div>
   <div class="row"><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div>
-  <div id="note"></div>
-  <div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
 </div>
+<div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
 
 <script>
 // Hand-written UI strings, one entry per language the main site offers (iw folded into he, zh-CN into zh).
@@ -521,7 +521,8 @@ function warp(pairs) {
 
 // ---------------------------------------------------------------- the ascent (base: a Falcon 9 to ~212 km, MECO 145 s, SECO 530 s)
 // downrange integrated from the speeds a Falcon 9 webcast shows (about 8,000 km/h at MECO, 27,000 at SECO)
-const ASC = [[-1, 0, 0], [0, 0, 0], [10, 0.15, 0], [30, 1.6, 0.3], [50, 6.5, 1.8], [67, 12.5, 4.6], [90, 24, 14.4], [120, 45, 43], [135, 58, 66], [145, 68, 85],
+const ASC = [[-1, 0, 0], [0, 0, 0], [10, 0.15, 0], [20, 0.72, 0.03], [30, 1.6, 0.16], [40, 3.6, 0.7], [50, 6.5, 1.8],   // (the pitch-over starts gently, about 10 s in)
+  [67, 12.5, 4.6], [90, 24, 14.4], [120, 45, 43], [135, 58, 66], [145, 68, 85],
   [160, 82, 117], [176, 100, 154], [210, 124, 238], [250, 145, 350], [300, 163, 517], [350, 178, 722], [400, 192, 970], [450, 203, 1265], [490, 208, 1535], [530, 212, 1829]];
 const ascAltB = monotone(ASC, 1), ascDrB = monotone(ASC, 2);
 // the orbit's altitude as SpaceX published it for this flight (the mission page's own text), when it did
@@ -1466,7 +1467,6 @@ function uiTexts() {
   $('live').textContent = I.live;
   $('close').setAttribute('aria-label', I.close); $('close').title = I.close;
   $('play').title = playing ? I.pause : I.play;
-  $('note').textContent = (HAS_TL ? I.note : I.noteNoTl).replace('{v}', VEH_NAME);
   $('loading').textContent = I.loading;
   siteTexts(); vehTexts(); eventTexts();
 }
@@ -1587,6 +1587,14 @@ const tmp = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), groundUp = new 
 function orient(obj, pos, dir) { obj.position.copy(pos); obj.quaternion.setFromUnitVectors(Y, dir.clone().normalize()); }
 const inBurn = (list, t) => list.some(([a, b]) => b != null && t >= a && t <= b);
 const vel = (fn, t) => fn(t + 0.5).sub(fn(t - 0.5));
+// the direction to point along: the motion over the ground low down; above the air the motion against the stars
+function heading(fn, t) {
+  const a = fn(t - 0.5), b = fn(t + 0.5), inertial = b.clone().sub(a);
+  const overGround = toInertial(toFixed(b, t + 0.5).sub(toFixed(a, t - 0.5)), t);
+  const k = smooth((b.length() / SCALE - RE - 60) / 120);       // 60 km up: the ground's; 180 km up and beyond: the stars'
+  const d = overGround.normalize().multiplyScalar(1 - k).add(inertial.normalize().multiplyScalar(k));
+  return d.lengthSq() > 1e-12 ? d.normalize() : b.clone().normalize();
+}
 let speedNow = 2, lastSimMinute = null;
 
 function setHeat(s, h) { s.visible = h > 0.02; s.material.opacity = Math.min(1, h * 1.2); }
@@ -1623,14 +1631,15 @@ function frame() {
   if (clouds) clouds.rotation.y = simT * 2e-6;
   earthGroup.updateMatrixWorld();
 
-  const pS2 = s2At(simT), vS2 = vel(s2At, simT), radial = pS2.clone().normalize();
+  const pS2 = s2At(simT), vS2 = heading(s2At, simT), radial = pS2.clone().normalize();
   const separated = simT >= sepT;
   const ground = (camMode === 'pad' || camMode === 'site');
   const vScale = enlarge(pS2);
   // the tower is there only from near by (enlarged like the rocket, from orbit it would stand tens of kilometres high)
   const towerShown = enlarge(padStruct.getWorldPosition(tmp)) * 400 < 60;
   // the stack: straight up while on the pad, then along its path
-  const dirStack = simT < 8 ? radial : vS2.lengthSq() > 1e-12 ? vS2.clone().normalize().lerp(radial, simT < 30 ? (30 - simT) / 30 * 0.6 : 0).normalize() : radial;
+  // the stack: straight up on the pad, easing over onto its climb (which itself starts vertical and pitches over slowly)
+  const dirStack = simT <= 0 ? radial : vS2.clone().lerp(radial, 1 - smooth(simT / 12)).normalize();
   const qStack = new THREE.Quaternion().setFromUnitVectors(Y, dirStack);
   // upper stage
   if (!separated) {
@@ -1668,7 +1677,7 @@ function frame() {
       bd.obj.position.copy(p).add(bd.offset.clone().multiplyScalar(sc).applyQuaternion(qStack));
       bd.obj.quaternion.copy(qStack);
     } else {
-      const v = vel(bd.at, simT), up = p.clone().normalize();
+      const v = heading(bd.at, simT), up = p.clone().normalize();
       const flip = clamp01((simT - bd.sep - 3) / 25);
       const d0 = v.lengthSq() > 1e-12 ? v.clone().normalize() : up;
       let d = d0.clone().multiplyScalar(1 - 2 * flip).add(up.clone().multiplyScalar(0.0001)).normalize();
@@ -1854,6 +1863,7 @@ setTimeout(() => $('loading').remove(), 700);
 window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
   tiles: () => { const o = {}; tiles.forEach(t => { const k = t.lv.id; o[k] = o[k] || { vis: 0 }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff: tilesOff.g || tilesOff.e, off: tilesOff, total: tiles.size }; },
   lookDown: (lat, lon, altKm) => { document.querySelector('[data-cam="earth"]').click(); camera.position.copy(toInertial(ecef(lat, lon, altKm), simT)); },
+  tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
