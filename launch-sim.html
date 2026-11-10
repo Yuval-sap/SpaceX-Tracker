@@ -36,6 +36,8 @@
   #hud-top .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   #clock { font: 700 38px/1.1 'Orbitron', sans-serif; letter-spacing: 0.04em; margin-top: 8px; direction: ltr; text-align: start; }
   [dir="rtl"] #clock { text-align: right; }
+  #simtime { font-size: 11.5px; color: var(--muted); margin-top: 1px; text-align: start; unicode-bidi: plaintext; }
+  [dir="rtl"] #simtime { text-align: right; }
   #phase { font-size: 14px; margin-top: 6px; color: #fff; min-height: 2.6em; }
   #phase small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
   #phase .est { color: var(--est); font-size: 11px; }
@@ -49,14 +51,15 @@
   #events h3 { margin: 4px 8px 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
   .ev-row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 8px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
   .ev-row:hover { background: rgba(255, 255, 255, 0.05); }
-  .ev-row .t { font: 500 11.5px 'Orbitron', sans-serif; color: var(--muted); direction: ltr; text-align: start; padding-top: 2px; white-space: nowrap; }
-  .ev-row .n { font-size: 13px; overflow-wrap: anywhere; }
-  .ev-row .n small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
-  .ev-row.done .n { color: var(--accent-2); }
-  .ev-row.now { background: rgba(95, 212, 255, 0.12); }
-  .ev-row.booster .n { color: #ffd9a3; }
-  .ev-row.booster.done .n { color: var(--booster); }
-  .ev-row .estTag { font-size: 11px; color: var(--est); }
+  .ev-row .t { font: 500 11.5px 'Orbitron', sans-serif; color: #71717a; direction: ltr; text-align: start; padding-top: 3px; white-space: nowrap; }
+  .ev-row .n { overflow-wrap: anywhere; }
+  .ev-row .head { display: flex; align-items: center; gap: 6px; }
+  .ev-row .chk { width: 11px; height: 11px; flex: none; color: #3f3f46; opacity: 0.5; }
+  .ev-row .lbl { font: 700 14px 'Orbitron', 'Rubik', sans-serif; color: #34d399; }
+  .ev-row .n small { display: block; font-size: 12.5px; color: #a1a1aa; margin-top: 2px; line-height: 1.35; }
+  .ev-row:not(.done) .lbl, .ev-row:not(.done) small, .ev-row:not(.done) .estTag { opacity: 0.55; }
+  .ev-row.done .chk { color: #34d399; opacity: 1; }
+  .ev-row .estTag { font: 400 11px 'Rubik', sans-serif; color: #a1a1aa; }
 
   #close { position: fixed; top: 16px; inset-inline-end: 16px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; line-height: 1; padding: 0; z-index: 5; background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
 
@@ -114,6 +117,7 @@
   <div class="mission" id="mission"></div>
   <div class="sub" id="sub"></div>
   <div id="clock">T-00:00:00</div>
+  <div id="simtime" dir="auto"></div>
   <div id="phase"></div>
   <div class="tele">
     <div><b id="alt">0</b><span id="alt-l"></span></div>
@@ -1409,7 +1413,7 @@ const fmtT = (t) => { const s = Math.abs(Math.round(t)), h = Math.floor(s / 3600
 const evList = $('ev-list');
 EVENTS.forEach(e => {
   const r = document.createElement('div');
-  r.className = 'ev-row' + (isBoosterWho(e.who) ? ' booster' : '');
+  r.className = 'ev-row';
   r.onclick = () => { setLive(false); seek(e.t - (e.t > 600 ? 20 : 6)); if (camAuto) autoCamNow(true); };
   e.row = r; evList.appendChild(r);
 });
@@ -1421,8 +1425,11 @@ function eventTexts() {
     e.row.innerHTML = '';
     const tt = document.createElement('div'); tt.className = 't'; tt.textContent = tTxt;
     const n = document.createElement('div'); n.className = 'n'; n.dir = 'auto';
-    n.append(document.createTextNode(e.title));
-    if (e.est) { const s = document.createElement('span'); s.className = 'estTag'; s.textContent = ' · ' + I.est; n.append(s); }
+    const head = document.createElement('span'); head.className = 'head';
+    head.innerHTML = '<svg class="chk" viewBox="0 0 512 512" aria-hidden="true"><path fill="currentColor" d="M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm113-303L241 337c-9 9-25 9-34 0l-64-64c-9-9-9-25 0-34s25-9 34 0l47 47 111-111c9-9 25-9 34 0s9 25 0 34z"/></svg>';
+    const lb = document.createElement('span'); lb.className = 'lbl'; lb.textContent = e.title; head.append(lb);
+    if (e.est) { const s = document.createElement('span'); s.className = 'estTag'; s.textContent = '· ' + I.est; head.append(s); }
+    n.append(head);
     if (e.explain) { const sm = document.createElement('small'); sm.textContent = e.explain; n.append(sm); }
     e.row.append(tt, n);
   });
@@ -1574,7 +1581,7 @@ const tmp = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), groundUp = new 
 function orient(obj, pos, dir) { obj.position.copy(pos); obj.quaternion.setFromUnitVectors(Y, dir.clone().normalize()); }
 const inBurn = (list, t) => list.some(([a, b]) => b != null && t >= a && t <= b);
 const vel = (fn, t) => fn(t + 0.5).sub(fn(t - 0.5));
-let speedNow = 2;
+let speedNow = 2, lastSimMinute = null;
 
 function setHeat(s, h) { s.visible = h > 0.02; s.material.opacity = Math.min(1, h * 1.2); }
 // the fairing's halves flying off, the payload leaving the stage: all from the clock, so a jump in time is right too
@@ -1775,6 +1782,11 @@ function frame() {
 
   // HUD
   $('clock').textContent = fmtT(simT);
+  const minute = Math.floor((T0 + simT * 1000) / 60000);
+  if (minute !== lastSimMinute) {
+    lastSimMinute = minute;
+    try { $('simtime').textContent = '🕓 ' + new Date(minute * 60000).toLocaleString(LANG === 'he' ? 'he-IL' : LANG, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }); } catch (e) {}
+  }
   const showB = camTarget === 'booster' || camTarget === 'sides';
   const fb = showB ? focusBooster() : null;
   const fpos = fb && simT >= fb.sep ? fb.at(simT) : pS2;
@@ -1806,7 +1818,7 @@ addEventListener('resize', () => {
   trail.material.uniforms.scale.value = innerHeight;
 });
 // follow the site's language / units live
-setInterval(() => { const l = readLang(), u = readUnits(); if (l !== LANG || u !== UNITS) { LANG = l; UNITS = u; uiTexts(); $('phase').dataset.k = ''; } }, 500);
+setInterval(() => { const l = readLang(), u = readUnits(); if (l !== LANG || u !== UNITS) { LANG = l; UNITS = u; uiTexts(); $('phase').dataset.k = ''; lastSimMinute = null; } }, 500);
 uiTexts();
 autoCamNow(true);
 markCam('auto');
