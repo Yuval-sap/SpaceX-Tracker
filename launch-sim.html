@@ -961,6 +961,8 @@ const evMarkers = EVENTS.filter(e => e.t > 0).map(e => {
 
 // ================================================================ vehicles (enlarged x400: a 70 m rocket would vanish at orbit scale)
 const VS = 400 * SCALE / 1000;
+const H_TRUE = VEH === 'ss' ? 123 : VEH === 'fh' ? 70 : 70;            // metres, the stack's height
+function enlarge(pos) { return Math.max(1, Math.min(400, 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE)) / 400; }
 const matWhite = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, metalness: 0.25, roughness: 0.4, emissive: 0x1a2230, emissiveIntensity: 0.6 });
 const matBlack = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.6 });
 const matSteel = new THREE.MeshStandardMaterial({ color: 0xc7ccd3, metalness: 0.85, roughness: 0.32, emissive: 0x20262e, emissiveIntensity: 0.5 });
@@ -1358,19 +1360,20 @@ emitters.forEach(e => { e.b = groundBasis(e.fixed); e.lit = THREE.MathUtils.smoo
 const puffSeed = (() => { const tot = emitters.reduce((a, e) => a + e.share, 0), out = []; let k = 0;
   emitters.forEach(e => { const n = Math.max(6, Math.round(PUFF_N * e.share / tot)); for (let i = 0; i < n && k < PUFF_N; i++, k++) out.push({ e, ang: Math.random() * Math.PI * 2, r: 0.35 + Math.random() * 0.65, b: Math.random(), k: 0.5 + Math.random() }); });
   return out; })();
-function updatePuffs(t, vScale) {
+function updatePuffs(t) {
   let any = false, lit = 1;
   const v = new THREE.Vector3();
+  emitters.forEach(e => { e.sc = enlarge(v.copy(e.fixed).applyMatrix4(earthGroup.matrixWorld)); });
   for (let i = 0; i < PUFF_N; i++) {
     const s = puffSeed[i]; puffAlpha[i] = 0;
     if (!s) continue;
     const e = s.e, age = t - (e.t0 + s.b * e.dur);
     if (age < 0 || age > e.life) continue;
-    const u = age / e.life, rad = e.R * s.r * (1 - Math.exp(-3 * u)) * VS * vScale;
+    const vScale = e.sc, u = age / e.life, rad = e.R * s.r * (1 - Math.exp(-3 * u)) * VS * vScale;
     v.copy(e.fixed).addScaledVector(e.b.east, Math.cos(s.ang) * rad).addScaledVector(e.b.south, Math.sin(s.ang) * rad).addScaledVector(e.b.up, (6 + e.rise * u * s.k) * VS * vScale).applyMatrix4(earthGroup.matrixWorld);
     puffPos[i * 3] = v.x; puffPos[i * 3 + 1] = v.y; puffPos[i * 3 + 2] = v.z;
     puffSize[i] = (60 + 220 * u) * VS * vScale;
-    puffAlpha[i] = e.a * (vScale < 1 ? 1 : 0.3) * Math.pow(1 - u, 1.5) * Math.min(1, age / 0.6);
+    puffAlpha[i] = e.a * (vScale < 0.5 ? 1 : 0.3) * Math.pow(1 - u, 1.5) * Math.min(1, age / 0.6);
     puffWarm[i] = Math.max(0, 0.75 - u * 3.5);
     any = true; lit = e.lit;
   }
@@ -1529,12 +1532,15 @@ function setCam(mode, target) {
     const side = new THREE.Vector3().crossVectors(v, up).normalize();
     controls.target.copy(p);
     if (mode === 'orbit') camera.position.copy(p).addScaledVector(up, 0.6).addScaledVector(v, -1.5).addScaledVector(side, 0.55);
-    else camera.position.copy(p).addScaledVector(side, VEH === 'ss' ? 0.11 : 0.075).addScaledVector(up, 0.02).addScaledVector(v, -0.03);
+    else {   // nearer while low: from orbit-chase distance at 50 km up, down to 12 km away near the ground
+      const off = Math.max(0.012, Math.min(VEH === 'ss' ? 0.11 : 0.075, (p.length() / SCALE - RE) * 0.0015)) / (VEH === 'ss' ? 0.11 : 0.075);
+      camera.position.copy(p).addScaledVector(side, (VEH === 'ss' ? 0.11 : 0.075) * off).addScaledVector(up, 0.02 * off).addScaledVector(v, -0.03 * off);
+    }
   }
 }
 // the automatic director: a schedule of shots from the events
 const SHOTS = (() => {
-  const s = [[-Infinity, 'pad', 's2'], [10, 'chase', 's2']];
+  const s = [[-Infinity, 'pad', 's2'], [Math.min(75, meco - 30), 'chase', 's2']];
   const landers = boosterDefs.filter(b => b.land.kind !== 'expend');
   if (VEH === 'fh') {
     const sides = boosterDefs.filter(b => b.who === 'side' && b.land.kind !== 'expend');
@@ -1620,7 +1626,9 @@ function frame() {
   const pS2 = s2At(simT), vS2 = vel(s2At, simT), radial = pS2.clone().normalize();
   const separated = simT >= sepT;
   const ground = (camMode === 'pad' || camMode === 'site');
-  const vScale = ground ? (VEH === 'ss' ? 0.07 : 0.12) : 1;
+  const vScale = enlarge(pS2);
+  // the tower is there only from near by (enlarged like the rocket, from orbit it would stand tens of kilometres high)
+  const towerShown = enlarge(padStruct.getWorldPosition(tmp)) * 400 < 60;
   // the stack: straight up while on the pad, then along its path
   const dirStack = simT < 8 ? radial : vS2.lengthSq() > 1e-12 ? vS2.clone().normalize().lerp(radial, simT < 30 ? (30 - simT) / 30 * 0.6 : 0).normalize() : radial;
   const qStack = new THREE.Quaternion().setFromUnitVectors(Y, dirStack);
@@ -1636,8 +1644,11 @@ function frame() {
     }
     if (VEH === 'ss' && simT >= (A.s2.flip ?? A.s2.lbStart)) d = radial.clone();
     // a caught ship hangs from the tower's arms
-    const shipHang = VEH === 'ss' && shipCatch && ground ? 50 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
-    orient(upper, pS2.clone().addScaledVector(radial, shipHang), d);
+    const shipHang = VEH === 'ss' && shipCatch && towerShown ? 50 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
+    const tau = simT - sepT, lit = Math.max(0, simT - ses1);
+    const gap = (upperBase + 14 * (1 - Math.exp(-tau / 3)) + 70 * (1 - Math.exp(-lit / 12))) * (1 - smooth((tau - 25) / 60));
+    const along = d.clone().normalize();
+    orient(upper, pS2.clone().addScaledVector(radial, shipHang).addScaledVector(along, gap * VS * vScale), d);
     if (VEH === 'ss') {                                          // its belly (the model's +z) into the airflow
       const y = d.clone().normalize(), z = vS2.clone().normalize(); z.sub(y.clone().multiplyScalar(z.dot(y)));
       if (z.lengthSq() > 1e-6) { z.normalize(); upper.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(y, z), y, z)); }
@@ -1652,8 +1663,9 @@ function frame() {
     const p = bd.at(simT);
     const gone = (bd.land.kind === 'expend' && simT > bd.landT) || simT > bd.landT + 1800;
     bd.obj.visible = !gone;
+    const sc = simT < bd.sep ? vScale : enlarge(p);
     if (simT < bd.sep) {
-      bd.obj.position.copy(p).add(bd.offset.clone().multiplyScalar(vScale).applyQuaternion(qStack));
+      bd.obj.position.copy(p).add(bd.offset.clone().multiplyScalar(sc).applyQuaternion(qStack));
       bd.obj.quaternion.copy(qStack);
     } else {
       const v = vel(bd.at, simT), up = p.clone().normalize();
@@ -1663,20 +1675,20 @@ function frame() {
       d.lerp(up, smooth((simT - (bd.landT - 70)) / 40)).normalize();   // upright over its last minute
       // still moving sideways after separation: keep the lateral offset (Falcon Heavy's two side boosters)
       const away = clamp01((simT - bd.sep) / 40);
-      const lat = bd.offset.clone().multiplyScalar(vScale * (1 - away)).applyQuaternion(qStack);
-      if (bd.sideOff) lat.addScaledVector(UPY.clone().cross(up).normalize(), bd.sideOff * VS * vScale * away);
-      const hang = (bd.land.kind === 'catch' && !ground ? 0 : bd.hang) * VS * vScale * smooth((simT - (bd.landT - 40)) / 35);   // (the tower is only there in the ground views)
+      const lat = bd.offset.clone().multiplyScalar(sc * (1 - away)).applyQuaternion(qStack);
+      if (bd.sideOff) lat.addScaledVector(UPY.clone().cross(up).normalize(), bd.sideOff * VS * sc * away);
+      const hang = (bd.land.kind === 'catch' && !towerShown ? 0 : bd.hang) * VS * sc * smooth((simT - (bd.landT - 40)) / 35);   // (hanging from a tower only when the tower is there)
       orient(bd.obj, p.clone().add(lat).addScaledVector(up, hang), d);
     }
-    bd.obj.scale.setScalar(vScale);
-    const hangNow = simT < bd.sep ? 0 : (bd.land.kind === 'catch' && !ground ? 0 : bd.hang) * VS * vScale * smooth((simT - (bd.landT - 40)) / 35);
+    bd.obj.scale.setScalar(sc);
+    const hangNow = simT < bd.sep ? 0 : (bd.land.kind === 'catch' && !towerShown ? 0 : bd.hang) * VS * sc * smooth((simT - (bd.landT - 40)) / 35);
     const burn = simT >= 0 && (simT < bd.sep ? simT <= (bd.who === 'side' ? beco : meco) : inBurn(bd.burns.slice(1), simT));
     const pl = bd.obj.userData.plume; pl.visible = burn;
     pl.material.uniforms.time.value = ptime;
     const bAlt = p.length() / SCALE - RE;
     pl.material.uniforms.spread.value = 1 + Math.min(4, bAlt / 18);
     // near the ground the flame is only as long as the room under the engines (the models are enlarged, the altitude is not)
-    const onStack = simT < bd.sep, room = (bAlt * SCALE + (onStack ? 0 : hangNow)) / ((VEH === 'ss' ? 140 : 80) * VS * vScale);
+    const onStack = simT < bd.sep, room = (bAlt * SCALE + (onStack ? 0 : hangNow)) / ((VEH === 'ss' ? 140 : 80) * VS * sc);
     pl.material.uniforms.len.value = Math.min(1 - 0.35 * clamp01(bAlt / 60), onStack ? 0.2 + room : Math.max(0.06, room));
     const ud = bd.obj.userData, legA = bd.land.kind === 'expend' ? 0 : 2.0 * smooth((simT - (bd.landT - 10)) / 5), finA = Math.PI / 2 * smooth((simT - bd.sep - 8) / 5);
     ud.legs.forEach(l => { l.rotation.x = legA; });
@@ -1700,17 +1712,18 @@ function frame() {
   // the ground: models as large as the vehicles, only from near by; the tower's arms close on a catch
   // (a tower enlarged like the rocket would stand tens of kilometres out of the Earth: towers are for the ground cameras)
   structures.forEach(g => {
-    g.scale.setScalar(vScale); g.visible = camera.position.distanceTo(g.getWorldPosition(tmp)) < 0.22 && (ground || g.userData.showFrom == null || simT > g.userData.showFrom);
-    (g.userData.tall || []).forEach(m => { m.visible = ground; });
+    const gw = g.getWorldPosition(new THREE.Vector3()), gs = enlarge(gw);
+    g.scale.setScalar(gs); g.visible = camera.position.distanceTo(gw) < 0.22 && (ground || g.userData.showFrom == null || simT > g.userData.showFrom);
+    (g.userData.tall || []).forEach(m => { m.visible = gs * 400 < 60; });
     const night = g.visible ? 1 - THREE.MathUtils.smoothstep(tmp.copy(g.userData.up).applyQuaternion(earthGroup.quaternion).dot(SUN), -0.1, 0.1) : 0;
-    g.userData.lamps.forEach(l => { l.intensity = 2.4 * night; l.distance = 900 * VS * vScale; });
+    g.userData.lamps.forEach(l => { l.intensity = 2.4 * night; l.distance = 900 * VS * gs; });
   });
   if (padStruct.userData.arms) {
     let close = shipCatch ? smooth((simT - (A.s2.land - 4)) / 4) : 0;
     boosterDefs.forEach(bd => { if (bd.land.kind === 'catch' && simT < bd.landT + 1800) close = Math.max(close, smooth((simT - (bd.landT - 4)) / 4)); });
     padStruct.userData.arms.forEach((a, i) => { a.rotation.y = (i ? -1 : 1) * (0.55 - 0.5 * close); });
   }
-  updatePuffs(simT, vScale);
+  updatePuffs(simT);
   upper.userData.plume.visible = s2Burn;
   upper.userData.plume.material.uniforms.time.value = ptime;
   upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 5;
@@ -1723,13 +1736,13 @@ function frame() {
   glowS2.position.copy(pS2); glowS2.scale.setScalar(Math.max(0.004, camD * 0.03) * (stackBurn || s2Burn ? 1 : 0.55));
   if (playing && simT > 0) {
     const n = Math.min(8, Math.ceil(dt * speed * 2));
-    for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(pS2, [0.55, 0.8, 1.0]); }
+    for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(upper.position, [0.55, 0.8, 1.0]); }
   }
   for (let i = 0; i < TRAIL_N; i++) if (trailAge[i] < 1) trailAge[i] = Math.min(1, trailAge[i] + dt * (0.12 + Math.min(speed, 200) * 0.004));
   trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = true;
   const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
   s2Done.geometry.instanceCount = si;
-  setTip(s2Tip, s2Path[si].p, pS2, simT > 0);
+  setTip(s2Tip, s2Path[si].p, separated ? upper.position : pS2, simT > 0);
   lineMats.forEach(m => m.resolution.set(innerWidth, innerHeight));
 
   sites.forEach(o => { const d = camera.position.distanceTo(o.getWorldPosition(tmp)); o.scale.setScalar(Math.max(0.0015, d * 0.012)); o.children[0].visible = d < 9; o.material.opacity = ground ? 0 : 1; });
@@ -1750,7 +1763,14 @@ function frame() {
     controls.target.copy(p);
     lastTarget = p.clone();
   } else if (camMode === 'chase' || camMode === 'booster' || camMode === 'orbit') {
-    const focus = focusFn(camTarget)(simT);
+    // the middle of the model as it is drawn (enlarged, and the second stage ahead of its path at separation),
+    // not its path's point at the engines - so the vehicle is in the middle of the screen, whole
+    const mid = (obj, halfM) => obj.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(obj.quaternion), halfM * VS * obj.scale.x);
+    let focus;
+    if (camMode === 'orbit') focus = focusFn(camTarget)(simT);
+    else if (camTarget === 's2') focus = separated ? mid(upper, VEH === 'ss' ? 26 : 10) : mid(boosterDefs.find(b => b.who !== 'side').obj, H_TRUE / 2);
+    else if (camTarget === 'sides') { const sd = boosterDefs.filter(b => b.who === 'side'); focus = mid(sd[0].obj, 22).add(mid(sd[1].obj, 22)).multiplyScalar(0.5); }
+    else { const bd = focusBooster(); focus = simT < bd.sep ? focusFn(camTarget)(simT) : mid(bd.obj, VEH === 'ss' ? 36 : 22); }
     if (lastTarget) camera.position.add(tmp.copy(focus).sub(lastTarget));
     controls.target.copy(focus);
     lastTarget = focus.clone();
@@ -1762,10 +1782,10 @@ function frame() {
     else if (camTarget === 'booster') { const bd = focusBooster(); base = earthGroup.localToWorld((bd.landFixed || ecef(PAD.lat, PAD.lon, 0)).clone()); }
     else base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
     const up = base.clone().normalize(), east = Y.clone().cross(up).normalize(), north = up.clone().cross(east);
-    const far = VEH === 'ss' ? 0.013 : 0.012;
+    const far = camMode === 'pad' ? 0.007 : VEH === 'ss' ? 0.013 : 0.012;
     groundUp.copy(up);
-    camera.position.copy(base).addScaledVector(up, 0.0012).addScaledVector(east, far).addScaledVector(north, camMode === 'site' ? far * 0.35 : 0);
-    const look = camMode === 'pad' ? (simT < 4 ? base.clone().addScaledVector(up, VEH === 'ss' ? 0.0022 : 0.0019) : pS2) : focusFn(camTarget)(simT);
+    camera.position.copy(base).addScaledVector(up, camMode === 'pad' ? 0.0004 : 0.0012).addScaledVector(east, far).addScaledVector(north, camMode === 'site' ? far * 0.35 : 0);
+    const look = camMode === 'pad' ? base.clone().addScaledVector(up, (VEH === 'ss' ? 0.0011 : 0.0007) * (1 + 0.15 * camera.position.distanceTo(pS2) / far)).lerp(pS2, smooth(simT / 12)) : focusFn(camTarget)(simT);
     controls.target.copy(look);
   }
   setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
