@@ -13438,6 +13438,27 @@
         // Opens a large view of a mission patch badge. Always stops propagation - patch
         // badges sit inside clickable mission cards (and the mission modal's own header),
         // so without this a click here would also trigger openMissionModal()/closeModal().
+        // A patch opened large: this site's own copy shows at once (the strip has already loaded it - Launch Library's
+        // file server takes 1-3.5 s a patch from Israel), and the full-size original takes its place once it has arrived.
+        // With no copy of ours yet, the original loads behind the spinner as before.
+        function showPatchProgressive(img, spinner, url) {
+            const token = (img._patchToken = (img._patchToken || 0) + 1);
+            const thumb = patchThumbUrl(url);
+            const show = () => { img.classList.remove('hidden'); if (spinner) spinner.classList.add('hidden'); };
+            const fail = () => { if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl'; };
+            const loadOriginal = (behind) => {
+                if (!behind) { img.onload = show; img.onerror = fail; img.src = url; return; }
+                const full = new Image();
+                full.onload = () => { if (img._patchToken === token) { img.onload = null; img.onerror = null; img.src = url; } };
+                full.src = url;
+            };
+            if (thumb && thumb !== url) {
+                img.onload = () => { if (img._patchToken !== token) return; show(); loadOriginal(true); };
+                img.onerror = () => { if (img._patchToken === token) loadOriginal(false); };
+                img.src = thumb;
+            } else loadOriginal(false);
+        }
+
         function openPatchLightbox(url, name, event) {
             if (event) {
                 event.stopPropagation();
@@ -13460,14 +13481,7 @@
                 spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl';
                 spinner.classList.remove('hidden');
             }
-            img.onload = () => {
-                img.classList.remove('hidden');
-                if (spinner) spinner.classList.add('hidden');
-            };
-            img.onerror = () => {
-                if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl';
-            };
-            img.src = url;
+            showPatchProgressive(img, spinner, url);
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -13556,14 +13570,7 @@
                     spinner.className = 'fa-solid fa-spinner fa-spin text-zinc-600 text-2xl';
                     spinner.classList.remove('hidden');
                 }
-                img.onload = () => {
-                    img.classList.remove('hidden');
-                    if (spinner) spinner.classList.add('hidden');
-                };
-                img.onerror = () => {
-                    if (spinner) spinner.className = 'fa-solid fa-image-slash text-zinc-700 text-2xl';
-                };
-                img.src = m.patch || '';
+                showPatchProgressive(img, spinner, m.patch || '');
                 img.alt = m.name;
             }
 
