@@ -765,7 +765,7 @@ function makeControls() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 0.002;
+  controls.minDistance = 0.00004;   // 40 m: near enough to see the tiles (the models are enlarged only as far as the distance needs)
   controls.maxDistance = 120;
   controls.target.copy(target);
   controls.addEventListener('start', () => { dragging = true; onCamStart(); });
@@ -1051,27 +1051,100 @@ function falconUpper() {
   ud.plume = plumeOn(g, 60, 2.2, 0x8fd3ff); ud.plume.position.y = -3.2 * VS;
   return g;
 }
+// ---------------------------------------------------------------- Starship: the ship and Super Heavy, drawn after the real ones
+// Stainless steel; the ship's belly and nose underside under black hexagonal heat-shield tiles; swept trapezoid flaps
+// (tiled where they face the airflow, steel behind); Raptor bells under both.
+function hexTileTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'), r = 16, w = Math.sqrt(3) * r;
+  g.fillStyle = '#50535a'; g.fillRect(0, 0, 512, 512);           // the gaps between the tiles
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let row = -1, y = 0; y < 512 + r * 2; row++, y = row * r * 1.5) {
+    for (let x = (row % 2 ? w / 2 : 0) - w; x < 512 + w; x += w) {
+      const v = 18 + rnd() * 14;
+      g.fillStyle = `rgb(${v | 0},${v | 0},${(v + 2) | 0})`;
+      g.beginPath();
+      for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; g.lineTo(x + (r - 1.4) * Math.cos(a), y + (r - 1.4) * Math.sin(a)); }
+      g.fill();
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  return t;
+}
+function steelTexture() {                                        // welded rings of steel sheet, faintly different
+  const c = document.createElement('canvas'); c.width = 64; c.height = 512;
+  const g = c.getContext('2d');
+  for (let i = 0; i < 32; i++) { const v = 200 + ((i * 37) % 23); g.fillStyle = `rgb(${v},${v + 3},${v + 7})`; g.fillRect(0, i * 16, 64, 16); g.fillStyle = 'rgba(70,75,82,0.55)'; g.fillRect(0, i * 16, 64, 1); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const SS_TILE = VEH === 'ss' ? hexTileTexture() : null, SS_STEEL = VEH === 'ss' ? steelTexture() : null;
+const ssSteel = (rings) => { const t = SS_STEEL.clone(); t.needsUpdate = true; t.repeat.set(1, rings / 32); return new THREE.MeshStandardMaterial({ map: t, color: 0xdfe3e8, metalness: 0.78, roughness: 0.3, emissive: 0x1d232b, emissiveIntensity: 0.55 }); };
+const ssTiles = (u, v) => { const t = SS_TILE.clone(); t.needsUpdate = true; t.repeat.set(u, v); return new THREE.MeshStandardMaterial({ map: t, color: 0xffffff, metalness: 0.05, roughness: 0.85, side: THREE.DoubleSide }); };
+const matRaptor = new THREE.MeshStandardMaterial({ color: 0x5a524a, metalness: 0.75, roughness: 0.45, side: THREE.DoubleSide, emissive: 0x16110c, emissiveIntensity: 0.6 });
+const R_SS = 4.5;
+// a body of revolution from [radius, height] in metres
+const lathe = (pts, mat, seg = 40, from = 0, len = Math.PI * 2) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r * VS, y * VS)), seg, from, len), mat);
+// a flat swept flap: its root along the hull from y0 to y1, out to `span` metres, its tip from y2 to y3
+function flapPlates(side, root0, root1, tip0, tip1, span, rAt, lean) {
+  const grp = new THREE.Group();
+  const shape = new THREE.Shape([new THREE.Vector2(0, root0), new THREE.Vector2(0, root1), new THREE.Vector2(span, tip1), new THREE.Vector2(span, tip0)].map(v => new THREE.Vector2(v.x * VS, v.y * VS)));
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5 * VS, bevelEnabled: false });
+  const steelSide = new THREE.Mesh(geo, ssSteel(4)); steelSide.position.z = -0.55 * VS;
+  const tileSide = new THREE.Mesh(new THREE.ShapeGeometry(shape), ssTiles(1 / (4.8 * VS), 1 / (5.6 * VS))); tileSide.position.z = 0.12 * VS;   // (a shape's UVs are its own coordinates)
+  grp.add(steelSide, tileSide);
+  grp.position.set(side * rAt * VS * Math.cos(lean), 0, -rAt * VS * Math.sin(lean));     // on the hull, a little toward the lee side
+  grp.scale.x = side; grp.rotation.y = -side * lean;            // (the left one a mirror image, its tiles on the windward face too)
+  return grp;
+}
+function raptorBells(g, list, y) {                               // [x, z, exit radius, length] in metres
+  list.forEach(([x, z, r, l]) => { const b = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.38 * VS, r * VS, l * VS, 20, 1, true), matRaptor); b.position.set(x * VS, (y - l / 2) * VS, z * VS); g.add(b); });
+}
 function superHeavy() {
   const g = new THREE.Group();
-  g.add(cyl(4.5, 71, matSteel, 0), cyl(4.53, 3, matDark, 0));
-  g.add(cyl(4.55, 1.8, new THREE.MeshStandardMaterial({ color: 0x3a3f46, metalness: 0.6, roughness: 0.5 }), 71));   // hot-stage ring
-  for (let i = 0; i < 3; i++) {                                  // grid fins
+  g.add(lathe([[0, 0.4], [R_SS - 0.2, 0.4], [R_SS, 1.4], [R_SS, 71]], ssSteel(52), 48));
+  g.add(cyl(4.53, 2.2, new THREE.MeshStandardMaterial({ color: 0x2b2e33, metalness: 0.5, roughness: 0.6 }), 0.2));   // the engine skirt
+  // the hot-stage ring: a vented band on top
+  const ring = new THREE.Group();
+  ring.add(cyl(4.4, 1.8, new THREE.MeshStandardMaterial({ color: 0x2f3338, metalness: 0.6, roughness: 0.5 }), 71));
+  for (let i = 0; i < 24; i++) { const v = new THREE.Mesh(new THREE.BoxGeometry(0.7 * VS, 1.2 * VS, 0.2 * VS), matDark); const a = i / 24 * Math.PI * 2; v.position.set(Math.sin(a) * 4.45 * VS, 71.9 * VS, Math.cos(a) * 4.45 * VS); v.rotation.y = a; ring.add(v); }
+  g.add(ring);
+  for (let i = 0; i < 3; i++) {                                  // grid fins, a waffle of steel
     const piv = new THREE.Group(); piv.rotation.y = i * Math.PI * 2 / 3 + Math.PI / 2; g.add(piv);
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(3.4 * VS, 0.35 * VS, 3.2 * VS), matDark); fin.position.set(0, 66 * VS, 6.1 * VS); piv.add(fin);
+    const fin = new THREE.Group(); fin.position.set(0, 66 * VS, 6.2 * VS);
+    fin.add(new THREE.Mesh(new THREE.BoxGeometry(3.6 * VS, 0.25 * VS, 3.4 * VS), matDark));
+    for (let k = -2; k <= 2; k++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(3.6 * VS, 0.5 * VS, 0.12 * VS), matDark); bar.position.z = k * 0.7 * VS; fin.add(bar); const bar2 = bar.clone(); bar2.rotation.y = Math.PI / 2; bar2.scale.x = 3.4 / 3.6; bar2.position.set(k * 0.7 * VS, 0, 0); fin.add(bar2); }
+    piv.add(fin);
   }
+  // 33 Raptors: 3 in the middle, 10 around them, 20 at the edge
+  const bells = [];
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; bells.push([Math.sin(a) * 0.9, Math.cos(a) * 0.9, 0.65, 2.0]); }
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; bells.push([Math.sin(a) * 2.25, Math.cos(a) * 2.25, 0.62, 1.9]); }
+  for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; bells.push([Math.sin(a) * 3.75, Math.cos(a) * 3.75, 0.55, 1.6]); }
+  raptorBells(g, bells, 0.6);
   const heat = heatSprite(3, 0, 60); g.add(heat);
   g.userData = { legs: [], fins: [], heat, plume: plumeOn(g, 140, 9, 0xff9a4a) };
   return g;
 }
 function ship() {
   const g = new THREE.Group(), ud = g.userData;
-  g.add(cyl(4.5, 40, matSteel, 0));
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(4.5 * VS, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), matSteel);
-  nose.position.y = 40 * VS; nose.scale.y = 3.0; g.add(nose);
-  const tile = new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.8 });
-  const belly = new THREE.Mesh(new THREE.CylinderGeometry(4.52 * VS, 4.52 * VS, 40 * VS, 32, 1, true, -Math.PI / 2, Math.PI), tile); belly.position.y = 20 * VS; g.add(belly);   // the +z side
-  const flap = (y, side, w, h) => { const f = new THREE.Mesh(new THREE.BoxGeometry(w * VS, h * VS, 0.4 * VS), tile); f.position.set(side * (4.5 + w / 2) * VS, y * VS, 0); g.add(f); };
-  flap(6, 1, 4.2, 9); flap(6, -1, 4.2, 9); flap(44, 1, 2.6, 6); flap(44, -1, 2.6, 6);
+  // the hull: a 9 m steel barrel, then the ogive nose up to 52 m
+  const nose = []; for (let i = 0; i <= 14; i++) { const t = i / 14; nose.push([R_SS * Math.sqrt(1 - Math.pow(t, 1.9)) + (i === 14 ? 0 : 0), 34 + 18 * t]); }
+  nose[14][0] = 0.25;
+  g.add(lathe([[0, 0.6], [R_SS - 0.3, 0.6], [R_SS, 1.4], [R_SS, 34]].concat(nose.slice(1)).concat([[0, 52.05]]), ssSteel(26), 56));
+  // the heat shield: black hexagonal tiles over the windward half (+z), from the base up the nose to its tip
+  const shield = 1.12 * Math.PI;                                 // a little more than half round
+  const bodyT = new THREE.Mesh(new THREE.CylinderGeometry((R_SS + 0.14) * VS, (R_SS + 0.14) * VS, 33.4 * VS, 48, 1, true, -shield / 2, shield), ssTiles(3.3, 5.9));
+  bodyT.position.y = (0.6 + 33.4 / 2) * VS; g.add(bodyT);
+  g.add(lathe(nose.map(([r, y]) => [r + 0.14, y]).concat([[0.1, 52.12]]), ssTiles(3.3, 3.4), 48, -shield / 2, shield));
+  // the flaps: two big aft ones at the base, two small forward ones on the nose, set toward the lee side
+  const noseR = (y) => R_SS * Math.sqrt(1 - Math.pow(Math.min(1, Math.max(0, (y - 34) / 18)), 1.9));
+  [1, -1].forEach(sd => {
+    g.add(flapPlates(sd, 1.0, 12.5, 2.5, 8.5, 4.6, R_SS, 0.42));
+    g.add(flapPlates(sd, 39.5, 46.5, 41.5, 44.6, 2.6, noseR(43), 0.62));
+  });
+  // six Raptors: three for the sea level in the middle, three big vacuum bells around them
+  raptorBells(g, [[0, 1.1, 0.65, 2.0], [-0.95, -0.55, 0.65, 2.0], [0.95, -0.55, 0.65, 2.0], [0, -2.9, 1.15, 3.0], [2.5, 1.45, 1.15, 3.0], [-2.5, 1.45, 1.15, 3.0]], 0.8);
   ud.heat = heatSprite(22, 5, 62); ud.heat2 = heatSprite(5, 4, 46); g.add(ud.heat, ud.heat2);
   // the Starlink satellites it pushes out of its side, one after the other, from the deploy's start to its end
   if (A.s2.deploy != null) {
@@ -1705,7 +1778,7 @@ function frame() {
     const hw = bd.heatWin, heat = hw && simT > hw[0] && simT < hw[1] ? Math.sin(Math.PI * (simT - hw[0]) / (hw[1] - hw[0])) * (VEH === 'ss' ? 0.8 : 0.6) : 0;
     setHeat(ud.heat, heat);
     bd.glow.position.copy(p); bd.glow.visible = separated && !gone && simT >= bd.sep && !ground;
-    bd.glow.scale.setScalar(Math.max(0.004, camera.position.distanceTo(p) * 0.025) * (burn ? 1 : 0.5));
+    bd.glow.scale.setScalar(camera.position.distanceTo(p) * 0.025 * (burn ? 1 : 0.5));
     const bi = simT <= bd.sep ? 0 : idxAt(bd.path, simT);
     bd.done.geometry.instanceCount = bi;
     setTip(bd.tip, bd.path[bi].p, p, simT > bd.sep && simT <= bd.landT && !gone);
@@ -1742,7 +1815,7 @@ function frame() {
   s2Label.visible = separated && camMode !== 'orbit';
   const camD = camera.position.distanceTo(pS2);
   glowS2.visible = !ground;
-  glowS2.position.copy(pS2); glowS2.scale.setScalar(Math.max(0.004, camD * 0.03) * (stackBurn || s2Burn ? 1 : 0.55));
+  glowS2.position.copy(pS2); glowS2.scale.setScalar(camD * 0.03 * (stackBurn || s2Burn ? 1 : 0.55));
   if (playing && simT > 0) {
     const n = Math.min(8, Math.ceil(dt * speed * 2));
     for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(upper.position, [0.55, 0.8, 1.0]); }
@@ -1803,7 +1876,7 @@ function frame() {
   if (controls.target.lengthSq() < R * R * 0.25) {
     const dist = camera.position.length(), h = Math.max(0.02, dist - R);
     controls.minDistance = R + 0.03; controls.zoomSpeed = Math.max(0.06, Math.min(1, 1.6 * h / dist)); controls.rotateSpeed = Math.max(0.03, Math.min(1, 1.3 * h / dist));
-  } else { controls.minDistance = 0.002; controls.zoomSpeed = 1; controls.rotateSpeed = 1; }
+  } else { controls.minDistance = 0.00004; controls.zoomSpeed = 1; controls.rotateSpeed = 1; }
   controls.update();
   // (and no camera, however it is dragged, goes under the ground)
   if (camera.position.length() < R + 0.0004) camera.position.setLength(R + 0.0004);
@@ -1864,6 +1937,8 @@ window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind,
   tiles: () => { const o = {}; tiles.forEach(t => { const k = t.lv.id; o[k] = o[k] || { vis: 0 }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff: tilesOff.g || tilesOff.e, off: tilesOff, total: tiles.size }; },
   lookDown: (lat, lon, altKm) => { document.querySelector('[data-cam="earth"]').click(); camera.position.copy(toInertial(ecef(lat, lon, altKm), simT)); },
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
+  closeUp: (az, el, km) => { const u = upper, c = u.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(u.quaternion), 26 * VS * u.scale.x); const dir = new THREE.Vector3(Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)).applyQuaternion(u.quaternion); camera.position.copy(c).addScaledVector(dir, km * SCALE); controls.target.copy(c); },
+  camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
