@@ -1867,18 +1867,19 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   // flush against the hull, standing on the flap's top edge right at the root; hollow and open underneath, tiled.
   // Forward flaps get the identical hood, turned with the flap to follow the nose (tilt; zero on the aft flaps)
   {
-    const HR = 0.55, HH = 0.4, prof = [];          // total ~0.95 m, under half the earlier 2.05
-    for (let i = 0; i <= 8; i++) prof.push([HR, HH * i / 8]);                                   // the half cylinder
-    for (let i = 1; i <= 12; i++) { const q = i / 12 * Math.PI / 2; prof.push([HR * Math.cos(q), HH + HR * Math.sin(q)]); }   // rounded top
+    // (per photos: one long, smooth half cone, no wider than the hinge it caps, tapering up the hull to a blunt
+    // point - no straight section, no shoulder)
+    const HR = 0.42, HH = 0, CH = 1.7, prof = [];
+    for (let i = 0; i <= 24; i++) { const q = i / 24; prof.push([Math.max(0.03, HR * Math.pow(1 - q, 0.8)), CH * q]); }   // gently full, then to the point
     prof[prof.length - 1][0] = 0.001;
     // lathe sweeps round +y; the half from -90 to +90 degrees about x is the half facing away from the hull (+x)
     const hg = lathe(prof, 24, 0, Math.PI), uv = hg.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.PI * HR / tileTex.w, uv.getY(i) * (HH + HR) / tileTex.h);
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.PI * HR / tileTex.w, uv.getY(i) * (HH + CH) / tileTex.h);
     // leaning like the heat shield's diagonal cut right beside it (aftCurveY: 1.35 m across for 2.8 m up), top toward
     // the windward side; turning about the radial axis keeps the flat side flush on the hull
     hg.rotateX((Math.sin(a - WINDWARD) > 0 ? 1 : -1) * Math.atan2((1.92 - 1.62) * R, AFT_H - AFT_PT));
     // foot just over the flap top (the root's top end, tilted with the flap)
-    const yT = y0 + cr * Math.cos(tilt) - 0.2;
+    const yT = y0 + cr * Math.cos(tilt) - 0.32;   // sunk onto the flap's top edge, not perched over it
     {
       // a flat-backed hood stood off the curved skin (up to 0.2 m at the top on the nose, a few cm across the aft
       // skirt), so the hood is wrapped onto the hull instead - every point keeps its height above the foot, its
