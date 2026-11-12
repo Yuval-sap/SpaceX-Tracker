@@ -1917,9 +1917,9 @@ flap(sNose, FA2 - 0.3, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02, FF_TILT
 // opened from a specific mission (?b= / ?s=), since a generic vehicle has no serial.
 // follows the hull, including the start of the nose cone (radius from hullRadius at its top and bottom)
 const hullRadius = y => y > NOSE0 ? noseR(y - NOSE0) : R;
-function decal(group, pid, canvas, y, ang, w, h) {
+function decal(group, pid, canvas, y, ang, w, h, lift = 0.03) {
   const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso;
-  const rT = hullRadius(y + h / 2) + 0.03, rB = hullRadius(y - h / 2) + 0.03, arc = w / ((rT + rB) / 2);
+  const rT = hullRadius(y + h / 2) + lift, rB = hullRadius(y - h / 2) + lift, arc = w / ((rT + rB) / 2);
   const geo = new THREE.CylinderGeometry(rT, rB, h, 24, 1, true, ang - arc / 2, arc); geo.translate(0, y, 0);
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, metalness: 0.3, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2 });
   mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
@@ -1976,6 +1976,23 @@ function logoCanvas() {
   g.beginPath(); g.moveTo(300, 262); g.quadraticCurveTo(520, 90, 900, 70); g.quadraticCurveTo(560, 130, 352, 318); g.closePath(); g.fill();
   return c;
 }
+// a ship's painted name over its serial, white, reading bottom-to-top; the name in a smaller face so it runs exactly as
+// long as the serial
+const NAME_Y = ringY(60) + 0.51, NAME_A = 1.12;                  // its middle: above the slot's right end, on the steel just left of the black strip
+function namedSerialCanvas(name, serial) {
+  const W = 512, H = 1024, c = mkCanvas(W, H), g = c.getContext('2d');
+  g.translate(W / 2, H / 2); g.rotate(-Math.PI / 2);             // the text runs up the hull; its "up" is to the left
+  const F = (p) => `700 ${p}px 'Arial Narrow', 'Roboto Condensed', Arial, sans-serif`, span = H * 0.9;
+  const fit = (t) => { let px = 400; g.font = F(px); while (g.measureText(t).width > span && px > 20) g.font = F(--px); return px; };
+  const ps = fit(serial); g.font = F(ps); const sw = g.measureText(serial).width;
+  let pn = ps; g.font = F(pn); while (g.measureText(name).width > sw && pn > 10) g.font = F(--pn);   // the name as long as the serial, no longer
+  g.fillStyle = '#f2f2f0'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  const gap = pn * 0.25, total = pn * 0.75 + gap + ps * 0.74, top = -total / 2;
+  g.strokeStyle = 'rgba(8, 9, 11, 0.95)'; g.lineJoin = 'round';                  // a fine black outline under the white
+  g.font = F(pn); g.lineWidth = Math.max(3, pn * 0.05); g.strokeText(name, 0, top + pn * 0.75); g.fillText(name, 0, top + pn * 0.75);
+  g.font = F(ps); g.lineWidth = Math.max(3, ps * 0.03); g.strokeText(serial, 0, top + pn * 0.75 + gap + ps * 0.74); g.fillText(serial, 0, top + pn * 0.75 + gap + ps * 0.74);
+  return c;
+}
 // ship serial ("S41"), running top-to-bottom, below the left end of the Pez slot (NSF photo of S42)
 function serialCanvas(text, upward = false) {
   const c = mkCanvas(256, 768), g = c.getContext('2d');
@@ -2003,8 +2020,12 @@ function serialCanvas(text, upward = false) {
   // on the heat-shield side at the same height, one each side: the same kind of rounded tiled pad, bigger and standing
   // further out (same photo)
   for (const sg of [1, -1]) tiledPad(sNose, 's-nose', LOGO_Y, LEEWARD + sg * 1.33, 0.9, 1.25, 0.25, 0.18, 0.13, 'Tiled box');
-  // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo)
-  if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.1, 0.6, 1.8);   // just outboard of the black strip
+  // serial: just outboard of the right-hand docking port, reading bottom-to-top (Ship 41 photo). A ship with a name
+  // painted on carries it white on the black instead: above the Pez slot's right end, close in to the black part's
+  // corner, the name over the serial at the same width ("DON'T PANIC" / "S42", photo of Ship 42)
+  const SHIP_NAMES = { 42: "DON'T PANIC" };
+  if (sh > 0 && SHIP_NAMES[sh]) decal(sPay, 's-payload', namedSerialCanvas(SHIP_NAMES[sh], `S${sh}`), NAME_Y, LEEWARD + NAME_A, 1.0, 2.0);
+  else if (sh > 0) decal(sPay, 's-payload', serialCanvas(`S${sh}`, true), ringY(59) + 0.1, LEEWARD + 1.1, 0.6, 1.8);   // just outboard of the black strip
   // two raised fairings (raceways) from just under the slot down to the aft skirt; a joint cuff every few rings.
   // Their inner side is pressed onto the skin's outside: centred just outside the hull, the rest poked through the
   // skin and showed as two rods inside the open aft skirt, seen from below

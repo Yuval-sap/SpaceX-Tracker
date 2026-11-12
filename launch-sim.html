@@ -117,6 +117,13 @@
   #credit { position: fixed; left: 0; right: 0; bottom: 2px; font-size: 9px; color: var(--muted); opacity: 0.55; direction: ltr; text-align: center; pointer-events: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
   #credit a { color: inherit; }
   #ev-toggle { display: none; }
+  #mbar, #mpop { display: none; }
+  #mpop { position: fixed; z-index: 7; min-width: 180px; max-width: calc(100vw - 20px); padding: 6px; border-radius: 14px; background: rgba(10, 16, 28, 0.94); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(14px); box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.8); }
+  #mpop.open { display: block; }
+  #mpop button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: start; background: transparent; border: 0; border-radius: 9px; padding: 10px 12px; font-size: 14px; }
+  #mpop button.on { background: rgba(95, 212, 255, 0.16); color: #fff; }
+  #mpop button.on::after { content: '✓'; margin-inline-start: auto; color: var(--accent); }
+  #mpop button:disabled { opacity: 0.45; }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 10; font: 500 14px 'Rubik', sans-serif; color: var(--muted); transition: opacity 0.6s; text-align: center; padding: 24px; }
   /* not enough room beside the readout for the close button inside the timeline: back to the corner */
   @media (min-width: 761px) and (max-width: 900px) { #close { inset-inline-end: 16px; } #events { inset-inline-end: 72px; } }
@@ -143,6 +150,14 @@
     #speed-auto::before { content: '⏩ '; }
     [data-cam="auto"]::before { content: '🎥 '; }
     #note { font-size: 10px; }
+    /* one row of play + time bar, then three chips (speed, camera, more) that open small menus */
+    #controls .row:first-child { display: none; }
+    #controls { gap: 8px; padding: 10px 12px; }
+    #mbar { display: flex; gap: 6px; order: 2; }                 /* (under the time bar) */
+    .mchip { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; padding: 8px 10px; }
+    #m-more { flex: 0 0 46px; font-size: 18px; line-height: 1; padding: 6px 0; }
+    #controls .row.scrub-row { gap: 8px; flex-wrap: nowrap; }
+    #controls .row.scrub-row #play { flex: none; width: 40px; height: 36px; padding: 0; }
   }
 </style>
 </head>
@@ -189,8 +204,10 @@
     <button type="button" id="ev-toggle"></button>
     <button type="button" id="cine" aria-label="">🎬</button>
   </div>
-  <div class="row"><div class="scrubwrap"><div id="ticks" dir="ltr"></div><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div></div>
+  <div id="mbar"><button type="button" class="mchip" id="m-speed"></button><button type="button" class="mchip" id="m-cam"></button><button type="button" class="mchip" id="m-more" aria-label="…">⋯</button></div>
+  <div class="row scrub-row"><div class="scrubwrap"><div id="ticks" dir="ltr"></div><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div></div>
 </div>
+<div id="mpop" role="menu"></div>
 <div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · USGS The National Map (USDA NAIP) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
 
 <script>
@@ -636,7 +653,8 @@ const fixedOnTrack = (alt, dr) => { const [la, lo] = destination(PAD.lat, PAD.lo
 
 // ---------------------------------------------------------------- the second stage / ship: ascent, orbit, and home again
 const vcirc = (rk) => Math.sqrt(MU / rk);
-const ascentInertial = (t) => toInertial(fixedOnTrack(ascAlt(t), ascDr(t)), t);
+const MOUNT_H = VEH === 'ss' ? 21 : 0;                          // metres: the top of the launch mount the stack stands on
+const ascentInertial = (t) => toInertial(fixedOnTrack(ascAlt(t) + MOUNT_H / 1000 * (1 - smooth(t / 30)), ascDr(t)), t);
 const ORB_K = VEH === 'ss' ? (OFFICIAL_ALT ? 1.0 : 0.997) : orbitKind === 'GTO' || orbitKind === 'MEO' ? 1.0 : 1.003;   // of the circular speed, at engine cutoff
 { // the ascent ends at the speed its orbit has over the turning ground, so nothing jumps at engine cutoff
   const a = ascentInertial(seco1 - 1), b = ascentInertial(seco1), r = b.clone().divideScalar(SCALE), up = r.clone().normalize();
@@ -700,7 +718,7 @@ if (VEH === 'ss') {
     if (t <= sE) return altA + (120 - altA) * smooth((t - homeA) / (sE - homeA));
     if (t <= tr) { const x = (t - sE) / (tr - sE); return 18 + 102 * (1 - Math.pow(smooth(x), 1.6)); }
     if (t <= lb) return 1.4 + (18 - 1.4) * (1 - clamp01((t - tr) / (lb - tr)));
-    return catchTop + (1.4 - catchTop) * (1 - smooth((t - lb) / (land - lb)));
+    return catchTop + (1.4 - catchTop) * Math.pow(1 - clamp01((t - lb) / (land - lb)), 2.6);   // (braking hard first, then easing into the arms)
   };
 }
 const shipCatchFixed = ecef(PAD.lat, PAD.lon, 0).normalize();
@@ -720,7 +738,7 @@ function shipApproach() {
   return (shipApproachV = a.normalize());
 }
 function s2Inertial(t) {                                         // scene units
-  if (t < 0) return toInertial(ecef(PAD.lat, PAD.lon, 0), t);
+  if (t < 0) return toInertial(ecef(PAD.lat, PAD.lon, MOUNT_H / 1000), t);
   if (t <= seco1) return ascentInertial(t);
   if (homeA == null || t < homeA) return orbitAt(t).multiplyScalar(SCALE);
   const land = A.s2.land;
@@ -742,7 +760,7 @@ const B_ASDS = [[149, 71, 79], [180, 98, 138], [220, 118, 212], [260, 124, 286],
   [400, 31, 548], [420, 19, 578], [440, 10.5, 590], [460, 5.2, 596], [480, 2.4, 598.8], [495, 0.45, 599.85], [500, 0.05, 599.99], [502, 0, 600]];
 const B_RTLS = [[149, 71, 79], [160, 80, 90], [185, 92, 98], [210, 103, 99], [240, 112, 92], [270, 116, 78], [300, 112, 62], [330, 98, 44], [360, 76, 27],
   [380, 58, 17], [400, 40, 9], [420, 24, 4], [440, 8, 1.2], [455, 1.4, 0.2], [462, 0.12, 0.01], [465, 0, 0]];
-const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.6, 0.9], [385, 0.5, 0.12], [392, 0.05, 0.01], [395, 0, 0]];   // (down to the pad: its hang lifts it into the arms, 88 m up)
+const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.6, 0.9], [378, 1.0, 0.3], [384, 0.36, 0.08], [388, 0.12, 0.02], [392, 0.03, 0.004], [395, 0, 0]];   // (down to the pad: its hang lifts it into the arms, 88 m up)
 const B_EXP = [[149, 71, 79], [200, 108, 165], [260, 128, 280], [320, 118, 390], [380, 78, 495], [430, 30, 575], [479, 0, 625]];
 function makeBooster(bd) {
   const k = bd.land.kind, sep = bd.sep;
@@ -808,7 +826,7 @@ function buildPath(fn, t0, t1) {
 function idxAt(path, t) { let lo = 0, hi = path.length - 1; if (t <= path[0].t) return 0; if (t >= path[hi].t) return hi; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (path[m].t <= t) lo = m; else hi = m; } return lo; }
 function sample(path, t) { const i = idxAt(path, t), a = path[i], b = path[Math.min(i + 1, path.length - 1)]; if (b === a || b.t === a.t) return a.p.clone(); return a.p.clone().lerp(b.p, clamp01((t - a.t) / (b.t - a.t))); }
 const s2Path = buildPath(s2Inertial, 0, END_T);
-const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, 0), t) : t > END_T ? s2Inertial(t) : sample(s2Path, t));   // (past the end straight from the flight: a frozen point would read as Earth-rotation speed and spin the ship)
+const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, MOUNT_H / 1000), t) : t > END_T ? s2Inertial(t) : sample(s2Path, t));   // (past the end straight from the flight: a frozen point would read as Earth-rotation speed and spin the ship)
 boosterDefs.forEach(bd => {
   const tEnd = bd.landT + (bd.land.kind === 'expend' ? 0 : 0);
   bd.path = buildPath(t => boosterInertial(bd, t), bd.sep, tEnd);
@@ -1127,7 +1145,7 @@ const H_TRUE = VEH === 'ss' ? 123 : VEH === 'fh' ? 70 : 70;            // metres
 // in the way near by, where the vehicle fills its place on the screen. It fades in from the distance at which the
 // vehicle stops being drawn at its full size on the screen (at the 400x cap) to three times that.
 function flownLineFade(pos) { const full = 400 * H_TRUE / (0.33 * Math.min(1, camera.aspect)) / 1000 * SCALE, d = camera.position.distanceTo(pos); return smooth((d - full) / (2 * full)); }
-function setFlownLine(line, tip, f) { line.material.opacity = 0.95 * f; line.visible = f > 0.02; tip.visible = tip.visible && f > 0.02; }
+function setFlownLine(line, tip, f) { f *= smooth((camera.position.distanceTo(tip.position) - M(3000)) / M(30000)); line.material.opacity = 0.95 * f; line.visible = f > 0.02; tip.visible = tip.visible && f > 0.02; }
 function enlarge(pos) { const cap = 1 + Math.max(0, (pos.length() / SCALE - RE) * 1000) / 120; return Math.max(1, Math.min(400, cap, 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE)) / 400; }
 const M = (m) => m * SCALE / 1000;                             // metres -> scene units
 const H_BOOST = VEH === 'ss' ? 71 : 47;                          // a landing booster's height, metres
@@ -1138,14 +1156,14 @@ const cyl = (r, len, mat, y) => { const m = new THREE.Mesh(new THREE.CylinderGeo
 function makePlume(len, rad, color) {
   const geo = new THREE.ConeGeometry(rad, len, 32, 1, true); geo.translate(0, -len / 2, 0);
   const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-    uniforms: { time: { value: 0 }, color: { value: new THREE.Color(color) }, spread: { value: 1 }, len: { value: 1 }, diamonds: { value: 0 }, vac: { value: 0 } },
-    vertexShader: `varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; uniform float spread; uniform float len;
+    uniforms: { time: { value: 0 }, color: { value: new THREE.Color(color) }, spread: { value: 1 }, len: { value: 1 }, diamonds: { value: 0 }, vac: { value: 0 }, nearFade: { value: 0 } },
+    vertexShader: `varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; varying float vDepth; uniform float spread; uniform float len;
 #include <common>
 #include <logdepthbuf_pars_vertex>
-    void main(){ vUv = uv; vec3 p = position; p.xz *= mix(spread, 1.0, uv.y); p.y *= len; vec4 mv = modelViewMatrix * vec4(p,1.0); vNv = normalize(normalMatrix * normal); vVv = normalize(-mv.xyz); gl_Position = projectionMatrix * mv;
+    void main(){ vUv = uv; vec3 p = position; p.xz *= mix(spread, 1.0, uv.y); p.y *= len; vec4 mv = modelViewMatrix * vec4(p,1.0); vNv = normalize(normalMatrix * normal); vVv = normalize(-mv.xyz); vDepth = -mv.z; gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
     }`,
-    fragmentShader: `uniform float time; uniform vec3 color; uniform float diamonds; uniform float vac; varying vec2 vUv; varying vec3 vNv; varying vec3 vVv;
+    fragmentShader: `uniform float time; uniform vec3 color; uniform float diamonds; uniform float vac; uniform float nearFade; varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; varying float vDepth;
 #include <logdepthbuf_pars_fragment>
     void main(){
 #include <logdepthbuf_fragment>
@@ -1154,11 +1172,13 @@ function makePlume(len, rad, color) {
       // shock diamonds: bright knots one after another behind the nozzle, while the air presses the flame in
       float k = (1.0 - vUv.y) * 9.0, dm = diamonds * exp(-pow((fract(k) - 0.5) * 5.0, 2.0)) * smoothstep(0.45, 0.92, vUv.y) * core;
       c += vec3(1.0, 0.92, 0.75) * dm * 1.4;
-      gl_FragColor = vec4(c * (0.6 + 0.8 * core), (a * f * core * 0.95 + dm * 0.6) * (1.0 - 0.45 * vac)); }` });
+      gl_FragColor = vec4(c * (0.6 + 0.8 * core) * (1.0 - 0.35 * vac), (a * f * core * 0.95 + dm * 0.6) * (1.0 - 0.72 * vac) * smoothstep(nearFade * 0.6, nearFade * 2.5, vDepth)); }` });
   return new THREE.Mesh(geo, mat);
 }
 const plumes = [];
-function plumeOn(parent, len, rad, color) { const p = makePlume(len * VS, rad * VS, color); parent.add(p); plumes.push(p); return p; }
+function plumeOn(parent, len, rad, color) { const p = makePlume(len * VS, rad * VS, color); p.userData.rad = rad * VS; parent.add(p); plumes.push(p); return p; }
+// each frame: how near the camera a flame starts fading - its own width at its widest, as drawn now
+function plumeNearFades() { plumes.forEach(p => { const u = p.material.uniforms; u.nearFade.value = p.userData.rad * (p.parent ? p.parent.scale.x : 1) * Math.max(1, u.spread.value) * 1.5; }); }
 const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.5, roughness: 0.55 });
 // the glow of re-entry heating, lit by the frame loop
 const heatSprite = (y, z, size) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('#ffd2a6', '#ff5a1f'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); s.position.set(0, y * VS, z * VS); s.scale.setScalar(size * VS); s.material.opacity = 0; s.visible = false; return s; };
@@ -1708,10 +1728,14 @@ const padStruct = addStructure(padFixed, g => {
       if (mount === 'olm') {                                      // six legs and the ring table, 20 m up
         for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; put(box(2.6, 18, 2.6, matTower, x + Math.cos(a) * 9.5, 9, z + Math.sin(a) * 9.5)); }
         const ringT = lathe([[5.4, 17.5], [10.8, 17.5], [10.8, 20.5], [5.4, 20.5], [5.4, 17.5]], matTower, 36); ringT.position.set(x * VS, 0, z * VS); put(ringT);
-      } else {                                                    // the mount over its trench, low walls either side
-        put(box(18, 0.2, 18, matDarkPad, x, 0.12, z));
-        put(box(3, 4, 22, matConcrete, x - 11, 2, z)); put(box(3, 4, 22, matConcrete, x + 11, 2, z));
-        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; put(box(1.6, 2.4, 1.6, matTower, x + Math.cos(a) * 6, 1.2, z + Math.sin(a) * 6)); }
+      } else {
+        const matClad = new THREE.MeshStandardMaterial({ color: 0xb3a689, metalness: 0.55, roughness: 0.45, emissive: 0x1a1712, emissiveIntensity: 0.4, flatShading: true });
+        const fr = new THREE.Mesh(new THREE.CylinderGeometry(8 * Math.SQRT2 * VS, 20 * Math.SQRT2 * VS, MOUNT_H * VS, 4, 1), matClad);
+        fr.rotation.y = Math.PI / 4; fr.position.set(x * VS, MOUNT_H / 2 * VS, z * VS); put(fr);
+        put(box(16.4, 0.8, 16.4, matTower, x, MOUNT_H - 0.4, z));            // the deck on top
+        for (const sx of [-1, 1]) put(box(1.2, 7, 13, matDarkPad, x + sx * 19.6, 3.5, z));   // the trench's mouths, east and west
+        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; put(box(2.4, 3.2, 2.4, matTower, x + Math.cos(a) * 6.4, MOUNT_H + 1.6, z + Math.sin(a) * 6.4)); }   // hold-downs
+        const ramp = box(10, 1, 26, matClad, x, MOUNT_H * 0.32, z + 24); ramp.rotation.x = -0.5; put(ramp);
       }
     };
     towerAt(active === 1 ? 0 : x1, active === 1 ? 0 : z1, 'olm');
@@ -2033,6 +2057,45 @@ function fitControls() {
   for (const k of ['tight1', 'tight2', 'tight3', 'tight4']) { if (row.scrollWidth <= row.clientWidth + 1) break; c.classList.add(k); }
 }
 addEventListener('resize', fitControls);
+// ---- the phone's control bar: play beside the time bar, three chips, each opening a menu of the same buttons
+const phoneUI = matchMedia('(max-width: 760px)');
+function placePlay() { const pl = $('play'), sr = document.querySelector('.scrub-row'), r1 = $('controls').querySelector('.row'); if (phoneUI.matches) { if (pl.parentNode !== sr) sr.prepend(pl); } else if (pl.parentNode !== r1) r1.prepend(pl); }
+placePlay(); try { phoneUI.addEventListener('change', () => { placePlay(); closeMenu(); }); } catch (e) {}
+const btnText = (b) => (b.textContent || '').trim();
+function mchips() {
+  const sp = document.querySelector('[data-speed].on'), cm = document.querySelector('[data-cam].on');
+  const st = '⏩ ' + (sp ? btnText(sp) : '') + ' ▾', ct = '🎥 ' + (cm ? btnText(cm) : '') + ' ▾';
+  if ($('m-speed').textContent !== st) $('m-speed').textContent = st;
+  if ($('m-cam').textContent !== ct) $('m-cam').textContent = ct;
+}
+setInterval(mchips, 300); mchips();
+let menuFor = null;
+function closeMenu() { $('mpop').classList.remove('open'); menuFor = null; }
+function openMenu(which, anchor) {
+  if (menuFor === which) { closeMenu(); return; }
+  const pop = $('mpop'); pop.innerHTML = ''; menuFor = which;
+  const items = which === 'speed' ? [...document.querySelectorAll('[data-speed]')]
+    : which === 'cam' ? [...document.querySelectorAll('[data-cam]')]
+    : [$('live'), $('ev-toggle'), $('cine')];
+  items.forEach(orig => {
+    if (orig.id === 'live' && orig.classList.contains('gone')) return;
+    const b = document.createElement('button'); b.type = 'button';
+    b.textContent = orig.id === 'cine' ? '🎬 ' + I.cine : orig.id === 'ev-toggle' ? '☰ ' + btnText(orig) : orig.id === 'live' ? '● ' + btnText(orig) : btnText(orig);
+    if (orig.id === 'live' && orig.classList.contains('wait')) b.disabled = true;
+    if (orig.classList.contains('on') || (orig.id === 'ev-toggle' && document.body.classList.contains('ev-open'))) b.classList.add('on');
+    b.onclick = (e) => { e.stopPropagation(); orig.click(); closeMenu(); mchips(); };
+    pop.appendChild(b);
+  });
+  pop.classList.add('open');
+  const r = anchor.getBoundingClientRect(), ctl = $('controls').getBoundingClientRect();
+  pop.style.bottom = (innerHeight - ctl.top + 8) + 'px';
+  const w = pop.offsetWidth, left = Math.max(10, Math.min(innerWidth - w - 10, r.left + r.width / 2 - w / 2));
+  pop.style.left = left + 'px';
+}
+$('m-speed').onclick = (e) => { e.stopPropagation(); openMenu('speed', e.currentTarget); };
+$('m-cam').onclick = (e) => { e.stopPropagation(); openMenu('cam', e.currentTarget); };
+$('m-more').onclick = (e) => { e.stopPropagation(); openMenu('more', e.currentTarget); };
+document.addEventListener('pointerdown', (e) => { if (menuFor && !$('mpop').contains(e.target) && !e.target.closest('.mchip')) closeMenu(); });
 try { document.fonts.ready.then(fitControls); } catch (e) {}
 const scrub = $('scrub');
 scrub.max = END_T;
@@ -2145,9 +2208,9 @@ function renderPip(separated, radial) {
   const frame = $('pip-frame');
   if (!pipWanted() || !separated) { frame.classList.remove('on'); return; }
   const ctl = $('controls').getBoundingClientRect(), W = innerWidth;
-  const w = Math.round(MOBILE ? W * 0.52 : Math.min(420, W * 0.3)), h = Math.round(w * 0.62);
-  const x = MOBILE ? W - w - 10 : W - w - 16, bottom = Math.round(innerHeight - ctl.top + 10);
-  const top = MOBILE ? Math.round($('hud-top').getBoundingClientRect().bottom + 10) : innerHeight - bottom - h;
+  const w = Math.round(MOBILE ? W * 0.46 : Math.min(420, W * 0.3)), h = Math.round(w * 0.62);
+  const x = MOBILE ? 10 : W - w - 16, bottom = Math.round(innerHeight - ctl.top + 10);
+  const top = innerHeight - bottom - h;
   // in a frame that follows the stage: behind and to one side of it, a little above
   const p = s2At(simT), v = heading(s2At, simT), side = new THREE.Vector3().crossVectors(v, radial).normalize();
   camB.aspect = w / h; camB.updateProjectionMatrix();
@@ -2353,7 +2416,7 @@ function frame() {
   updatePadClouds();
   upper.userData.plume.visible = s2Burn;
   upper.userData.plume.material.uniforms.time.value = ptime;
-  upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 5;
+  upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 3;
   { const a2 = pS2.length() / SCALE - RE; upper.userData.plume.material.uniforms.diamonds.value = 1 - smooth(a2 / 14); upper.userData.plume.material.uniforms.vac.value = smooth((a2 - 30) / 50); }
   const stackBurn = simT >= 0 && simT <= meco;
   vehLabel.visible = !separated;
@@ -2376,6 +2439,10 @@ function frame() {
   setTip(s2Tip, s2Path[si].p, separated ? upper.position : pS2, simT > 0);
   setFlownLine(s2Done, s2Tip, flownLineFade(pS2));
   lineMats.forEach(m => m.resolution.set(innerWidth, innerHeight));
+  plumeNearFades();
+  { const nearFade = (pos) => smooth((camera.position.distanceTo(pos) - M(3000)) / M(30000));
+    s2Ahead.material.opacity = 0.22 * nearFade(pS2); s2Ahead.visible = s2Ahead.material.opacity > 0.005;
+    boosterDefs.forEach(bd => { bd.ahead.material.opacity = 0.22 * nearFade(bd.at(simT)); bd.ahead.visible = bd.ahead.material.opacity > 0.005; }); }
 
   sites.forEach(o => { const d = camera.position.distanceTo(o.getWorldPosition(tmp)); o.scale.setScalar(d * 0.012); o.children[0].visible = d < 9; o.material.opacity = ground ? 0 : 1; });
   evMarkers.forEach(({ e, m, l }) => {
@@ -2429,7 +2496,7 @@ function frame() {
     } else
     camera.position.copy(base).addScaledVector(up, M(15)).addScaledVector(east, far).addScaledVector(north, far * 0.35);
     const catchView = camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2';
-    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, M(70)), 0.15) : camMode === 'pad' ? base.clone().addScaledVector(up, M(0.5 * H_TRUE)).lerp(pS2.clone().addScaledVector(pS2.clone().normalize(), M(0.5 * H_TRUE) * vScale * 400), smooth(simT / 8)) : focusFn(camTarget)(simT).addScaledVector(up, M(0.45 * H_BOOST));
+    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, M(70)), 0.15) : camMode === 'pad' ? base.clone().addScaledVector(up, M(0.5 * H_TRUE + MOUNT_H)).lerp(pS2.clone().addScaledVector(pS2.clone().normalize(), M(0.5 * H_TRUE) * vScale * 400), smooth(simT / 8)) : focusFn(camTarget)(simT).addScaledVector(up, M(0.45 * H_BOOST));
     controls.target.copy(look);
   }
   setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
@@ -2437,8 +2504,8 @@ function frame() {
   // ground: there it stops 30 km up, and zooming and turning slow down with the height, as they do on a map.
   if (controls.target.lengthSq() < R * R * 0.25) {
     const dist = camera.position.length(), h = Math.max(0.02, dist - R);
-    controls.minDistance = R + 0.03; controls.zoomSpeed = Math.max(0.06, Math.min(1, 1.6 * h / dist)); controls.rotateSpeed = Math.max(0.03, Math.min(1, 1.3 * h / dist));
-  } else { controls.minDistance = 0.00004; controls.zoomSpeed = 1; controls.rotateSpeed = 1; }
+    controls.minDistance = R + 0.03; controls.zoomSpeed = Math.max(0.04, Math.min(0.6, 0.9 * h / dist)); controls.rotateSpeed = Math.max(0.02, Math.min(0.45, 0.7 * h / dist)); controls.enablePan = false; controls.dampingFactor = 0.14;
+  } else { controls.minDistance = 0.00004; controls.zoomSpeed = 1; controls.rotateSpeed = 1; controls.enablePan = true; controls.dampingFactor = 0.08; }
   controls.update();
   // (and no camera, however it is dragged, goes under the ground)
   if (camera.position.length() < R + M(10)) camera.position.setLength(R + M(10));   // (10 m up: the ground cameras stand by the pad at eye level)
