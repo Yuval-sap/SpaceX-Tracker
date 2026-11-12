@@ -653,7 +653,7 @@ const fixedOnTrack = (alt, dr) => { const [la, lo] = destination(PAD.lat, PAD.lo
 
 // ---------------------------------------------------------------- the second stage / ship: ascent, orbit, and home again
 const vcirc = (rk) => Math.sqrt(MU / rk);
-const MOUNT_H = VEH === 'ss' ? 21 : 0;                          // metres: the top of the launch mount the stack stands on
+const MOUNT_H = VEH === 'ss' ? 21 : 0, ARM_Y = 110;            // (ARM_Y: metres, where the tower's arms close on a catch)                          // metres: the top of the launch mount the stack stands on
 const ascentInertial = (t) => toInertial(fixedOnTrack(ascAlt(t) + MOUNT_H / 1000 * (1 - smooth(t / 30)), ascDr(t)), t);
 const ORB_K = VEH === 'ss' ? (OFFICIAL_ALT ? 1.0 : 0.997) : orbitKind === 'GTO' || orbitKind === 'MEO' ? 1.0 : 1.003;   // of the circular speed, at engine cutoff
 { // the ascent ends at the speed its orbit has over the turning ground, so nothing jumps at engine cutoff
@@ -717,8 +717,8 @@ if (VEH === 'ss') {
   homeAlt = (t) => {
     if (t <= sE) return altA + (120 - altA) * smooth((t - homeA) / (sE - homeA));
     if (t <= tr) { const x = (t - sE) / (tr - sE); return 18 + 102 * (1 - Math.pow(smooth(x), 1.6)); }
-    if (t <= lb) return 1.4 + (18 - 1.4) * (1 - clamp01((t - tr) / (lb - tr)));
-    return catchTop + (1.4 - catchTop) * Math.pow(1 - clamp01((t - lb) / (land - lb)), 2.6);   // (braking hard first, then easing into the arms)
+    if (t <= lb) return 0.55 + (18 - 0.55) * (1 - clamp01((t - tr) / (lb - tr)));
+    return catchTop + (0.55 - catchTop) * Math.pow(1 - clamp01((t - lb) / (land - lb)), 2.2);   // (braking hard first, then easing into the arms)
   };
 }
 const shipCatchFixed = ecef(PAD.lat, PAD.lon, 0).normalize();
@@ -760,7 +760,7 @@ const B_ASDS = [[149, 71, 79], [180, 98, 138], [220, 118, 212], [260, 124, 286],
   [400, 31, 548], [420, 19, 578], [440, 10.5, 590], [460, 5.2, 596], [480, 2.4, 598.8], [495, 0.45, 599.85], [500, 0.05, 599.99], [502, 0, 600]];
 const B_RTLS = [[149, 71, 79], [160, 80, 90], [185, 92, 98], [210, 103, 99], [240, 112, 92], [270, 116, 78], [300, 112, 62], [330, 98, 44], [360, 76, 27],
   [380, 58, 17], [400, 40, 9], [420, 24, 4], [440, 8, 1.2], [455, 1.4, 0.2], [462, 0.12, 0.01], [465, 0, 0]];
-const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.6, 0.9], [378, 1.0, 0.3], [384, 0.36, 0.08], [388, 0.12, 0.02], [392, 0.03, 0.004], [395, 0, 0]];   // (down to the pad: its hang lifts it into the arms, 88 m up)
+const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.2, 0.8], [376, 0.95, 0.28], [381, 0.42, 0.1], [385, 0.18, 0.03], [389, 0.07, 0.008], [392, 0.025, 0.002], [395, 0, 0]];   // (down to the pad: its hang lifts it into the arms, 88 m up)
 const B_EXP = [[149, 71, 79], [200, 108, 165], [260, 128, 280], [320, 118, 390], [380, 78, 495], [430, 30, 575], [479, 0, 625]];
 function makeBooster(bd) {
   const k = bd.land.kind, sep = bd.sep;
@@ -1172,7 +1172,7 @@ function makePlume(len, rad, color) {
       // shock diamonds: bright knots one after another behind the nozzle, while the air presses the flame in
       float k = (1.0 - vUv.y) * 9.0, dm = diamonds * exp(-pow((fract(k) - 0.5) * 5.0, 2.0)) * smoothstep(0.45, 0.92, vUv.y) * core;
       c += vec3(1.0, 0.92, 0.75) * dm * 1.4;
-      gl_FragColor = vec4(c * (0.6 + 0.8 * core) * (1.0 - 0.35 * vac), (a * f * core * 0.95 + dm * 0.6) * (1.0 - 0.72 * vac) * smoothstep(nearFade * 0.6, nearFade * 2.5, vDepth)); }` });
+      gl_FragColor = vec4(c * (0.6 + 0.8 * core) * (1.0 - 0.5 * vac), (a * f * core * 0.95 + dm * 0.6) * (1.0 - 0.86 * vac) * smoothstep(nearFade * 0.6, nearFade * 2.5, vDepth)); }` });
   return new THREE.Mesh(geo, mat);
 }
 const plumes = [];
@@ -1419,7 +1419,7 @@ boosterDefs.forEach(bd => {
   bd.label.position.y = (VEH === 'ss' ? 85 : 55) * VS;
   bd.glow = glowSprite('#ffae42'); scene.add(bd.glow);
   // enlarged models: a caught Super Heavy hangs from the tower's arms, a Falcon stands on its legs
-  bd.hang = bd.land.kind === 'catch' ? 22 : bd.land.kind === 'expend' ? 0 : 3.2;
+  bd.hang = bd.land.kind === 'catch' ? ARM_Y - 66 : bd.land.kind === 'expend' ? 0 : 3.2;
   bd.sideOff = bd.who === 'side' ? bd.side * 30 : 0;        // Falcon Heavy's two landing zones, apart enough to see both
   bd.heatWin = bd.land.kind === 'expend' ? null : VEH === 'ss' ? [bd.bbEnd + 120, bd.lbStart] : bd.entryEnd != null ? [bd.entryEnd - 8, bd.entryEnd + 40] : null;
 });
@@ -1552,7 +1552,7 @@ function pumpTiles() {
       tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (t.state === 'gone') { tex.dispose(); return; }
       if (t.lv.merc) {                                             // an empty (black) picture where it has no photo: leave it to the level below
-        try { const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d'); g.drawImage(tex.image, 0, 0, 8, 8);
+        try { const g = blackProbe(); g.clearRect(0, 0, 8, 8); g.drawImage(tex.image, 0, 0, 8, 8);
           const d = g.getImageData(0, 0, 8, 8).data; let sum = 0; for (let k = 0; k < d.length; k += 4) sum += d[k] + d[k + 1] + d[k + 2];
           if (sum / 64 < 12) { tex.dispose(); t.state = 'failed'; return; } } catch (e) {}
       }
@@ -1571,20 +1571,23 @@ function wantTile(lv, y, x, now) {
   x = (x % cols + cols) % cols;
   const key = lv.id + '/' + y + '/' + x;
   let t = tiles.get(key);
-  if (!t) { t = makeTile(lv, y, x); tiles.set(key, t); }
+  if (!t) { if (tilesMadeNow >= 10) return; tilesMadeNow++; t = makeTile(lv, y, x); tiles.set(key, t); }   // (ten new tiles a round at most; the rest next round)
   if (t.state === 'failed') return;
   t.last = now; tileWanted.add(key);
 }
 let tileClock = 1, tileFocus = null, tileFocusAt = 0, tileSpeed = 0, groundFocus = null;
 const tileReady = [];                                            // loaded, waiting their turn to go on screen
+// one small canvas kept in main memory for the empty-picture test (a canvas on the graphics card would stall to read back)
+let blackProbeG = null; const blackProbe = () => blackProbeG || (blackProbeG = Object.assign(document.createElement('canvas'), { width: 8, height: 8 }).getContext('2d', { willReadFrequently: true }));
+let tilesMadeNow = 0;
 function updateTiles(dt) {
-  // (two new pictures a frame at most: uploading many at once stalled a frame for a tenth of a second)
-  for (let k = 0; k < 2 && tileReady.length; k++) { const [t, tex] = tileReady.shift(); if (t.state === 'gone') { tex.dispose(); continue; } t.uMap.value = tex; t.state = 'ready'; }
+  // (one new picture a frame: uploading several at once stalled a frame)
+  for (let k = 0; k < 1 && tileReady.length; k++) { const [t, tex] = tileReady.shift(); if (t.state === 'gone') { tex.dispose(); continue; } t.uMap.value = tex; t.state = 'ready'; }
   tiles.forEach(t => { if (t.mesh.visible && t.state === 'ready' && t.uOp.value < 1) t.uOp.value = Math.min(1, t.uOp.value + dt * 2.5); });
   tileClock += dt;
   if (tileClock < 0.3) return;
   tileClock = 0;
-  tileWanted.clear();
+  tileWanted.clear(); tilesMadeNow = 0;
   const now = performance.now() / 1000, tgt = controls.target;
   // 2. the corridor: under the flight from a little behind the vehicle to well ahead of it - at least a quarter of
   // an hour of flight, or twelve seconds of playback at the speed it is running at
@@ -1721,7 +1724,7 @@ const padStruct = addStructure(padFixed, g => {
     const put = (m) => { g.add(m); all.push(m); return m; };
     const towerAt = (x, z, mount) => {
       put(lattice(12, 146, 12, x, 73, z - 17));
-      put(box(14, 6, 5, matTower, x, 88, z - 10.5));            // the arms' carriage
+      put(box(14, 6, 5, matTower, x, ARM_Y, z - 10.5));         // the arms' carriage
       put(box(2, 2.4, 12, matTower, x, 120, z - 6));            // the ship's quick-disconnect arm
       put(box(1.6, 26, 1.6, matTower, x + 3, 159, z - 17)); put(box(1.6, 2, 18, matTower, x + 3, 171, z - 9));   // the crane
       const pad = slab(62, 2); pad.position.x = x * VS; pad.position.z = z * VS; put(pad);
@@ -1749,10 +1752,10 @@ const padStruct = addStructure(padFixed, g => {
       put(box(60, 1.2, 1.2, matTower, fx + 38, 4, fz - 24));       // the pipe rack to the pad
       put(box(40, 10, 25, matBuilding, fx + 244, 5, fz + 79));    // the ground-systems building
     }
-    g.userData.arms = [1, -1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 5.9 * VS, 88 * VS, -11 * VS); piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); g.add(piv); return piv; });
+    g.userData.arms = [1, -1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 5.9 * VS, ARM_Y * VS, -11 * VS); piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); g.add(piv); return piv; });
     if (onePad) {                                                 // the other tower's arms, standing open
       const ox = active === 1 ? x2 : x1, oz = active === 1 ? z2 : z1;
-      [1, -1].forEach(sd => { const piv = new THREE.Group(); piv.position.set((ox + sd * 5.9) * VS, 88 * VS, (oz - 11) * VS); piv.rotation.y = sd * 0.55; piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); put(piv); });
+      [1, -1].forEach(sd => { const piv = new THREE.Group(); piv.position.set((ox + sd * 5.9) * VS, ARM_Y * VS, (oz - 11) * VS); piv.rotation.y = sd * 0.55; piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); put(piv); });
     }
     g.userData.tall = all.concat(g.userData.arms);
   } else {                                                       // the pad and the strongback
@@ -2184,8 +2187,11 @@ function autoCamNow(force) {
 }
 // automatic pacing: slow near the events, fast through the long coasts
 const EV_TIMES = EVENTS.map(e => e.t).concat(boosterDefs.map(b => b.landT)).sort((a, b) => a - b);
+const LANDING_WINDOWS = boosterDefs.filter(b => b.land.kind !== 'expend' && b.lbStart != null).map(b => [b.lbStart - 8, b.landT + 10])
+  .concat(VEH === 'ss' && A.s2.lbStart != null ? [[A.s2.lbStart - 20, A.s2.land + 12]] : []);
 function autoSpeed(t) {
   if (t < 0) return 2;
+  if (LANDING_WINDOWS.some(([a, b]) => t >= a && t <= b)) return 1;
   let prev = -Infinity, next = Infinity;
   for (const x of EV_TIMES) { if (x <= t) prev = x; else { next = x; break; } }
   const near = Math.min(t - prev, next - t);
@@ -2331,7 +2337,7 @@ function frame() {
       shipZ = radial.clone().multiplyScalar(-Math.cos(th)).addScaledVector(h, Math.sin(th));
     }
     // a caught ship hangs from the tower's arms
-    const shipHang = VEH === 'ss' && shipCatch && towerShown ? 48 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
+    const shipHang = VEH === 'ss' && shipCatch && towerShown ? (ARM_Y - 44) * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
     const tau = simT - sepT, lit = Math.max(0, simT - ses1);
     const gap = (upperBase + 14 * (1 - Math.exp(-tau / 3)) + 70 * (1 - Math.exp(-lit / 12))) * (1 - smooth((tau - 25) / 60));
     const along = d.clone().normalize();
@@ -2416,8 +2422,8 @@ function frame() {
   updatePadClouds();
   upper.userData.plume.visible = s2Burn;
   upper.userData.plume.material.uniforms.time.value = ptime;
-  upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 3;
-  { const a2 = pS2.length() / SCALE - RE; upper.userData.plume.material.uniforms.diamonds.value = 1 - smooth(a2 / 14); upper.userData.plume.material.uniforms.vac.value = smooth((a2 - 30) / 50); }
+  upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 2;
+  { const a2 = pS2.length() / SCALE - RE; upper.userData.plume.material.uniforms.diamonds.value = 1 - smooth(a2 / 14); upper.userData.plume.material.uniforms.vac.value = smooth((a2 - 30) / 50); upper.userData.plume.material.uniforms.len.value = 1 - 0.45 * smooth((a2 - 30) / 50); }
   const stackBurn = simT >= 0 && simT <= meco;
   vehLabel.visible = !separated;
   vehLabel.position.copy(pS2).add(new THREE.Vector3(0, (VEH === 'ss' ? 135 : 70) * VS * vScale, 0).applyQuaternion(qStack));
@@ -2496,7 +2502,7 @@ function frame() {
     } else
     camera.position.copy(base).addScaledVector(up, M(15)).addScaledVector(east, far).addScaledVector(north, far * 0.35);
     const catchView = camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2';
-    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, M(70)), 0.15) : camMode === 'pad' ? base.clone().addScaledVector(up, M(0.5 * H_TRUE + MOUNT_H)).lerp(pS2.clone().addScaledVector(pS2.clone().normalize(), M(0.5 * H_TRUE) * vScale * 400), smooth(simT / 8)) : focusFn(camTarget)(simT).addScaledVector(up, M(0.45 * H_BOOST));
+    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, M(ARM_Y - 20)), 0.15) : camMode === 'pad' ? base.clone().addScaledVector(up, M(0.5 * H_TRUE + MOUNT_H)).lerp(pS2.clone().addScaledVector(pS2.clone().normalize(), M(0.5 * H_TRUE) * vScale * 400), smooth(simT / 8)) : focusFn(camTarget)(simT).addScaledVector(up, M(0.45 * H_BOOST));
     controls.target.copy(look);
   }
   setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
