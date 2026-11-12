@@ -61,6 +61,18 @@
   .ev-row.done .chk { color: #34d399; opacity: 1; }
   .ev-row .estTag { font: 400 11px 'Rubik', sans-serif; color: #a1a1aa; }
 
+  /* the cinematic view: only the picture (a faint button in the corner brings everything back) */
+  body.cine #hud-top, body.cine #events, body.cine #controls, body.cine #credit, body.cine #close { opacity: 0; pointer-events: none; }
+  #hud-top, #events, #controls, #credit, #close { transition: opacity 0.35s; }
+  #cine-exit { display: none; position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); inset-inline-end: 14px; z-index: 6; width: 40px; height: 40px; border-radius: 999px; padding: 0; opacity: 0.35; background: rgba(8, 12, 22, 0.6); }
+  #cine-exit:hover { opacity: 1; }
+  body.cine #cine-exit { display: grid; place-items: center; }
+  body.cine .label3d { opacity: 0; }
+  /* the second view, during a landing: the frame drawn round where it is rendered */
+  #pip-frame { display: none; position: fixed; z-index: 3; border: 1px solid rgba(120, 190, 255, 0.45); border-radius: 12px; pointer-events: none; box-shadow: 0 8px 30px -10px rgba(0, 0, 0, 0.8); }
+  #pip-frame.on { display: block; }
+  #pip-label { position: absolute; top: 6px; inset-inline-start: 8px; font: 600 11px 'Rubik', sans-serif; color: #e7eef8; background: rgba(5, 10, 20, 0.6); padding: 2px 8px; border-radius: 999px; }
+  body.cine #pip-frame { border-color: transparent; }
   #close { position: fixed; top: 16px; inset-inline-end: 16px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; line-height: 1; padding: 0; z-index: 5; background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
 
   #controls { left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(1020px, calc(100vw - 32px)); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
@@ -69,8 +81,10 @@
   @media (hover: hover) { button:hover { background: rgba(255, 255, 255, 0.12); } }
   button.on { background: rgba(95, 212, 255, 0.18); border-color: rgba(95, 212, 255, 0.55); color: #fff; }
   #play { width: 44px; font-size: 15px; }
-  #live { display: none; font-weight: 700; }
-  #live.avail { display: inline-block; }
+  #live { font-weight: 700; }
+  #live.gone { display: none; }
+  #live.wait { opacity: 0.6; cursor: default; }
+  #live.wait::before { color: #71717a; }
   #live::before { content: '●'; color: #ef4444; margin-inline-end: 5px; }
   #live.on { background: rgba(239, 68, 68, 0.22); border-color: rgba(239, 68, 68, 0.75); color: #fff; }
   #live.avail:not(.on)::before { animation: livePulse 1.2s ease-in-out infinite; }
@@ -78,7 +92,13 @@
   .sep { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.12); margin: 0 3px; }
   .lbl { font-size: 12px; color: var(--muted); }
   .lbl .ico { display: none; }
-  #scrub { flex: 1; direction: ltr; accent-color: var(--accent); min-width: 0; }
+  .scrubwrap { position: relative; flex: 1; min-width: 0; display: flex; padding-top: 8px; }
+  #scrub { flex: 1; direction: ltr; accent-color: var(--accent); min-width: 0; margin: 0; }
+  /* one mark per event, where it falls on the bar (the thumb's 8px either end kept clear): grey to come, green done, as in the list */
+  #ticks { position: absolute; left: 8px; right: 8px; top: 0; height: 9px; pointer-events: none; }
+  .tk { position: absolute; top: 1px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #52525b; pointer-events: auto; cursor: pointer; box-shadow: 0 0 0 1.5px rgba(2, 4, 10, 0.85); }
+  .tk.done { background: #34d399; }
+  .tk:hover { transform: scale(1.5); }
   #note { font-size: 11px; color: var(--muted); line-height: 1.4; }
   /* the imagery's credit (its licence asks for one): a faint line under the controls, outside them */
   #credit { position: fixed; left: 0; right: 0; bottom: 2px; font-size: 9px; color: var(--muted); opacity: 0.55; direction: ltr; text-align: center; pointer-events: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
@@ -128,6 +148,8 @@
 </div>
 
 <button id="close" type="button" aria-label="Close">×</button>
+<button id="cine-exit" type="button" aria-label="">✕</button>
+<div id="pip-frame"><span id="pip-label"></span></div>
 <div id="events" class="panel"><h3 id="ev-h"></h3><div id="ev-list"></div></div>
 
 <div id="controls" class="panel">
@@ -149,8 +171,9 @@
     <button type="button" data-cam="pad"></button>
     <button type="button" data-cam="earth"></button>
     <button type="button" id="ev-toggle"></button>
+    <button type="button" id="cine" aria-label="">🎬</button>
   </div>
-  <div class="row"><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div>
+  <div class="row"><div class="scrubwrap"><div id="ticks" dir="ltr"></div><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div></div>
 </div>
 <div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
 
@@ -158,23 +181,23 @@
 // Hand-written UI strings, one entry per language the main site offers (iw folded into he, zh-CN into zh).
 // "Falcon 9", "Falcon Heavy", "Starship", "Super Heavy" and SpaceX's acronyms stay as proper names.
 window.LSIM_I18N = {
-  en: { live: 'Live', dir: 'ltr', title: 'Launch simulation', loading: 'Loading Earth…', noGl: 'This device cannot show the 3D simulation (WebGL is unavailable).', countdown: 'Countdown', onPad: '{v} on the launch pad', alt: 'Altitude', spd: 'Speed', dr: 'Downrange', timeline: 'Timeline', speed: 'Speed:', auto: 'Auto', camera: 'Camera:', chase: 'Follow', booster: 'Booster', pad: 'Ground', earth: 'Earth', est: 'estimate', liftoff: 'Liftoff', liftoffD: 'The rocket leaves the launch pad', s2: 'Second stage', side: 'Side booster', center: 'Center core', landingShip: 'landing ship', landingZone: 'landing zone', tower: 'tower catch', pad2: 'launch pad', close: 'Close', play: 'Play', pause: 'Pause', events: 'Events', note: 'Reconstructed from SpaceX’s official timeline for this launch and a typical {v} flight profile. Events marked “estimate” are not in the official timeline. Vehicles are enlarged for visibility.', noteNoTl: 'SpaceX has not published the timeline for this launch yet, so every event is estimated from a typical {v} flight profile. Vehicles are enlarged for visibility.', none: 'No launch in the hero right now.' },
-  he: { live: 'חי', dir: 'rtl', title: 'סימולציית שיגור', loading: 'טוען את כדור הארץ…', noGl: 'המכשיר הזה לא יכול להציג את סימולציית התלת־ממד (WebGL לא זמין).', countdown: 'ספירה לאחור', onPad: '{v} על כן השיגור', alt: 'גובה', spd: 'מהירות', dr: 'טווח', timeline: 'ציר הזמן', speed: 'מהירות:', auto: 'אוטומטי', camera: 'מצלמה:', chase: 'מעקב', booster: 'בוסטר', pad: 'מהקרקע', earth: 'כדור הארץ', est: 'הערכה', liftoff: 'המראה', liftoffD: 'הרקטה עוזבת את כן השיגור', s2: 'שלב שני', side: 'בוסטר צד', center: 'ליבה מרכזית', landingShip: 'ספינת נחיתה', landingZone: 'אזור נחיתה', tower: 'תפיסה במגדל', pad2: 'כן שיגור', close: 'סגירה', play: 'נגן', pause: 'עצור', events: 'אירועים', note: 'משוחזר מציר הזמן הרשמי של SpaceX לשיגור זה ומפרופיל טיסה טיפוסי של {v}. אירועים שמסומנים "הערכה" לא מופיעים בציר הזמן הרשמי. כלי הטיס מוגדלים לצורך התצוגה.', noteNoTl: 'SpaceX עוד לא פרסמה את ציר הזמן של השיגור הזה, ולכן כל האירועים מוערכים לפי פרופיל טיסה טיפוסי של {v}. כלי הטיס מוגדלים לצורך התצוגה.', none: 'אין כרגע שיגור בכותרת.' },
-  es: { live: 'En vivo', dir: 'ltr', title: 'Simulación del lanzamiento', loading: 'Cargando la Tierra…', noGl: 'Este dispositivo no puede mostrar la simulación 3D (WebGL no está disponible).', countdown: 'Cuenta atrás', onPad: '{v} en la plataforma', alt: 'Altitud', spd: 'Velocidad', dr: 'Distancia', timeline: 'Cronología', speed: 'Velocidad:', auto: 'Auto', camera: 'Cámara:', chase: 'Seguir', booster: 'Propulsor', pad: 'Suelo', earth: 'Tierra', est: 'estimación', liftoff: 'Despegue', liftoffD: 'El cohete abandona la plataforma', s2: 'Segunda etapa', side: 'Propulsor lateral', center: 'Núcleo central', landingShip: 'barco de aterrizaje', landingZone: 'zona de aterrizaje', tower: 'captura en la torre', pad2: 'plataforma', close: 'Cerrar', play: 'Reproducir', pause: 'Pausa', events: 'Eventos', note: 'Reconstruido a partir de la cronología oficial de SpaceX para este lanzamiento y un perfil de vuelo típico de {v}. Los eventos marcados como «estimación» no figuran en la cronología oficial. Los vehículos están ampliados para verse mejor.', noteNoTl: 'SpaceX aún no ha publicado la cronología de este lanzamiento, así que todos los eventos se estiman con un perfil de vuelo típico de {v}. Los vehículos están ampliados para verse mejor.', none: 'Ahora no hay ningún lanzamiento destacado.' },
-  fr: { live: 'En direct', dir: 'ltr', title: 'Simulation du lancement', loading: 'Chargement de la Terre…', noGl: 'Cet appareil ne peut pas afficher la simulation 3D (WebGL indisponible).', countdown: 'Compte à rebours', onPad: '{v} sur le pas de tir', alt: 'Altitude', spd: 'Vitesse', dr: 'Distance', timeline: 'Chronologie', speed: 'Vitesse :', auto: 'Auto', camera: 'Caméra :', chase: 'Suivre', booster: 'Booster', pad: 'Sol', earth: 'Terre', est: 'estimation', liftoff: 'Décollage', liftoffD: 'La fusée quitte le pas de tir', s2: 'Deuxième étage', side: 'Booster latéral', center: 'Corps central', landingShip: 'barge d’atterrissage', landingZone: 'zone d’atterrissage', tower: 'capture par la tour', pad2: 'pas de tir', close: 'Fermer', play: 'Lecture', pause: 'Pause', events: 'Événements', note: 'Reconstitué à partir de la chronologie officielle de SpaceX pour ce lancement et d’un profil de vol typique de {v}. Les événements marqués « estimation » ne figurent pas dans la chronologie officielle. Les véhicules sont agrandis pour être visibles.', noteNoTl: 'SpaceX n’a pas encore publié la chronologie de ce lancement : tous les événements sont estimés d’après un profil de vol typique de {v}. Les véhicules sont agrandis pour être visibles.', none: 'Aucun lancement à la une pour le moment.' },
-  de: { live: 'Live', dir: 'ltr', title: 'Startsimulation', loading: 'Erde wird geladen…', noGl: 'Dieses Gerät kann die 3D-Simulation nicht anzeigen (WebGL nicht verfügbar).', countdown: 'Countdown', onPad: '{v} auf der Startrampe', alt: 'Höhe', spd: 'Geschwindigkeit', dr: 'Entfernung', timeline: 'Zeitplan', speed: 'Tempo:', auto: 'Auto', camera: 'Kamera:', chase: 'Folgen', booster: 'Booster', pad: 'Boden', earth: 'Erde', est: 'Schätzung', liftoff: 'Abheben', liftoffD: 'Die Rakete verlässt die Startrampe', s2: 'Zweite Stufe', side: 'Seitenbooster', center: 'Zentralstufe', landingShip: 'Landeschiff', landingZone: 'Landezone', tower: 'Fang am Turm', pad2: 'Startrampe', close: 'Schließen', play: 'Abspielen', pause: 'Pause', events: 'Ereignisse', note: 'Rekonstruiert aus dem offiziellen SpaceX-Zeitplan dieses Starts und einem typischen {v}-Flugprofil. Als „Schätzung“ markierte Ereignisse stehen nicht im offiziellen Zeitplan. Fahrzeuge sind zur besseren Sichtbarkeit vergrößert.', noteNoTl: 'SpaceX hat den Zeitplan dieses Starts noch nicht veröffentlicht, daher sind alle Ereignisse nach einem typischen {v}-Flugprofil geschätzt. Fahrzeuge sind zur besseren Sichtbarkeit vergrößert.', none: 'Derzeit ist kein Start hervorgehoben.' },
-  ru: { live: 'Эфир', dir: 'ltr', title: 'Симуляция запуска', loading: 'Загрузка Земли…', noGl: 'Это устройство не может показать 3D-симуляцию (WebGL недоступен).', countdown: 'Обратный отсчёт', onPad: '{v} на стартовой площадке', alt: 'Высота', spd: 'Скорость', dr: 'Дальность', timeline: 'Хронология', speed: 'Скорость:', auto: 'Авто', camera: 'Камера:', chase: 'Следовать', booster: 'Ускоритель', pad: 'С земли', earth: 'Земля', est: 'оценка', liftoff: 'Старт', liftoffD: 'Ракета покидает стартовую площадку', s2: 'Вторая ступень', side: 'Боковой ускоритель', center: 'Центральный блок', landingShip: 'посадочная платформа', landingZone: 'посадочная зона', tower: 'захват башней', pad2: 'стартовая площадка', close: 'Закрыть', play: 'Пуск', pause: 'Пауза', events: 'События', note: 'Восстановлено по официальной хронологии SpaceX для этого запуска и типичному профилю полёта {v}. События с пометкой «оценка» отсутствуют в официальной хронологии. Аппараты увеличены для наглядности.', noteNoTl: 'SpaceX ещё не опубликовала хронологию этого запуска, поэтому все события оценены по типичному профилю полёта {v}. Аппараты увеличены для наглядности.', none: 'Сейчас нет выделенного запуска.' },
-  zh: { live: '实时', dir: 'ltr', title: '发射模拟', loading: '正在加载地球…', noGl: '此设备无法显示 3D 模拟（WebGL 不可用）。', countdown: '倒计时', onPad: '{v} 位于发射台', alt: '高度', spd: '速度', dr: '航程', timeline: '时间线', speed: '速度：', auto: '自动', camera: '镜头：', chase: '跟随', booster: '助推器', pad: '地面', earth: '地球', est: '估计', liftoff: '升空', liftoffD: '火箭离开发射台', s2: '第二级', side: '侧助推器', center: '中央芯级', landingShip: '着陆船', landingZone: '着陆区', tower: '发射塔捕获', pad2: '发射台', close: '关闭', play: '播放', pause: '暂停', events: '事件', note: '根据 SpaceX 为本次发射发布的官方时间线以及 {v} 的典型飞行剖面重建。标注“估计”的事件不在官方时间线中。为便于观看，飞行器已放大显示。', noteNoTl: 'SpaceX 尚未发布本次发射的时间线，因此所有事件均按 {v} 的典型飞行剖面估计。为便于观看，飞行器已放大显示。', none: '目前没有焦点发射。' },
-  it: { live: 'In diretta', dir: 'ltr', title: 'Simulazione del lancio', loading: 'Caricamento della Terra…', noGl: 'Questo dispositivo non può mostrare la simulazione 3D (WebGL non disponibile).', countdown: 'Conto alla rovescia', onPad: '{v} sulla rampa', alt: 'Altitudine', spd: 'Velocità', dr: 'Distanza', timeline: 'Cronologia', speed: 'Velocità:', auto: 'Auto', camera: 'Telecamera:', chase: 'Segui', booster: 'Booster', pad: 'Da terra', earth: 'Terra', est: 'stima', liftoff: 'Decollo', liftoffD: 'Il razzo lascia la rampa', s2: 'Secondo stadio', side: 'Booster laterale', center: 'Stadio centrale', landingShip: 'nave di atterraggio', landingZone: 'zona di atterraggio', tower: 'cattura alla torre', pad2: 'rampa', close: 'Chiudi', play: 'Riproduci', pause: 'Pausa', events: 'Eventi', note: 'Ricostruito dalla cronologia ufficiale di SpaceX per questo lancio e da un profilo di volo tipico di {v}. Gli eventi segnati come «stima» non sono nella cronologia ufficiale. I veicoli sono ingranditi per essere visibili.', noteNoTl: 'SpaceX non ha ancora pubblicato la cronologia di questo lancio, quindi tutti gli eventi sono stimati da un profilo di volo tipico di {v}. I veicoli sono ingranditi per essere visibili.', none: 'Nessun lancio in evidenza al momento.' },
-  cs: { live: 'Živě', dir: 'ltr', title: 'Simulace startu', loading: 'Načítání Země…', noGl: 'Toto zařízení nemůže zobrazit 3D simulaci (WebGL není dostupné).', countdown: 'Odpočet', onPad: '{v} na rampě', alt: 'Výška', spd: 'Rychlost', dr: 'Vzdálenost', timeline: 'Časová osa', speed: 'Rychlost:', auto: 'Auto', camera: 'Kamera:', chase: 'Sledovat', booster: 'Booster', pad: 'Ze země', earth: 'Země', est: 'odhad', liftoff: 'Start', liftoffD: 'Raketa opouští rampu', s2: 'Druhý stupeň', side: 'Boční booster', center: 'Centrální stupeň', landingShip: 'přistávací loď', landingZone: 'přistávací zóna', tower: 'zachycení věží', pad2: 'rampa', close: 'Zavřít', play: 'Přehrát', pause: 'Pauza', events: 'Události', note: 'Rekonstruováno z oficiální časové osy SpaceX pro tento start a typického letového profilu {v}. Události označené „odhad“ v oficiální časové ose nejsou. Stroje jsou pro viditelnost zvětšeny.', noteNoTl: 'SpaceX zatím nezveřejnila časovou osu tohoto startu, proto jsou všechny události odhadnuty podle typického letového profilu {v}. Stroje jsou pro viditelnost zvětšeny.', none: 'Právě není zvýrazněn žádný start.' },
-  sv: { live: 'Live', dir: 'ltr', title: 'Uppskjutningssimulering', loading: 'Laddar jorden…', noGl: 'Den här enheten kan inte visa 3D-simuleringen (WebGL saknas).', countdown: 'Nedräkning', onPad: '{v} på startplattan', alt: 'Höjd', spd: 'Hastighet', dr: 'Avstånd', timeline: 'Tidslinje', speed: 'Hastighet:', auto: 'Auto', camera: 'Kamera:', chase: 'Följ', booster: 'Booster', pad: 'Marken', earth: 'Jorden', est: 'uppskattning', liftoff: 'Lyft', liftoffD: 'Raketen lämnar startplattan', s2: 'Andra steget', side: 'Sidobooster', center: 'Mittkärna', landingShip: 'landningsfartyg', landingZone: 'landningszon', tower: 'fångst i tornet', pad2: 'startplatta', close: 'Stäng', play: 'Spela', pause: 'Paus', events: 'Händelser', note: 'Rekonstruerad från SpaceX officiella tidslinje för den här uppskjutningen och en typisk flygprofil för {v}. Händelser märkta ”uppskattning” finns inte i den officiella tidslinjen. Farkosterna är förstorade för synlighet.', noteNoTl: 'SpaceX har ännu inte publicerat tidslinjen för den här uppskjutningen, så alla händelser är uppskattade utifrån en typisk flygprofil för {v}. Farkosterna är förstorade för synlighet.', none: 'Ingen uppskjutning visas just nu.' },
-  nl: { live: 'Live', dir: 'ltr', title: 'Lanceringssimulatie', loading: 'Aarde laden…', noGl: 'Dit apparaat kan de 3D-simulatie niet tonen (WebGL niet beschikbaar).', countdown: 'Aftellen', onPad: '{v} op het lanceerplatform', alt: 'Hoogte', spd: 'Snelheid', dr: 'Afstand', timeline: 'Tijdlijn', speed: 'Snelheid:', auto: 'Auto', camera: 'Camera:', chase: 'Volgen', booster: 'Booster', pad: 'Grond', earth: 'Aarde', est: 'schatting', liftoff: 'Lancering', liftoffD: 'De raket verlaat het lanceerplatform', s2: 'Tweede trap', side: 'Zijbooster', center: 'Centrale kern', landingShip: 'landingsschip', landingZone: 'landingszone', tower: 'vangst door de toren', pad2: 'lanceerplatform', close: 'Sluiten', play: 'Afspelen', pause: 'Pauze', events: 'Gebeurtenissen', note: 'Gereconstrueerd uit de officiële SpaceX-tijdlijn van deze lancering en een typisch vluchtprofiel van {v}. Gebeurtenissen met „schatting” staan niet in de officiële tijdlijn. Voertuigen zijn vergroot voor de zichtbaarheid.', noteNoTl: 'SpaceX heeft de tijdlijn van deze lancering nog niet gepubliceerd, dus alle gebeurtenissen zijn geschat op basis van een typisch vluchtprofiel van {v}. Voertuigen zijn vergroot voor de zichtbaarheid.', none: 'Er staat nu geen lancering uitgelicht.' },
-  da: { live: 'Live', dir: 'ltr', title: 'Opsendelsessimulering', loading: 'Indlæser Jorden…', noGl: 'Denne enhed kan ikke vise 3D-simuleringen (WebGL er ikke tilgængelig).', countdown: 'Nedtælling', onPad: '{v} på affyringsrampen', alt: 'Højde', spd: 'Hastighed', dr: 'Afstand', timeline: 'Tidslinje', speed: 'Hastighed:', auto: 'Auto', camera: 'Kamera:', chase: 'Følg', booster: 'Booster', pad: 'Jorden', earth: 'Jorden', est: 'skøn', liftoff: 'Letning', liftoffD: 'Raketten forlader affyringsrampen', s2: 'Andet trin', side: 'Sidebooster', center: 'Centerkerne', landingShip: 'landingsskib', landingZone: 'landingszone', tower: 'fangst i tårnet', pad2: 'affyringsrampe', close: 'Luk', play: 'Afspil', pause: 'Pause', events: 'Begivenheder', note: 'Rekonstrueret ud fra SpaceX’ officielle tidslinje for denne opsendelse og en typisk flyveprofil for {v}. Begivenheder markeret “skøn” er ikke i den officielle tidslinje. Fartøjerne er forstørret for synlighedens skyld.', noteNoTl: 'SpaceX har endnu ikke offentliggjort tidslinjen for denne opsendelse, så alle begivenheder er skønnet ud fra en typisk flyveprofil for {v}. Fartøjerne er forstørret for synlighedens skyld.', none: 'Der er ingen fremhævet opsendelse lige nu.' },
-  pt: { live: 'Ao vivo', dir: 'ltr', title: 'Simulação do lançamento', loading: 'Carregando a Terra…', noGl: 'Este dispositivo não consegue mostrar a simulação 3D (WebGL indisponível).', countdown: 'Contagem regressiva', onPad: '{v} na plataforma', alt: 'Altitude', spd: 'Velocidade', dr: 'Distância', timeline: 'Cronologia', speed: 'Velocidade:', auto: 'Auto', camera: 'Câmera:', chase: 'Seguir', booster: 'Propulsor', pad: 'Solo', earth: 'Terra', est: 'estimativa', liftoff: 'Decolagem', liftoffD: 'O foguete deixa a plataforma', s2: 'Segundo estágio', side: 'Propulsor lateral', center: 'Núcleo central', landingShip: 'navio de pouso', landingZone: 'zona de pouso', tower: 'captura na torre', pad2: 'plataforma', close: 'Fechar', play: 'Reproduzir', pause: 'Pausar', events: 'Eventos', note: 'Reconstruído a partir da cronologia oficial da SpaceX para este lançamento e de um perfil de voo típico do {v}. Eventos marcados como “estimativa” não estão na cronologia oficial. Os veículos estão ampliados para melhor visualização.', noteNoTl: 'A SpaceX ainda não publicou a cronologia deste lançamento, então todos os eventos são estimados por um perfil de voo típico do {v}. Os veículos estão ampliados para melhor visualização.', none: 'Nenhum lançamento em destaque agora.' },
-  pl: { live: 'Na żywo', dir: 'ltr', title: 'Symulacja startu', loading: 'Ładowanie Ziemi…', noGl: 'To urządzenie nie może wyświetlić symulacji 3D (WebGL niedostępny).', countdown: 'Odliczanie', onPad: '{v} na stanowisku startowym', alt: 'Wysokość', spd: 'Prędkość', dr: 'Odległość', timeline: 'Oś czasu', speed: 'Prędkość:', auto: 'Auto', camera: 'Kamera:', chase: 'Śledź', booster: 'Booster', pad: 'Z ziemi', earth: 'Ziemia', est: 'szacunek', liftoff: 'Start', liftoffD: 'Rakieta opuszcza stanowisko startowe', s2: 'Drugi stopień', side: 'Booster boczny', center: 'Rdzeń centralny', landingShip: 'statek do lądowania', landingZone: 'strefa lądowania', tower: 'przechwycenie przez wieżę', pad2: 'stanowisko startowe', close: 'Zamknij', play: 'Odtwórz', pause: 'Pauza', events: 'Zdarzenia', note: 'Odtworzone na podstawie oficjalnej osi czasu SpaceX dla tego startu i typowego profilu lotu {v}. Zdarzeń oznaczonych „szacunek” nie ma w oficjalnej osi czasu. Pojazdy są powiększone dla lepszej widoczności.', noteNoTl: 'SpaceX nie opublikowało jeszcze osi czasu tego startu, więc wszystkie zdarzenia są szacowane na podstawie typowego profilu lotu {v}. Pojazdy są powiększone dla lepszej widoczności.', none: 'Obecnie nie ma wyróżnionego startu.' },
-  hi: { live: 'लाइव', dir: 'ltr', title: 'लॉन्च सिमुलेशन', loading: 'पृथ्वी लोड हो रही है…', noGl: 'यह डिवाइस 3D सिमुलेशन नहीं दिखा सकता (WebGL उपलब्ध नहीं है)।', countdown: 'उलटी गिनती', onPad: '{v} लॉन्च पैड पर', alt: 'ऊँचाई', spd: 'गति', dr: 'दूरी', timeline: 'समयरेखा', speed: 'गति:', auto: 'ऑटो', camera: 'कैमरा:', chase: 'पीछा करें', booster: 'बूस्टर', pad: 'ज़मीन से', earth: 'पृथ्वी', est: 'अनुमान', liftoff: 'लिफ्टऑफ़', liftoffD: 'रॉकेट लॉन्च पैड छोड़ता है', s2: 'दूसरा चरण', side: 'साइड बूस्टर', center: 'सेंटर कोर', landingShip: 'लैंडिंग जहाज़', landingZone: 'लैंडिंग ज़ोन', tower: 'टावर द्वारा कैच', pad2: 'लॉन्च पैड', close: 'बंद करें', play: 'चलाएँ', pause: 'रोकें', events: 'घटनाएँ', note: 'इस लॉन्च के लिए SpaceX की आधिकारिक समयरेखा और {v} की एक सामान्य उड़ान प्रोफ़ाइल से पुनर्निर्मित। “अनुमान” वाली घटनाएँ आधिकारिक समयरेखा में नहीं हैं। दिखाई देने के लिए वाहनों को बड़ा किया गया है।', noteNoTl: 'SpaceX ने अभी इस लॉन्च की समयरेखा प्रकाशित नहीं की है, इसलिए सभी घटनाएँ {v} की सामान्य उड़ान प्रोफ़ाइल से अनुमानित हैं। दिखाई देने के लिए वाहनों को बड़ा किया गया है।', none: 'अभी कोई मुख्य लॉन्च नहीं है।' },
-  ar: { live: 'مباشر', dir: 'rtl', title: 'محاكاة الإطلاق', loading: 'جارٍ تحميل الأرض…', noGl: 'لا يستطيع هذا الجهاز عرض المحاكاة ثلاثية الأبعاد (WebGL غير متاح).', countdown: 'العد التنازلي', onPad: '{v} على منصة الإطلاق', alt: 'الارتفاع', spd: 'السرعة', dr: 'المدى', timeline: 'الجدول الزمني', speed: 'السرعة:', auto: 'تلقائي', camera: 'الكاميرا:', chase: 'تتبّع', booster: 'المعزز', pad: 'من الأرض', earth: 'الأرض', est: 'تقدير', liftoff: 'الإقلاع', liftoffD: 'الصاروخ يغادر منصة الإطلاق', s2: 'المرحلة الثانية', side: 'معزز جانبي', center: 'النواة المركزية', landingShip: 'سفينة الهبوط', landingZone: 'منطقة الهبوط', tower: 'الالتقاط بالبرج', pad2: 'منصة الإطلاق', close: 'إغلاق', play: 'تشغيل', pause: 'إيقاف مؤقت', events: 'الأحداث', note: 'أُعيد بناؤها من الجدول الزمني الرسمي لـ SpaceX لهذا الإطلاق ومن مسار طيران نموذجي لـ {v}. الأحداث المعلّمة بـ«تقدير» ليست في الجدول الرسمي. المركبات مكبّرة لتظهر بوضوح.', noteNoTl: 'لم تنشر SpaceX بعد الجدول الزمني لهذا الإطلاق، لذا كل الأحداث مقدّرة وفق مسار طيران نموذجي لـ {v}. المركبات مكبّرة لتظهر بوضوح.', none: 'لا يوجد إطلاق مميّز الآن.' },
-  tr: { live: 'Canlı', dir: 'ltr', title: 'Fırlatma simülasyonu', loading: 'Dünya yükleniyor…', noGl: 'Bu cihaz 3D simülasyonu gösteremiyor (WebGL kullanılamıyor).', countdown: 'Geri sayım', onPad: '{v} fırlatma rampasında', alt: 'İrtifa', spd: 'Hız', dr: 'Menzil', timeline: 'Zaman çizelgesi', speed: 'Hız:', auto: 'Otomatik', camera: 'Kamera:', chase: 'Takip', booster: 'Booster', pad: 'Yerden', earth: 'Dünya', est: 'tahmin', liftoff: 'Kalkış', liftoffD: 'Roket fırlatma rampasından ayrılıyor', s2: 'İkinci kademe', side: 'Yan booster', center: 'Merkez çekirdek', landingShip: 'iniş gemisi', landingZone: 'iniş bölgesi', tower: 'kule ile yakalama', pad2: 'fırlatma rampası', close: 'Kapat', play: 'Oynat', pause: 'Duraklat', events: 'Olaylar', note: 'Bu fırlatma için SpaceX’in resmi zaman çizelgesinden ve tipik bir {v} uçuş profilinden yeniden oluşturuldu. “Tahmin” olarak işaretlenen olaylar resmi çizelgede yok. Araçlar görünürlük için büyütüldü.', noteNoTl: 'SpaceX bu fırlatmanın zaman çizelgesini henüz yayımlamadı; bu yüzden tüm olaylar tipik bir {v} uçuş profiline göre tahmin edildi. Araçlar görünürlük için büyütüldü.', none: 'Şu anda öne çıkan bir fırlatma yok.' },
+  en: { cine: 'Cinematic view', realOrbit: 'real orbit (CelesTrak)', live: 'Live', dir: 'ltr', title: 'Launch simulation', loading: 'Loading Earth…', noGl: 'This device cannot show the 3D simulation (WebGL is unavailable).', countdown: 'Countdown', onPad: '{v} on the launch pad', alt: 'Altitude', spd: 'Speed', dr: 'Downrange', timeline: 'Timeline', speed: 'Speed:', auto: 'Auto', camera: 'Camera:', chase: 'Follow', booster: 'Booster', pad: 'Ground', earth: 'Earth', est: 'estimate', liftoff: 'Liftoff', liftoffD: 'The rocket leaves the launch pad', s2: 'Second stage', side: 'Side booster', center: 'Center core', landingShip: 'landing ship', landingZone: 'landing zone', tower: 'tower catch', pad2: 'launch pad', close: 'Close', play: 'Play', pause: 'Pause', events: 'Events', note: 'Reconstructed from SpaceX’s official timeline for this launch and a typical {v} flight profile. Events marked “estimate” are not in the official timeline. Vehicles are enlarged for visibility.', noteNoTl: 'SpaceX has not published the timeline for this launch yet, so every event is estimated from a typical {v} flight profile. Vehicles are enlarged for visibility.', none: 'No launch in the hero right now.' },
+  he: { cine: 'תצוגה קולנועית', realOrbit: 'מסלול אמיתי (CelesTrak)', live: 'חי', dir: 'rtl', title: 'סימולציית שיגור', loading: 'טוען את כדור הארץ…', noGl: 'המכשיר הזה לא יכול להציג את סימולציית התלת־ממד (WebGL לא זמין).', countdown: 'ספירה לאחור', onPad: '{v} על כן השיגור', alt: 'גובה', spd: 'מהירות', dr: 'טווח', timeline: 'ציר הזמן', speed: 'מהירות:', auto: 'אוטומטי', camera: 'מצלמה:', chase: 'מעקב', booster: 'בוסטר', pad: 'מהקרקע', earth: 'כדור הארץ', est: 'הערכה', liftoff: 'המראה', liftoffD: 'הרקטה עוזבת את כן השיגור', s2: 'שלב שני', side: 'בוסטר צד', center: 'ליבה מרכזית', landingShip: 'ספינת נחיתה', landingZone: 'אזור נחיתה', tower: 'תפיסה במגדל', pad2: 'כן שיגור', close: 'סגירה', play: 'נגן', pause: 'עצור', events: 'אירועים', note: 'משוחזר מציר הזמן הרשמי של SpaceX לשיגור זה ומפרופיל טיסה טיפוסי של {v}. אירועים שמסומנים "הערכה" לא מופיעים בציר הזמן הרשמי. כלי הטיס מוגדלים לצורך התצוגה.', noteNoTl: 'SpaceX עוד לא פרסמה את ציר הזמן של השיגור הזה, ולכן כל האירועים מוערכים לפי פרופיל טיסה טיפוסי של {v}. כלי הטיס מוגדלים לצורך התצוגה.', none: 'אין כרגע שיגור בכותרת.' },
+  es: { cine: 'Vista cinematográfica', realOrbit: 'órbita real (CelesTrak)', live: 'En vivo', dir: 'ltr', title: 'Simulación del lanzamiento', loading: 'Cargando la Tierra…', noGl: 'Este dispositivo no puede mostrar la simulación 3D (WebGL no está disponible).', countdown: 'Cuenta atrás', onPad: '{v} en la plataforma', alt: 'Altitud', spd: 'Velocidad', dr: 'Distancia', timeline: 'Cronología', speed: 'Velocidad:', auto: 'Auto', camera: 'Cámara:', chase: 'Seguir', booster: 'Propulsor', pad: 'Suelo', earth: 'Tierra', est: 'estimación', liftoff: 'Despegue', liftoffD: 'El cohete abandona la plataforma', s2: 'Segunda etapa', side: 'Propulsor lateral', center: 'Núcleo central', landingShip: 'barco de aterrizaje', landingZone: 'zona de aterrizaje', tower: 'captura en la torre', pad2: 'plataforma', close: 'Cerrar', play: 'Reproducir', pause: 'Pausa', events: 'Eventos', note: 'Reconstruido a partir de la cronología oficial de SpaceX para este lanzamiento y un perfil de vuelo típico de {v}. Los eventos marcados como «estimación» no figuran en la cronología oficial. Los vehículos están ampliados para verse mejor.', noteNoTl: 'SpaceX aún no ha publicado la cronología de este lanzamiento, así que todos los eventos se estiman con un perfil de vuelo típico de {v}. Los vehículos están ampliados para verse mejor.', none: 'Ahora no hay ningún lanzamiento destacado.' },
+  fr: { cine: 'Vue cinéma', realOrbit: 'orbite réelle (CelesTrak)', live: 'En direct', dir: 'ltr', title: 'Simulation du lancement', loading: 'Chargement de la Terre…', noGl: 'Cet appareil ne peut pas afficher la simulation 3D (WebGL indisponible).', countdown: 'Compte à rebours', onPad: '{v} sur le pas de tir', alt: 'Altitude', spd: 'Vitesse', dr: 'Distance', timeline: 'Chronologie', speed: 'Vitesse :', auto: 'Auto', camera: 'Caméra :', chase: 'Suivre', booster: 'Booster', pad: 'Sol', earth: 'Terre', est: 'estimation', liftoff: 'Décollage', liftoffD: 'La fusée quitte le pas de tir', s2: 'Deuxième étage', side: 'Booster latéral', center: 'Corps central', landingShip: 'barge d’atterrissage', landingZone: 'zone d’atterrissage', tower: 'capture par la tour', pad2: 'pas de tir', close: 'Fermer', play: 'Lecture', pause: 'Pause', events: 'Événements', note: 'Reconstitué à partir de la chronologie officielle de SpaceX pour ce lancement et d’un profil de vol typique de {v}. Les événements marqués « estimation » ne figurent pas dans la chronologie officielle. Les véhicules sont agrandis pour être visibles.', noteNoTl: 'SpaceX n’a pas encore publié la chronologie de ce lancement : tous les événements sont estimés d’après un profil de vol typique de {v}. Les véhicules sont agrandis pour être visibles.', none: 'Aucun lancement à la une pour le moment.' },
+  de: { cine: 'Kinoansicht', realOrbit: 'echte Bahn (CelesTrak)', live: 'Live', dir: 'ltr', title: 'Startsimulation', loading: 'Erde wird geladen…', noGl: 'Dieses Gerät kann die 3D-Simulation nicht anzeigen (WebGL nicht verfügbar).', countdown: 'Countdown', onPad: '{v} auf der Startrampe', alt: 'Höhe', spd: 'Geschwindigkeit', dr: 'Entfernung', timeline: 'Zeitplan', speed: 'Tempo:', auto: 'Auto', camera: 'Kamera:', chase: 'Folgen', booster: 'Booster', pad: 'Boden', earth: 'Erde', est: 'Schätzung', liftoff: 'Abheben', liftoffD: 'Die Rakete verlässt die Startrampe', s2: 'Zweite Stufe', side: 'Seitenbooster', center: 'Zentralstufe', landingShip: 'Landeschiff', landingZone: 'Landezone', tower: 'Fang am Turm', pad2: 'Startrampe', close: 'Schließen', play: 'Abspielen', pause: 'Pause', events: 'Ereignisse', note: 'Rekonstruiert aus dem offiziellen SpaceX-Zeitplan dieses Starts und einem typischen {v}-Flugprofil. Als „Schätzung“ markierte Ereignisse stehen nicht im offiziellen Zeitplan. Fahrzeuge sind zur besseren Sichtbarkeit vergrößert.', noteNoTl: 'SpaceX hat den Zeitplan dieses Starts noch nicht veröffentlicht, daher sind alle Ereignisse nach einem typischen {v}-Flugprofil geschätzt. Fahrzeuge sind zur besseren Sichtbarkeit vergrößert.', none: 'Derzeit ist kein Start hervorgehoben.' },
+  ru: { cine: 'Кинорежим', realOrbit: 'реальная орбита (CelesTrak)', live: 'Эфир', dir: 'ltr', title: 'Симуляция запуска', loading: 'Загрузка Земли…', noGl: 'Это устройство не может показать 3D-симуляцию (WebGL недоступен).', countdown: 'Обратный отсчёт', onPad: '{v} на стартовой площадке', alt: 'Высота', spd: 'Скорость', dr: 'Дальность', timeline: 'Хронология', speed: 'Скорость:', auto: 'Авто', camera: 'Камера:', chase: 'Следовать', booster: 'Ускоритель', pad: 'С земли', earth: 'Земля', est: 'оценка', liftoff: 'Старт', liftoffD: 'Ракета покидает стартовую площадку', s2: 'Вторая ступень', side: 'Боковой ускоритель', center: 'Центральный блок', landingShip: 'посадочная платформа', landingZone: 'посадочная зона', tower: 'захват башней', pad2: 'стартовая площадка', close: 'Закрыть', play: 'Пуск', pause: 'Пауза', events: 'События', note: 'Восстановлено по официальной хронологии SpaceX для этого запуска и типичному профилю полёта {v}. События с пометкой «оценка» отсутствуют в официальной хронологии. Аппараты увеличены для наглядности.', noteNoTl: 'SpaceX ещё не опубликовала хронологию этого запуска, поэтому все события оценены по типичному профилю полёта {v}. Аппараты увеличены для наглядности.', none: 'Сейчас нет выделенного запуска.' },
+  zh: { cine: '影院模式', realOrbit: '真实轨道（CelesTrak）', live: '实时', dir: 'ltr', title: '发射模拟', loading: '正在加载地球…', noGl: '此设备无法显示 3D 模拟（WebGL 不可用）。', countdown: '倒计时', onPad: '{v} 位于发射台', alt: '高度', spd: '速度', dr: '航程', timeline: '时间线', speed: '速度：', auto: '自动', camera: '镜头：', chase: '跟随', booster: '助推器', pad: '地面', earth: '地球', est: '估计', liftoff: '升空', liftoffD: '火箭离开发射台', s2: '第二级', side: '侧助推器', center: '中央芯级', landingShip: '着陆船', landingZone: '着陆区', tower: '发射塔捕获', pad2: '发射台', close: '关闭', play: '播放', pause: '暂停', events: '事件', note: '根据 SpaceX 为本次发射发布的官方时间线以及 {v} 的典型飞行剖面重建。标注“估计”的事件不在官方时间线中。为便于观看，飞行器已放大显示。', noteNoTl: 'SpaceX 尚未发布本次发射的时间线，因此所有事件均按 {v} 的典型飞行剖面估计。为便于观看，飞行器已放大显示。', none: '目前没有焦点发射。' },
+  it: { cine: 'Vista cinema', realOrbit: 'orbita reale (CelesTrak)', live: 'In diretta', dir: 'ltr', title: 'Simulazione del lancio', loading: 'Caricamento della Terra…', noGl: 'Questo dispositivo non può mostrare la simulazione 3D (WebGL non disponibile).', countdown: 'Conto alla rovescia', onPad: '{v} sulla rampa', alt: 'Altitudine', spd: 'Velocità', dr: 'Distanza', timeline: 'Cronologia', speed: 'Velocità:', auto: 'Auto', camera: 'Telecamera:', chase: 'Segui', booster: 'Booster', pad: 'Da terra', earth: 'Terra', est: 'stima', liftoff: 'Decollo', liftoffD: 'Il razzo lascia la rampa', s2: 'Secondo stadio', side: 'Booster laterale', center: 'Stadio centrale', landingShip: 'nave di atterraggio', landingZone: 'zona di atterraggio', tower: 'cattura alla torre', pad2: 'rampa', close: 'Chiudi', play: 'Riproduci', pause: 'Pausa', events: 'Eventi', note: 'Ricostruito dalla cronologia ufficiale di SpaceX per questo lancio e da un profilo di volo tipico di {v}. Gli eventi segnati come «stima» non sono nella cronologia ufficiale. I veicoli sono ingranditi per essere visibili.', noteNoTl: 'SpaceX non ha ancora pubblicato la cronologia di questo lancio, quindi tutti gli eventi sono stimati da un profilo di volo tipico di {v}. I veicoli sono ingranditi per essere visibili.', none: 'Nessun lancio in evidenza al momento.' },
+  cs: { cine: 'Kinový pohled', realOrbit: 'skutečná dráha (CelesTrak)', live: 'Živě', dir: 'ltr', title: 'Simulace startu', loading: 'Načítání Země…', noGl: 'Toto zařízení nemůže zobrazit 3D simulaci (WebGL není dostupné).', countdown: 'Odpočet', onPad: '{v} na rampě', alt: 'Výška', spd: 'Rychlost', dr: 'Vzdálenost', timeline: 'Časová osa', speed: 'Rychlost:', auto: 'Auto', camera: 'Kamera:', chase: 'Sledovat', booster: 'Booster', pad: 'Ze země', earth: 'Země', est: 'odhad', liftoff: 'Start', liftoffD: 'Raketa opouští rampu', s2: 'Druhý stupeň', side: 'Boční booster', center: 'Centrální stupeň', landingShip: 'přistávací loď', landingZone: 'přistávací zóna', tower: 'zachycení věží', pad2: 'rampa', close: 'Zavřít', play: 'Přehrát', pause: 'Pauza', events: 'Události', note: 'Rekonstruováno z oficiální časové osy SpaceX pro tento start a typického letového profilu {v}. Události označené „odhad“ v oficiální časové ose nejsou. Stroje jsou pro viditelnost zvětšeny.', noteNoTl: 'SpaceX zatím nezveřejnila časovou osu tohoto startu, proto jsou všechny události odhadnuty podle typického letového profilu {v}. Stroje jsou pro viditelnost zvětšeny.', none: 'Právě není zvýrazněn žádný start.' },
+  sv: { cine: 'Bioläge', realOrbit: 'verklig bana (CelesTrak)', live: 'Live', dir: 'ltr', title: 'Uppskjutningssimulering', loading: 'Laddar jorden…', noGl: 'Den här enheten kan inte visa 3D-simuleringen (WebGL saknas).', countdown: 'Nedräkning', onPad: '{v} på startplattan', alt: 'Höjd', spd: 'Hastighet', dr: 'Avstånd', timeline: 'Tidslinje', speed: 'Hastighet:', auto: 'Auto', camera: 'Kamera:', chase: 'Följ', booster: 'Booster', pad: 'Marken', earth: 'Jorden', est: 'uppskattning', liftoff: 'Lyft', liftoffD: 'Raketen lämnar startplattan', s2: 'Andra steget', side: 'Sidobooster', center: 'Mittkärna', landingShip: 'landningsfartyg', landingZone: 'landningszon', tower: 'fångst i tornet', pad2: 'startplatta', close: 'Stäng', play: 'Spela', pause: 'Paus', events: 'Händelser', note: 'Rekonstruerad från SpaceX officiella tidslinje för den här uppskjutningen och en typisk flygprofil för {v}. Händelser märkta ”uppskattning” finns inte i den officiella tidslinjen. Farkosterna är förstorade för synlighet.', noteNoTl: 'SpaceX har ännu inte publicerat tidslinjen för den här uppskjutningen, så alla händelser är uppskattade utifrån en typisk flygprofil för {v}. Farkosterna är förstorade för synlighet.', none: 'Ingen uppskjutning visas just nu.' },
+  nl: { cine: 'Bioscoopweergave', realOrbit: 'echte baan (CelesTrak)', live: 'Live', dir: 'ltr', title: 'Lanceringssimulatie', loading: 'Aarde laden…', noGl: 'Dit apparaat kan de 3D-simulatie niet tonen (WebGL niet beschikbaar).', countdown: 'Aftellen', onPad: '{v} op het lanceerplatform', alt: 'Hoogte', spd: 'Snelheid', dr: 'Afstand', timeline: 'Tijdlijn', speed: 'Snelheid:', auto: 'Auto', camera: 'Camera:', chase: 'Volgen', booster: 'Booster', pad: 'Grond', earth: 'Aarde', est: 'schatting', liftoff: 'Lancering', liftoffD: 'De raket verlaat het lanceerplatform', s2: 'Tweede trap', side: 'Zijbooster', center: 'Centrale kern', landingShip: 'landingsschip', landingZone: 'landingszone', tower: 'vangst door de toren', pad2: 'lanceerplatform', close: 'Sluiten', play: 'Afspelen', pause: 'Pauze', events: 'Gebeurtenissen', note: 'Gereconstrueerd uit de officiële SpaceX-tijdlijn van deze lancering en een typisch vluchtprofiel van {v}. Gebeurtenissen met „schatting” staan niet in de officiële tijdlijn. Voertuigen zijn vergroot voor de zichtbaarheid.', noteNoTl: 'SpaceX heeft de tijdlijn van deze lancering nog niet gepubliceerd, dus alle gebeurtenissen zijn geschat op basis van een typisch vluchtprofiel van {v}. Voertuigen zijn vergroot voor de zichtbaarheid.', none: 'Er staat nu geen lancering uitgelicht.' },
+  da: { cine: 'Biograftilstand', realOrbit: 'reel bane (CelesTrak)', live: 'Live', dir: 'ltr', title: 'Opsendelsessimulering', loading: 'Indlæser Jorden…', noGl: 'Denne enhed kan ikke vise 3D-simuleringen (WebGL er ikke tilgængelig).', countdown: 'Nedtælling', onPad: '{v} på affyringsrampen', alt: 'Højde', spd: 'Hastighed', dr: 'Afstand', timeline: 'Tidslinje', speed: 'Hastighed:', auto: 'Auto', camera: 'Kamera:', chase: 'Følg', booster: 'Booster', pad: 'Jorden', earth: 'Jorden', est: 'skøn', liftoff: 'Letning', liftoffD: 'Raketten forlader affyringsrampen', s2: 'Andet trin', side: 'Sidebooster', center: 'Centerkerne', landingShip: 'landingsskib', landingZone: 'landingszone', tower: 'fangst i tårnet', pad2: 'affyringsrampe', close: 'Luk', play: 'Afspil', pause: 'Pause', events: 'Begivenheder', note: 'Rekonstrueret ud fra SpaceX’ officielle tidslinje for denne opsendelse og en typisk flyveprofil for {v}. Begivenheder markeret “skøn” er ikke i den officielle tidslinje. Fartøjerne er forstørret for synlighedens skyld.', noteNoTl: 'SpaceX har endnu ikke offentliggjort tidslinjen for denne opsendelse, så alle begivenheder er skønnet ud fra en typisk flyveprofil for {v}. Fartøjerne er forstørret for synlighedens skyld.', none: 'Der er ingen fremhævet opsendelse lige nu.' },
+  pt: { cine: 'Modo cinema', realOrbit: 'órbita real (CelesTrak)', live: 'Ao vivo', dir: 'ltr', title: 'Simulação do lançamento', loading: 'Carregando a Terra…', noGl: 'Este dispositivo não consegue mostrar a simulação 3D (WebGL indisponível).', countdown: 'Contagem regressiva', onPad: '{v} na plataforma', alt: 'Altitude', spd: 'Velocidade', dr: 'Distância', timeline: 'Cronologia', speed: 'Velocidade:', auto: 'Auto', camera: 'Câmera:', chase: 'Seguir', booster: 'Propulsor', pad: 'Solo', earth: 'Terra', est: 'estimativa', liftoff: 'Decolagem', liftoffD: 'O foguete deixa a plataforma', s2: 'Segundo estágio', side: 'Propulsor lateral', center: 'Núcleo central', landingShip: 'navio de pouso', landingZone: 'zona de pouso', tower: 'captura na torre', pad2: 'plataforma', close: 'Fechar', play: 'Reproduzir', pause: 'Pausar', events: 'Eventos', note: 'Reconstruído a partir da cronologia oficial da SpaceX para este lançamento e de um perfil de voo típico do {v}. Eventos marcados como “estimativa” não estão na cronologia oficial. Os veículos estão ampliados para melhor visualização.', noteNoTl: 'A SpaceX ainda não publicou a cronologia deste lançamento, então todos os eventos são estimados por um perfil de voo típico do {v}. Os veículos estão ampliados para melhor visualização.', none: 'Nenhum lançamento em destaque agora.' },
+  pl: { cine: 'Widok kinowy', realOrbit: 'rzeczywista orbita (CelesTrak)', live: 'Na żywo', dir: 'ltr', title: 'Symulacja startu', loading: 'Ładowanie Ziemi…', noGl: 'To urządzenie nie może wyświetlić symulacji 3D (WebGL niedostępny).', countdown: 'Odliczanie', onPad: '{v} na stanowisku startowym', alt: 'Wysokość', spd: 'Prędkość', dr: 'Odległość', timeline: 'Oś czasu', speed: 'Prędkość:', auto: 'Auto', camera: 'Kamera:', chase: 'Śledź', booster: 'Booster', pad: 'Z ziemi', earth: 'Ziemia', est: 'szacunek', liftoff: 'Start', liftoffD: 'Rakieta opuszcza stanowisko startowe', s2: 'Drugi stopień', side: 'Booster boczny', center: 'Rdzeń centralny', landingShip: 'statek do lądowania', landingZone: 'strefa lądowania', tower: 'przechwycenie przez wieżę', pad2: 'stanowisko startowe', close: 'Zamknij', play: 'Odtwórz', pause: 'Pauza', events: 'Zdarzenia', note: 'Odtworzone na podstawie oficjalnej osi czasu SpaceX dla tego startu i typowego profilu lotu {v}. Zdarzeń oznaczonych „szacunek” nie ma w oficjalnej osi czasu. Pojazdy są powiększone dla lepszej widoczności.', noteNoTl: 'SpaceX nie opublikowało jeszcze osi czasu tego startu, więc wszystkie zdarzenia są szacowane na podstawie typowego profilu lotu {v}. Pojazdy są powiększone dla lepszej widoczności.', none: 'Obecnie nie ma wyróżnionego startu.' },
+  hi: { cine: 'सिनेमा दृश्य', realOrbit: 'वास्तविक कक्षा (CelesTrak)', live: 'लाइव', dir: 'ltr', title: 'लॉन्च सिमुलेशन', loading: 'पृथ्वी लोड हो रही है…', noGl: 'यह डिवाइस 3D सिमुलेशन नहीं दिखा सकता (WebGL उपलब्ध नहीं है)।', countdown: 'उलटी गिनती', onPad: '{v} लॉन्च पैड पर', alt: 'ऊँचाई', spd: 'गति', dr: 'दूरी', timeline: 'समयरेखा', speed: 'गति:', auto: 'ऑटो', camera: 'कैमरा:', chase: 'पीछा करें', booster: 'बूस्टर', pad: 'ज़मीन से', earth: 'पृथ्वी', est: 'अनुमान', liftoff: 'लिफ्टऑफ़', liftoffD: 'रॉकेट लॉन्च पैड छोड़ता है', s2: 'दूसरा चरण', side: 'साइड बूस्टर', center: 'सेंटर कोर', landingShip: 'लैंडिंग जहाज़', landingZone: 'लैंडिंग ज़ोन', tower: 'टावर द्वारा कैच', pad2: 'लॉन्च पैड', close: 'बंद करें', play: 'चलाएँ', pause: 'रोकें', events: 'घटनाएँ', note: 'इस लॉन्च के लिए SpaceX की आधिकारिक समयरेखा और {v} की एक सामान्य उड़ान प्रोफ़ाइल से पुनर्निर्मित। “अनुमान” वाली घटनाएँ आधिकारिक समयरेखा में नहीं हैं। दिखाई देने के लिए वाहनों को बड़ा किया गया है।', noteNoTl: 'SpaceX ने अभी इस लॉन्च की समयरेखा प्रकाशित नहीं की है, इसलिए सभी घटनाएँ {v} की सामान्य उड़ान प्रोफ़ाइल से अनुमानित हैं। दिखाई देने के लिए वाहनों को बड़ा किया गया है।', none: 'अभी कोई मुख्य लॉन्च नहीं है।' },
+  ar: { cine: 'عرض سينمائي', realOrbit: 'المدار الحقيقي (CelesTrak)', live: 'مباشر', dir: 'rtl', title: 'محاكاة الإطلاق', loading: 'جارٍ تحميل الأرض…', noGl: 'لا يستطيع هذا الجهاز عرض المحاكاة ثلاثية الأبعاد (WebGL غير متاح).', countdown: 'العد التنازلي', onPad: '{v} على منصة الإطلاق', alt: 'الارتفاع', spd: 'السرعة', dr: 'المدى', timeline: 'الجدول الزمني', speed: 'السرعة:', auto: 'تلقائي', camera: 'الكاميرا:', chase: 'تتبّع', booster: 'المعزز', pad: 'من الأرض', earth: 'الأرض', est: 'تقدير', liftoff: 'الإقلاع', liftoffD: 'الصاروخ يغادر منصة الإطلاق', s2: 'المرحلة الثانية', side: 'معزز جانبي', center: 'النواة المركزية', landingShip: 'سفينة الهبوط', landingZone: 'منطقة الهبوط', tower: 'الالتقاط بالبرج', pad2: 'منصة الإطلاق', close: 'إغلاق', play: 'تشغيل', pause: 'إيقاف مؤقت', events: 'الأحداث', note: 'أُعيد بناؤها من الجدول الزمني الرسمي لـ SpaceX لهذا الإطلاق ومن مسار طيران نموذجي لـ {v}. الأحداث المعلّمة بـ«تقدير» ليست في الجدول الرسمي. المركبات مكبّرة لتظهر بوضوح.', noteNoTl: 'لم تنشر SpaceX بعد الجدول الزمني لهذا الإطلاق، لذا كل الأحداث مقدّرة وفق مسار طيران نموذجي لـ {v}. المركبات مكبّرة لتظهر بوضوح.', none: 'لا يوجد إطلاق مميّز الآن.' },
+  tr: { cine: 'Sinema görünümü', realOrbit: 'gerçek yörünge (CelesTrak)', live: 'Canlı', dir: 'ltr', title: 'Fırlatma simülasyonu', loading: 'Dünya yükleniyor…', noGl: 'Bu cihaz 3D simülasyonu gösteremiyor (WebGL kullanılamıyor).', countdown: 'Geri sayım', onPad: '{v} fırlatma rampasında', alt: 'İrtifa', spd: 'Hız', dr: 'Menzil', timeline: 'Zaman çizelgesi', speed: 'Hız:', auto: 'Otomatik', camera: 'Kamera:', chase: 'Takip', booster: 'Booster', pad: 'Yerden', earth: 'Dünya', est: 'tahmin', liftoff: 'Kalkış', liftoffD: 'Roket fırlatma rampasından ayrılıyor', s2: 'İkinci kademe', side: 'Yan booster', center: 'Merkez çekirdek', landingShip: 'iniş gemisi', landingZone: 'iniş bölgesi', tower: 'kule ile yakalama', pad2: 'fırlatma rampası', close: 'Kapat', play: 'Oynat', pause: 'Duraklat', events: 'Olaylar', note: 'Bu fırlatma için SpaceX’in resmi zaman çizelgesinden ve tipik bir {v} uçuş profilinden yeniden oluşturuldu. “Tahmin” olarak işaretlenen olaylar resmi çizelgede yok. Araçlar görünürlük için büyütüldü.', noteNoTl: 'SpaceX bu fırlatmanın zaman çizelgesini henüz yayımlamadı; bu yüzden tüm olaylar tipik bir {v} uçuş profiline göre tahmin edildi. Araçlar görünürlük için büyütüldü.', none: 'Şu anda öne çıkan bir fırlatma yok.' },
 };
 </script>
 
@@ -204,7 +227,9 @@ let LANG = readLang(), UNITS = readUnits(), I = LSIM_I18N[LANG];
 const $ = (id) => document.getElementById(id);
 function closeSim() { try { window.parent.postMessage({ type: 'launch-sim-close' }, location.origin); } catch (e) {} }
 $('close').onclick = closeSim;
-addEventListener('keydown', e => { if (e.key === 'Escape') closeSim(); });
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.body.classList.contains('cine')) document.body.classList.remove('cine'); else closeSim(); } });
+$('cine').onclick = () => document.body.classList.add('cine');
+$('cine-exit').onclick = () => document.body.classList.remove('cine');
 function applyDir() { document.documentElement.lang = LANG; document.documentElement.dir = I.dir; }
 applyDir();
 $('loading').textContent = I.loading;
@@ -263,7 +288,29 @@ function inclination() {
   }
   return isVSFB ? 70 : 45;
 }
-const INC = inclination();
+// Once the flight is in orbit (from three hours after liftoff, for a month), its payload's real orbit from CelesTrak's
+// catalogue of the month's launches: matched by launch day and launch site. It replaces the estimated inclination and,
+// for a low orbit, the altitude. Asked once a flight (kept on this device), and never on the way to launch.
+const REAL_ORBIT = await (async () => {
+  if (!T0_KNOWN || orbitKind === 'GTO' || orbitKind === 'MEO' || Date.now() < T0 + 3 * 3600e3 || Date.now() > T0 + 30 * 86400e3) return null;
+  const key = 'lsim_orbit_v1_' + cfg.name + '_' + T0;
+  try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c) return c.none ? null : c; } catch (e) {}
+  try {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 6000);
+    const list = await (await fetch('https://celestrak.org/satcat/records.php?GROUP=last-30-days&FORMAT=json', { signal: ctl.signal })).json();
+    clearTimeout(timer);
+    const day = new Date(T0).toISOString().slice(0, 10), site = isVSFB ? 'AFWTR' : PAD.lon < -95 ? null : 'AFETR';
+    const pay = list.filter(o => o.LAUNCH_DATE === day && o.OBJECT_TYPE === 'PAY' && (!site || o.LAUNCH_SITE === site) && isFinite(o.INCLINATION) && isFinite(o.APOGEE) && isFinite(o.PERIGEE));
+    let out = null;
+    if (pay.length) {
+      const med = (a) => a.slice().sort((x, y) => x - y)[a.length >> 1];
+      out = { inc: med(pay.map(o => +o.INCLINATION)), alt: med(pay.map(o => (+o.APOGEE + +o.PERIGEE) / 2)), n: pay.length };
+    }
+    try { localStorage.setItem(key, JSON.stringify(out || { none: true })); } catch (e) {}
+    return out;
+  } catch (e) { return null; }
+})();
+const INC = REAL_ORBIT ? REAL_ORBIT.inc : inclination();
 function azimuthFor(inc) {
   if (inc == null) return 97;                                   // Starship from Starbase: east, a touch south
   const s = Math.cos(inc * Math.PI / 180) / Math.cos(PAD.lat * Math.PI / 180);
@@ -526,7 +573,7 @@ const ASC = [[-1, 0, 0], [0, 0, 0], [10, 0.15, 0], [20, 0.72, 0.03], [30, 1.6, 0
   [160, 82, 117], [176, 100, 154], [210, 124, 238], [250, 145, 350], [300, 163, 517], [350, 178, 722], [400, 192, 970], [450, 203, 1265], [490, 208, 1535], [530, 212, 1829]];
 const ascAltB = monotone(ASC, 1), ascDrB = monotone(ASC, 2);
 // the orbit's altitude as SpaceX published it for this flight (the mission page's own text), when it did
-const OFFICIAL_ALT = isFinite(cfg.orbitAltKm) && cfg.orbitAltKm >= 140 && cfg.orbitAltKm <= 600 && (VEH === 'ss' || orbitKind === 'LEO' || orbitKind === 'SSO' || orbitKind === 'ISS') ? +cfg.orbitAltKm : null;
+const OFFICIAL_ALT = REAL_ORBIT && REAL_ORBIT.alt >= 140 && REAL_ORBIT.alt <= 700 ? REAL_ORBIT.alt : isFinite(cfg.orbitAltKm) && cfg.orbitAltKm >= 140 && cfg.orbitAltKm <= 600 && (VEH === 'ss' || orbitKind === 'LEO' || orbitKind === 'SSO' || orbitKind === 'ISS') ? +cfg.orbitAltKm : null;
 const secoAlt = OFFICIAL_ALT ?? (VEH === 'ss' ? 190 : orbitKind === 'ISS' ? 205 : orbitKind === 'SSO' ? 300 : isStarlink ? 230 : 212);
 // (a Falcon Heavy: its side boosters let go at about the height a Falcon 9 stages at - 128 s into the base profile)
 const ascW = warp(VEH === 'fh' ? [[0, 0], [128, beco], [145, meco], [530, seco1]] : [[0, 0], [145, meco], [530, seco1]]);
@@ -786,6 +833,7 @@ const [dayTex, nightTex, specTex, skyTex, cloudTex] = await Promise.all([
 const blank = new THREE.DataTexture(new Uint8Array([20, 40, 80, 255]), 1, 1); blank.needsUpdate = true;
 
 const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 64, 32), new THREE.MeshBasicMaterial({ map: skyTex, color: skyTex ? 0x8899aa : 0x000000, side: THREE.BackSide }));
+sky.renderOrder = -200;   // the stars first, then the sky dome over them, then the Earth
 scene.add(sky);
 const SUN = sunDir(T0);
 const earthGroup = new THREE.Group();
@@ -868,6 +916,35 @@ const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.022, 128, 64), new TH
     gl_FragColor = vec4(mix(vec3(0.15,0.25,0.6), vec3(0.35,0.65,1.0), s), 1.0) * i * (0.25 + 1.2 * s); }`,
 }));
 scene.add(atmo);
+// The sky seen from inside the atmosphere: blue overhead and paler at the horizon by day, reddening toward the Sun at
+// sunrise and sunset, deep blue in twilight, gone at night - and thinning out with height, to black space by 80 km.
+// A sphere round the camera, drawn first, under everything (the Earth covers it below the horizon).
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), new THREE.ShaderMaterial({
+  uniforms: { sunDir: { value: SUN.clone() }, up: { value: new THREE.Vector3(0, 1, 0) }, thick: { value: 1 } },
+  // (drawn with the opaque things, first of all - as a transparent one it would be drawn last, over the rocket and the tower)
+  side: THREE.BackSide, blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, depthTest: false, depthWrite: false,
+  vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform vec3 sunDir; uniform vec3 up; uniform float thick; varying vec3 vD;
+    void main(){
+      vec3 d = normalize(vD); float h = dot(d, up), hs = dot(sunDir, up), mu = dot(d, sunDir);
+      float day = smoothstep(-0.1, 0.12, hs), twi = exp(-pow(hs / 0.17, 2.0));
+      float hz = pow(1.0 - clamp(h, 0.0, 1.0), 3.0);
+      vec3 zen = mix(mix(vec3(0.012, 0.02, 0.05), vec3(0.05, 0.09, 0.24), twi), vec3(0.16, 0.38, 0.82), day);
+      vec3 hor = mix(vec3(0.02, 0.035, 0.08), vec3(0.6, 0.76, 0.94), day);
+      vec3 col = mix(zen, hor, hz);
+      float toward = pow(max(mu, 0.0) * 0.5 + 0.5, 4.0);
+      col += vec3(1.0, 0.42, 0.12) * twi * hz * toward * 0.9 + vec3(0.25, 0.12, 0.3) * twi * hz * (1.0 - toward) * 0.35;
+      col += vec3(1.0, 0.85, 0.6) * pow(max(mu, 0.0), 12.0) * 0.35 * (day + twi);
+      float a = thick * clamp(day * 0.95 + twi * 0.8 + 0.05, 0.0, 1.0) * smoothstep(-0.25, 0.02, h);
+      gl_FragColor = vec4(col, a);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+}));
+skyDome.renderOrder = -100; skyDome.frustumCulled = false;
+scene.add(skyDome);
+atmo.material.uniforms.fade = { value: 1 };
+atmo.material.fragmentShader = atmo.material.fragmentShader.replace('uniform vec3 sunDir;', 'uniform vec3 sunDir; uniform float fade;').replace('* (0.25 + 1.2 * s); }', '* (0.25 + 1.2 * s) * fade; }');
 const sunLight = new THREE.DirectionalLight(0xfff4e5, 2.6);
 sunLight.position.copy(SUN).multiplyScalar(100);
 scene.add(sunLight, new THREE.AmbientLight(0x334466, 0.35));
@@ -976,19 +1053,23 @@ const cyl = (r, len, mat, y) => { const m = new THREE.Mesh(new THREE.CylinderGeo
 function makePlume(len, rad, color) {
   const geo = new THREE.ConeGeometry(rad, len, 32, 1, true); geo.translate(0, -len / 2, 0);
   const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-    uniforms: { time: { value: 0 }, color: { value: new THREE.Color(color) }, spread: { value: 1 }, len: { value: 1 } },
+    uniforms: { time: { value: 0 }, color: { value: new THREE.Color(color) }, spread: { value: 1 }, len: { value: 1 }, diamonds: { value: 0 }, vac: { value: 0 } },
     vertexShader: `varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; uniform float spread; uniform float len;
 #include <common>
 #include <logdepthbuf_pars_vertex>
     void main(){ vUv = uv; vec3 p = position; p.xz *= mix(spread, 1.0, uv.y); p.y *= len; vec4 mv = modelViewMatrix * vec4(p,1.0); vNv = normalize(normalMatrix * normal); vVv = normalize(-mv.xyz); gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
     }`,
-    fragmentShader: `uniform float time; uniform vec3 color; varying vec2 vUv; varying vec3 vNv; varying vec3 vVv;
+    fragmentShader: `uniform float time; uniform vec3 color; uniform float diamonds; uniform float vac; varying vec2 vUv; varying vec3 vNv; varying vec3 vVv;
 #include <logdepthbuf_pars_fragment>
     void main(){
 #include <logdepthbuf_fragment>
       float a = pow(vUv.y, 1.4); float f = 0.85 + 0.15 * sin(time * 40.0 + vUv.y * 30.0);
-      float core = pow(abs(dot(normalize(vNv), normalize(vVv))), 1.8); vec3 c = mix(vec3(1.0, 0.97, 0.9), color, smoothstep(0.0, 0.5, 1.0 - vUv.y)); gl_FragColor = vec4(c * (0.6 + 0.8 * core), a * f * core * 0.95); }` });
+      float core = pow(abs(dot(normalize(vNv), normalize(vVv))), 1.8); vec3 c = mix(vec3(1.0, 0.97, 0.9), color, smoothstep(0.0, 0.5, 1.0 - vUv.y));
+      // shock diamonds: bright knots one after another behind the nozzle, while the air presses the flame in
+      float k = (1.0 - vUv.y) * 9.0, dm = diamonds * exp(-pow((fract(k) - 0.5) * 5.0, 2.0)) * smoothstep(0.45, 0.92, vUv.y) * core;
+      c += vec3(1.0, 0.92, 0.75) * dm * 1.4;
+      gl_FragColor = vec4(c * (0.6 + 0.8 * core), (a * f * core * 0.95 + dm * 0.6) * (1.0 - 0.45 * vac)); }` });
   return new THREE.Mesh(geo, mat);
 }
 const plumes = [];
@@ -996,21 +1077,37 @@ function plumeOn(parent, len, rad, color) { const p = makePlume(len * VS, rad * 
 const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.5, roughness: 0.55 });
 // the glow of re-entry heating, lit by the frame loop
 const heatSprite = (y, z, size) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('#ffd2a6', '#ff5a1f'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); s.position.set(0, y * VS, z * VS); s.scale.setScalar(size * VS); s.material.opacity = 0; s.visible = false; return s; };
-// Falcon core (42 m stage + interstage), optional nose cone for a Falcon Heavy side booster. Legs and grid fins
-// are folded against the body on hinges, and opened by the frame loop.
+// ---------------------------------------------------------------- Falcon 9, Falcon Heavy and Dragon, drawn after the real ones
+// The first stage: white, the black interstage, the octaweb with nine Merlins under it, four carbon legs folded flat
+// and four grid fins at the top (opened by the frame loop). A Falcon Heavy side booster has a nose cone in place of the
+// interstage. The second stage: one big Merlin Vacuum bell; on top an ogive fairing in two halves, or Dragon.
+const matMerlin = new THREE.MeshStandardMaterial({ color: 0x4a4440, metalness: 0.8, roughness: 0.4, side: THREE.DoubleSide, emissive: 0x120d09, emissiveIntensity: 0.6 });
+const matMvac = new THREE.MeshStandardMaterial({ color: 0x2b2826, metalness: 0.75, roughness: 0.35, side: THREE.DoubleSide, emissive: 0x1b0c05, emissiveIntensity: 0.5 });
+const matFin = new THREE.MeshStandardMaterial({ color: 0x8b8f96, metalness: 0.85, roughness: 0.4 });
+const latheF = (pts, mat, seg = 40, from = 0, len = Math.PI * 2) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r * VS, y * VS)), seg, from, len), mat);
+function merlins(g, list, y) { list.forEach(([x, z, r, l, m]) => { const b = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.42 * VS, r * VS, l * VS, 18, 1, true), m || matMerlin); b.position.set(x * VS, (y - l / 2) * VS, z * VS); g.add(b); }); }
 function falconCore(nose) {
   const g = new THREE.Group();
-  g.add(cyl(1.83, 42, matWhite, 0), cyl(1.86, 1.8, matBlack, 0));
-  if (nose) { const n = new THREE.Mesh(new THREE.ConeGeometry(1.83 * VS, 7 * VS, 32), matWhite); n.position.y = 45.5 * VS; g.add(n); }
-  else g.add(cyl(1.83, 6, matBlack, 42));
+  g.add(cyl(1.83, 40.5, matWhite, 1.5));
+  g.add(latheF([[1.2, 0], [1.83, 0.3], [1.83, 1.5]], matDark, 32));            // the octaweb, under its heat shield
+  if (nose) g.add(latheF([[1.83, 42], [1.8, 43.5], [1.55, 45.3], [1.05, 46.8], [0.35, 47.8], [0, 48]], matWhite, 32));
+  else { g.add(cyl(1.85, 6, matBlack, 42)); g.add(cyl(1.86, 0.5, matBlack, 39.5)); }
+  const nine = [[0, 0, 0.46, 1.2]]; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; nine.push([Math.sin(a) * 1.15, Math.cos(a) * 1.15, 0.46, 1.2]); }
+  merlins(g, nine, 0.1);
   const legs = [], fins = [];
   for (let i = 0; i < 4; i++) {
     const piv = new THREE.Group(); piv.rotation.y = i * Math.PI / 2 + Math.PI / 4; g.add(piv);
-    const hinge = new THREE.Group(); hinge.position.set(0, 1.2 * VS, 1.85 * VS);
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(1.1 * VS, 10 * VS, 0.4 * VS), matBlack); leg.position.set(0, 5 * VS, 0.2 * VS);
-    hinge.add(leg); piv.add(hinge); legs.push(hinge);
-    const fh = new THREE.Group(); fh.position.set(0, (nose ? 40 : 44.5) * VS, 1.85 * VS);
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(1.5 * VS, 2.1 * VS, 0.2 * VS), matDark); fin.position.set(0, 1.05 * VS, 0.12 * VS);
+    // a leg: a long tapered carbon strut, hinged at the bottom, its foot at the top while folded
+    const hinge = new THREE.Group(); hinge.position.set(0, 1.4 * VS, 1.88 * VS);
+    const legGeo = new THREE.CylinderGeometry(0.22 * VS, 0.42 * VS, 9.5 * VS, 4, 1); legGeo.rotateY(Math.PI / 4); legGeo.scale(1.6, 1, 0.55);
+    const leg = new THREE.Mesh(legGeo, matBlack); leg.position.set(0, 4.75 * VS, 0.12 * VS);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(1.0 * VS, 0.3 * VS, 0.5 * VS), matBlack); foot.position.set(0, 9.5 * VS, 0.15 * VS);
+    hinge.add(leg, foot); piv.add(hinge); legs.push(hinge);
+    // a grid fin: a waffle of titanium, folded flat against the body until after separation
+    const fh = new THREE.Group(); fh.position.set(0, (nose ? 40.5 : 45.5) * VS, 1.86 * VS);
+    const fin = new THREE.Group(); fin.position.set(0, 0.85 * VS, 0.1 * VS);
+    fin.add(new THREE.Mesh(new THREE.BoxGeometry(1.3 * VS, 1.7 * VS, 0.08 * VS), matFin));
+    for (let k = -2; k <= 2; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(1.3 * VS, 0.06 * VS, 0.22 * VS), matFin); b.position.y = k * 0.38 * VS; fin.add(b); const c = new THREE.Mesh(new THREE.BoxGeometry(0.06 * VS, 1.7 * VS, 0.22 * VS), matFin); c.position.x = k * 0.28 * VS; fin.add(c); }
     fh.add(fin); piv.add(fh); fins.push(fh);
   }
   const heat = heatSprite(2, 0, 26); g.add(heat);
@@ -1020,23 +1117,24 @@ function falconCore(nose) {
 function falconUpper() {
   const g = new THREE.Group(), ud = g.userData;
   g.add(cyl(1.83, 12.6, matWhite, 0));
-  const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.45 * VS, 1.3 * VS, 3.2 * VS, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x55504a, metalness: 0.7, roughness: 0.45, side: THREE.DoubleSide }));
-  noz.position.y = -1.6 * VS; g.add(noz);
+  // the Merlin Vacuum: a 3 m bell, dark niobium, out of the interstage
+  g.add(latheF([[0.45, 0.2], [0.55, -0.4], [0.9, -1.4], [1.3, -2.4], [1.6, -3.2]], matMvac, 36));
   if (isDragon) {
     const cap = new THREE.Group();
-    cap.add(cyl(1.85, 3.7, matWhite, 12.6));
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(1.0 * VS, 1.85 * VS, 4.4 * VS, 32), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
-    c.position.y = 18.5 * VS; cap.add(c);
+    const trunk = cyl(1.85, 3.7, matWhite, 12.6); cap.add(trunk);
+    // the trunk's solar cells, on one side
+    cap.add(new THREE.Mesh(new THREE.CylinderGeometry(1.87 * VS, 1.87 * VS, 3.0 * VS, 32, 1, true, -Math.PI / 2, Math.PI), new THREE.MeshStandardMaterial({ color: 0x1a2135, metalness: 0.4, roughness: 0.35, emissive: 0x060a16, emissiveIntensity: 0.6, side: THREE.DoubleSide })));
+    cap.children[cap.children.length - 1].position.y = 14.45 * VS;
+    // the capsule: heat shield, the sloped sides, the nose cone
+    cap.add(latheF([[0, 16.3], [1.85, 16.4], [1.95, 16.7], [1.7, 17.5], [1.15, 19.6], [0.9, 20.2], [0.85, 20.6], [0.55, 21.2], [0, 21.4]], new THREE.MeshStandardMaterial({ color: 0xf0f0ee, roughness: 0.45, metalness: 0.15 }), 40));
+    cap.add(latheF([[1.86, 16.32], [1.96, 16.68], [1.86, 16.95]], matBlack, 40));          // the heat shield's rim
     g.add(cap); ud.capsule = cap;
   } else {
-    // the fairing: two half shells, thrown off sideways at fairing separation
+    // the fairing: an adapter flaring out to 5.2 m, then the cylinder and the ogive nose, in two halves thrown off sideways
     const fm = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4, side: THREE.DoubleSide });
-    ud.fairing = [0, 1].map(i => {
-      const h = new THREE.Group();
-      const c = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * VS, 2.6 * VS, 8 * VS, 24, 1, true, i * Math.PI, Math.PI), fm); c.position.y = 16.6 * VS;
-      const n = new THREE.Mesh(new THREE.SphereGeometry(2.6 * VS, 24, 12, Math.PI / 2 + i * Math.PI, Math.PI, 0, Math.PI / 2), fm); n.position.y = 20.6 * VS; n.scale.y = 1.9;
-      h.add(c, n); g.add(h); return h;
-    });
+    const prof = [[1.84, 12.6], [2.6, 13.6], [2.6, 19.4]];
+    for (let i = 1; i <= 12; i++) { const t = i / 12; prof.push([Math.max(0.05, 2.6 * Math.sqrt(1 - Math.pow(t, 1.7))), 19.4 + 6.3 * t]); }
+    ud.fairing = [0, 1].map(i => { const h = new THREE.Group(); h.add(latheF(prof, fm, 24, i * Math.PI, Math.PI)); g.add(h); return h; });
     // what is under it: a stack of Starlink satellites, or one satellite with folded solar panels
     if (isStarlink) {
       const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
@@ -1102,6 +1200,30 @@ function flapPlates(side, root0, root1, tip0, tip1, span, rAt, lean) {
   grp.scale.x = side; grp.rotation.y = -side * lean;            // (the left one a mirror image, its tiles on the windward face too)
   return grp;
 }
+// a forward flap, as in our Starship model: hinged along the nose (its root follows the cone), a long swept top edge
+// running down and out from the top of the hinge to a short outer edge at the bottom, the lower edge level with the
+// ship's axis; rounded corners and a rounded rim; tiled on its windward face, bare steel behind. Built for the right
+// side (+x), the left one is its mirror image.
+function forwardFlap(side, y0, y1, rAt, span, ct, lean) {
+  const r0 = rAt(y0), r1 = rAt(y1), tilt = Math.atan((r0 - r1) / (y1 - y0)), cr = Math.hypot(r0 - r1, y1 - y0);
+  const drop = -span * (Math.tan(tilt) + 0.07), rr = Math.min(0.9, ct * 0.3), yB = drop, yT = drop + ct;
+  const sh = new THREE.Shape(), P = (x, y) => [x * VS, y * VS];
+  sh.moveTo(...P(0, 0));
+  sh.lineTo(...P(span - rr, yB * (span - rr) / span));
+  sh.quadraticCurveTo(...P(span, yB), ...P(span, yB + rr));
+  sh.lineTo(...P(span, yT - rr));
+  sh.quadraticCurveTo(...P(span, yT), ...P(span - rr, yT + (cr - yT) * (rr / span)));
+  sh.lineTo(...P(0, cr)); sh.lineTo(...P(0, 0));
+  const eg = new THREE.ExtrudeGeometry(sh, { depth: 0.12 * VS, bevelEnabled: true, bevelThickness: 0.14 * VS, bevelSize: 0.14 * VS, bevelSegments: 5, curveSegments: 12 });
+  eg.translate(0, 0, -0.06 * VS);
+  const body = new THREE.Mesh(eg, ssSteel(3)); body.material.map.offset.y = 0.015;   // (mid-sheet, off the weld line: the cap's UVs barely move)
+  const tiles = new THREE.Mesh(new THREE.ShapeGeometry(sh, 12), ssTiles(1 / (4.8 * VS), 1 / (5.6 * VS))); tiles.position.z = 0.24 * VS; tiles.material.side = THREE.FrontSide;   // (seen only from its own side, never through the flap)
+  const inner = new THREE.Group(); inner.add(body, tiles);
+  inner.position.set((r0 + 0.02) * VS, y0 * VS, 0); inner.rotation.z = tilt;   // leaning in with the cone
+  const holder = new THREE.Group(); holder.rotation.y = lean; holder.add(inner); // round toward the lee side
+  const out = new THREE.Group(); out.add(holder); out.scale.x = side;
+  return out;
+}
 function raptorBells(g, list, y) {                               // [x, z, exit radius, length] in metres
   list.forEach(([x, z, r, l]) => { const b = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.38 * VS, r * VS, l * VS, 20, 1, true), matRaptor); b.position.set(x * VS, (y - l / 2) * VS, z * VS); g.add(b); });
 }
@@ -1146,7 +1268,7 @@ function ship() {
   const noseR = (y) => R_SS * Math.sqrt(1 - Math.pow(Math.min(1, Math.max(0, (y - 34) / 18)), 1.9));
   [1, -1].forEach(sd => {
     g.add(flapPlates(sd, 1.0, 12.5, 2.5, 8.5, 4.6, R_SS, 0.42));
-    g.add(flapPlates(sd, 39.5, 46.5, 41.5, 44.6, 2.6, noseR(43), 0.62));
+    g.add(forwardFlap(sd, 39.0, 45.0, noseR, 2.6, 1.9, 0.38));
   });
   // six Raptors: three for the sea level in the middle, three big vacuum bells around them
   raptorBells(g, [[0, 1.1, 0.65, 2.0], [-0.95, -0.55, 0.65, 2.0], [0.95, -0.55, 0.65, 2.0], [0, -2.9, 1.15, 3.0], [2.5, 1.45, 1.15, 3.0], [-2.5, 1.45, 1.15, 3.0]], 0.8);
@@ -1207,6 +1329,7 @@ function vehTexts() {
 // All lie exactly on the sphere, drawn right after the globe and before everything else, with no depth test of
 // their own (the far side is culled). If a tile service does not answer, what is below simply stays.
 const GIBS = (z, y, x) => `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08/500m/${z}/${y}/${x}.jpeg`;
+const BLACK_MARBLE = (z, y, x) => `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_Black_Marble/default/2016-01-01/500m/${z}/${y}/${x}.png`;
 const EOX = (z, y, x) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless/default/WGS84/${z}/${y}/${x}.jpg`;
 const gLevel = (z) => ({ id: 'g' + z, url: GIBS, z, span: 288 / Math.pow(2, z), res: 288 / Math.pow(2, z) * 111.32 / 512, land: 0 });
 const eLevel = (z) => ({ id: 'e' + z, url: EOX, z, span: 180 / Math.pow(2, z), res: 180 / Math.pow(2, z) * 111.32 / 256, land: 1 });
@@ -1234,13 +1357,13 @@ function tileGeometry(lv, y, x) {
   return g;
 }
 function makeTile(lv, y, x) {
-  const u = uniOf(lv), uOp = { value: 0 }, uMap = { value: blank };
+  const u = uniOf(lv), uOp = { value: 0 }, uMap = { value: blank }, uNight = { value: blank }, uHasNight = { value: 0 };
   const mat = new THREE.ShaderMaterial({
-    uniforms: { map: uMap, sunDir: earthMat.uniforms.sunDir, center: u.center, fade: u.fade, opacity: uOp, land: { value: lv.land } },
+    uniforms: { map: uMap, nightMap: uNight, hasNight: uHasNight, sunDir: earthMat.uniforms.sunDir, center: u.center, fade: u.fade, opacity: uOp, land: { value: lv.land } },
     blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, depthTest: false, depthWrite: false,
     vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
       void main() { vUv = uv; vL = normalize(position); vN = normalize(mat3(modelMatrix) * position); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity; uniform float land;
+    fragmentShader: `uniform sampler2D map; uniform sampler2D nightMap; uniform float hasNight; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity; uniform float land;
       varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
       void main() {
         vec3 n = normalize(vN);
@@ -1257,8 +1380,12 @@ function makeTile(lv, y, x) {
         col += vec3(1.0, 0.92, 0.8) * pow(max(dot(n, normalize(sunDir + v)), 0.0), 60.0) * sea * lit * 0.9;
         float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
         col += vec3(0.3, 0.6, 1.0) * rim * 0.35 * smoothstep(-0.2, 0.4, d);
-        // (the night side keeps the globe's city lights showing through; the edge fades by distance, not by an angle's cosine)
-        gl_FragColor = vec4(col, opacity * (1.0 - water) * mix(0.55, 1.0, dayMix) * (1.0 - smoothstep(fade.y, fade.x, distance(normalize(vL), center))));
+        // the night side: a Blue Marble tile shows its own Black Marble city lights; a Sentinel-2 tile gives way to the
+        // lights below it. (The edge fades by distance, not by an angle's cosine.)
+        vec3 lights = texture2D(nightMap, vUv).rgb * vec3(1.0, 0.82, 0.55) * 1.7 * hasNight;
+        col = mix(lights + day * 0.03, col, mix(1.0, dayMix, hasNight));
+        float nightA = hasNight > 0.5 ? 1.0 : mix(land > 0.5 ? 0.0 : 0.55, 1.0, dayMix);
+        gl_FragColor = vec4(col, opacity * (1.0 - water) * nightA * (1.0 - smoothstep(fade.y, fade.x, distance(normalize(vL), center))));
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
@@ -1266,7 +1393,7 @@ function makeTile(lv, y, x) {
   const mesh = new THREE.Mesh(tileGeometry(lv, y, x), mat);
   mesh.renderOrder = -19 + (lv.id === 'track' ? 0 : 0.01 + LADDER.indexOf(lv) * 0.01); mesh.visible = false;
   earthGroup.add(mesh);
-  const t = { mesh, uOp, uMap, state: 'queued', last: 0, lv, y, x };
+  const t = { mesh, uOp, uMap, uNight, uHasNight, state: 'queued', last: 0, lv, y, x };
   tileQueue.push(t);
   return t;
 }
@@ -1282,6 +1409,10 @@ function pumpTiles() {
       tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (t.state === 'gone') { tex.dispose(); return; }
       t.uMap.value = tex; t.state = 'ready';
+      if (!t.lv.land && t.lv.z <= 7) tileLoader.load(BLACK_MARBLE(t.lv.z, t.y, t.x), (nt) => {     // and its city lights
+        if (t.state === 'gone') { nt.dispose(); return; }
+        nt.colorSpace = THREE.SRGBColorSpace; t.uNight.value = nt; t.uHasNight.value = 1;
+      });
     }, undefined, () => { tileLoading--; t.state = 'failed'; if (++tileFails[src] > 12) tilesOff[src] = true; });   // that service is down: what is below stays
   }
 }
@@ -1357,6 +1488,20 @@ function updateTiles(dt) {
     };
     im.onerror = () => { failed = true; };
     im.src = GIBS(3, y, x);
+  }
+})();
+// and the globe's night picture from Black Marble the same way (city lights of 2016, 1.8 km a pixel in place of 10)
+(function buildNightMosaic() {
+  const W = Math.min(MOBILE ? 4096 : 5120, renderer.capabilities.maxTextureSize), H = W / 2, cw = W / 10, ch = H / 5;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  let left = 50, failed = false;
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 10; x++) {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { if (failed) return; try { g.drawImage(im, x * cw, y * ch, cw + 0.5, ch + 0.5); } catch (e) { failed = true; return; }
+      if (--left === 0) { const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthMat.uniforms.nightMap.value = tex; } };
+    im.onerror = () => { failed = true; };
+    im.src = BLACK_MARBLE(3, y, x);
   }
 })();
 
@@ -1463,37 +1608,117 @@ function updatePuffs(t) {
   puffGeo.attributes.position.needsUpdate = puffGeo.attributes.size.needsUpdate = puffGeo.attributes.alpha.needsUpdate = puffGeo.attributes.warm.needsUpdate = true;
 }
 
-// exhaust trail
-const TRAIL_N = MOBILE ? 500 : 900;
-const trailGeo = new THREE.BufferGeometry();
-const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3);
-trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
-trailGeo.setAttribute('age', new THREE.BufferAttribute(trailAge, 1));
-trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
-const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
-  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight } },
-  vertexShader: `attribute float age; varying float vA; varying vec3 vC; uniform float scale;
+// ---------------------------------------------------------------- the clouds over the pad at launch time
+// Open-Meteo's low, middle and high cloud cover for that hour at the pad (its forecast reaches 16 days ahead, its
+// record a few months back): soft sheets of cloud at about 1.5, 4.5 and 9 km, as thick as the cover, over 80 km round.
+// They are for the near views; from far out the globe's own cloud picture takes over.
+const padClouds = new THREE.Group(); earthGroup.add(padClouds);
+function cloudTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  let sd = 7; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 26; i++) {
+    const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 30, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, rad = 14 + r() * 20;
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(255,255,255,0.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  }
+  return new THREE.CanvasTexture(c);
+}
+const cloudMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
+  uniforms: { map: { value: cloudTexture() }, scale: { value: innerHeight * 1.2 }, tint: { value: new THREE.Color(1, 1, 1) }, fade: { value: 1 } },
+  vertexShader: `attribute float size; attribute float alpha; varying float vA; uniform float scale;
 #include <common>
 #include <logdepthbuf_pars_vertex>
-  void main(){ vA = age; vC = color; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = clamp(scale * (0.0009 + 0.004 * (1.0 - age)) / -mv.z, 0.0, 60.0); gl_Position = projectionMatrix * mv;
+  void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vA = alpha * smoothstep(size * 0.6, size * 2.5, -mv.z); gl_PointSize = clamp(scale * size / -mv.z, 0.0, 700.0); gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
   }`,
-  fragmentShader: `uniform sampler2D map; varying float vA; varying vec3 vC;
+  fragmentShader: `uniform sampler2D map; uniform vec3 tint; uniform float fade; varying float vA;
 #include <logdepthbuf_pars_fragment>
   void main(){
 #include <logdepthbuf_fragment>
-    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC, t.a * (1.0 - vA) * 0.55); }` }));
+    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(tint, t.a * vA * fade); }` });
+(async () => {
+  if (!T0_KNOWN || Math.abs(Date.now() - T0) > 15 * 86400e3) return;
+  try {
+    const day = new Date(T0).toISOString().slice(0, 10), hour = new Date(T0).getUTCHours();
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${PAD.lat.toFixed(3)}&longitude=${PAD.lon.toFixed(3)}&hourly=cloud_cover_low,cloud_cover_mid,cloud_cover_high&start_date=${day}&end_date=${day}&timezone=UTC`;
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 6000);
+    const h = (await (await fetch(url, { signal: ctl.signal })).json()).hourly; clearTimeout(timer);
+    const layers = [[h.cloud_cover_low[hour], 1.5, 2.2], [h.cloud_cover_mid[hour], 4.5, 3.0], [h.cloud_cover_high[hour], 9, 4.5]];
+    const pos = [], size = [], alpha = [];
+    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    layers.forEach(([cover, alt, km]) => {
+      const n = Math.round((cover || 0) / 100 * (MOBILE ? 140 : 260));
+      for (let i = 0; i < n; i++) {
+        const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 80, [la, lo] = destination(PAD.lat, PAD.lon, a / DEG, r);
+        const v = ecef(la, lo, alt + (rnd() - 0.5) * 0.6); pos.push(v.x, v.y, v.z);
+        size.push(km * 2.6 * SCALE * (0.6 + rnd())); alpha.push(alt > 8 ? 0.28 : 0.45);
+      }
+    });
+    if (!pos.length) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('size', new THREE.Float32BufferAttribute(size, 1)); g.setAttribute('alpha', new THREE.Float32BufferAttribute(alpha, 1));
+    const pts = new THREE.Points(g, cloudMat); pts.frustumCulled = false; padClouds.add(pts);
+  } catch (e) {}
+})();
+function updatePadClouds() {
+  if (!padClouds.children.length) return;
+  if (padClouds.userData.off) { padClouds.visible = false; return; }
+  const camAlt = camera.position.length() / SCALE - RE, near = camera.position.distanceTo(earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0))) / SCALE;
+  const f = (1 - THREE.MathUtils.smoothstep(camAlt, 120, 400)) * (1 - THREE.MathUtils.smoothstep(near, 400, 1200));
+  padClouds.visible = f > 0.01; cloudMat.uniforms.fade.value = f;
+  const lit = THREE.MathUtils.smoothstep(earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0)).normalize().dot(SUN), -0.1, 0.15), c = 0.06 + 0.94 * lit;
+  cloudMat.uniforms.tint.value.setRGB(c, c * (0.97 + 0.03 * lit), c * (0.95 + 0.05 * lit));
+  cloudMat.uniforms.scale.value = innerHeight * 1.2;
+}
+
+// exhaust trail
+const TRAIL_N = MOBILE ? 500 : 900;
+const trailGeo = new THREE.BufferGeometry();
+const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3), trailLit = new Float32Array(TRAIL_N);
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setAttribute('age', new THREE.BufferAttribute(trailAge, 1));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
+trailGeo.setAttribute('lit', new THREE.BufferAttribute(trailLit, 1));
+const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 } },
+  // lit: 0 in the Earth's shadow; above it (from 60 km up) the gas spreads out wide and, sunlit over a dark sky, glows
+  vertexShader: `attribute float age; attribute float lit; varying float vA; varying vec3 vC; varying float vL; uniform float scale; uniform float dark;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+  void main(){ vA = age; vL = lit * dark; vC = mix(color, vec3(0.78, 0.9, 1.0), vL); vec4 mv = modelViewMatrix * vec4(position,1.0);
+    float grow = 0.0009 + 0.004 * (1.0 - age) + vL * 0.05 * sqrt(age);
+    gl_PointSize = clamp(scale * grow / -mv.z, 0.0, mix(60.0, 300.0, vL)); gl_Position = projectionMatrix * mv;
+#include <logdepthbuf_vertex>
+  }`,
+  fragmentShader: `uniform sampler2D map; varying float vA; varying vec3 vC; varying float vL;
+#include <logdepthbuf_pars_fragment>
+  void main(){
+#include <logdepthbuf_fragment>
+    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC, t.a * (1.0 - vA) * mix(0.55, 0.018, vL)); }   // (hundreds of them overlap, added up)` }));
 trail.frustumCulled = false;
 scene.add(trail);
 let trailHead = 0;
 function resetTrail() { trailAge.fill(1); trailGeo.attributes.age.needsUpdate = true; }
 resetTrail();
-function emit(p, color) { const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; trailPos.set([p.x, p.y, p.z], i * 3); trailAge[i] = 0; trailCol.set(color, i * 3); }
+function emit(p, color) {
+  const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; trailPos.set([p.x, p.y, p.z], i * 3); trailAge[i] = 0;
+  const lowK = 1 - smooth((p.length() / SCALE - RE - 8) / 40);   // below 8 km all smoke, glowing gas from 48 km up
+  trailCol.set([color[0] * (1 - lowK) + 0.13 * lowK, color[1] * (1 - lowK) + 0.12 * lowK, color[2] * (1 - lowK) + 0.11 * lowK], i * 3);
+  // sunlit? (out of the Earth's cylinder of shadow), and high enough for the gas to spread
+  const along = p.dot(SUN), off = Math.sqrt(Math.max(0, p.lengthSq() - along * along)), alt = p.length() / SCALE - RE;
+  trailLit[i] = (along > 0 || off > R * 1.005 ? 1 : 0) * smooth((alt - 60) / 60);
+}
 
 // ================================================================ UI
 const fmtT = (t) => { const s = Math.abs(Math.round(t)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (t < 0 ? 'T-' : 'T+') + [h, m, x].map(v => String(v).padStart(2, '0')).join(':'); };
 const evList = $('ev-list');
+const tickBar = $('ticks'), SCRUB_MIN = -20;
 EVENTS.forEach(e => {
+  if (e.t > SCRUB_MIN && e.t < END_T) {
+    const k = document.createElement('i'); k.className = 'tk'; k.style.left = ((e.t - SCRUB_MIN) / (END_T - SCRUB_MIN) * 100) + '%';
+    k.onclick = () => { setLive(false); seek(e.t - (e.t > 600 ? 20 : 6)); if (camAuto) autoCamNow(true); };
+    tickBar.appendChild(k); e.tick = k;
+  }
   const r = document.createElement('div');
   r.className = 'ev-row';
   r.onclick = () => { setLive(false); seek(e.t - (e.t > 600 ? 20 : 6)); if (camAuto) autoCamNow(true); };
@@ -1514,6 +1739,7 @@ function eventTexts() {
     n.append(head);
     if (e.explain) { const sm = document.createElement('small'); sm.textContent = e.explain; n.append(sm); }
     e.row.append(tt, n);
+    if (e.tick) e.tick.title = tTxt + '  ' + e.title;
   });
   evMarkers.forEach(({ e, l }) => { l.element.textContent = e.title; });
 }
@@ -1528,6 +1754,7 @@ function uiTexts() {
   const b1 = document.createElement('bdi'); b1.textContent = PAD_LABEL;
   const b2 = document.createElement('bdi'); b2.textContent = dateTxt;
   sub.append(b1, ' · ', b2);
+  if (REAL_ORBIT) { const b3 = document.createElement('bdi'); b3.textContent = I.realOrbit; sub.append(' · ', b3); }
   const mi = UNITS === 'imperial';
   $('alt-l').textContent = I.alt + (mi ? ' (mi)' : ' (km)');
   $('spd-l').textContent = I.spd + (mi ? ' (mph)' : ' (km/h)');
@@ -1542,7 +1769,8 @@ function uiTexts() {
   document.querySelector('[data-cam="pad"]').textContent = I.pad;
   document.querySelector('[data-cam="earth"]').textContent = I.earth;
   $('ev-toggle').textContent = I.events;
-  $('live').textContent = I.live;
+  $('cine').title = I.cine; $('cine').setAttribute('aria-label', I.cine); $('cine-exit').setAttribute('aria-label', I.cine);
+  liveLabel();
   $('close').setAttribute('aria-label', I.close); $('close').title = I.close;
   $('play').title = playing ? I.pause : I.play;
   $('loading').textContent = I.loading;
@@ -1561,7 +1789,19 @@ function setLive(on) {
   if (live) { playing = true; $('play').textContent = '⏸'; simT = liveT(); resetTrail(); lastTarget = null; if (camAuto) autoCamNow(true); else if (camMode === 'chase' || camMode === 'booster') setCam(camMode, camTarget); }
   markSpeed();
 }
-$('live').onclick = () => setLive(!live);
+$('live').onclick = () => { if (liveAvail()) setLive(!live); };
+// Live is always there: waiting (with how long until it opens, an hour before liftoff) until it is on offer, gone once the flight is over
+function liveLabel() {
+  const el = $('live'), t = liveT();
+  el.classList.toggle('gone', !T0_KNOWN || t > END_T);
+  const wait = T0_KNOWN && t < -3600; el.classList.toggle('wait', wait); el.classList.toggle('avail', liveAvail());
+  let txt = I.live;
+  if (wait) {
+    const sec = -t - 3600, [n, unit] = sec > 172800 ? [Math.round(sec / 86400), 'day'] : sec > 5400 ? [Math.round(sec / 3600), 'hour'] : [Math.max(1, Math.round(sec / 60)), 'minute'];
+    try { txt += ' · ' + new Intl.RelativeTimeFormat(LANG === 'he' ? 'he' : LANG, { numeric: 'always', style: 'short' }).format(n, unit); } catch (e) {}
+  }
+  if (el.textContent !== txt) el.textContent = txt;
+}
 const scrub = $('scrub');
 scrub.max = END_T;
 scrub.addEventListener('input', () => { setLive(false); seek(+scrub.value); if (camAuto) autoCamNow(true); });
@@ -1659,6 +1899,43 @@ function autoSpeed(t) {
   return Math.max(10, Math.min(2500, gap / 18));
 }
 
+// ---------------------------------------------------------------- the second view
+// While the automatic camera watches a booster come down, a smaller view keeps the second stage (the ship) in sight as it
+// flies on to orbit - the way SpaceX's webcasts split the screen. Drawn into the same canvas, in a corner clear of the panels.
+const camB = new THREE.PerspectiveCamera(38, 1.6, 0.00001, 2000);
+camB.add(new THREE.PointLight(0xbcd6ff, 2.2, 0, 0)); scene.add(camB);
+function pipWanted() {
+  if (!camAuto || !curShot || simT >= seco1 - 2 || simT < sepT + 5) return false;
+  return curShot[2] === 'booster' || curShot[2] === 'sides';
+}
+function renderPip(separated, radial) {
+  const frame = $('pip-frame');
+  if (!pipWanted() || !separated) { frame.classList.remove('on'); return; }
+  const ctl = $('controls').getBoundingClientRect(), W = innerWidth;
+  const w = Math.round(MOBILE ? W * 0.52 : Math.min(420, W * 0.3)), h = Math.round(w * 0.62);
+  const x = MOBILE ? W - w - 10 : W - w - 16, bottom = Math.round(innerHeight - ctl.top + 10);
+  const top = MOBILE ? Math.round($('hud-top').getBoundingClientRect().bottom + 10) : innerHeight - bottom - h;
+  // in a frame that follows the stage: behind and to one side of it, a little above
+  const p = s2At(simT), v = heading(s2At, simT), side = new THREE.Vector3().crossVectors(v, radial).normalize();
+  camB.aspect = w / h; camB.updateProjectionMatrix();
+  camB.up.copy(radial);
+  camB.position.copy(p).addScaledVector(side, 0.018).addScaledVector(radial, 0.004).addScaledVector(v, -0.01);
+  // the stage drawn for this camera's distance, then back as the main view has it
+  const keep = upper.scale.x, sc = Math.max(1, Math.min(400, 0.33 * camB.position.distanceTo(p) / SCALE * 1000 / H_TRUE)) / 400;
+  upper.scale.setScalar(sc);
+  camB.lookAt(upper.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(upper.quaternion), (VEH === 'ss' ? 26 : 10) * VS * sc));
+  const glowWas = glowS2.visible; glowS2.visible = false;
+  boosterDefs.forEach(b => { b.glowWas = b.glow.visible; b.glow.visible = false; });
+  renderer.setScissorTest(true);
+  renderer.setScissor(x, innerHeight - top - h, w, h); renderer.setViewport(x, innerHeight - top - h, w, h);
+  renderer.render(scene, camB);
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight);
+  upper.scale.setScalar(keep); glowS2.visible = glowWas; boosterDefs.forEach(b => { b.glow.visible = b.glowWas; });
+  Object.assign(frame.style, { left: x + 'px', top: top + 'px', width: w + 'px', height: h + 'px' });
+  $('pip-label').textContent = VEH === 'ss' ? 'Starship' : I.s2;
+  frame.classList.add('on');
+}
+
 // ================================================================ frame
 const clock = new THREE.Clock();
 const tmp = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0), groundUp = new THREE.Vector3(0, 1, 0);
@@ -1703,6 +1980,12 @@ function frame() {
     if (skyTex) sky.material.color.setRGB(0.53 * k, 0.6 * k, 0.67 * k);
     // the cloud picture is coarse (a cloud is tens of kilometres of one pixel): it is for the view from far away
     if (clouds) { const f = THREE.MathUtils.smoothstep(camAlt, 400, 3000); clouds.material.uniforms.fadeNear.value = f; clouds.visible = f > 0.01; }
+  }
+  { // the sky dome round the camera; the glow shell seen from outside only, so the two don't add up low down
+    const ca = camera.position.length() / SCALE - RE;
+    skyDome.position.copy(camera.position); skyDome.scale.setScalar(0.5); skyDome.material.uniforms.up.value.copy(camera.position).normalize();
+    skyDome.material.uniforms.sunDir.value.copy(SUN); skyDome.material.uniforms.thick.value = 1 - THREE.MathUtils.smoothstep(ca, 8, 80); skyDome.visible = ca < 80 && !skyDome.userData.off;
+    atmo.material.uniforms.fade.value = THREE.MathUtils.smoothstep(ca, 30, 120);
   }
   earthMat.uniforms.sunDir.value.copy(SUN); atmo.material.uniforms.sunDir.value.copy(SUN); if (clouds) clouds.material.uniforms.sunDir.value.copy(SUN);
   sunLight.position.copy(SUN).multiplyScalar(100); sunSprite.position.copy(SUN).multiplyScalar(800);
@@ -1783,6 +2066,7 @@ function frame() {
     pl.material.uniforms.time.value = ptime;
     const bAlt = p.length() / SCALE - RE;
     pl.material.uniforms.spread.value = 1 + Math.min(4, bAlt / 18);
+    pl.material.uniforms.diamonds.value = 1 - smooth(bAlt / 14); pl.material.uniforms.vac.value = smooth((bAlt - 30) / 50);
     // near the ground the flame is only as long as the room under the engines (the models are enlarged, the altitude is not)
     const onStack = simT < bd.sep, room = (bAlt * SCALE + (onStack ? 0 : hangNow)) / ((VEH === 'ss' ? 140 : 80) * VS * sc);
     pl.material.uniforms.len.value = Math.min(1 - 0.35 * clamp01(bAlt / 60), onStack ? 0.2 + room : Math.max(0.06, room));
@@ -1821,9 +2105,11 @@ function frame() {
     padStruct.userData.arms.forEach((a, i) => { a.rotation.y = (i ? -1 : 1) * (0.55 - 0.5 * close); });
   }
   updatePuffs(simT);
+  updatePadClouds();
   upper.userData.plume.visible = s2Burn;
   upper.userData.plume.material.uniforms.time.value = ptime;
   upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 5;
+  { const a2 = pS2.length() / SCALE - RE; upper.userData.plume.material.uniforms.diamonds.value = 1 - smooth(a2 / 14); upper.userData.plume.material.uniforms.vac.value = smooth((a2 - 30) / 50); }
   const stackBurn = simT >= 0 && simT <= meco;
   vehLabel.visible = !separated;
   vehLabel.position.copy(pS2).add(new THREE.Vector3(0, (VEH === 'ss' ? 135 : 70) * VS * vScale, 0).applyQuaternion(qStack));
@@ -1836,7 +2122,9 @@ function frame() {
     for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(upper.position, [0.55, 0.8, 1.0]); }
   }
   for (let i = 0; i < TRAIL_N; i++) if (trailAge[i] < 1) trailAge[i] = Math.min(1, trailAge[i] + dt * (0.12 + Math.min(speed, 200) * 0.004));
-  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = true;
+  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = trailGeo.attributes.lit.needsUpdate = true;
+  // how dark the sky is where the camera is: the glow shows against a dark sky, and is lost in daylight
+  trail.material.uniforms.dark.value = 1 - THREE.MathUtils.smoothstep(tmp.copy(camera.position).normalize().dot(SUN), -0.08, 0.06) * (1 - THREE.MathUtils.smoothstep(camera.position.length() / SCALE - RE, 40, 160));
   const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
   s2Done.geometry.instanceCount = si;
   setTip(s2Tip, s2Path[si].p, separated ? upper.position : pS2, simT > 0);
@@ -1919,7 +2207,7 @@ function frame() {
   $('spd').textContent = Math.round(gs * k).toLocaleString('en-US');
   $('dr').textContent = Math.round(drKm * k).toLocaleString('en-US');
   let cur = null;
-  EVENTS.forEach(e => { const done = simT >= e.t; e.row.classList.toggle('done', done); if (done) cur = e; });
+  EVENTS.forEach(e => { const done = simT >= e.t; e.row.classList.toggle('done', done); if (e.tick) e.tick.classList.toggle('done', done); if (done) cur = e; });
   EVENTS.forEach(e => { const on = e === cur && simT - e.t < (e.t > 600 ? 120 : 25); if (on && !e.row.classList.contains('now')) { e.row.classList.add('now'); e.row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else if (!on) e.row.classList.remove('now'); });
   const phase = $('phase');
   const key = simT < 0 ? 'cd' : cur ? cur.t + '|' + LANG : '';
@@ -1930,6 +2218,7 @@ function frame() {
   }
   renderer.render(scene, camera);
   labels.render(scene, camera);
+  renderPip(separated, radial);
   requestAnimationFrame(frame);
 }
 addEventListener('resize', () => {
@@ -1943,11 +2232,11 @@ uiTexts();
 autoCamNow(true);
 markCam('auto');
 setInterval(() => {
-  $('live').classList.toggle('avail', liveAvail());
+  liveLabel();
   // the launch moved (a hold, a scrub): the hero has its new T-0 - start over on it
   try { const c = P && P.getLaunchSimConfig && P.getLaunchSimConfig(); if (c && c.name === cfg.name && isFinite(c.t0) && (!T0_KNOWN || Math.abs(c.t0 - T0) > 999)) location.reload(); } catch (e) {}
 }, 1000);
-$('live').classList.toggle('avail', liveAvail());
+liveLabel();
 if (liveAvail() && Q.get('live') !== '0') setLive(true);
 $('loading').style.opacity = '0';
 setTimeout(() => $('loading').remove(), 700);
@@ -1957,6 +2246,7 @@ window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind,
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
   closeUp: (az, el, km) => { const u = upper, c = u.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(u.quaternion), 26 * VS * u.scale.x); const dir = new THREE.Vector3(Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)).applyQuaternion(u.quaternion); camera.position.copy(c).addScaledVector(dir, km * SCALE); controls.target.copy(c); },
   camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
+  toggle: (what, on) => { ({ clouds: padClouds, sky: skyDome })[what].userData.off = !on; },
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
