@@ -1201,7 +1201,8 @@ const matBlack = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.
 const matSteel = new THREE.MeshStandardMaterial({ color: 0xc7ccd3, metalness: 0.85, roughness: 0.32, emissive: 0x20262e, emissiveIntensity: 0.5 });
 const cyl = (r, len, mat, y) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, len * VS, 32), mat); m.position.y = y * VS + len * VS / 2; return m; };
 function makePlume(len, rad, color) {
-  const geo = new THREE.ConeGeometry(rad, len, 32, 1, true); geo.translate(0, -len / 2, 0);
+  // as wide as the engines at the nozzles (not a point), narrowing down its length; in vacuum 'spread' opens its far end
+  const geo = new THREE.CylinderGeometry(rad * 0.5, rad * 0.32, len, 32, 1, true); geo.translate(0, -len / 2, 0);
   const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     uniforms: { time: { value: 0 }, color: { value: new THREE.Color(color) }, spread: { value: 1 }, len: { value: 1 }, diamonds: { value: 0 }, vac: { value: 0 }, nearFade: { value: 0 } },
     vertexShader: `varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; varying float vDepth; uniform float spread; uniform float len;
@@ -1214,13 +1215,34 @@ function makePlume(len, rad, color) {
 #include <logdepthbuf_pars_fragment>
     void main(){
 #include <logdepthbuf_fragment>
-      float a = pow(vUv.y, 1.4); float f = 0.85 + 0.15 * sin(time * 40.0 + vUv.y * 30.0);
-      float core = pow(abs(dot(normalize(vNv), normalize(vVv))), 1.8); vec3 c = mix(vec3(1.0, 0.97, 0.9), color, smoothstep(0.0, 0.5, 1.0 - vUv.y));
+      float a = pow(vUv.y, 1.4);
+      // turbulence: soft noise running down the flame, so it flickers and its edge is ragged rather than a clean cone
+      float n1 = fract(sin(dot(floor(vec2(vUv.x * 24.0, vUv.y * 14.0 - time * 18.0)), vec2(12.9898, 78.233))) * 43758.5453);
+      float n2 = fract(sin(dot(floor(vec2(vUv.x * 9.0, vUv.y * 6.0 - time * 9.0)), vec2(39.346, 11.135))) * 43758.5453);
+      float f = 0.78 + 0.14 * n1 + 0.12 * n2 + 0.06 * sin(time * 47.0 + vUv.y * 31.0);
+      float core = pow(abs(dot(normalize(vNv), normalize(vVv))), 1.8);
+      // white-hot at the nozzles, yellow, then the flame's own colour, reddening at its tail
+      float down = 1.0 - vUv.y;
+      vec3 c = mix(vec3(1.0, 0.98, 0.92), vec3(1.0, 0.86, 0.5), smoothstep(0.0, 0.22, down));
+      c = mix(c, color, smoothstep(0.18, 0.6, down)); c = mix(c, color * vec3(1.0, 0.55, 0.4), smoothstep(0.65, 1.0, down) * (1.0 - vac));
       // shock diamonds: bright knots one after another behind the nozzle, while the air presses the flame in
       float k = (1.0 - vUv.y) * 9.0, dm = diamonds * exp(-pow((fract(k) - 0.5) * 5.0, 2.0)) * smoothstep(0.45, 0.92, vUv.y) * core;
       c += vec3(1.0, 0.92, 0.75) * dm * 1.4;
       gl_FragColor = vec4(c * (0.6 + 0.8 * core) * (1.0 - 0.5 * vac), (a * f * core * 0.95 + dm * 0.6) * (1.0 - 0.86 * vac) * smoothstep(nearFade * 0.6, nearFade * 2.5, vDepth)); }` });
-  return new THREE.Mesh(geo, mat);
+  const m = new THREE.Mesh(geo, mat);
+  // the glow round the flame: a wider, shorter, soft sheath of the same colour (its settings shared with the core's)
+  const sheathGeo = new THREE.CylinderGeometry(rad * 0.85, rad * 0.55, len * 0.8, 32, 1, true); sheathGeo.translate(0, -len * 0.4, 0);
+  const sheath = new THREE.Mesh(sheathGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: mat.uniforms,
+    vertexShader: mat.vertexShader,
+    fragmentShader: `uniform float time; uniform vec3 color; uniform float vac; uniform float nearFade; varying vec2 vUv; varying vec3 vNv; varying vec3 vVv; varying float vDepth;
+#include <logdepthbuf_pars_fragment>
+    void main(){
+#include <logdepthbuf_fragment>
+      float rim = 1.0 - pow(abs(dot(normalize(vNv), normalize(vVv))), 0.6);
+      float a = pow(vUv.y, 2.2) * (1.0 - rim) * (0.85 + 0.15 * sin(time * 23.0 + vUv.y * 17.0));
+      gl_FragColor = vec4(mix(vec3(1.0, 0.7, 0.35), color, 0.4), a * 0.22 * (1.0 - 0.9 * vac) * smoothstep(nearFade * 0.6, nearFade * 2.5, vDepth)); }` }));
+  sheath.renderOrder = 1; m.add(sheath);
+  return m;
 }
 const plumes = [];
 function plumeOn(parent, len, rad, color) { const p = makePlume(len * VS, rad * VS, color); p.userData.rad = rad * VS; parent.add(p); plumes.push(p); return p; }
@@ -1730,6 +1752,20 @@ const matDeck = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.8
 const matMark = new THREE.MeshBasicMaterial({ color: 0xf2c230, side: THREE.DoubleSide });
 const ring = (r0, r1, y, x) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0 * VS, r1 * VS, 48), matMark); m.rotation.x = -Math.PI / 2; m.position.set((x || 0) * VS, y * VS, 0); return m; };
 const slab = (r, h) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * 1.02 * VS, h * VS, 64), new THREE.MeshStandardMaterial({ map: concreteTexture(), color: 0xb9bcc0, roughness: 0.95 })); m.position.y = -h / 2 * VS; return m; };
+// steel cladding panels: rows of plates, each a slightly different shade, dark seams between (photo of the Pad 2 mount)
+function cladTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#4b4438'; g.fillRect(0, 0, 256, 256);                                  // the seams
+  let sd = 9; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 4; i++) {
+    const off = j % 2 ? 32 : 0, v = 0.86 + r() * 0.2;
+    g.fillStyle = `rgb(${179 * v | 0},${166 * v | 0},${137 * v | 0})`;
+    g.fillRect((i * 64 + off + 1.5) % 256, j * 32 + 1.5, 61, 29); if (off) g.fillRect(-32 + 1.5, j * 32 + 1.5, 61, 29);
+    g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect((i * 64 + off + 1.5) % 256, j * 32 + 1.5, 61, 3);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 1.75); t.anisotropy = 8;   // (plates ~3 x 1.5 m)
+  return t;
+}
 function concreteTexture() {                                     // poured slabs: light grey squares with joints and stains
   const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
   g.fillStyle = '#a9adb2'; g.fillRect(0, 0, 256, 256);
@@ -1778,10 +1814,20 @@ const padStruct = addStructure(padFixed, g => {
         for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; put(box(2.6, 18, 2.6, matTower, x + Math.cos(a) * 9.5, 9, z + Math.sin(a) * 9.5)); }
         const ringT = lathe([[5.4, 17.5], [10.8, 17.5], [10.8, 20.5], [5.4, 20.5], [5.4, 17.5]], matTower, 36); ringT.position.set(x * VS, 0, z * VS); put(ringT);
       } else {
-        const matClad = new THREE.MeshStandardMaterial({ color: 0xb3a689, metalness: 0.55, roughness: 0.45, emissive: 0x1a1712, emissiveIntensity: 0.4, flatShading: true });
-        const fr = new THREE.Mesh(new THREE.CylinderGeometry(8 * Math.SQRT2 * VS, 20 * Math.SQRT2 * VS, MOUNT_H * VS, 4, 1), matClad);
+        const matClad = new THREE.MeshStandardMaterial({ map: cladTexture(), color: 0xffffff, metalness: 0.5, roughness: 0.5, emissive: 0x1a1712, emissiveIntensity: 0.35, flatShading: true });
+        const fr = new THREE.Mesh(new THREE.CylinderGeometry(8 * Math.SQRT2 * VS, 20 * Math.SQRT2 * VS, MOUNT_H * VS, 4, 1, true), matClad);   // (open on top: the deck has the flame hole)
         fr.rotation.y = Math.PI / 4; fr.position.set(x * VS, MOUNT_H / 2 * VS, z * VS); put(fr);
-        put(box(16.4, 0.8, 16.4, matTower, x, MOUNT_H - 0.4, z));            // the deck on top
+        // the deck on top, with the round hole the engines fire down through into the trench below - a dark well
+        {
+          const sq = new THREE.Shape([[-8.2, -8.2], [8.2, -8.2], [8.2, 8.2], [-8.2, 8.2]].map(([a, b]) => new THREE.Vector2(a * VS, b * VS)));
+          const hole = new THREE.Path(); hole.absarc(0, 0, 5.6 * VS, 0, Math.PI * 2, true); sq.holes.push(hole);
+          const deck = new THREE.Mesh(new THREE.ExtrudeGeometry(sq, { depth: 0.8 * VS, bevelEnabled: false, curveSegments: 40 }), matTower);
+          deck.rotation.x = -Math.PI / 2; deck.position.set(x * VS, (MOUNT_H - 0.8) * VS, z * VS); put(deck);
+          const well = new THREE.Mesh(new THREE.CylinderGeometry(5.6 * VS, 5.6 * VS, (MOUNT_H - 1) * VS, 40, 1, true), new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 1, side: THREE.BackSide }));
+          well.position.set(x * VS, (MOUNT_H - 0.8 - (MOUNT_H - 1) / 2) * VS, z * VS); put(well);
+          const floor = new THREE.Mesh(new THREE.CircleGeometry(5.6 * VS, 40), new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 1 }));
+          floor.rotation.x = -Math.PI / 2; floor.position.set(x * VS, 0.3 * VS, z * VS); put(floor);
+        }
         for (const sx of [-1, 1]) put(box(1.2, 7, 13, matDarkPad, x + sx * 19.6, 3.5, z));   // the trench's mouths, east and west
         for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; put(box(2.4, 3.2, 2.4, matTower, x + Math.cos(a) * 6.4, MOUNT_H + 1.6, z + Math.sin(a) * 6.4)); }   // hold-downs
         const ramp = box(10, 1, 26, matClad, x, MOUNT_H * 0.32, z + 24); ramp.rotation.x = -0.5; put(ramp);
@@ -1850,7 +1896,10 @@ const puffs = new THREE.Points(puffGeo, new THREE.ShaderMaterial({ transparent: 
     vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(mix(tint, vec3(1.0, 0.62, 0.3), vW), t.a * vA); }` }));
 puffs.frustumCulled = false;
 scene.add(puffs);
+// the flame's light on the ground: warm, flickering, while a first stage burns low over the pad
+const flameLight = new THREE.PointLight(0xffa155, 0, 1, 0); scene.add(flameLight);
 const emitters = [{ fixed: padFixed, t0: -2.5, dur: 13, life: 15, R: 240, rise: 110, share: 3, a: 0.6 }];
+if (VEH === 'ss' && isStarbase) [1, -1].forEach(sx => emitters.push({ fixed: padFixed, mouth: [sx * 20, 0], go: 260, t0: -1, dur: 9, life: 9, R: 45, rise: 70, share: 2, a: 0.7, hot: true }));
 boosterDefs.forEach(bd => { if (bd.landFixed) emitters.push({ fixed: bd.landFixed.clone().setLength(R), t0: bd.landT - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 }); });
 if (VEH === 'ss') emitters.push({ fixed: toFixed(s2At(A.s2.land), A.s2.land).setLength(R), t0: A.s2.land - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 });
 emitters.forEach(e => { e.b = groundBasis(e.fixed); e.lit = THREE.MathUtils.smoothstep(toInertial(e.fixed, e.t0).normalize().dot(SUN), -0.1, 0.2); });
@@ -1867,11 +1916,13 @@ function updatePuffs(t) {
     const e = s.e, age = t - (e.t0 + s.b * e.dur);
     if (age < 0 || age > e.life) continue;
     const vScale = e.sc, u = age / e.life, rad = e.R * s.r * (1 - Math.exp(-3 * u)) * VS * vScale;
-    v.copy(e.fixed).addScaledVector(e.b.east, Math.cos(s.ang) * rad).addScaledVector(e.b.south, Math.sin(s.ang) * rad).addScaledVector(e.b.up, (6 + e.rise * u * s.k) * VS * vScale).applyMatrix4(earthGroup.matrixWorld);
+    // out of a trench mouth: the cloud's middle driven out along the ground, slowing, then lifting
+    const mx = e.mouth ? (e.mouth[0] + Math.sign(e.mouth[0]) * e.go * (1 - Math.exp(-2.6 * u)) * s.k) * VS * vScale : 0;
+    v.copy(e.fixed).addScaledVector(e.b.east, Math.cos(s.ang) * rad + mx).addScaledVector(e.b.south, Math.sin(s.ang) * rad).addScaledVector(e.b.up, (e.mouth ? 3 + e.rise * u * u * s.k : 6 + e.rise * u * s.k) * VS * vScale).applyMatrix4(earthGroup.matrixWorld);
     puffPos[i * 3] = v.x; puffPos[i * 3 + 1] = v.y; puffPos[i * 3 + 2] = v.z;
     puffSize[i] = (60 + 220 * u) * VS * vScale;
     puffAlpha[i] = e.a * (vScale < 0.5 ? 1 : 0.3) * Math.pow(1 - u, 1.5) * Math.min(1, age / 0.6);
-    puffWarm[i] = Math.max(0, 0.75 - u * 3.5);
+    puffWarm[i] = Math.max(0, (e.hot ? 0.6 : 0.75) - u * (e.hot ? 3.0 : 3.5));
     any = true; lit = e.lit;
   }
   puffs.visible = any;
@@ -2642,6 +2693,9 @@ function frame() {
     padStruct.userData.arms.forEach((a, i) => { a.rotation.y = (i ? -1 : 1) * (0.55 - 0.577 * close); });   // (closed hard against the hull: an arm's inner face on the 4.5 m radius)
   }
   updatePuffs(simT);
+  { const b0 = boosterDefs.find(b => b.who !== 'side') || boosterDefs[0], p0 = b0.at(simT), alt0 = p0.length() / SCALE - RE;
+    const on = simT >= 0 && simT < Math.min(meco, 60) && alt0 < 4;
+    flameLight.visible = on; if (on) { flameLight.position.copy(p0); flameLight.distance = M(900); flameLight.intensity = (2.6 + 0.6 * Math.sin(ptime * 37) + 0.4 * Math.sin(ptime * 59)) * (1 - THREE.MathUtils.smoothstep(alt0, 1, 4)); } }
   updatePadClouds();
   upper.userData.plume.visible = s2Burn;
   upper.userData.plume.material.uniforms.time.value = ptime;
@@ -2808,6 +2862,7 @@ window.__lsim = { SS_INSERT: () => SS_INSERT, EVENTS, A, boosterDefs, SHOTS, END
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
   closeUp: (az, el, km) => { const u = upper, c = u.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(u.quaternion), 26 * VS * u.scale.x); const dir = new THREE.Vector3(Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)).applyQuaternion(u.quaternion); camera.position.copy(c).addScaledVector(dir, km * SCALE); controls.target.copy(c); },
   attitude: () => { const y = new THREE.Vector3(0, 1, 0).applyQuaternion(upper.quaternion), z = new THREE.Vector3(0, 0, 1).applyQuaternion(upper.quaternion), r = upper.position.clone().normalize(); return { noseUpDeg: Math.round(Math.asin(y.dot(r)) / DEG), bellyDownDeg: Math.round(Math.asin(-z.dot(r)) / DEG) }; },
+  padView: (e, n, u, lookU) => { userCam = true; const b = groundBasis(padFixed), m = earthGroup.matrixWorld; const base = padFixed.clone().applyMatrix4(m), E = b.east.clone().transformDirection(m), N = b.south.clone().negate().transformDirection(m), U = b.up.clone().transformDirection(m); camera.position.copy(base).addScaledVector(E, M(e)).addScaledVector(N, M(n)).addScaledVector(U, M(u)); controls.target.copy(base).addScaledVector(U, M(lookU)); },
   aimMoon: () => { userCam = true; controls.target.copy(camera.position).addScaledVector(moon.position.clone().sub(camera.position).normalize(), 0.01); const sm = moon.position.clone().normalize().dot(SUN); return { illum: Math.round((1 - sm) / 2 * 100) + '%' }; },
   camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
   toggle: (what, on) => { ({ clouds: padClouds, sky: skyDome })[what].userData.off = !on; },
