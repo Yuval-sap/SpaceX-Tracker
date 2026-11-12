@@ -57,7 +57,7 @@
   .gfill { stroke: #f2f4f7; stroke-dasharray: 0 276.5; transition: stroke-dasharray 0.25s linear; }
   .gtxt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; text-align: center; }
   .glbl { unicode-bidi: plaintext; font: 600 8.5px 'Rubik', sans-serif; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .gauge b { font: 700 17px 'Orbitron', sans-serif; color: #fff; margin: 2px 0 1px; direction: ltr; height: 21px; line-height: 21px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }   /* (a fixed slot: a number shrunk to fit leaves the label and unit where they are) */
+  .gauge b { font: 700 17px 'Orbitron', sans-serif; color: #fff; margin: 2px 0 1px; direction: ltr; height: 21px; line-height: 21px; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-variant-numeric: tabular-nums; }   /* (a fixed slot: a number shrunk to fit leaves the label and unit where they are) */
   .gunit { font: 500 9px 'Rubik', sans-serif; color: var(--muted); }
   .gauge b.long { font-size: 13px; }
   #eng-svg .e { fill: rgba(255, 255, 255, 0.07); stroke: rgba(255, 255, 255, 0.35); stroke-width: 0.8; transition: fill 0.15s; }
@@ -1995,11 +1995,19 @@ function emit(p, color) {
 // ================================================================ UI
 // ---- the readout's gauges
 const ARC = 207.3;                                               // 270 degrees of a circle of radius 44
-function fitGauge(id) {                                          // the number as large as fits inside its ring, with a margin
-  const el = $(id); if (!el || el.dataset.fit === el.textContent) return; el.dataset.fit = el.textContent;
+// the number as large as fits inside its ring, with a margin - sized by how many digits it has, not by which digits:
+// measured on the same pattern with every digit the widest one ("6,009" as "8,888"), so the size changes only when a
+// digit is added or dropped, never from one reading to the next
+const fitCtx = document.createElement('canvas').getContext('2d');
+function fitGauge(id) {
+  const el = $(id); if (!el) return;
+  const key = el.textContent.replace(/[0-9]/g, '8'); if (el.dataset.fit === key) return;
   const box = el.parentElement.getBoundingClientRect().width * 0.66; if (!box) return;
-  el.style.fontSize = ''; const base = parseFloat(getComputedStyle(el).fontSize), w = el.scrollWidth;
-  if (w > box) el.style.fontSize = (base * box / w).toFixed(1) + 'px';
+  el.dataset.fit = key; el.style.fontSize = '';
+  const cs = getComputedStyle(el), base = parseFloat(cs.fontSize);
+  fitCtx.font = `${cs.fontWeight} ${base}px ${cs.fontFamily}`;
+  const w = fitCtx.measureText(key).width;
+  el.style.fontSize = w > box ? (base * box / w).toFixed(1) + 'px' : '';
 }
 function gaugeArc(id, f) { const el = $(id); if (!el) return; const v = (Math.max(0, Math.min(1, f)) * ARC).toFixed(1) + ' 276.5'; if (el.dataset.v !== v) { el.dataset.v = v; el.style.strokeDasharray = v; } }
 let gDisp = 1;
@@ -2543,17 +2551,16 @@ function frame() {
       th *= DEG;
       d = h.clone().multiplyScalar(Math.cos(th)).addScaledVector(radial, Math.sin(th));
       shipZ = radial.clone().multiplyScalar(-Math.cos(th)).addScaledVector(h, Math.sin(th));
-      // upright and coming down to the tower: turned so its flaps lie along the arms (toward the tower and away from it)
-      // and its body comes down between them - belly to one arm, back to the other (the arms run north-south from the
-      // tower, so the belly faces east or west, whichever is nearer)
+      // upright and coming down to the tower: turned as it is caught - a flap out to each side, over each arm (the arms
+      // run north-south from the tower, so the flaps point east and west), belly away from the tower, back toward it
       if (shipCatch) {
-        const east = groundBasis(padFixed).east.transformDirection(earthGroup.matrixWorld);
-        const want = east.multiplyScalar(Math.sign(shipZ.dot(east)) || 1), k = smooth((simT - (F + 3)) / 6);
+        const south = groundBasis(padFixed).south.transformDirection(earthGroup.matrixWorld);
+        const want = south, k = smooth((simT - (F + 3)) / 6);
         if (k > 0) shipZ.lerp(want, k).normalize();
       }
     }
     // a caught ship hangs from the tower's arms
-    const shipHang = VEH === 'ss' && shipCatch && towerShown ? (ARM_Y - 44) * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
+    const shipHang = VEH === 'ss' && shipCatch && towerShown ? (ARM_Y - 37) * VS * vScale *   /* (caught just under its forward flaps, which rest above the arms) */ smooth((simT - (A.s2.land - 40)) / 35) : 0;
     const tau = simT - sepT, lit = Math.max(0, simT - ses1);
     const gap = (upperBase + 14 * (1 - Math.exp(-tau / 3)) + 70 * (1 - Math.exp(-lit / 12))) * (1 - smooth((tau - 25) / 60));
     const along = d.clone().normalize();
@@ -2632,7 +2639,7 @@ function frame() {
   if (padStruct.userData.arms) {
     let close = shipCatch ? smooth((simT - (A.s2.land - 4)) / 4) : 0;
     boosterDefs.forEach(bd => { if (bd.land.kind === 'catch' && simT < bd.landT + 1800) close = Math.max(close, smooth((simT - (bd.landT - 4)) / 4)); });
-    padStruct.userData.arms.forEach((a, i) => { a.rotation.y = (i ? -1 : 1) * (0.55 - 0.5 * close); });
+    padStruct.userData.arms.forEach((a, i) => { a.rotation.y = (i ? -1 : 1) * (0.55 - 0.577 * close); });   // (closed hard against the hull: an arm's inner face on the 4.5 m radius)
   }
   updatePuffs(simT);
   updatePadClouds();
