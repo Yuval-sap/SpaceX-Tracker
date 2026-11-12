@@ -695,7 +695,7 @@ if (VEH === 'ss') {
   tauArr[0] = homeA;
   for (let i = 1; i < N; i++) tauArr[i] = tauArr[i - 1] + sf(homeA + i - 0.5);
   tauOf = (t) => { const f = Math.max(0, Math.min(N - 1.001, t - homeA)), i = Math.floor(f); return tauArr[i] + (tauArr[i + 1] - tauArr[i]) * (f - i); };
-  const catchTop = shipCatch ? 0.12 : 0;
+  const catchTop = 0;                                            // (caught, it hangs from the arms: the hang below lifts it)
   homeAlt = (t) => {
     if (t <= sE) return altA + (120 - altA) * smooth((t - homeA) / (sE - homeA));
     if (t <= tr) { const x = (t - sE) / (tr - sE); return 18 + 102 * (1 - Math.pow(smooth(x), 1.6)); }
@@ -742,7 +742,7 @@ const B_ASDS = [[149, 71, 79], [180, 98, 138], [220, 118, 212], [260, 124, 286],
   [400, 31, 548], [420, 19, 578], [440, 10.5, 590], [460, 5.2, 596], [480, 2.4, 598.8], [495, 0.45, 599.85], [500, 0.05, 599.99], [502, 0, 600]];
 const B_RTLS = [[149, 71, 79], [160, 80, 90], [185, 92, 98], [210, 103, 99], [240, 112, 92], [270, 116, 78], [300, 112, 62], [330, 98, 44], [360, 76, 27],
   [380, 58, 17], [400, 40, 9], [420, 24, 4], [440, 8, 1.2], [455, 1.4, 0.2], [462, 0.12, 0.01], [465, 0, 0]];
-const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.6, 0.9], [385, 0.5, 0.12], [392, 0.16, 0.01], [395, 0.12, 0]];
+const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.6, 0.9], [385, 0.5, 0.12], [392, 0.05, 0.01], [395, 0, 0]];   // (down to the pad: its hang lifts it into the arms, 88 m up)
 const B_EXP = [[149, 71, 79], [200, 108, 165], [260, 128, 280], [320, 118, 390], [380, 78, 495], [430, 30, 575], [479, 0, 625]];
 function makeBooster(bd) {
   const k = bd.land.kind, sep = bd.sep;
@@ -1014,7 +1014,7 @@ const moon = (() => {
   [[70, 45, 22], [95, 60, 16], [52, 70, 14], [110, 40, 12], [80, 85, 10], [40, 40, 9], [125, 70, 9]].forEach(([x, y, rad]) => { const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(70,70,72,0.75)'); gr.addColorStop(1, 'rgba(70,70,72,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 128); });
   for (let i = 0; i < 140; i++) { const x = r() * 256, y = 10 + r() * 108, rad = 0.6 + r() * 2.4; g.fillStyle = `rgba(${r() < 0.5 ? '255,255,250' : '60,60,60'},0.22)`; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  const m = new THREE.Mesh(new THREE.SphereGeometry(1737 * 4 * SCALE, 48, 24), new THREE.ShaderMaterial({ uniforms: { map: { value: t }, sunDir: { value: new THREE.Vector3(1, 0, 0) } },
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1737 * 4 * SCALE, 48, 24), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { map: { value: t }, sunDir: { value: new THREE.Vector3(1, 0, 0) } },
     // lit by the Sun alone (the scene's blue fill light would light its night side and hide the phase), a faint earthshine
     vertexShader: `varying vec2 vUv; varying vec3 vN;
 #include <common>
@@ -1027,7 +1027,7 @@ const moon = (() => {
     void main(){
 #include <logdepthbuf_fragment>
       float l = smoothstep(-0.03, 0.12, dot(normalize(vN), sunDir)); vec3 c = texture2D(map, vUv).rgb;
-      gl_FragColor = vec4(c * (0.012 + 1.15 * l), 1.0);
+      gl_FragColor = vec4(c * 1.15 * l, l);   // (its night side lets the sky through: a new Moon is not a black disc in a blue sky)
 #include <colorspace_fragment>
     }` }));
   scene.add(m); return m;
@@ -1058,12 +1058,13 @@ function siteTexts() {
   padSite.l.element.textContent = PAD_LABEL + ' · ' + (boosterDefs.some(b => b.land.kind === 'catch') ? I.pad2 + ' / ' + I.tower : I.pad2);
   landSites.forEach(x => { const k = x.bd.land.kind; x.l.element.textContent = (x.bd.land.name || (k === 'asds' ? 'ASDS' : 'LZ')) + ' · ' + (k === 'asds' ? I.landingShip : I.landingZone); });
 }
+let groundTrackMat;
 {
   const pts = [];
   const add = (a, b, st) => { for (let t = a; t <= b; t += st) { const p = toFixed(s2At(t), t).setLength(R * 1.0008); pts.push(p.x, p.y, p.z); } };
   add(0, Math.min(END_T, 6000), 10);
   const g = new LineGeometry(); g.setPositions(pts);
-  const gm = new LineMaterial({ color: 0x5fd4ff, linewidth: 1.2, transparent: true, opacity: 0.28, dashed: true, dashSize: 0.05, gapSize: 0.04 });
+  const gm = groundTrackMat = new LineMaterial({ color: 0x5fd4ff, linewidth: 1.2, transparent: true, opacity: 0.28, dashed: true, dashSize: 0.05, gapSize: 0.04 });
   lineMats.push(gm);
   const ground = new Line2(g, gm); ground.computeLineDistances(); earthGroup.add(ground);
   if (homeA != null && homeA > 6000) {
@@ -1114,7 +1115,9 @@ const H_TRUE = VEH === 'ss' ? 123 : VEH === 'fh' ? 70 : 70;            // metres
 // vehicle stops being drawn at its full size on the screen (at the 400x cap) to three times that.
 function flownLineFade(pos) { const full = 400 * H_TRUE / (0.33 * Math.min(1, camera.aspect)) / 1000 * SCALE, d = camera.position.distanceTo(pos); return smooth((d - full) / (2 * full)); }
 function setFlownLine(line, tip, f) { line.material.opacity = 0.95 * f; line.visible = f > 0.02; tip.visible = tip.visible && f > 0.02; }
-function enlarge(pos) { return Math.max(1, Math.min(400, 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE)) / 400; }
+function enlarge(pos) { const cap = 1 + Math.max(0, (pos.length() / SCALE - RE) * 1000) / 120; return Math.max(1, Math.min(400, cap, 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE)) / 400; }
+const M = (m) => m * SCALE / 1000;                             // metres -> scene units
+const H_BOOST = VEH === 'ss' ? 71 : 47;                          // a landing booster's height, metres
 const matWhite = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, metalness: 0.25, roughness: 0.4, emissive: 0x1a2230, emissiveIntensity: 0.6 });
 const matBlack = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.6 });
 const matSteel = new THREE.MeshStandardMaterial({ color: 0xc7ccd3, metalness: 0.85, roughness: 0.32, emissive: 0x20262e, emissiveIntensity: 0.5 });
@@ -1611,18 +1614,44 @@ const matConcrete = new THREE.MeshStandardMaterial({ color: 0x7c8087, roughness:
 const matDeck = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.8, metalness: 0.3 });
 const matMark = new THREE.MeshBasicMaterial({ color: 0xf2c230, side: THREE.DoubleSide });
 const ring = (r0, r1, y, x) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0 * VS, r1 * VS, 48), matMark); m.rotation.x = -Math.PI / 2; m.position.set((x || 0) * VS, y * VS, 0); return m; };
-const slab = (r, h) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * 1.06 * VS, h * VS, 48), new THREE.MeshStandardMaterial({ color: 0x4a4e55, roughness: 0.95 })); m.position.y = -h / 2 * VS; return m; };
+const slab = (r, h) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * 1.02 * VS, h * VS, 64), new THREE.MeshStandardMaterial({ map: concreteTexture(), color: 0xb9bcc0, roughness: 0.95 })); m.position.y = -h / 2 * VS; return m; };
+function concreteTexture() {                                     // poured slabs: light grey squares with joints and stains
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#a9adb2'; g.fillRect(0, 0, 256, 256);
+  let sd = 5; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const v = 150 + r() * 30 | 0; g.fillStyle = `rgb(${v},${v + 2},${v + 5})`; g.fillRect(i * 32 + 1, j * 32 + 1, 30, 30); }
+  for (let i = 0; i < 30; i++) { const x = r() * 256, y = r() * 256, rad = 6 + r() * 26, gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(60,58,55,0.35)'); gr.addColorStop(1, 'rgba(60,58,55,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// an open steel lattice tower (w x h x d metres, bays ~6 m): see-through cross-braced faces round a dark core
+const LATTICE = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.strokeRect(2.5, 2.5, 59, 59);
+  g.lineWidth = 2.6; g.beginPath(); g.moveTo(4, 4); g.lineTo(60, 60); g.moveTo(60, 4); g.lineTo(4, 60); g.stroke();
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+})();
+function lattice(w, h, d, x, y, z) {
+  const grp = new THREE.Group(), t = LATTICE.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(w / 6)), Math.max(1, Math.round(h / 6)));
+  const skin = new THREE.Mesh(new THREE.BoxGeometry(w * VS, h * VS, d * VS), new THREE.MeshStandardMaterial({ color: 0x8d939b, metalness: 0.55, roughness: 0.5, alphaMap: t, alphaTest: 0.5, transparent: false, side: THREE.DoubleSide, emissive: 0x15191f, emissiveIntensity: 0.5 }));
+  const core = new THREE.Mesh(new THREE.BoxGeometry(w * 0.35 * VS, h * VS, d * 0.35 * VS), matTower);
+  grp.add(skin, core); grp.position.set(x * VS, y * VS, z * VS); return grp;
+}
 const padFixed = ecef(PAD.lat, PAD.lon, 0);
 const padStruct = addStructure(padFixed, g => {
   if (VEH === 'ss') {                                            // the launch tower and its two catch arms
-    const tower = [box(12, 146, 12, matTower, 0, 73, -17), box(2.6, 3.4, 14, matTower, 0, 88, -11)];
-    const base = slab(90, 14); g.add(...tower, base);
+    // Starbase: the tower (146 m, its crane on top), the arms' carriage on its face, the quick-disconnect arm, the trench
+    const tower = [lattice(12, 146, 12, 0, 73, -17), box(14, 6, 5, matTower, 0, 88, -10.5), box(2, 2.4, 12, matTower, 0, 120, -6), box(1.6, 26, 1.6, matTower, 3, 159, -17), box(1.6, 2, 18, matTower, 3, 171, -9)];
+    const trench = box(16, 0.2, 16, new THREE.MeshStandardMaterial({ color: 0x1e2024, roughness: 1 }), 0, 0.12, 0);
+    const base = slab(80, 2); g.add(...tower, base, trench);
     g.userData.arms = [1, -1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 5.9 * VS, 88 * VS, -11 * VS); piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); g.add(piv); return piv; });
     g.userData.tall = tower.concat(g.userData.arms, base);
   } else {                                                       // the pad and the strongback
-    const tall = [box(3.6, 60, 3.6, matTower, 0, 30, -5.5)];
-    if (/39A/.test(PAD_LABEL)) tall.push(box(8, 106, 8, matTower, -13, 53, -12));
-    const base = slab(70, 12); g.add(base, ...tall);
+    // the transporter-erector's strongback right beside the rocket, and the crew tower where the pad has one
+    const tall = [lattice(3.6, 62, 3.6, 0, 31, -5.5)];
+    if (/39A/.test(PAD_LABEL)) tall.push(lattice(12, 90, 12, -16, 45, -20), box(1.4, 26, 1.4, matTower, -16, 103, -20));
+    else if (/SLC-40|LC-40|\b40\b/.test(PAD_LABEL)) tall.push(lattice(10, 80, 10, -16, 40, -18));
+    const trench = box(10, 0.2, 10, new THREE.MeshStandardMaterial({ color: 0x1e2024, roughness: 1 }), 0, 0.12, 0);
+    const base = slab(60, 2); g.add(base, trench, ...tall);
     g.userData.tall = tall.concat(base);
   }
 });
@@ -1963,7 +1992,7 @@ function setCam(mode, target) {
     controls.target.copy(p);
     if (mode === 'orbit') camera.position.copy(p).addScaledVector(up, 0.6).addScaledVector(v, -1.5).addScaledVector(side, 0.55);
     else {   // nearer while low: from orbit-chase distance at 50 km up, down to 12 km away near the ground
-      const off = Math.max(0.012, Math.min(VEH === 'ss' ? 0.11 : 0.075, (p.length() / SCALE - RE) * 0.0015)) / (VEH === 'ss' ? 0.11 : 0.075);
+      const off = Math.max(M(3.5 * H_TRUE), Math.min(VEH === 'ss' ? 0.11 : 0.075, (p.length() / SCALE - RE) * 0.0015)) / (VEH === 'ss' ? 0.11 : 0.075);
       camera.position.copy(p).addScaledVector(side, (VEH === 'ss' ? 0.11 : 0.075) * off).addScaledVector(up, 0.02 * off).addScaledVector(v, -0.03 * off);
     }
   }
@@ -1974,11 +2003,11 @@ const SHOTS = (() => {
   const landers = boosterDefs.filter(b => b.land.kind !== 'expend');
   if (VEH === 'fh') {
     const sides = boosterDefs.filter(b => b.who === 'side' && b.land.kind !== 'expend');
-    if (sides.length === 2) { s.push([Math.max(sideSep + 5, sides[0].landT - 70), 'chase', 'sides']); s.push([sides[0].lbStart - 6, 'site', 'sides']); s.push([sides[0].landT + 8, 'chase', 's2']); }
+    if (sides.length === 2) { s.push([Math.max(sideSep + 5, sides[0].landT - 70), 'chase', 'sides']); s.push([sides[0].landT - 12, 'site', 'sides']); s.push([sides[0].landT + 8, 'chase', 's2']); }
   } else if (landers.length) {
     const bd = landers[0];
-    if (bd.land.kind === 'catch') { s.push([bd.landT - 60, 'chase', 'booster']); s.push([bd.lbStart - 10, 'site', 'booster']); s.push([bd.landT + 8, 'chase', 's2']); }
-    else { s.push([(bd.entryStart ?? bd.landT - 140) - 12, 'chase', 'booster']); s.push([bd.lbStart - 6, 'site', 'booster']); s.push([bd.landT + 6, 'chase', 's2']); }
+    if (bd.land.kind === 'catch') { s.push([bd.landT - 60, 'chase', 'booster']); s.push([bd.landT - 14, 'site', 'booster']); s.push([bd.landT + 8, 'chase', 's2']); }
+    else { s.push([(bd.entryStart ?? bd.landT - 140) - 12, 'chase', 'booster']); s.push([bd.landT - 12, 'site', 'booster']); s.push([bd.landT + 6, 'chase', 's2']); }
   }
   s.push([seco1 + 20, 'orbit', 's2']);
   const dep = A.s2.deploy; if (dep != null && dep > seco1 + 40) { s.push([dep - 25, 'chase', 's2']); s.push([dep + 150, 'orbit', 's2']); }
@@ -1986,7 +2015,8 @@ const SHOTS = (() => {
   if (VEH === 'ss') {
     if (A.s2.deorbit != null) { s.push([A.s2.deorbit - 20, 'chase', 's2']); s.push([(A.s2.deorbitEnd ?? A.s2.deorbit + 10) + 20, 'orbit', 's2']); }
     s.push([A.s2.shipEntry - 30, 'chase', 's2']);
-    s.push([A.s2.lbStart - (shipCatch ? 40 : 25), shipCatch ? 'site' : 'chase', 's2']);
+    s.push([A.s2.lbStart - (shipCatch ? 60 : 25), 'chase', 's2']);
+    if (shipCatch) s.push([A.s2.land - 12, 'site', 's2']);   // (from the ground only for the last seconds: higher up, at its true size, it is a speck)
   }
   return s.sort((a, b) => a[0] - b[0]);
 })();
@@ -2147,7 +2177,7 @@ function frame() {
       shipZ = radial.clone().multiplyScalar(-Math.cos(th)).addScaledVector(h, Math.sin(th));
     }
     // a caught ship hangs from the tower's arms
-    const shipHang = VEH === 'ss' && shipCatch && towerShown ? 50 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
+    const shipHang = VEH === 'ss' && shipCatch && towerShown ? 48 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
     const tau = simT - sepT, lit = Math.max(0, simT - ses1);
     const gap = (upperBase + 14 * (1 - Math.exp(-tau / 3)) + 70 * (1 - Math.exp(-lit / 12))) * (1 - smooth((tau - 25) / 60));
     const along = d.clone().normalize();
@@ -2256,11 +2286,11 @@ function frame() {
   setFlownLine(s2Done, s2Tip, flownLineFade(pS2));
   lineMats.forEach(m => m.resolution.set(innerWidth, innerHeight));
 
-  sites.forEach(o => { const d = camera.position.distanceTo(o.getWorldPosition(tmp)); o.scale.setScalar(Math.max(0.0015, d * 0.012)); o.children[0].visible = d < 9; o.material.opacity = ground ? 0 : 1; });
+  sites.forEach(o => { const d = camera.position.distanceTo(o.getWorldPosition(tmp)); o.scale.setScalar(d * 0.012); o.children[0].visible = d < 9; o.material.opacity = ground ? 0 : 1; });
   evMarkers.forEach(({ e, m, l }) => {
     m.material.opacity = simT >= e.t ? 1 : 0.45;
     const d = camera.position.distanceTo(m.position);
-    m.scale.setScalar(Math.max(0.006, d * 0.018));
+    m.scale.setScalar(d * 0.018);   // (always the same size on the screen: a floor of 6 km made a marker a blinding cloud from close by)
     m.visible = !ground;
     l.visible = !ground && !MOBILE && camMode !== 'earth' && camMode !== 'orbit' && d < 6 && simT - e.t > -12 && simT - e.t < 25;
   });
@@ -2295,15 +2325,18 @@ function frame() {
     else if (camTarget === 'booster') { const bd = focusBooster(); base = earthGroup.localToWorld((bd.landFixed || ecef(PAD.lat, PAD.lon, 0)).clone()); }
     else base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
     const up = base.clone().normalize(), east = Y.clone().cross(up).normalize(), north = up.clone().cross(east);
-    const far = camMode === 'pad' ? 0.007 : VEH === 'ss' ? 0.013 : 0.012;
+    const far = camMode === 'pad' ? M(3.6 * H_TRUE) : M(5 * H_BOOST);
     groundUp.copy(up);
     if (camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2') {
       const a = shipApproach().clone().transformDirection(earthGroup.matrixWorld), sd = up.clone().cross(a).normalize();
-      camera.position.copy(base).addScaledVector(sd, -0.0014).addScaledVector(a, -0.0006).addScaledVector(up, 0.00006);
+      camera.position.copy(base).addScaledVector(east, -M(450)).addScaledVector(north, -M(90)).addScaledVector(up, M(20));
+    } else if (camMode === 'pad' || (camTarget === 'booster' && focusBooster().land.kind === 'catch')) {
+      // west of the pad, a little south: the tower (north of the rocket) stands beside it, not in front of it
+      camera.position.copy(base).addScaledVector(east, -far).addScaledVector(north, -far * 0.2).addScaledVector(up, M(camMode === 'pad' ? 25 : 15));
     } else
-    camera.position.copy(base).addScaledVector(up, camMode === 'pad' ? 0.0004 : 0.0012).addScaledVector(east, far).addScaledVector(north, camMode === 'site' ? far * 0.35 : 0);
+    camera.position.copy(base).addScaledVector(up, M(15)).addScaledVector(east, far).addScaledVector(north, far * 0.35);
     const catchView = camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2';
-    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, 0.00012), 0.4) : camMode === 'pad' ? base.clone().addScaledVector(up, (VEH === 'ss' ? 0.0011 : 0.0007) * (1 + 0.15 * camera.position.distanceTo(pS2) / far)).lerp(pS2, smooth(simT / 12)) : focusFn(camTarget)(simT);
+    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, M(70)), 0.15) : camMode === 'pad' ? base.clone().addScaledVector(up, M(0.5 * H_TRUE)).lerp(pS2.clone().addScaledVector(pS2.clone().normalize(), M(0.5 * H_TRUE) * vScale * 400), smooth(simT / 8)) : focusFn(camTarget)(simT).addScaledVector(up, M(0.45 * H_BOOST));
     controls.target.copy(look);
   }
   setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
@@ -2315,7 +2348,8 @@ function frame() {
   } else { controls.minDistance = 0.00004; controls.zoomSpeed = 1; controls.rotateSpeed = 1; }
   controls.update();
   // (and no camera, however it is dragged, goes under the ground)
-  if (camera.position.length() < R + 0.0004) camera.position.setLength(R + 0.0004);
+  if (camera.position.length() < R + M(10)) camera.position.setLength(R + M(10));   // (10 m up: the ground cameras stand by the pad at eye level)
+  groundTrackMat.opacity = 0.28 * THREE.MathUtils.smoothstep(camera.position.length() / SCALE - RE, 20, 80);   // (drawn 5 km up, it would hang in the sky over a ground camera)
   updateTiles(dt);
 
   // HUD
