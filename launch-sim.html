@@ -191,7 +191,7 @@
   </div>
   <div class="row"><div class="scrubwrap"><div id="ticks" dir="ltr"></div><input id="scrub" type="range" min="-20" max="6000" step="1" value="-20" aria-label="Time"></div></div>
 </div>
-<div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
+<div id="credit">Imagery: NASA Blue Marble (NASA EOSDIS GIBS) · USGS The National Map (USDA NAIP) · <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016 &amp; 2017)</div>
 
 <script>
 // Hand-written UI strings, one entry per language the main site offers (iw folded into he, zh-CN into zh).
@@ -1406,7 +1406,10 @@ function vehTexts() {
 // So the ground is drawn from map tiles, coarse to fine, as much as the view needs:
 //  - NASA's Blue Marble (GIBS), the whole globe in one even look, 7.8 km down to 500 m a pixel;
 //  - Sentinel-2 cloudless (EOX), land detail from 150 m down to 10 m a pixel (its sea is a patchwork of satellite
-//    passes, so over water the Blue Marble below stays).
+//    passes, so over water the Blue Marble below stays);
+//  - over the United States (every pad and landing zone is there), the aerial photos of the USGS National Map
+//    (USDA NAIP, public domain): down to ~2 m a pixel, for the ground cameras by the pad. Web Mercator tiles; where it
+//    has no picture (Vandenberg comes back black) Sentinel-2 below stays.
 // Three things are drawn from them:
 //  1. the globe's own picture: a mosaic of the coarsest Blue Marble tiles, in place of the single image;
 //  2. a corridor along the flight's ground track, well ahead of the vehicle - so it is already there at any
@@ -1421,7 +1424,13 @@ const BLACK_MARBLE = (z, y, x) => `https://gibs.earthdata.nasa.gov/wmts/epsg4326
 const EOX = (z, y, x) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless/default/WGS84/${z}/${y}/${x}.jpg`;
 const gLevel = (z) => ({ id: 'g' + z, url: GIBS, z, span: 288 / Math.pow(2, z), res: 288 / Math.pow(2, z) * 111.32 / 512, land: 0 });
 const eLevel = (z) => ({ id: 'e' + z, url: EOX, z, span: 180 / Math.pow(2, z), res: 180 / Math.pow(2, z) * 111.32 / 256, land: 1 });
-const LADDER = [gLevel(4), gLevel(5), gLevel(6), gLevel(7), eLevel(9), eLevel(10), eLevel(11), eLevel(12)].concat(MOBILE ? [] : [eLevel(13)]);
+const USGS = (z, y, x) => `https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/${z}/${y}/${x}`;
+const uLevel = (z) => ({ id: 'u' + z, url: USGS, z, merc: true, us: true, src: 'u', span: 360 / Math.pow(2, z), res: 360 / Math.pow(2, z) * 111.32 * Math.cos(PAD.lat * DEG) / 256, land: 1 });
+const inUS = (lat, lon) => lat > 24 && lat < 50 && lon > -126 && lon < -65;
+// Web Mercator: tile row of a latitude, and the latitude of a (fractional) row
+const mercRow = (lat, n) => (1 - Math.asinh(Math.tan(Math.max(-85, Math.min(85, lat)) * DEG)) / Math.PI) / 2 * n;
+const mercLat = (row, n) => Math.atan(Math.sinh(Math.PI * (1 - 2 * row / n))) / DEG;
+const LADDER = [gLevel(4), gLevel(5), gLevel(6), gLevel(7), eLevel(9), eLevel(10), eLevel(11), eLevel(12)].concat(MOBILE ? [uLevel(15)] : [eLevel(13), uLevel(15), uLevel(16)]);
 const TRACK = Object.assign(gLevel(4), { id: 'track' });          // the corridor's level: 18-degree tiles, 3.9 km a pixel
 const TILE_LEVELS = MOBILE ? 2 : 3, TILE_KEEP = MOBILE ? 110 : 230;
 earth.renderOrder = -20;
@@ -1430,13 +1439,14 @@ const tileUni = {};                                              // level id -> 
 const uniOf = (lv) => tileUni[lv.id] || (tileUni[lv.id] = { center: { value: new THREE.Vector3(1, 0, 0) }, fade: { value: new THREE.Vector2(9, 8) } });   // (9, 8: no fading - the corridor's)
 const tileLoader = new THREE.TextureLoader(); tileLoader.setCrossOrigin('anonymous');
 let tileLoading = 0;
-const tileFails = { g: 0, e: 0 }, tilesOff = { g: false, e: false };
+const tileFails = { g: 0, e: 0, u: 0 }, tilesOff = { g: false, e: false, u: false };
 const tileQueue = [];
 function tileGeometry(lv, y, x) {
   const sp = lv.span, seg = Math.max(2, Math.min(48, Math.ceil(sp / 0.4)));
   const pos = [], uv = [], idx = [];
+  const n = Math.round(360 / sp);
   for (let j = 0; j <= seg; j++) for (let i = 0; i <= seg; i++) {
-    const v = ecef(Math.max(-90, 90 - (y + j / seg) * sp), -180 + (x + i / seg) * sp, 0);
+    const v = ecef(lv.merc ? mercLat(y + j / seg, n) : Math.max(-90, 90 - (y + j / seg) * sp), -180 + (x + i / seg) * sp, 0);
     pos.push(v.x, v.y, v.z); uv.push(i / seg, 1 - j / seg);
   }
   for (let j = 0; j < seg; j++) for (let i = 0; i < seg; i++) { const a = j * (seg + 1) + i, b = a + seg + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
@@ -1467,6 +1477,9 @@ function makeTile(lv, y, x) {
         float sea = (1.0 - land) * smoothstep(0.0, 0.06, day.b - day.r * 1.15) * smoothstep(0.55, 0.8, day.b / (day.g + 0.001));   // deep blue, and the shallows' turquoise
         col += vec3(1.0, 0.92, 0.8) * pow(max(dot(n, normalize(sunDir + v)), 0.0), 60.0) * sea * lit * 0.9;
         float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+        // (the limb's blue is for a view from up high: from a camera standing by the pad every bit of ground is seen
+        // edge-on, and the same glow washed it all out white)
+        rim *= smoothstep(0.004, 0.04, length(cameraPosition) - length(vW));
         col += vec3(0.3, 0.6, 1.0) * rim * 0.35 * smoothstep(-0.2, 0.4, d);
         // the night side: a Blue Marble tile shows its own Black Marble city lights; a Sentinel-2 tile gives way to the
         // lights below it. (The edge fades by distance, not by an angle's cosine.)
@@ -1489,13 +1502,18 @@ function pumpTiles() {
   while (tileLoading < 8 && tileQueue.length) {
     const t = tileQueue.pop();                                   // the newest asked for first: it is what is on screen now
     if (t.state !== 'queued') continue;
-    const src = t.lv.land ? 'e' : 'g';
+    const src = t.lv.src || (t.lv.land ? 'e' : 'g');
     if (tilesOff[src]) { t.state = 'failed'; continue; }
     t.state = 'loading'; tileLoading++;
     tileLoader.load(t.lv.url(t.lv.z, t.y, t.x), (tex) => {
       tileLoading--; tileFails[src] = 0;
       tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (t.state === 'gone') { tex.dispose(); return; }
+      if (t.lv.merc) {                                             // an empty (black) picture where it has no photo: leave it to the level below
+        try { const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d'); g.drawImage(tex.image, 0, 0, 8, 8);
+          const d = g.getImageData(0, 0, 8, 8).data; let sum = 0; for (let k = 0; k < d.length; k += 4) sum += d[k] + d[k + 1] + d[k + 2];
+          if (sum / 64 < 12) { tex.dispose(); t.state = 'failed'; return; } } catch (e) {}
+      }
       t.uMap.value = tex; t.state = 'ready';
       if (!t.lv.land && t.lv.z <= 7) tileLoader.load(BLACK_MARBLE(t.lv.z, t.y, t.x), (nt) => {     // and its city lights
         if (t.state === 'gone') { nt.dispose(); return; }
@@ -1506,7 +1524,7 @@ function pumpTiles() {
 }
 const tileWanted = new Set();
 function wantTile(lv, y, x, now) {
-  const cols = Math.round(360 / lv.span), rows = Math.ceil(180 / lv.span - 1e-9);
+  const cols = Math.round(360 / lv.span), rows = lv.merc ? cols : Math.ceil(180 / lv.span - 1e-9);
   if (y < 0 || y >= rows) return;
   x = (x % cols + cols) % cols;
   const key = lv.id + '/' + y + '/' + x;
@@ -1542,13 +1560,15 @@ function updateTiles(dt) {
     if (tileFocus) { const v = Math.acos(Math.min(1, tileFocus.dot(local))) * RE / Math.max(0.05, now - tileFocusAt); tileSpeed += (v - tileSpeed) * 0.5; }
     tileFocus = local.clone(); tileFocusAt = now;
     const need = distKm * 0.83 / innerHeight;                    // km of ground in one pixel of the screen
+    const cosLatF = Math.cos(lat * DEG);
     let top = -1;
-    LADDER.forEach((lv, i) => { if (lv.res >= need * 0.7 && lv.span * 111.32 >= tileSpeed * 6) top = i; });
+    const us = inUS(lat, lon);
+    LADDER.forEach((lv, i) => { if ((!lv.us || us) && lv.res >= need * 0.7 && lv.span * 111.32 * (lv.merc ? cosLatF : 1) >= tileSpeed * 6) top = i; });
     const cosLat = Math.max(0.2, Math.cos(lat * DEG));
     for (let k = 0, i = top; k < TILE_LEVELS && i >= 0; k++, i -= 2) {
       const lv = LADDER[i], u = uniOf(lv), outer = 1.45 * lv.span * DEG * cosLat;
       u.center.value.copy(local); u.fade.value.set(outer, outer * 0.72);
-      const x0 = Math.round((lon + 180) / lv.span) - 2, y0 = Math.round((90 - lat) / lv.span) - 2;
+      const x0 = Math.round((lon + 180) / lv.span) - 2, y0 = Math.round(lv.merc ? mercRow(lat, Math.round(360 / lv.span)) : (90 - lat) / lv.span) - 2;
       for (let j = 0; j < 4; j++) for (let ii = 0; ii < 4; ii++) wantTile(lv, y0 + j, x0 + ii, now);
     }
   }
