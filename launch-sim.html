@@ -31,15 +31,17 @@
   .label3d.site { color: #b8f5d6; border-color: rgba(52, 211, 153, 0.45); }
 
   .panel { position: fixed; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px; backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3); box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.7); }
-  #hud-top { top: 16px; inset-inline-start: 16px; padding: 14px 18px; min-width: 300px; max-width: 360px; }
+  #hud-top { top: 16px; inset-inline-start: 16px; padding: 14px 18px; width: 340px; }   /* (one width: a panel sized to each event's text resized the gauges with it) */
   #hud-top .mission { font: 700 13px 'Orbitron', 'Rubik', sans-serif; letter-spacing: 0.1em; color: var(--accent); direction: ltr; text-align: start; unicode-bidi: plaintext; }
   #hud-top .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   #clock { font: 700 38px/1.1 'Orbitron', sans-serif; letter-spacing: 0.04em; margin-top: 8px; direction: ltr; text-align: start; }
   [dir="rtl"] #clock { text-align: right; }
   #simtime { font-size: 11.5px; color: var(--muted); margin-top: 1px; text-align: start; unicode-bidi: plaintext; }
   [dir="rtl"] #simtime { text-align: right; }
-  #phase { font-size: 14px; margin-top: 6px; color: #fff; min-height: 2.6em; }
-  #phase small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #phase { font-size: 14px; margin-top: 6px; color: #fff; height: 55px; overflow: hidden; }
+  #phase .ph-t { line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  #phase small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.35; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #phase.t2 small { -webkit-line-clamp: 1; }
   #phase .est { color: var(--est); font-size: 11px; }
   .tele { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .tele div { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 7px 8px; min-width: 0; }
@@ -55,7 +57,7 @@
   .gfill { stroke: #f2f4f7; stroke-dasharray: 0 276.5; transition: stroke-dasharray 0.25s linear; }
   .gtxt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; text-align: center; }
   .glbl { unicode-bidi: plaintext; font: 600 8.5px 'Rubik', sans-serif; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .gauge b { font: 700 17px 'Orbitron', sans-serif; color: #fff; margin: 2px 0 1px; direction: ltr; }
+  .gauge b { font: 700 17px 'Orbitron', sans-serif; color: #fff; margin: 2px 0 1px; direction: ltr; height: 21px; line-height: 21px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }   /* (a fixed slot: a number shrunk to fit leaves the label and unit where they are) */
   .gunit { font: 500 9px 'Rubik', sans-serif; color: var(--muted); }
   .gauge b.long { font-size: 13px; }
   #eng-svg .e { fill: rgba(255, 255, 255, 0.07); stroke: rgba(255, 255, 255, 0.35); stroke-width: 0.8; transition: fill 0.15s; }
@@ -145,14 +147,14 @@
     #hud-top { top: 10px; inset-inline-start: 10px; inset-inline-end: 64px; min-width: 0; max-width: none; padding: 10px 12px; }
     #hud-top .sub { display: none; }
     #clock { font-size: 26px; margin-top: 4px; }
-    #phase { font-size: 13px; min-height: 0; }
+    #phase { font-size: 13px; height: 51px; }
     #phase small { font-size: 11px; }
     .tele { gap: 6px; margin-top: 8px; }
     .tele div { padding: 5px 6px; }
     .tele b { font-size: 14px; }
     .tele span { font-size: 10px; }
     .gauges { gap: 4px; margin-top: 8px; }
-    .gauge b { font-size: 14px; }
+    .gauge b { font-size: 14px; height: 17px; line-height: 17px; }
     .gauge b.long { font-size: 11px; }
     .glbl { font-size: 7.5px; }
     .gunit { font-size: 8px; }
@@ -2763,8 +2765,11 @@ function frame() {
   const key = simT < 0 ? 'cd' : cur ? cur.t + '|' + LANG : '';
   if (phase.dataset.k !== key) {
     phase.dataset.k = key; phase.innerHTML = '';
-    if (simT < 0) { phase.append(I.countdown); const s = document.createElement('small'); s.textContent = I.onPad.replace('{v}', VEH_NAME); phase.append(s); }
-    else if (cur) { const t = document.createElement('span'); t.dir = 'auto'; t.textContent = cur.title; phase.append(t); if (cur.est) { const e = document.createElement('span'); e.className = 'est'; e.textContent = ' · ' + I.est; phase.append(e); } if (cur.explain) { const s = document.createElement('small'); s.textContent = cur.explain; phase.append(s); } }
+    const head = document.createElement('div'); head.className = 'ph-t'; phase.append(head);
+    if (simT < 0) { head.append(I.countdown); const s = document.createElement('small'); s.textContent = I.onPad.replace('{v}', VEH_NAME); phase.append(s); }
+    else if (cur) { const t = document.createElement('span'); t.dir = 'auto'; t.textContent = cur.title; head.append(t); if (cur.est) { const e = document.createElement('span'); e.className = 'est'; e.textContent = ' · ' + I.est; head.append(e); } if (cur.explain) { const s = document.createElement('small'); s.textContent = cur.explain; phase.append(s); } }
+    // the box keeps one height whatever the event (so the gauges under it never jump): a title on two lines leaves one for its description
+    phase.classList.toggle('t2', head.getBoundingClientRect().height > parseFloat(getComputedStyle(head).lineHeight) * 1.5);
   }
   renderer.render(scene, camera);
   labels.render(scene, camera);
