@@ -963,6 +963,11 @@ const evMarkers = EVENTS.filter(e => e.t > 0).map(e => {
 // ================================================================ vehicles (enlarged x400: a 70 m rocket would vanish at orbit scale)
 const VS = 400 * SCALE / 1000;
 const H_TRUE = VEH === 'ss' ? 123 : VEH === 'fh' ? 70 : 70;            // metres, the stack's height
+// the bright line of the path already flown: wanted from far away, where the vehicle itself is too small to make out,
+// in the way near by, where the vehicle fills its place on the screen. It fades in from the distance at which the
+// vehicle stops being drawn at its full size on the screen (at the 400x cap) to three times that.
+function flownLineFade(pos) { const full = 400 * H_TRUE / (0.33 * Math.min(1, camera.aspect)) / 1000 * SCALE, d = camera.position.distanceTo(pos); return smooth((d - full) / (2 * full)); }
+function setFlownLine(line, tip, f) { line.material.opacity = 0.95 * f; line.visible = f > 0.02; tip.visible = tip.visible && f > 0.02; }
 function enlarge(pos) { return Math.max(1, Math.min(400, 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE)) / 400; }
 const matWhite = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, metalness: 0.25, roughness: 0.4, emissive: 0x1a2230, emissiveIntensity: 0.6 });
 const matBlack = new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.6 });
@@ -1705,6 +1710,15 @@ function frame() {
   earthGroup.updateMatrixWorld();
 
   const pS2 = s2At(simT), vS2 = heading(s2At, simT), radial = pS2.clone().normalize();
+  // The following cameras move with the vehicle's point on its path - first, before anything is placed, since how
+  // large each model is drawn comes from its distance to the camera: a camera still where the vehicle was a frame ago
+  // (12 km back at x100) made the size, and with it the model, jump from one frame to the next. And with its point on
+  // the path, not the model's middle: the middle moves with the size, and following it fed the size back into itself.
+  if ((camMode === 'chase' || camMode === 'booster' || camMode === 'orbit') && !(camMode === 'orbit' && !userCam)) {
+    const anchor = camTarget === 'sides' ? (() => { const sd = boosterDefs.filter(b => b.who === 'side'); return sd[0].at(simT).add(sd[1].at(simT)).multiplyScalar(0.5); })() : focusFn(camTarget)(simT);
+    if (lastTarget) camera.position.add(tmp.copy(anchor).sub(lastTarget));
+    lastTarget = anchor.clone();
+  }
   const separated = simT >= sepT;
   const ground = (camMode === 'pad' || camMode === 'site');
   const vScale = enlarge(pS2);
@@ -1782,6 +1796,7 @@ function frame() {
     const bi = simT <= bd.sep ? 0 : idxAt(bd.path, simT);
     bd.done.geometry.instanceCount = bi;
     setTip(bd.tip, bd.path[bi].p, p, simT > bd.sep && simT <= bd.landT && !gone);
+    setFlownLine(bd.done, bd.tip, flownLineFade(p));
     bd.label.visible = simT >= bd.sep && !gone && !(camMode === 'earth' && simT > bd.landT + 10) && !(camMode === 'orbit');
     if (playing && simT > bd.sep && burn) { const n = Math.min(6, Math.ceil(dt * speed * 2)); for (let k = 0; k < n; k++) emit(p, [1.0, 0.6, 0.3]); }
   });
@@ -1825,6 +1840,7 @@ function frame() {
   const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
   s2Done.geometry.instanceCount = si;
   setTip(s2Tip, s2Path[si].p, separated ? upper.position : pS2, simT > 0);
+  setFlownLine(s2Done, s2Tip, flownLineFade(pS2));
   lineMats.forEach(m => m.resolution.set(innerWidth, innerHeight));
 
   sites.forEach(o => { const d = camera.position.distanceTo(o.getWorldPosition(tmp)); o.scale.setScalar(Math.max(0.0015, d * 0.012)); o.children[0].visible = d < 9; o.material.opacity = ground ? 0 : 1; });
@@ -1853,9 +1869,11 @@ function frame() {
     else if (camTarget === 's2') focus = separated ? mid(upper, VEH === 'ss' ? 26 : 10) : mid(boosterDefs.find(b => b.who !== 'side').obj, H_TRUE / 2);
     else if (camTarget === 'sides') { const sd = boosterDefs.filter(b => b.who === 'side'); focus = mid(sd[0].obj, 22).add(mid(sd[1].obj, 22)).multiplyScalar(0.5); }
     else { const bd = focusBooster(); focus = simT < bd.sep ? focusFn(camTarget)(simT) : mid(bd.obj, VEH === 'ss' ? 36 : 22); }
-    if (lastTarget) camera.position.add(tmp.copy(focus).sub(lastTarget));
+    // The camera moves with the vehicle's point on its path, not with the model's middle: how large the model is
+    // drawn depends on the camera's distance, so following its middle made a loop - a zoom changed the size, the size
+    // moved the middle, the middle moved the camera, and the vehicle jumped about until zoomed back out.
+    // (the camera itself has already moved with the vehicle, at the top of the frame)
     controls.target.copy(focus);
-    lastTarget = focus.clone();
   } else if ((camMode === 'pad' || camMode === 'site') && !userCam) {
     // on the ground: at the pad, or at the landing site of what is landing
     let base;
