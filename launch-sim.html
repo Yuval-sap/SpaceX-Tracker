@@ -47,7 +47,7 @@
   [dir="rtl"] .tele b { text-align: right; }
   .tele span { font-size: 11px; color: var(--muted); }
 
-  #events { top: 16px; inset-inline-end: 72px; width: 300px; max-height: calc(100vh - 170px); overflow: auto; padding: 10px; scrollbar-width: thin; }
+  #events { top: 16px; inset-inline-end: 16px; width: 300px; max-height: calc(100vh - 170px); overflow: auto; padding: 10px; scrollbar-width: thin; }
   #events h3 { margin: 4px 8px 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
   .ev-row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 8px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
   .ev-row:hover { background: rgba(255, 255, 255, 0.05); }
@@ -73,10 +73,23 @@
   #pip-frame.on { display: block; }
   #pip-label { position: absolute; top: 6px; inset-inline-start: 8px; font: 600 11px 'Rubik', sans-serif; color: #e7eef8; background: rgba(5, 10, 20, 0.6); padding: 2px 8px; border-radius: 999px; }
   body.cine #pip-frame { border-color: transparent; }
-  #close { position: fixed; top: 16px; inset-inline-end: 16px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; line-height: 1; padding: 0; z-index: 5; background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
+  #close { position: fixed; top: 16px; inset-inline-end: 362px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; line-height: 1; padding: 0; z-index: 5; background: rgba(8, 12, 22, 0.7); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
 
   #controls { left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(1020px, calc(100vw - 32px)); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
   .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  @media (min-width: 761px) {
+    #controls .row:first-child { flex-wrap: nowrap; }
+    #controls .row:first-child > * { white-space: nowrap; flex-shrink: 0; }
+    #controls.tight1 .row { gap: 4px; }
+    #controls.tight1 button { padding: 7px 8px; }
+    #controls.tight1 .sep { margin: 0 1px; }
+    #controls.tight2 .lbl { display: none; }
+    #controls.tight2 #speed-auto::before { content: '⏩ '; }
+    #controls.tight2 [data-cam="auto"]::before { content: '🎥 '; }
+    #controls.tight3 button { padding: 6px 6px; font-size: 12px; }
+    #controls.tight3 #play { width: 36px; }
+    #controls.tight4 .row:first-child { flex-wrap: wrap; }
+  }
   button { font: 500 13px 'Rubik', sans-serif; color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 7px 11px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
   @media (hover: hover) { button:hover { background: rgba(255, 255, 255, 0.12); } }
   button.on { background: rgba(95, 212, 255, 0.18); border-color: rgba(95, 212, 255, 0.55); color: #fff; }
@@ -105,6 +118,8 @@
   #credit a { color: inherit; }
   #ev-toggle { display: none; }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 10; font: 500 14px 'Rubik', sans-serif; color: var(--muted); transition: opacity 0.6s; text-align: center; padding: 24px; }
+  /* not enough room beside the readout for the close button inside the timeline: back to the corner */
+  @media (min-width: 761px) and (max-width: 900px) { #close { inset-inline-end: 16px; } #events { inset-inline-end: 72px; } }
   @media (max-width: 760px) {
     #hud-top { top: 10px; inset-inline-start: 10px; inset-inline-end: 64px; min-width: 0; max-width: none; padding: 10px 12px; }
     #hud-top .sub { display: none; }
@@ -116,6 +131,7 @@
     .tele b { font-size: 14px; }
     .tele span { font-size: 10px; }
     #close { top: 10px; inset-inline-end: 10px; }
+    #events { inset-inline-end: 10px; }
     #events { display: none; top: auto; bottom: calc(env(safe-area-inset-bottom) + 150px); inset-inline-start: 10px; inset-inline-end: 10px; width: auto; max-height: 42vh; }
     body.ev-open #events { display: block; }
     #ev-toggle { display: inline-block; }
@@ -680,15 +696,33 @@ if (VEH === 'ss') {
   };
 }
 const shipCatchFixed = ecef(PAD.lat, PAD.lon, 0).normalize();
+const SHIP_DIVERT = 0.5;                                         // km: how far short of the tower the ship falls before its flip
+function shipFixedDir(tt) {                                      // unit vector (Earth-fixed) under the ship on its way home
+  const land = A.s2.land, u = toFixed(orbitAt(tauOf(tt)).normalize(), tt);
+  return shipCatch ? u.lerp(shipCatchFixed, smooth((tt - homeA) / (land - homeA))).normalize() : u;
+}
+// the level direction the ship comes in along (Earth-fixed): for a catch toward the tower, else its track before transonic
+let shipApproachV = null;
+function shipApproach() {
+  if (shipApproachV) return shipApproachV;
+  const tr = A.s2.transonic, up = shipCatch ? shipCatchFixed : shipFixedDir(tr);
+  let a = shipCatch ? shipCatchFixed.clone().sub(shipFixedDir(tr - 60)) : shipFixedDir(tr - 40).sub(shipFixedDir(tr - 80));
+  a.sub(up.clone().multiplyScalar(a.dot(up)));
+  if (a.lengthSq() < 1e-14) a = new THREE.Vector3(0, 1, 0).cross(up);
+  return (shipApproachV = a.normalize());
+}
 function s2Inertial(t) {                                         // scene units
   if (t < 0) return toInertial(ecef(PAD.lat, PAD.lon, 0), t);
   if (t <= seco1) return ascentInertial(t);
   if (homeA == null || t < homeA) return orbitAt(t).multiplyScalar(SCALE);
   const land = A.s2.land;
   const tt = Math.min(t, land);
-  const dir = orbitAt(tauOf(tt)).normalize();
-  let u = toFixed(dir, tt);
-  if (shipCatch) u = u.lerp(shipCatchFixed, smooth((tt - homeA) / (land - homeA))).normalize();
+  const u = shipFixedDir(tt);
+  if (shipCatch) {
+    const F = A.s2.flip ?? A.s2.lbStart, tr = A.s2.transonic;
+    const off = SHIP_DIVERT * smooth((tt - tr) / 90) * (1 - smooth((tt - (F - 4)) / Math.max(8, land - 6 - (F - 4))));
+    u.addScaledVector(shipApproach(), -off / RE).normalize();
+  }
   const fixed = u.multiplyScalar((RE + homeAlt(tt)) * SCALE);
   return toInertial(fixed, t);
 }
@@ -766,7 +800,7 @@ function buildPath(fn, t0, t1) {
 function idxAt(path, t) { let lo = 0, hi = path.length - 1; if (t <= path[0].t) return 0; if (t >= path[hi].t) return hi; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (path[m].t <= t) lo = m; else hi = m; } return lo; }
 function sample(path, t) { const i = idxAt(path, t), a = path[i], b = path[Math.min(i + 1, path.length - 1)]; if (b === a || b.t === a.t) return a.p.clone(); return a.p.clone().lerp(b.p, clamp01((t - a.t) / (b.t - a.t))); }
 const s2Path = buildPath(s2Inertial, 0, END_T);
-const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, 0), t) : sample(s2Path, t));
+const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, 0), t) : t > END_T ? s2Inertial(t) : sample(s2Path, t));   // (past the end straight from the flight: a frozen point would read as Earth-rotation speed and spin the ship)
 boosterDefs.forEach(bd => {
   const tEnd = bd.landT + (bd.land.kind === 'expend' ? 0 : 0);
   bd.path = buildPath(t => boosterInertial(bd, t), bd.sep, tEnd);
@@ -1185,7 +1219,7 @@ const SS_TILE = VEH === 'ss' ? hexTileTexture() : null, SS_STEEL = VEH === 'ss' 
 const ssSteel = (rings) => { const t = SS_STEEL.clone(); t.needsUpdate = true; t.repeat.set(1, rings / 32); return new THREE.MeshStandardMaterial({ map: t, color: 0xdfe3e8, metalness: 0.78, roughness: 0.3, emissive: 0x1d232b, emissiveIntensity: 0.55 }); };
 const ssTiles = (u, v) => { const t = SS_TILE.clone(); t.needsUpdate = true; t.repeat.set(u, v); return new THREE.MeshStandardMaterial({ map: t, color: 0xffffff, metalness: 0.05, roughness: 0.85, side: THREE.DoubleSide }); };
 const matRaptor = new THREE.MeshStandardMaterial({ color: 0x5a524a, metalness: 0.75, roughness: 0.45, side: THREE.DoubleSide, emissive: 0x16110c, emissiveIntensity: 0.6 });
-const R_SS = 4.5;
+const R_SS = 4.5, PEZ_Y = 32.4;                                // (the Pez slot's height on the ship, metres)
 // a body of revolution from [radius, height] in metres
 const lathe = (pts, mat, seg = 40, from = 0, len = Math.PI * 2) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r * VS, y * VS)), seg, from, len), mat);
 // a flat swept flap: its root along the hull from y0 to y1, out to `span` metres, its tip from y2 to y3
@@ -1273,12 +1307,28 @@ function ship() {
   // six Raptors: three for the sea level in the middle, three big vacuum bells around them
   raptorBells(g, [[0, 1.1, 0.65, 2.0], [-0.95, -0.55, 0.65, 2.0], [0.95, -0.55, 0.65, 2.0], [0, -2.9, 1.15, 3.0], [2.5, 1.45, 1.15, 3.0], [-2.5, 1.45, 1.15, 3.0]], 0.8);
   ud.heat = heatSprite(22, 5, 62); ud.heat2 = heatSprite(5, 4, 46); g.add(ud.heat, ud.heat2);
+  {
+    const W = R_SS * 1.5 / 2, Hh = 0.5, CR = 0.42, YC = PEZ_Y;
+    // a rounded rectangle as a fine grid bent round the hull (a coarse one would cut flat chords inside it), on the lee side (-z)
+    const slab = (hw, hh, cr, r, mat) => {
+      const NX = 64, NY = 4, pos = [], idx = [];
+      for (let i = 0; i <= NX; i++) {
+        const x = -hw + 2 * hw * i / NX, ex = Math.abs(x) - (hw - cr), half = ex > 0 ? hh - cr + Math.sqrt(Math.max(0, cr * cr - ex * ex)) : hh;
+        for (let j = 0; j <= NY; j++) { const y = -half + 2 * half * j / NY, a = Math.PI + x / r; pos.push(Math.sin(a) * r * VS, (YC + y) * VS, Math.cos(a) * r * VS); }
+      }
+      for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) { const q = i * (NY + 1) + j; idx.push(q, q + NY + 1, q + 1, q + 1, q + NY + 1, q + NY + 2); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+      g.add(new THREE.Mesh(geo, mat));
+    };
+    slab(W + 0.14, Hh + 0.14, CR + 0.14, R_SS + 0.06, new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: 0.85, roughness: 0.35, side: THREE.DoubleSide }));   // its frame
+    slab(W, Hh, CR, R_SS + 0.1, new THREE.MeshStandardMaterial({ color: 0x07090c, metalness: 0.2, roughness: 0.9, side: THREE.DoubleSide }));                       // the opening
+  }
   // the Starlink satellites it pushes out of its side, one after the other, from the deploy's start to its end
   if (A.s2.deploy != null) {
     const d0 = A.s2.deploy, d1 = A.s2.deployEnd != null && A.s2.deployEnd > d0 ? A.s2.deployEnd : d0 + 600, N = 10;
     const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
     ud.pez = []; ud.pezT = []; ud.pezEnd = d1 + 1500;
-    for (let i = 0; i < N; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.5 * VS, 6.5 * VS, 3.6 * VS), slab); m.visible = false; g.add(m); ud.pez.push(m); ud.pezT.push(d0 + (i + 0.5) / N * (d1 - d0)); }
+    for (let i = 0; i < N; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(6.2 * VS, 0.35 * VS, 3.2 * VS), slab); m.visible = false; g.add(m); ud.pez.push(m); ud.pezT.push(d0 + (i + 0.5) / N * (d1 - d0)); }
   }
   ud.plume = plumeOn(g, 70, 4, 0x8fd3ff);
   return g;
@@ -1800,8 +1850,17 @@ function liveLabel() {
     const sec = -t - 3600, [n, unit] = sec > 172800 ? [Math.round(sec / 86400), 'day'] : sec > 5400 ? [Math.round(sec / 3600), 'hour'] : [Math.max(1, Math.round(sec / 60)), 'minute'];
     try { txt += ' · ' + new Intl.RelativeTimeFormat(LANG === 'he' ? 'he' : LANG, { numeric: 'always', style: 'short' }).format(n, unit); } catch (e) {}
   }
-  if (el.textContent !== txt) el.textContent = txt;
+  if (el.textContent !== txt) { el.textContent = txt; fitControls(); }
 }
+// one line of buttons: as roomy as fits
+function fitControls() {
+  const c = $('controls'), row = c.querySelector('.row');
+  c.classList.remove('tight1', 'tight2', 'tight3', 'tight4');
+  if (innerWidth <= 760) return;
+  for (const k of ['tight1', 'tight2', 'tight3', 'tight4']) { if (row.scrollWidth <= row.clientWidth + 1) break; c.classList.add(k); }
+}
+addEventListener('resize', fitControls);
+try { document.fonts.ready.then(fitControls); } catch (e) {}
 const scrub = $('scrub');
 scrub.max = END_T;
 scrub.addEventListener('input', () => { setLive(false); seek(+scrub.value); if (camAuto) autoCamNow(true); });
@@ -1874,7 +1933,7 @@ const SHOTS = (() => {
   if (VEH === 'ss') {
     if (A.s2.deorbit != null) { s.push([A.s2.deorbit - 20, 'chase', 's2']); s.push([(A.s2.deorbitEnd ?? A.s2.deorbit + 10) + 20, 'orbit', 's2']); }
     s.push([A.s2.shipEntry - 30, 'chase', 's2']);
-    s.push([A.s2.lbStart - 25, shipCatch ? 'site' : 'chase', 's2']);
+    s.push([A.s2.lbStart - (shipCatch ? 40 : 25), shipCatch ? 'site' : 'chase', 's2']);
   }
   return s.sort((a, b) => a[0] - b[0]);
 })();
@@ -1960,7 +2019,7 @@ function animatePayload() {
   if (ud.sats) { const age = simT - dep, sp = age > 0 ? 1 - Math.exp(-age / 90) : 0; ud.sats.forEach((m, i) => { m.visible = simT >= fT && age < 2400; m.position.y = (13 + i * 0.3 + sp * (10 + i * 3.4)) * VS; m.rotation.x = sp * 0.5 * (i % 2 ? 1 : -1); m.rotation.y = sp * i * 0.21; }); }
   if (ud.sat) { const age = simT - dep, a = Math.max(0, age), open = smooth((age - 15) / 25); ud.sat.visible = simT >= fT && age < 2400; ud.sat.position.y = (15.5 + Math.min(90, a * 0.9)) * VS; ud.panels.forEach(p => { p.scale.x = 0.12 + 0.88 * open; }); }
   if (ud.capsule) ud.capsule.position.y = Math.min(110, Math.max(0, simT - dep) * 0.8) * VS;
-  if (ud.pez) ud.pez.forEach((m, i) => { const age = simT - ud.pezT[i], a = Math.max(0, age); m.visible = age >= 0 && simT < ud.pezEnd; m.position.set((4.8 + 70 * (1 - Math.exp(-a / 45))) * VS, (30 - 110 * (1 - Math.exp(-a / 240))) * VS, 0); m.rotation.y = a * 0.01; });
+  if (ud.pez) ud.pez.forEach((m, i) => { const age = simT - ud.pezT[i], a = Math.max(0, age); m.visible = age >= 0 && simT < ud.pezEnd; m.position.set(0, (PEZ_Y - 110 * (1 - Math.exp(-a / 240))) * VS, -(6.2 + 70 * (1 - Math.exp(-a / 45))) * VS); m.rotation.y = a * 0.01; });
 }
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.1);
@@ -2017,11 +2076,22 @@ function frame() {
     upper.quaternion.copy(qStack);
   } else {
     let d = vS2.lengthSq() > 1e-12 ? vS2.clone() : radial.clone();
-    if (VEH === 'ss' && A.s2.shipEntry != null && simT > A.s2.shipEntry - 120 && simT < (A.s2.flip ?? A.s2.lbStart)) {
-      const v = vS2.clone().normalize(), horiz = v.clone().sub(radial.clone().multiplyScalar(v.dot(radial))).normalize();
-      d = horiz.multiplyScalar(0.5).add(radial.clone().multiplyScalar(0.87));          // belly-first, nose high
+    let shipZ = null;
+    if (VEH === 'ss' && A.s2.shipEntry != null && simT > A.s2.shipEntry - 120) {
+      const sE = A.s2.shipEntry, tr = A.s2.transonic, F = A.s2.flip ?? A.s2.lbStart;
+      // the level direction it travels: its own motion high up, the fixed approach line once it is falling
+      let h = shipApproach().clone().transformDirection(earthGroup.matrixWorld);
+      const hv = vS2.clone().sub(radial.clone().multiplyScalar(vS2.dot(radial)));
+      if (hv.lengthSq() > 1e-12) h.lerp(hv.normalize(), 1 - smooth((simT - (tr - 120)) / 100));
+      h.sub(radial.clone().multiplyScalar(h.dot(radial))).normalize();
+      const back = (x) => { const c1 = 1.70158, c3 = c1 + 1; x = clamp01(x); return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+      let th = 60 * smooth((simT - (sE - 120)) / 80);
+      th += (8 - 60) * smooth((simT - tr) / 40);
+      th += (90 - 8) * back((simT - (F - 1)) / 6);
+      th *= DEG;
+      d = h.clone().multiplyScalar(Math.cos(th)).addScaledVector(radial, Math.sin(th));
+      shipZ = radial.clone().multiplyScalar(-Math.cos(th)).addScaledVector(h, Math.sin(th));
     }
-    if (VEH === 'ss' && simT >= (A.s2.flip ?? A.s2.lbStart)) d = radial.clone();
     // a caught ship hangs from the tower's arms
     const shipHang = VEH === 'ss' && shipCatch && towerShown ? 50 * VS * vScale * smooth((simT - (A.s2.land - 40)) / 35) : 0;
     const tau = simT - sepT, lit = Math.max(0, simT - ses1);
@@ -2029,7 +2099,7 @@ function frame() {
     const along = d.clone().normalize();
     orient(upper, pS2.clone().addScaledVector(radial, shipHang).addScaledVector(along, gap * VS * vScale), d);
     if (VEH === 'ss') {                                          // its belly (the model's +z) into the airflow
-      const y = d.clone().normalize(), z = vS2.clone().normalize(); z.sub(y.clone().multiplyScalar(z.dot(y)));
+      const y = d.clone().normalize(), z = (shipZ || vS2).clone().normalize(); z.sub(y.clone().multiplyScalar(z.dot(y)));
       if (z.lengthSq() > 1e-6) { z.normalize(); upper.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(y, z), y, z)); }
     }
   }
@@ -2172,8 +2242,13 @@ function frame() {
     const up = base.clone().normalize(), east = Y.clone().cross(up).normalize(), north = up.clone().cross(east);
     const far = camMode === 'pad' ? 0.007 : VEH === 'ss' ? 0.013 : 0.012;
     groundUp.copy(up);
+    if (camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2') {
+      const a = shipApproach().clone().transformDirection(earthGroup.matrixWorld), sd = up.clone().cross(a).normalize();
+      camera.position.copy(base).addScaledVector(sd, -0.0014).addScaledVector(a, -0.0006).addScaledVector(up, 0.00006);
+    } else
     camera.position.copy(base).addScaledVector(up, camMode === 'pad' ? 0.0004 : 0.0012).addScaledVector(east, far).addScaledVector(north, camMode === 'site' ? far * 0.35 : 0);
-    const look = camMode === 'pad' ? base.clone().addScaledVector(up, (VEH === 'ss' ? 0.0011 : 0.0007) * (1 + 0.15 * camera.position.distanceTo(pS2) / far)).lerp(pS2, smooth(simT / 12)) : focusFn(camTarget)(simT);
+    const catchView = camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2';
+    const look = catchView ? focusFn(camTarget)(simT).lerp(base.clone().addScaledVector(up, 0.00012), 0.4) : camMode === 'pad' ? base.clone().addScaledVector(up, (VEH === 'ss' ? 0.0011 : 0.0007) * (1 + 0.15 * camera.position.distanceTo(pS2) / far)).lerp(pS2, smooth(simT / 12)) : focusFn(camTarget)(simT);
     controls.target.copy(look);
   }
   setCamUp(camMode === 'earth' ? Y : ground && !userCam ? groundUp : controls.target.lengthSq() > 1e-9 ? tmp.copy(controls.target).normalize() : Y);
@@ -2227,7 +2302,7 @@ addEventListener('resize', () => {
   trail.material.uniforms.scale.value = innerHeight;
 });
 // follow the site's language / units live
-setInterval(() => { const l = readLang(), u = readUnits(); if (l !== LANG || u !== UNITS) { LANG = l; UNITS = u; uiTexts(); $('phase').dataset.k = ''; lastSimMinute = null; } }, 500);
+setInterval(() => { const l = readLang(), u = readUnits(); if (l !== LANG || u !== UNITS) { LANG = l; UNITS = u; uiTexts(); fitControls(); $('phase').dataset.k = ''; lastSimMinute = null; } }, 500);
 uiTexts();
 autoCamNow(true);
 markCam('auto');
@@ -2245,6 +2320,7 @@ window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind,
   lookDown: (lat, lon, altKm) => { document.querySelector('[data-cam="earth"]').click(); camera.position.copy(toInertial(ecef(lat, lon, altKm), simT)); },
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
   closeUp: (az, el, km) => { const u = upper, c = u.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(u.quaternion), 26 * VS * u.scale.x); const dir = new THREE.Vector3(Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)).applyQuaternion(u.quaternion); camera.position.copy(c).addScaledVector(dir, km * SCALE); controls.target.copy(c); },
+  attitude: () => { const y = new THREE.Vector3(0, 1, 0).applyQuaternion(upper.quaternion), z = new THREE.Vector3(0, 0, 1).applyQuaternion(upper.quaternion), r = upper.position.clone().normalize(); return { noseUpDeg: Math.round(Math.asin(y.dot(r)) / DEG), bellyDownDeg: Math.round(Math.asin(-z.dot(r)) / DEG) }; },
   camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
   toggle: (what, on) => { ({ clouds: padClouds, sky: skyDome })[what].userData.off = !on; },
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
