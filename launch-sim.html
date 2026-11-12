@@ -1073,13 +1073,25 @@ let groundTrackMat;
     const l2 = new Line2(g2, gm); l2.computeLineDistances(); earthGroup.add(l2);
   }
 }
+// A path is drawn in pieces of up to ~250 km, each with its points measured from its own first point: measured from the
+// Earth's centre they were good only to ~0.5 m in the graphics card's numbers, and seen from near the vehicle the lines
+// shook about it every frame. setCount(n) shows the first n segments (the flown part).
 function makeLine(path, color, width, opacity) {
-  const pts = []; path.forEach(s => pts.push(s.p.x, s.p.y, s.p.z));
-  const g = new LineGeometry(); g.setPositions(pts);
   const m = new LineMaterial({ color, linewidth: width, transparent: true, opacity, depthWrite: false });
   lineMats.push(m);
-  const l = new Line2(g, m); l.computeLineDistances(); scene.add(l);
-  return l;
+  const grp = new THREE.Group(); grp.material = m; grp.pieces = [];
+  let a = 0;
+  while (a < path.length - 1) {
+    const o = path[a].p; let b = a + 1;
+    while (b < path.length - 1 && b - a < 600 && path[b + 1].p.distanceTo(o) < 0.25) b++;
+    const pts = []; for (let i = a; i <= b; i++) { const q = path[i].p; pts.push(q.x - o.x, q.y - o.y, q.z - o.z); }
+    const g = new LineGeometry(); g.setPositions(pts);
+    const l = new Line2(g, m); l.position.copy(o); l.computeLineDistances(); grp.add(l); grp.pieces.push({ l, a, n: b - a });
+    a = b;
+  }
+  grp.setCount = (n) => grp.pieces.forEach(pc => { const k = Math.max(0, Math.min(pc.n, n - pc.a)); pc.l.visible = k > 0; pc.l.geometry.instanceCount = k; });
+  scene.add(grp);
+  return grp;
 }
 const s2Ahead = makeLine(s2Path, 0x5fd4ff, 1.3, 0.22);
 const s2Done = makeLine(s2Path, 0x9ae6ff, 3.2, 0.95);
@@ -1090,7 +1102,8 @@ function makeTip(done) { const g = new LineGeometry(); g.setPositions([0, 0, 0, 
 function setTip(tip, a, b, on) {
   tip.visible = on; if (!on) return;
   const d = tip.geometry.attributes.instanceStart.data, arr = d.array;
-  arr[0] = a.x; arr[1] = a.y; arr[2] = a.z; arr[3] = b.x; arr[4] = b.y; arr[5] = b.z; d.needsUpdate = true;
+  tip.position.copy(a);                                          // (measured from its own start, like the path's pieces)
+  arr[0] = 0; arr[1] = 0; arr[2] = 0; arr[3] = b.x - a.x; arr[4] = b.y - a.y; arr[5] = b.z - a.z; d.needsUpdate = true;
 }
 const s2Tip = makeTip(s2Done);
 boosterDefs.forEach(bd => { bd.tip = makeTip(bd.done); });
@@ -1438,6 +1451,9 @@ const tiles = new Map();                                         // "level/y/x" 
 const tileUni = {};                                              // level id -> the uniforms its tiles share
 const uniOf = (lv) => tileUni[lv.id] || (tileUni[lv.id] = { center: { value: new THREE.Vector3(1, 0, 0) }, fade: { value: new THREE.Vector2(9, 8) } });   // (9, 8: no fading - the corridor's)
 const tileLoader = new THREE.TextureLoader(); tileLoader.setCrossOrigin('anonymous');
+// the day pictures decoded off the page's own thread where the browser can (a JPEG decoded at upload time stalled a frame)
+const bitmapLoader = typeof createImageBitmap === 'function' ? new THREE.ImageBitmapLoader().setOptions({ imageOrientation: 'flipY' }).setCrossOrigin('anonymous') : null;
+const loadTileTex = (url, ok, _progress, fail) => bitmapLoader ? bitmapLoader.load(url, (bmp) => { const t = new THREE.Texture(bmp); t.flipY = false; t.needsUpdate = true; ok(t); }, undefined, fail) : tileLoader.load(url, ok, undefined, fail);
 let tileLoading = 0;
 const tileFails = { g: 0, e: 0, u: 0 }, tilesOff = { g: false, e: false, u: false };
 const tileQueue = [];
@@ -1511,7 +1527,7 @@ function pumpTiles() {
     const src = t.lv.src || (t.lv.land ? 'e' : 'g');
     if (tilesOff[src]) { t.state = 'failed'; continue; }
     t.state = 'loading'; tileLoading++;
-    tileLoader.load(t.lv.url(t.lv.z, t.y, t.x), (tex) => {
+    loadTileTex(t.lv.url(t.lv.z, t.y, t.x), (tex) => {
       tileLoading--; tileFails[src] = 0;
       tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (t.state === 'gone') { tex.dispose(); return; }
@@ -1520,7 +1536,7 @@ function pumpTiles() {
           const d = g.getImageData(0, 0, 8, 8).data; let sum = 0; for (let k = 0; k < d.length; k += 4) sum += d[k] + d[k + 1] + d[k + 2];
           if (sum / 64 < 12) { tex.dispose(); t.state = 'failed'; return; } } catch (e) {}
       }
-      t.uMap.value = tex; t.state = 'ready';
+      tileReady.push([t, tex]);
       if (!t.lv.land && t.lv.z <= 7) tileLoader.load(BLACK_MARBLE(t.lv.z, t.y, t.x), (nt) => {     // and its city lights
         if (t.state === 'gone') { nt.dispose(); return; }
         nt.colorSpace = THREE.SRGBColorSpace; t.uNight.value = nt; t.uHasNight.value = 1;
@@ -1539,8 +1555,11 @@ function wantTile(lv, y, x, now) {
   if (t.state === 'failed') return;
   t.last = now; tileWanted.add(key);
 }
-let tileClock = 1, tileFocus = null, tileFocusAt = 0, tileSpeed = 0;
+let tileClock = 1, tileFocus = null, tileFocusAt = 0, tileSpeed = 0, groundFocus = null;
+const tileReady = [];                                            // loaded, waiting their turn to go on screen
 function updateTiles(dt) {
+  // (two new pictures a frame at most: uploading many at once stalled a frame for a tenth of a second)
+  for (let k = 0; k < 2 && tileReady.length; k++) { const [t, tex] = tileReady.shift(); if (t.state === 'gone') { tex.dispose(); continue; } t.uMap.value = tex; t.state = 'ready'; }
   tiles.forEach(t => { if (t.mesh.visible && t.state === 'ready' && t.uOp.value < 1) t.uOp.value = Math.min(1, t.uOp.value + dt * 2.5); });
   tileClock += dt;
   if (tileClock < 0.3) return;
@@ -1559,7 +1578,7 @@ function updateTiles(dt) {
   }
   // 3. around what the camera looks at
   {
-    const focusW = (tgt.lengthSq() < R * R * 0.25 ? camera.position : tgt).clone().setLength(R);   // (the whole-Earth view looks at the centre: the ground straight below the camera)
+    const focusW = (groundFocus ? groundFocus : tgt.lengthSq() < R * R * 0.25 ? camera.position : tgt).clone().setLength(R);   // (the whole-Earth view looks at the centre: the ground straight below the camera; a ground camera, the site it stands by)
     const distKm = Math.max(0.5, camera.position.distanceTo(focusW) / SCALE);
     const local = earthGroup.worldToLocal(focusW.clone()).normalize(), [lat, lon] = latLonOf(local);
     // how fast the view sweeps over the ground: tiles smaller than it crosses in six seconds would never be seen sharp
@@ -1580,7 +1599,7 @@ function updateTiles(dt) {
   }
   tiles.forEach((t, key) => { t.mesh.visible = tileWanted.has(key) && t.state === 'ready'; if (!t.mesh.visible && t.state !== 'ready') t.uOp.value = 0; });
   if (tiles.size > TILE_KEEP) {                                  // forget the ones not looked at for the longest
-    [...tiles.entries()].filter(([k]) => !tileWanted.has(k)).sort((a, b) => a[1].last - b[1].last).slice(0, tiles.size - TILE_KEEP).forEach(([k, t]) => {
+    [...tiles.entries()].filter(([k]) => !tileWanted.has(k)).sort((a, b) => a[1].last - b[1].last).slice(0, Math.min(6, tiles.size - TILE_KEEP)).forEach(([k, t]) => {
       earthGroup.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); if (t.uMap.value !== blank) t.uMap.value.dispose(); t.state = 'gone'; tiles.delete(k);
     });
   }
@@ -1664,13 +1683,54 @@ function lattice(w, h, d, x, y, z) {
 }
 const padFixed = ecef(PAD.lat, PAD.lon, 0);
 const padStruct = addStructure(padFixed, g => {
-  if (VEH === 'ss') {                                            // the launch tower and its two catch arms
-    // Starbase: the tower (146 m, its crane on top), the arms' carriage on its face, the quick-disconnect arm, the trench
-    const tower = [lattice(12, 146, 12, 0, 73, -17), box(14, 6, 5, matTower, 0, 88, -10.5), box(2, 2.4, 12, matTower, 0, 120, -6), box(1.6, 26, 1.6, matTower, 3, 159, -17), box(1.6, 2, 18, matTower, 3, 171, -9)];
-    const trench = box(16, 0.2, 16, new THREE.MeshStandardMaterial({ color: 0x1e2024, roughness: 1 }), 0, 0.12, 0);
-    const base = slab(80, 2); g.add(...tower, base, trench);
+  if (VEH === 'ss') {
+    // Starbase's launch site, both pads where they stand (placed from the aerial photo: Pad 1 on the old concrete, Pad 2
+    // ~150 m west-southwest of it), each with its 146 m tower, the arms' carriage, the ship's quick-disconnect arm and
+    // the crane on top; Pad 1 with its raised launch mount on six legs, Pad 2 with its mount over a flame trench at
+    // ground level; the tank farm east of Pad 1 and the ground-systems building beyond it. Metres, x east, z south.
+    const P1 = [25.9972, -97.1566], P2 = [25.99677, -97.15799];
+    const at = ([la, lo]) => [(lo - PAD.lon) * Math.cos(PAD.lat * DEG) * 111320, -(la - PAD.lat) * 110574];
+    const d2 = (q) => (q[0] - PAD.lat) ** 2 + (q[1] - PAD.lon) ** 2, onePad = isStarbase && Math.min(d2(P1), d2(P2)) < 1e-5;
+    const [x1, z1] = onePad ? at(P1) : [0, 0], [x2, z2] = onePad ? at(P2) : [0, 0];
+    const active = !onePad || d2(P1) < d2(P2) ? 1 : 2;           // the pad this flight leaves from (it is at the group's origin)
+    const all = [];
+    const matDarkPad = new THREE.MeshStandardMaterial({ color: 0x1e2024, roughness: 1 });
+    const matTank = new THREE.MeshStandardMaterial({ color: 0xd9dde2, metalness: 0.55, roughness: 0.35, emissive: 0x1a1f26, emissiveIntensity: 0.5 });
+    const matShroud = new THREE.MeshStandardMaterial({ color: 0xb9bec4, metalness: 0.3, roughness: 0.6 });
+    const matBuilding = new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.8 });
+    const put = (m) => { g.add(m); all.push(m); return m; };
+    const towerAt = (x, z, mount) => {
+      put(lattice(12, 146, 12, x, 73, z - 17));
+      put(box(14, 6, 5, matTower, x, 88, z - 10.5));            // the arms' carriage
+      put(box(2, 2.4, 12, matTower, x, 120, z - 6));            // the ship's quick-disconnect arm
+      put(box(1.6, 26, 1.6, matTower, x + 3, 159, z - 17)); put(box(1.6, 2, 18, matTower, x + 3, 171, z - 9));   // the crane
+      const pad = slab(62, 2); pad.position.x = x * VS; pad.position.z = z * VS; put(pad);
+      if (mount === 'olm') {                                      // six legs and the ring table, 20 m up
+        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; put(box(2.6, 18, 2.6, matTower, x + Math.cos(a) * 9.5, 9, z + Math.sin(a) * 9.5)); }
+        const ringT = lathe([[5.4, 17.5], [10.8, 17.5], [10.8, 20.5], [5.4, 20.5], [5.4, 17.5]], matTower, 36); ringT.position.set(x * VS, 0, z * VS); put(ringT);
+      } else {                                                    // the mount over its trench, low walls either side
+        put(box(18, 0.2, 18, matDarkPad, x, 0.12, z));
+        put(box(3, 4, 22, matConcrete, x - 11, 2, z)); put(box(3, 4, 22, matConcrete, x + 11, 2, z));
+        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; put(box(1.6, 2.4, 1.6, matTower, x + Math.cos(a) * 6, 1.2, z + Math.sin(a) * 6)); }
+      }
+    };
+    towerAt(active === 1 ? 0 : x1, active === 1 ? 0 : z1, 'olm');
+    if (onePad) towerAt(active === 2 ? 0 : x2, active === 2 ? 0 : z2, 'trench');
+    // the tank farm east of Pad 1: two rows of tall shrouded tanks, a row of horizontal ones, a pipe rack to the pad
+    if (onePad || active === 1) {
+      const fx = active === 1 ? 0 : x1, fz = active === 1 ? 0 : z1;
+      const tank = (r, h, x, z, mat) => { put(cyl(r, h, mat, 0)).position.set(x * VS, h / 2 * VS, z * VS); const dome = new THREE.Mesh(new THREE.SphereGeometry(r * VS, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat); dome.position.set(x * VS, h * VS, z * VS); put(dome); };
+      for (let i = 0; i < 4; i++) { tank(5, 30, fx + 70 + i * 14, fz - 34, matShroud); tank(5, 30, fx + 70 + i * 14, fz - 14, matShroud); }
+      for (let i = 0; i < 6; i++) { const h = new THREE.Mesh(new THREE.CylinderGeometry(1.9 * VS, 1.9 * VS, 24 * VS, 16), matTank); h.rotation.z = Math.PI / 2; h.position.set((fx + 82) * VS, 2.4 * VS, (fz + 8 + i * 5) * VS); put(h); }
+      put(box(60, 1.2, 1.2, matTower, fx + 38, 4, fz - 24));       // the pipe rack to the pad
+      put(box(40, 10, 25, matBuilding, fx + 244, 5, fz + 79));    // the ground-systems building
+    }
     g.userData.arms = [1, -1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 5.9 * VS, 88 * VS, -11 * VS); piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); g.add(piv); return piv; });
-    g.userData.tall = tower.concat(g.userData.arms, base);
+    if (onePad) {                                                 // the other tower's arms, standing open
+      const ox = active === 1 ? x2 : x1, oz = active === 1 ? z2 : z1;
+      [1, -1].forEach(sd => { const piv = new THREE.Group(); piv.position.set((ox + sd * 5.9) * VS, 88 * VS, (oz - 11) * VS); piv.rotation.y = sd * 0.55; piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); put(piv); });
+    }
+    g.userData.tall = all.concat(g.userData.arms);
   } else {                                                       // the pad and the strongback
     // the transporter-erector's strongback right beside the rocket, and the crew tower where the pad has one
     const tall = [lattice(3.6, 62, 3.6, 0, 31, -5.5)];
@@ -1814,19 +1874,20 @@ function updatePadClouds() {
 // exhaust trail
 const TRAIL_N = MOBILE ? 500 : 900;
 const trailGeo = new THREE.BufferGeometry();
-const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3), trailLit = new Float32Array(TRAIL_N), trailInert = new Float32Array(TRAIL_N);
+const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3), trailLit = new Float32Array(TRAIL_N), trailW = new Float32Array(TRAIL_N), trailT = new Float32Array(TRAIL_N);
 trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
 trailGeo.setAttribute('age', new THREE.BufferAttribute(trailAge, 1));
 trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
 trailGeo.setAttribute('lit', new THREE.BufferAttribute(trailLit, 1));
-trailGeo.setAttribute('inert', new THREE.BufferAttribute(trailInert, 1));
+trailGeo.setAttribute('inert', new THREE.BufferAttribute(trailW, 1));
+trailGeo.setAttribute('born', new THREE.BufferAttribute(trailT, 1));
 const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
-  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 }, unrot: { value: new THREE.Matrix3() } },
+  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 }, tNow: { value: 0 } },
   // lit: 0 in the Earth's shadow; above it (from 60 km up) the gas spreads out wide and, sunlit over a dark sky, glows
-  vertexShader: `attribute float age; attribute float lit; attribute float inert; uniform mat3 unrot; varying float vA; varying vec3 vC; varying float vL; uniform float scale; uniform float dark;
+  vertexShader: `attribute float age; attribute float lit; attribute float inert; attribute float born; uniform float tNow; varying float vA; varying vec3 vC; varying float vL; uniform float scale; uniform float dark;
 #include <common>
 #include <logdepthbuf_pars_vertex>
-  void main(){ vA = age; vL = lit * dark; vC = mix(color, vec3(0.78, 0.9, 1.0), vL); vec4 mv = modelViewMatrix * vec4(inert > 0.5 ? unrot * position : position, 1.0);
+  void main(){ vA = age; vL = lit * dark; vC = mix(color, vec3(0.78, 0.9, 1.0), vL); float ra = inert * (born - tNow) * 7.2921159e-5, cr = cos(ra), sr = sin(ra); vec3 pp = vec3(position.x * cr + position.z * sr, position.y, -position.x * sr + position.z * cr); vec4 mv = modelViewMatrix * vec4(pp, 1.0);
     float grow = 0.0009 + 0.004 * (1.0 - age) + vL * 0.05 * sqrt(age);
     gl_PointSize = clamp(scale * grow / -mv.z, 0.0, mix(60.0, 300.0, vL)); gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
@@ -1847,7 +1908,10 @@ function resetTrail() { trailAge.fill(1); trailGeo.attributes.age.needsUpdate = 
 resetTrail();
 const emitTmp = new THREE.Vector3();
 function emit(p, color) {
-  const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; const high = p.length() / SCALE - RE > 40, q = high ? p : earthGroup.worldToLocal(emitTmp.copy(p)); trailPos.set([q.x, q.y, q.z], i * 3); trailInert[i] = high ? 1 : 0; trailAge[i] = 0;
+  const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; const q = earthGroup.worldToLocal(emitTmp.copy(p)); trailPos.set([q.x, q.y, q.z], i * 3); trailAge[i] = 0;
+  // how far the gas keeps to the stars rather than to the turning air: the same blend, by height, as the vehicle's own
+  // heading (heading()), so the trail always leaves the engines along the way the flame points
+  trailW[i] = smooth((p.length() / SCALE - RE - 60) / 120); trailT[i] = simT;
   const lowK = 1 - smooth((p.length() / SCALE - RE - 8) / 40);   // below 8 km all smoke, glowing gas from 48 km up
   trailCol.set([color[0] * (1 - lowK) + 0.13 * lowK, color[1] * (1 - lowK) + 0.12 * lowK, color[2] * (1 - lowK) + 0.11 * lowK], i * 3);
   // sunlit? (out of the Earth's cylinder of shadow), and high enough for the gas to spread
@@ -2259,7 +2323,7 @@ function frame() {
     bd.glow.position.copy(p); bd.glow.visible = separated && !gone && simT >= bd.sep && !ground;
     bd.glow.scale.setScalar(camera.position.distanceTo(p) * 0.025 * (burn ? 1 : 0.5));
     const bi = simT <= bd.sep ? 0 : idxAt(bd.path, simT);
-    bd.done.geometry.instanceCount = bi;
+    bd.done.setCount(bi);
     setTip(bd.tip, bd.path[bi].p, p, simT > bd.sep && simT <= bd.landT && !gone);
     setFlownLine(bd.done, bd.tip, flownLineFade(p));
     bd.label.visible = simT >= bd.sep && !gone && !(camMode === 'earth' && simT > bd.landT + 10) && !(camMode === 'orbit');
@@ -2303,12 +2367,12 @@ function frame() {
     for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(upper.position, [0.55, 0.8, 1.0]); }
   }
   for (let i = 0; i < TRAIL_N; i++) if (trailAge[i] < 1) trailAge[i] = Math.min(1, trailAge[i] + dt * (0.12 + Math.min(speed, 200) * 0.004));
-  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = trailGeo.attributes.lit.needsUpdate = trailGeo.attributes.inert.needsUpdate = true;
-  trail.material.uniforms.unrot.value.setFromMatrix4(earthGroup.matrixWorld).invert();   // (stars' frame -> the Earth's, for the high ones)
+  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = trailGeo.attributes.lit.needsUpdate = trailGeo.attributes.inert.needsUpdate = trailGeo.attributes.born.needsUpdate = true;
+  trail.material.uniforms.tNow.value = simT;
   // how dark the sky is where the camera is: the glow shows against a dark sky, and is lost in daylight
   trail.material.uniforms.dark.value = 1 - THREE.MathUtils.smoothstep(tmp.copy(camera.position).normalize().dot(SUN), -0.08, 0.06) * (1 - THREE.MathUtils.smoothstep(camera.position.length() / SCALE - RE, 40, 160));
   const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
-  s2Done.geometry.instanceCount = si;
+  s2Done.setCount(si);
   setTip(s2Tip, s2Path[si].p, separated ? upper.position : pS2, simT > 0);
   setFlownLine(s2Done, s2Tip, flownLineFade(pS2));
   lineMats.forEach(m => m.resolution.set(innerWidth, innerHeight));
@@ -2323,6 +2387,7 @@ function frame() {
   });
 
   // camera
+  groundFocus = null;
   if (camMode === 'orbit' && !userCam) {
     const p = s2At(simT), up = p.clone().normalize();
     let v = vel(s2At, simT); v.sub(up.clone().multiplyScalar(v.dot(up))).normalize();
@@ -2353,13 +2418,14 @@ function frame() {
     else base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
     const up = base.clone().normalize(), east = Y.clone().cross(up).normalize(), north = up.clone().cross(east);
     const far = camMode === 'pad' ? M(3.6 * H_TRUE) : M(5 * H_BOOST);
-    groundUp.copy(up);
+    groundUp.copy(up); groundFocus = base.clone().lerp(camera.position, 0.3);
     if (camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2') {
       const a = shipApproach().clone().transformDirection(earthGroup.matrixWorld), sd = up.clone().cross(a).normalize();
-      camera.position.copy(base).addScaledVector(east, -M(450)).addScaledVector(north, -M(90)).addScaledVector(up, M(20));
+      camera.position.copy(base).addScaledVector(east, -M(330)).addScaledVector(north, -M(330)).addScaledVector(up, M(20));   // (south-west: the other pad, east of this one, stands clear to the side)
     } else if (camMode === 'pad' || (camTarget === 'booster' && focusBooster().land.kind === 'catch')) {
       // west of the pad, a little south: the tower (north of the rocket) stands beside it, not in front of it
-      camera.position.copy(base).addScaledVector(east, -far).addScaledVector(north, -far * 0.2).addScaledVector(up, M(camMode === 'pad' ? 25 : 15));
+      const sw = VEH === 'ss' ? 0.71 : 1, so = VEH === 'ss' ? 0.71 : 0.2;   // (Starbase from the south-west: its second pad, east of the first, then stands beside it)
+      camera.position.copy(base).addScaledVector(east, -far * sw).addScaledVector(north, -far * so).addScaledVector(up, M(camMode === 'pad' ? 25 : 15));
     } else
     camera.position.copy(base).addScaledVector(up, M(15)).addScaledVector(east, far).addScaledVector(north, far * 0.35);
     const catchView = camMode === 'site' && VEH === 'ss' && shipCatch && camTarget === 's2';
@@ -2444,6 +2510,13 @@ window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind,
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
+// every material made ready for the graphics card up front, hidden ones too (a flame, a glow, a model first shown in
+// the middle of the flight otherwise had its shaders built right then, and that frame stalled for a tenth of a second)
+try {
+  const hidden = []; scene.traverse(o => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+  renderer.compile(scene, camera);
+  hidden.forEach(o => { o.visible = false; });
+} catch (e) {}
 requestAnimationFrame(frame);
 </script>
 </body>
