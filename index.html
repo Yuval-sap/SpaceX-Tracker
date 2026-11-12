@@ -476,6 +476,7 @@
         #countdown-box,
         #hero-details-btn,
         #hero-sim-btn,
+        #hero-s3d-btn,
         #hero-remind-btn,
         #hero-watch-live-btn,
         #category-filter-bar,
@@ -518,6 +519,7 @@
         #countdown-box::before,
         #hero-details-btn::before,
         #hero-sim-btn::before,
+        #hero-s3d-btn::before,
         #hero-remind-btn::before,
         #hero-watch-live-btn.bg-zinc-800::before,   /* grey state only - the red live button stays clean */
         #category-filter-bar::before,
@@ -540,6 +542,7 @@
         body.light-theme #countdown-box::before,
         body.light-theme #hero-details-btn::before,
         body.light-theme #hero-sim-btn::before,
+        body.light-theme #hero-s3d-btn::before,
         body.light-theme #hero-remind-btn::before,
         body.light-theme #hero-watch-live-btn.bg-zinc-800::before,
         body.light-theme #category-filter-bar::before,
@@ -636,7 +639,7 @@
             display: none !important;
         }
         /* the hero's buttons (Details, the reminder bell, Watch live) keep their look, without the scanlines either */
-        html:not(.in-app) body :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
+        html:not(.in-app) body :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
             display: none !important;
         }
         /* The footer's Donate and @SpaceXFanTrack buttons above the page's scanlines (body::before, z-index 50) too: the
@@ -3355,6 +3358,7 @@
 
             body.light-theme #hero-details-btn.md\:hover\:bg-emerald-500:hover,
             body.light-theme #hero-sim-btn.md\:hover\:bg-emerald-500:hover,
+            body.light-theme #hero-s3d-btn.md\:hover\:bg-emerald-500:hover,
             body.light-theme #hero-watch-live-btn.md\:hover\:bg-emerald-500:hover,
             body.light-theme #hero-remind-btn.md\:hover\:bg-emerald-500:hover {
                 background-color: #047857 !important;
@@ -3362,6 +3366,7 @@
 
             body.light-theme #hero-details-btn.md\:hover\:border-emerald-500:hover,
             body.light-theme #hero-sim-btn.md\:hover\:border-emerald-500:hover,
+            body.light-theme #hero-s3d-btn.md\:hover\:border-emerald-500:hover,
             body.light-theme #hero-watch-live-btn.md\:hover\:border-emerald-500:hover,
             body.light-theme #hero-remind-btn.md\:hover\:border-emerald-500:hover {
                 border-color: #047857 !important;
@@ -3373,6 +3378,7 @@
                against a dark green background. White instead keeps it visible on-theme. */
             body.light-theme #hero-details-btn:hover .fa-circle-info,
             body.light-theme #hero-sim-btn:hover .lsim-ic,
+            body.light-theme #hero-s3d-btn:hover .lsim-ic,
             body.light-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #ffffff !important;
             }
@@ -3579,6 +3585,7 @@
         @media (min-width: 768px) {
             body.mars-theme #hero-details-btn:hover .fa-circle-info,
             body.mars-theme #hero-sim-btn:hover .lsim-ic,
+            body.mars-theme #hero-s3d-btn:hover .lsim-ic,
             body.mars-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #7a2e0f !important;
             }
@@ -3995,6 +4002,7 @@
         @media (min-width: 768px) {
             body.moon-theme #hero-details-btn:hover .fa-circle-info,
             body.moon-theme #hero-sim-btn:hover .lsim-ic,
+            body.moon-theme #hero-s3d-btn:hover .lsim-ic,
             body.moon-theme #hero-watch-live-btn:hover .fa-tower-broadcast {
                 color: #0a4a75 !important;
             }
@@ -6517,9 +6525,10 @@
         html.in-app #hero-banner.app-hero div:has(> #hero-details-btn) {
             flex-wrap: nowrap;
             justify-content: space-around;
+            align-items: flex-start;   /* every icon on one line, however many lines its caption takes */
             gap: 0.25rem;
         }
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
@@ -6540,11 +6549,11 @@
             text-align: center;
         }
         /* five of them with Watch live up (the launch simulation's button too): they share the row instead of overflowing it */
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
             flex: 0 1 4.6rem;
             min-width: 0;
         }
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -6558,10 +6567,10 @@
             animation: none;
         }
         /* night: the same look, but solid - the night sky's stars showed through the see-through fill */
-        html.in-app body:where(:not(.light-theme):not(.mars-theme):not(.moon-theme)) #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+        html.in-app body:where(:not(.light-theme):not(.mars-theme):not(.moon-theme)) #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             background: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)), var(--app-bg);
         }
-        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
+        html.in-app #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn)::before {
             display: none;
         }
         html.in-app #hero-banner.app-hero #hero-remind-btn[data-reminded="1"] > i {
@@ -6581,10 +6590,10 @@
         html.in-app #hero-banner.app-hero #hero-remind-btn::after {
             content: attr(data-app-caption);
         }
-        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) {
             color: #334155 !important;
         }
-        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
+        html.in-app body.light-theme #hero-banner.app-hero :is(#hero-details-btn, #hero-sim-btn, #hero-s3d-btn, #hero-remind-btn, #hero-watch-live-btn, #app-hero-share) > i {
             background: #ffffff;
             border-color: #e2e8f0;
             color: #0f172a;
@@ -6596,6 +6605,9 @@
         }
         html.in-app #hero-banner.app-hero #hero-sim-btn {
             order: 5;   /* where Share was: after Details, the reminder and Watch live */
+        }
+        html.in-app #hero-banner.app-hero #hero-s3d-btn {
+            order: 6;   /* Starship 3D right after the launch simulation */
         }
         #app-hero-share {
             display: none;
@@ -8100,15 +8112,15 @@
         // "Starship Simulation" button (mission modal tile + rocket modal button, Starship only) and
         // the tile's one-line subtitle. Uses the same localized "Starship" as STARSHIP_I18N.
         const STARSHIP_SIM_I18N = {
-            en: ["Starship Simulation", "Interactive 3D model"], he: ["סימולציית סטארשיפ", "מודל תלת-ממדי אינטראקטיבי"],
-            es: ["Simulación de Starship", "Modelo 3D interactivo"], fr: ["Simulation Starship", "Modèle 3D interactif"],
-            de: ["Starship-Simulation", "Interaktives 3D-Modell"], ru: ["Симуляция Старшипа", "Интерактивная 3D-модель"],
-            zh: ["星舰模拟", "交互式 3D 模型"], it: ["Simulazione Starship", "Modello 3D interattivo"],
-            cs: ["Simulace Starship", "Interaktivní 3D model"], sv: ["Starship-simulering", "Interaktiv 3D-modell"],
-            nl: ["Starship-simulatie", "Interactief 3D-model"], da: ["Starship-simulering", "Interaktiv 3D-model"],
-            pt: ["Simulação da Starship", "Modelo 3D interativo"], pl: ["Symulacja Starship", "Interaktywny model 3D"],
-            hi: ["स्टारशिप सिमुलेशन", "इंटरैक्टिव 3D मॉडल"], ar: ["محاكاة ستارشيب", "نموذج تفاعلي ثلاثي الأبعاد"],
-            tr: ["Starship Simülasyonu", "Etkileşimli 3B model"],
+            en: ["Starship 3D", "Interactive 3D model"], he: ["סטארשיפ 3D", "מודל תלת-ממדי אינטראקטיבי"],
+            es: ["Starship 3D", "Modelo 3D interactivo"], fr: ["Starship 3D", "Modèle 3D interactif"],
+            de: ["Starship 3D", "Interaktives 3D-Modell"], ru: ["Starship 3D", "Интерактивная 3D-модель"],
+            zh: ["Starship 3D", "交互式 3D 模型"], it: ["Starship 3D", "Modello 3D interattivo"],
+            cs: ["Starship 3D", "Interaktivní 3D model"], sv: ["Starship 3D", "Interaktiv 3D-modell"],
+            nl: ["Starship 3D", "Interactief 3D-model"], da: ["Starship 3D", "Interaktiv 3D-model"],
+            pt: ["Starship 3D", "Modelo 3D interativo"], pl: ["Starship 3D", "Interaktywny model 3D"],
+            hi: ["Starship 3D", "इंटरैक्टिव 3D मॉडल"], ar: ["Starship 3D", "نموذج تفاعلي ثلاثي الأبعاد"],
+            tr: ["Starship 3D", "Etkileşimli 3B model"],
         };
         STARSHIP_SIM_I18N.iw = STARSHIP_SIM_I18N.he;
         Object.keys(LAUNCH_LABEL_I18N).forEach(k => {
@@ -12307,7 +12319,7 @@
             modal.style.display = 'block';
             // opened from a Starship flight's modal: tell the sim which flight/booster/ship it is
             const missionOpen = !document.getElementById('mission-modal').classList.contains('hidden');
-            const sm = missionOpen ? window.currentActiveSimMission : null;
+            const sm = missionOpen ? window.currentActiveSimMission : (window.heroSimParams || null);   // (or from the hero's own button)
             const qs = new URLSearchParams({ embed: '1' });
             if (sm) for (const k of ['f', 'b', 'bf', 's', 'sf', 'n']) if (sm[k]) qs.set(k, sm[k]);
             // opened from a shared link (the sim's own Share button): same flight details, plus the picked part
@@ -12340,7 +12352,7 @@
         // 3D simulation of the hero's launch (launch-sim.html) in a full-screen same-origin iframe, loaded only on
         // the button's click. The sim pulls everything from here: the launch (getLaunchSimConfig), SpaceX's own
         // timeline for it, the event texts in the site language (launchSimLocalizeEvent), the language and units.
-        const LAUNCH_SIM_VERSION = '16';   // bump on every launch-sim.html change so browsers don't show a cached old copy
+        const LAUNCH_SIM_VERSION = '17';   // bump on every launch-sim.html change so browsers don't show a cached old copy
         const LAUNCH_SIM_LABEL_I18N = { en: 'Launch Sim', he: 'סימולציית שיגור', es: 'Simulación', fr: 'Simulation', de: 'Simulation', ru: 'Симуляция', zh: '发射模拟', it: 'Simulazione', cs: 'Simulace', sv: 'Simulering', nl: 'Simulatie', da: 'Simulering', pt: 'Simulação', pl: 'Symulacja', hi: 'सिमुलेशन', ar: 'محاكاة الإطلاق', tr: 'Simülasyon' };
         function applyLaunchSimLabel() {
             const el = document.getElementById('hero-sim-label');
@@ -12350,6 +12362,29 @@
             setTextIfChanged(el, LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en);
         }
         new MutationObserver(applyLaunchSimLabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        // the hero's second button on Starship flights: the 3D Starship (otherwise only inside the flight's card)
+        function applyStarship3dButton() {
+            const b = document.getElementById('hero-s3d-btn'), l = document.getElementById('hero-s3d-label');
+            if (!b) return;
+            const m = window.currentActiveHeroMission, ss = !!m && (m.category === 'starship' || /starship/i.test(String(m.vehicle || m.patchTagName || m.name || '')));
+            if (b.classList.contains('hidden') === ss) b.classList.toggle('hidden', !ss);
+            let k = (document.documentElement.lang || 'en').toLowerCase().split('-')[0]; if (k === 'iw') k = 'he';
+            if (l) setTextIfChanged(l, k === 'he' ? 'סטארשיפ 3D' : 'Starship 3D');
+        }
+        setInterval(applyStarship3dButton, 1000);
+        document.addEventListener('DOMContentLoaded', applyStarship3dButton);
+        window.openStarshipSimFromHero = function () {
+            const m = window.currentActiveHeroMission;
+            const num = v => { const x = String(v || '').match(/(\d+)/); return x ? x[1] : ''; };
+            window.heroSimParams = m ? {
+                f: num((String(m.patchTagName || m.name || '').match(/flight\s*(\d+)/i) || [])[1]),
+                b: num(m.boosterSerial), bf: m.boosterFlightNum || '',
+                s: num(m.shipSerial || m.shipLabel), sf: m.shipFlightNum || '',
+                n: num((String(m.description || '').match(/(\d+)\s+(?:next[- ]generation\s+)?(?:Starlink\s+)?(?:V\d\s+)?(?:Starlink\s+)?satellites/i) || [])[1]),
+            } : null;
+            openStarshipSim();
+            window.heroSimParams = null;
+        };
         document.addEventListener('DOMContentLoaded', applyLaunchSimLabel);
         window.getLaunchSimConfig = function () {
             const m = window.currentActiveHeroMission;
@@ -14955,6 +14990,13 @@
                                 class="notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
                                 <i class="lsim-ic fa-solid fa-earth-americas text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i>
                                 <span id="hero-sim-label">Launch Sim</span>
+                            </button>
+
+                            <!-- Starship 3D (starship-3d.html) of the hero's flight: shown only for Starship launches -->
+                            <button type="button" id="hero-s3d-btn" translate="no" onclick="openStarshipSimFromHero()"
+                                class="notranslate hidden group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
+                                <i class="lsim-ic fa-solid fa-cube text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i>
+                                <span id="hero-s3d-label">Starship 3D</span>
                             </button>
 
                             <button id="hero-remind-btn" data-reminder-bell="1" data-reminded="0" translate="no"
@@ -17828,7 +17870,7 @@
                         <div class="flex items-center gap-2">
                             <div id="i18n-starship-sim"
                                 class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
-                                translate="no" lang="en">Starship Simulation</div>
+                                translate="no" lang="en">Starship 3D</div>
                             <i class="fa-solid fa-cube text-emerald-400/70 text-[10px] mt-1"></i>
                         </div>
                         <div id="i18n-starship-sim-sub" translate="no"
@@ -18138,7 +18180,7 @@
                         <!-- Starship only (see openRocketSpecs) - same destination as the mission modal's tile -->
                         <button id="rocket-modal-sim-btn" type="button" onclick="openStarshipSim()"
                             class="hidden shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-400/70 text-emerald-400 text-[11px] sm:text-xs font-semibold uppercase tracking-wider md:hover:bg-emerald-400/15 md:hover:border-emerald-300 md:hover:text-emerald-300 transition-colors notranslate"
-                            translate="no"><i class="fa-solid fa-cube text-[10px]"></i><span id="i18n-rocket-sim-btn" lang="en">Starship Simulation</span></button>
+                            translate="no"><i class="fa-solid fa-cube text-[10px]"></i><span id="i18n-rocket-sim-btn" lang="en">Starship 3D</span></button>
                     </div>
                 </div>
             </div>
