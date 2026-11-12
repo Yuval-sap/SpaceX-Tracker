@@ -531,6 +531,14 @@ function sunDir(ms) {
   const x = Math.cos(lam), y = Math.cos(eps) * Math.sin(lam), z = Math.sin(eps) * Math.sin(lam);
   return new THREE.Vector3(x, z, -y).normalize();
 }
+// the Moon's direction (low-precision lunar theory: ~0.3 deg), in the same frame as the Sun's
+function moonDir(ms) {
+  const d = julian(ms) - 2451545;
+  const L = (218.316 + 13.176396 * d) * DEG, M = (134.963 + 13.064993 * d) * DEG, F = (93.272 + 13.22935 * d) * DEG;
+  const lam = L + 6.289 * DEG * Math.sin(M), bet = 5.128 * DEG * Math.sin(F), eps = (23.439 - 4e-7 * d) * DEG;
+  const x = Math.cos(bet) * Math.cos(lam), y = Math.cos(eps) * Math.cos(bet) * Math.sin(lam) - Math.sin(eps) * Math.sin(bet), z = Math.sin(eps) * Math.cos(bet) * Math.sin(lam) + Math.cos(eps) * Math.sin(bet);
+  return new THREE.Vector3(x, z, -y).normalize();
+}
 function ecef(lat, lon, alt) {
   const r = (RE + alt) * SCALE, la = lat * DEG, lo = lon * DEG;
   return new THREE.Vector3(r * Math.cos(la) * Math.cos(lo), r * Math.sin(la), -r * Math.cos(la) * Math.sin(lo));
@@ -998,6 +1006,33 @@ const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('
 sunSprite.position.copy(SUN).multiplyScalar(800);
 sunSprite.scale.setScalar(60);
 scene.add(sunSprite);
+// the Moon: at its real distance (384,400 km), drawn 4x its size so it can be found (like the Sun's glow, bigger than life); grey with darker seas, lit by the Sun
+const moon = (() => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = '#bdbab2'; g.fillRect(0, 0, 256, 128);
+  let sd = 3; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  [[70, 45, 22], [95, 60, 16], [52, 70, 14], [110, 40, 12], [80, 85, 10], [40, 40, 9], [125, 70, 9]].forEach(([x, y, rad]) => { const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(70,70,72,0.75)'); gr.addColorStop(1, 'rgba(70,70,72,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 128); });
+  for (let i = 0; i < 140; i++) { const x = r() * 256, y = 10 + r() * 108, rad = 0.6 + r() * 2.4; g.fillStyle = `rgba(${r() < 0.5 ? '255,255,250' : '60,60,60'},0.22)`; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1737 * 4 * SCALE, 48, 24), new THREE.ShaderMaterial({ uniforms: { map: { value: t }, sunDir: { value: new THREE.Vector3(1, 0, 0) } },
+    // lit by the Sun alone (the scene's blue fill light would light its night side and hide the phase), a faint earthshine
+    vertexShader: `varying vec2 vUv; varying vec3 vN;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+    void main(){ vUv = uv; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+#include <logdepthbuf_vertex>
+    }`,
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN;
+#include <logdepthbuf_pars_fragment>
+    void main(){
+#include <logdepthbuf_fragment>
+      float l = smoothstep(-0.03, 0.12, dot(normalize(vN), sunDir)); vec3 c = texture2D(map, vUv).rgb;
+      gl_FragColor = vec4(c * (0.012 + 1.15 * l), 1.0);
+#include <colorspace_fragment>
+    }` }));
+  scene.add(m); return m;
+})();
+const MOON_DIST = 384400 * SCALE;
 function label(text, cls) { const d = document.createElement('div'); d.className = 'label3d ' + cls; d.dir = 'auto'; d.textContent = text; return new CSS2DObject(d); }
 
 const lineMats = [];
@@ -1724,18 +1759,19 @@ function updatePadClouds() {
 // exhaust trail
 const TRAIL_N = MOBILE ? 500 : 900;
 const trailGeo = new THREE.BufferGeometry();
-const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3), trailLit = new Float32Array(TRAIL_N);
+const trailPos = new Float32Array(TRAIL_N * 3), trailAge = new Float32Array(TRAIL_N), trailCol = new Float32Array(TRAIL_N * 3), trailLit = new Float32Array(TRAIL_N), trailInert = new Float32Array(TRAIL_N);
 trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
 trailGeo.setAttribute('age', new THREE.BufferAttribute(trailAge, 1));
 trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
 trailGeo.setAttribute('lit', new THREE.BufferAttribute(trailLit, 1));
+trailGeo.setAttribute('inert', new THREE.BufferAttribute(trailInert, 1));
 const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
-  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 } },
+  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 }, unrot: { value: new THREE.Matrix3() } },
   // lit: 0 in the Earth's shadow; above it (from 60 km up) the gas spreads out wide and, sunlit over a dark sky, glows
-  vertexShader: `attribute float age; attribute float lit; varying float vA; varying vec3 vC; varying float vL; uniform float scale; uniform float dark;
+  vertexShader: `attribute float age; attribute float lit; attribute float inert; uniform mat3 unrot; varying float vA; varying vec3 vC; varying float vL; uniform float scale; uniform float dark;
 #include <common>
 #include <logdepthbuf_pars_vertex>
-  void main(){ vA = age; vL = lit * dark; vC = mix(color, vec3(0.78, 0.9, 1.0), vL); vec4 mv = modelViewMatrix * vec4(position,1.0);
+  void main(){ vA = age; vL = lit * dark; vC = mix(color, vec3(0.78, 0.9, 1.0), vL); vec4 mv = modelViewMatrix * vec4(inert > 0.5 ? unrot * position : position, 1.0);
     float grow = 0.0009 + 0.004 * (1.0 - age) + vL * 0.05 * sqrt(age);
     gl_PointSize = clamp(scale * grow / -mv.z, 0.0, mix(60.0, 300.0, vL)); gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
@@ -1746,12 +1782,17 @@ const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent:
 #include <logdepthbuf_fragment>
     vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC, t.a * (1.0 - vA) * mix(0.55, 0.018, vL)); }   // (hundreds of them overlap, added up)` }));
 trail.frustumCulled = false;
-scene.add(trail);
+// low down kept in the Earth's frame: the smoke stays in the air, which turns with the Earth (laid out against the stars,
+// the trail of a rocket climbing slowly near the pad leaned off at ~400 m/s and read as a second flame beside the real one);
+// above the air (40 km up) against the stars, as the gas really goes, so it stays on the orbit's line
+earthGroup.add(trail);
 let trailHead = 0;
+['wheel', 'touchstart', 'pointerdown'].forEach(k => $('events').addEventListener(k, () => { evUserT = performance.now(); }, { passive: true }));
 function resetTrail() { trailAge.fill(1); trailGeo.attributes.age.needsUpdate = true; }
 resetTrail();
+const emitTmp = new THREE.Vector3();
 function emit(p, color) {
-  const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; trailPos.set([p.x, p.y, p.z], i * 3); trailAge[i] = 0;
+  const i = trailHead; trailHead = (trailHead + 1) % TRAIL_N; const high = p.length() / SCALE - RE > 40, q = high ? p : earthGroup.worldToLocal(emitTmp.copy(p)); trailPos.set([q.x, q.y, q.z], i * 3); trailInert[i] = high ? 1 : 0; trailAge[i] = 0;
   const lowK = 1 - smooth((p.length() / SCALE - RE - 8) / 40);   // below 8 km all smoke, glowing gas from 48 km up
   trailCol.set([color[0] * (1 - lowK) + 0.13 * lowK, color[1] * (1 - lowK) + 0.12 * lowK, color[2] * (1 - lowK) + 0.11 * lowK], i * 3);
   // sunlit? (out of the Earth's cylinder of shadow), and high enough for the gas to spread
@@ -1760,6 +1801,18 @@ function emit(p, color) {
 }
 
 // ================================================================ UI
+let evFollowed, evUserT = -1e9, evCheckT = 0;
+function followTimeline(cur) {
+  const box = $('events'), now = performance.now();
+  if (now - evUserT < 6000) return;
+  const row = cur ? cur.row : null;
+  const target = row ? Math.max(0, row.offsetTop - box.clientHeight * 0.3) : 0;
+  // when the event changes - and, once a second, if the list has been left somewhere else
+  if (cur !== evFollowed || (now - evCheckT > 1000 && Math.abs(box.scrollTop - Math.min(target, box.scrollHeight - box.clientHeight)) > 40)) {
+    evFollowed = cur; evCheckT = now;
+    box.scrollTo({ top: target, behavior: 'smooth' });
+  }
+}
 const fmtT = (t) => { const s = Math.abs(Math.round(t)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (t < 0 ? 'T-' : 'T+') + [h, m, x].map(v => String(v).padStart(2, '0')).join(':'); };
 const evList = $('ev-list');
 const tickBar = $('ticks'), SCRUB_MIN = -20;
@@ -2048,6 +2101,7 @@ function frame() {
   }
   earthMat.uniforms.sunDir.value.copy(SUN); atmo.material.uniforms.sunDir.value.copy(SUN); if (clouds) clouds.material.uniforms.sunDir.value.copy(SUN);
   sunLight.position.copy(SUN).multiplyScalar(100); sunSprite.position.copy(SUN).multiplyScalar(800);
+  moon.position.copy(moonDir(T0 + simT * 1000)).multiplyScalar(MOON_DIST); moon.lookAt(0, 0, 0); moon.material.uniforms.sunDir.value.copy(SUN);   // (its near side toward the Earth)
   if (clouds) clouds.rotation.y = simT * 2e-6;
   earthGroup.updateMatrixWorld();
 
@@ -2192,7 +2246,8 @@ function frame() {
     for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(upper.position, [0.55, 0.8, 1.0]); }
   }
   for (let i = 0; i < TRAIL_N; i++) if (trailAge[i] < 1) trailAge[i] = Math.min(1, trailAge[i] + dt * (0.12 + Math.min(speed, 200) * 0.004));
-  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = trailGeo.attributes.lit.needsUpdate = true;
+  trailGeo.attributes.position.needsUpdate = trailGeo.attributes.age.needsUpdate = trailGeo.attributes.color.needsUpdate = trailGeo.attributes.lit.needsUpdate = trailGeo.attributes.inert.needsUpdate = true;
+  trail.material.uniforms.unrot.value.setFromMatrix4(earthGroup.matrixWorld).invert();   // (stars' frame -> the Earth's, for the high ones)
   // how dark the sky is where the camera is: the glow shows against a dark sky, and is lost in daylight
   trail.material.uniforms.dark.value = 1 - THREE.MathUtils.smoothstep(tmp.copy(camera.position).normalize().dot(SUN), -0.08, 0.06) * (1 - THREE.MathUtils.smoothstep(camera.position.length() / SCALE - RE, 40, 160));
   const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
@@ -2283,7 +2338,8 @@ function frame() {
   $('dr').textContent = Math.round(drKm * k).toLocaleString('en-US');
   let cur = null;
   EVENTS.forEach(e => { const done = simT >= e.t; e.row.classList.toggle('done', done); if (e.tick) e.tick.classList.toggle('done', done); if (done) cur = e; });
-  EVENTS.forEach(e => { const on = e === cur && simT - e.t < (e.t > 600 ? 120 : 25); if (on && !e.row.classList.contains('now')) { e.row.classList.add('now'); e.row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else if (!on) e.row.classList.remove('now'); });
+  EVENTS.forEach(e => { const on = e === cur && simT - e.t < (e.t > 600 ? 120 : 25); if (on) e.row.classList.add('now'); else e.row.classList.remove('now'); });
+  followTimeline(cur);
   const phase = $('phase');
   const key = simT < 0 ? 'cd' : cur ? cur.t + '|' + LANG : '';
   if (phase.dataset.k !== key) {
@@ -2321,6 +2377,7 @@ window.__lsim = { EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind,
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
   closeUp: (az, el, km) => { const u = upper, c = u.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(u.quaternion), 26 * VS * u.scale.x); const dir = new THREE.Vector3(Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)).applyQuaternion(u.quaternion); camera.position.copy(c).addScaledVector(dir, km * SCALE); controls.target.copy(c); },
   attitude: () => { const y = new THREE.Vector3(0, 1, 0).applyQuaternion(upper.quaternion), z = new THREE.Vector3(0, 0, 1).applyQuaternion(upper.quaternion), r = upper.position.clone().normalize(); return { noseUpDeg: Math.round(Math.asin(y.dot(r)) / DEG), bellyDownDeg: Math.round(Math.asin(-z.dot(r)) / DEG) }; },
+  aimMoon: () => { userCam = true; controls.target.copy(camera.position).addScaledVector(moon.position.clone().sub(camera.position).normalize(), 0.01); const sm = moon.position.clone().normalize().dot(SUN); return { illum: Math.round((1 - sm) / 2 * 100) + '%' }; },
   camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
   toggle: (what, on) => { ({ clouds: padClouds, sky: skyDome })[what].userData.off = !on; },
   dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
