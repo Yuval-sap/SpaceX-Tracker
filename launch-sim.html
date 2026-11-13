@@ -385,7 +385,7 @@ const AZIMUTH = azimuthFor(INC);
 
 // ---------------------------------------------------------------- boosters and their landings
 const stagesIn = (cfg.stages || []).filter(Boolean);
-const LZ = { 'LZ-4': [34.6332, -120.6152], 'LZ-1': [28.4858, -80.5444], 'LZ-2': [28.4875, -80.5428], 'LZ-40': [28.5605, -80.5745], 'LZ-39A': [28.6113, -80.6019] };
+const LZ = { 'LZ-4': [34.6332, -120.6152], 'LZ-1': [28.4858, -80.5444], 'LZ-2': [28.4875, -80.5428], 'LZ-40': [28.5635, -80.5743], 'LZ-39A': [28.6113, -80.6019] };
 const SHIPS = { OCISLY: 'OCISLY', ASOG: 'ASOG', JRTI: 'JRTI' };
 function landingFrom(st, fallbackStr) {
   const type = String((st && st.landingType) || '').toUpperCase(), loc = String((st && st.loc) || ''), locName = String((st && st.locName) || '');
@@ -1285,36 +1285,195 @@ const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.5
 // the glow of re-entry heating, lit by the frame loop
 const heatSprite = (y, z, size) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('#ffd2a6', '#ff5a1f'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); s.position.set(0, y * VS, z * VS); s.scale.setScalar(size * VS); s.material.opacity = 0; s.visible = false; return s; };
 // ---------------------------------------------------------------- Falcon 9, Falcon Heavy and Dragon, drawn after the real ones
-// The first stage: white, the black interstage, the octaweb with nine Merlins under it, four carbon legs folded flat
-// and four grid fins at the top (opened by the frame loop). A Falcon Heavy side booster has a nose cone in place of the
-// interstage. The second stage: one big Merlin Vacuum bell; on top an ogive fairing in two halves, or Dragon.
-const matMerlin = new THREE.MeshStandardMaterial({ color: 0x4a4440, metalness: 0.8, roughness: 0.4, side: THREE.DoubleSide, emissive: 0x120d09, emissiveIntensity: 0.6 });
-const matMvac = new THREE.MeshStandardMaterial({ color: 0x2b2826, metalness: 0.75, roughness: 0.35, side: THREE.DoubleSide, emissive: 0x1b0c05, emissiveIntensity: 0.5 });
-const matFin = new THREE.MeshStandardMaterial({ color: 0x8b8f96, metalness: 0.85, roughness: 0.4 });
+// Built after photos of Falcon 9 Block 5, Falcon Heavy and Crew / Cargo Dragon 2 (same sizes as before, so the hang,
+// the labels and the cameras keep their places):
+// first stage - white composite-wrapped aluminium-lithium body, faint tank seams, the cable raceway up one side, the
+// SPACEX wordmark running up it and the flag, soot from earlier flights (more for a booster flown more often); the
+// black interstage with its RCS thruster pods and four titanium grid fins (a diamond lattice), folded flat until after
+// separation; the octaweb's heat shield and nine Merlin 1D bells; four carbon landing legs folded against the body, each
+// with its telescoping pusher, which stretches as the leg swings down. A Falcon Heavy side booster: a composite nose
+// cone instead of the interstage and the struts toward the centre core. Second stage: Merlin Vacuum - dark
+// regeneratively cooled section and the lighter niobium extension with its stiffener rings; the fairing (seam, logo),
+// or Dragon - the capsule (dark heat shield rim, windows, SuperDraco pods, the nose cap) on its trunk (half solar
+// array, half radiators, four fins).
+let FALCON_ENV = null;                                            // the steel and paint reflect an even grey all round
+const falconEnv = () => FALCON_ENV || (FALCON_ENV = (() => { const e = new THREE.Scene(); e.add(new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ color: 0x9aa2ae, side: THREE.BackSide })));
+  const pm = new THREE.PMREMGenerator(renderer), t = pm.fromScene(e, 0).texture; pm.dispose(); return t; })());
+const fmat = (o) => new THREE.MeshStandardMaterial(Object.assign({ envMap: falconEnv(), envMapIntensity: 0.8 }, o));
+const fcanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const ftex = (c, srgb = true, rep) => { const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep[0], rep[1]); return t; };
+let fseed = 11; const frnd = () => (fseed = (fseed * 16807) % 2147483647) / 2147483647;
+// how many times this flight's booster has flown (the site's mission data), for its soot
+const BOOSTER_FLIGHTS = (() => { try { const m = P && P.currentActiveHeroMission, n = parseInt(m && m.boosterFlightNum, 10); return n > 0 ? n : null; } catch (e) { return null; } })();
+// the SPACEX wordmark, the X's long stroke sweeping out to the right (drawn horizontally; the decal turns it upright)
+function spacexWordmark(color) {
+  const c = fcanvas(2048, 320), g = c.getContext('2d');
+  g.fillStyle = color; g.font = "900 250px 'Orbitron', 'Arial Black', sans-serif"; g.textBaseline = 'middle';
+  g.fillText('SPACE', 30, 170);
+  const x0 = 30 + g.measureText('SPACE').width + 14;
+  g.beginPath(); g.moveTo(x0, 60); g.lineTo(x0 + 70, 60); g.lineTo(x0 + 250, 280); g.lineTo(x0 + 180, 280); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(x0, 280); g.lineTo(x0 + 70, 280); g.lineTo(x0 + 120, 215); g.lineTo(x0 + 85, 172); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(x0 + 100, 186); g.quadraticCurveTo(x0 + 300, 40, x0 + 620, 22); g.quadraticCurveTo(x0 + 330, 75, x0 + 140, 236); g.closePath(); g.fill();
+  return c;
+}
+function falcon9Mark() {
+  const c = fcanvas(640, 400), g = c.getContext('2d');
+  g.fillStyle = '#111214'; g.font = "700 118px 'Orbitron', 'Arial Black', sans-serif"; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.fillText('FALCON', 320, 200); g.font = "700 150px 'Orbitron', 'Arial Black', sans-serif"; g.fillText('9', 320, 360);
+  g.fillStyle = '#c8202d'; g.beginPath(); g.moveTo(70, 70); g.quadraticCurveTo(330, 10, 590, 52); g.quadraticCurveTo(330, 34, 70, 88); g.closePath(); g.fill();
+  return c;
+}
+function xLogo(color) {
+  const c = fcanvas(512, 256), g = c.getContext('2d'); g.fillStyle = color;
+  g.beginPath(); g.moveTo(75, 60); g.lineTo(125, 60); g.lineTo(235, 200); g.lineTo(185, 200); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(75, 200); g.lineTo(125, 200); g.lineTo(165, 150); g.lineTo(142, 122); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(150, 131); g.quadraticCurveTo(260, 45, 450, 35); g.quadraticCurveTo(280, 65, 176, 159); g.closePath(); g.fill();
+  return c;
+}
+function flagCanvas() {
+  const c = fcanvas(380, 200), g = c.getContext('2d');
+  for (let i = 0; i < 13; i++) { g.fillStyle = i % 2 ? '#f4f4f4' : '#b22234'; g.fillRect(0, i * 200 / 13, 380, 200 / 13 + 1); }
+  g.fillStyle = '#3c3b6e'; g.fillRect(0, 0, 152, 108);
+  g.fillStyle = '#ffffff'; for (let r = 0; r < 9; r++) for (let k = 0; k < (r % 2 ? 5 : 6); k++) { g.beginPath(); g.arc(12 + k * 25 + (r % 2 ? 12 : 0), 8 + r * 11.5, 3, 0, Math.PI * 2); g.fill(); }
+  return c;
+}
+// the first stage's skin: u = round the body, v = up it (40.5 m); soot from re-entry and the landing burn on a used one
+function firstStageSkin(flights) {
+  const W = 1024, H = 4096, c = fcanvas(W, H), g = c.getContext('2d'), pxm = H / 40.5, py = m => H - m * pxm;
+  g.fillStyle = '#eef0f1'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${frnd() < 0.5 ? '255,255,255' : '150,155,160'},${0.03 + frnd() * 0.04})`; g.fillRect(frnd() * W, frnd() * H, 2 + frnd() * 60, 1 + frnd() * 2); }
+  g.fillStyle = 'rgba(120,124,130,0.45)';
+  for (const m of [0.6, 9.6, 22.4, 23.0, 38.9]) g.fillRect(0, py(m), W, 3);   // dome and barrel joins
+  const s = flights == null ? 0.45 : flights <= 1 ? 0 : Math.min(1, 0.22 + 0.07 * (flights - 1));
+  if (s > 0) {
+    // the landing burn's soot from the bottom, the entry burn's streaks up the windward side, a grey cast under the interstage
+    let gr = g.createLinearGradient(0, H, 0, py(11)); gr.addColorStop(0, `rgba(36,34,32,${0.85 * s})`); gr.addColorStop(1, 'rgba(36,34,32,0)'); g.fillStyle = gr; g.fillRect(0, py(11), W, 11 * pxm);
+    for (let i = 0; i < 260 * s; i++) {
+      const u = (0.3 + frnd() * 0.4) * W, top = py(5 + frnd() * 35), len = (2 + frnd() * 14) * pxm, w = 3 + frnd() * 22;
+      gr = g.createLinearGradient(0, top, 0, top + len); gr.addColorStop(0, 'rgba(40,38,36,0)'); gr.addColorStop(0.3, `rgba(40,38,36,${(0.08 + frnd() * 0.18) * s})`); gr.addColorStop(1, 'rgba(40,38,36,0)');
+      g.fillStyle = gr; g.fillRect(u, top, w, len);
+    }
+    gr = g.createLinearGradient(0, py(40.5), 0, py(34)); gr.addColorStop(0, `rgba(60,58,56,${0.5 * s})`); gr.addColorStop(1, 'rgba(60,58,56,0)'); g.fillStyle = gr; g.fillRect(0, py(40.5), W, 6.5 * pxm);
+  }
+  return ftex(c);
+}
+function darkPanels(base = '#1c1d20', w = 512, h = 512, seams = 6) {
+  const c = fcanvas(w, h), g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(255,255,255,${0.012 + frnd() * 0.02})`; g.fillRect(frnd() * w, frnd() * h, 1 + frnd() * 3, 1 + frnd() * 3); }
+  g.fillStyle = 'rgba(0,0,0,0.5)'; for (let k = 1; k < seams; k++) g.fillRect(k * w / seams, 0, 2, h);
+  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, h * 0.5, w, 2);
+  return ftex(c);
+}
+let FCACHE = null;
+function falconMaterials() {
+  if (FCACHE) return FCACHE;
+  const lattice = (() => { const c = fcanvas(256, 256), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#fff'; g.lineWidth = 9;
+    for (let k = -256; k <= 512; k += 42) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 256, 256); g.stroke(); g.beginPath(); g.moveTo(k, 256); g.lineTo(k + 256, 0); g.stroke(); }
+    g.lineWidth = 18; g.strokeRect(0, 0, 256, 256); return ftex(c, false); })();
+  const solar = (() => { const c = fcanvas(512, 256), g = c.getContext('2d'); g.fillStyle = '#0c1424'; g.fillRect(0, 0, 512, 256);
+    for (let i = 0; i < 32; i++) for (let j = 0; j < 16; j++) { const v = 22 + frnd() * 14; g.fillStyle = `rgb(${v * 0.45 | 0},${v * 0.7 | 0},${v * 1.5 | 0})`; g.fillRect(i * 16 + 1, j * 16 + 1, 14, 14); } return ftex(c, true, [4, 1]); })();
+  const radiator = (() => { const c = fcanvas(512, 256), g = c.getContext('2d'); g.fillStyle = '#e9eaec'; g.fillRect(0, 0, 512, 256);
+    g.fillStyle = 'rgba(150,154,160,0.6)'; for (let i = 0; i < 512; i += 12) g.fillRect(i, 0, 2, 256); g.fillStyle = 'rgba(120,124,130,0.7)'; g.fillRect(0, 2, 512, 3); g.fillRect(0, 251, 512, 3); return ftex(c, true, [3, 1]); })();
+  FCACHE = {
+    white: fmat({ color: 0xf2f3f4, metalness: 0.1, roughness: 0.5 }),
+    paint: fmat({ color: 0xf6f6f6, metalness: 0.05, roughness: 0.42, side: THREE.DoubleSide }),
+    inter: fmat({ map: darkPanels(), color: 0xffffff, metalness: 0.25, roughness: 0.6 }),
+    carbon: fmat({ map: darkPanels('#202226', 256, 1024, 3), color: 0xffffff, metalness: 0.35, roughness: 0.5 }),
+    shield: fmat({ map: (() => { const c = fcanvas(1024, 128), g = c.getContext('2d'); g.fillStyle = '#26272a'; g.fillRect(0, 0, 1024, 128);
+      for (let i = 0; i < 1500; i++) { g.fillStyle = `rgba(${frnd() < 0.5 ? '0,0,0' : '120,110,100'},${0.05 + frnd() * 0.12})`; g.fillRect(frnd() * 1024, frnd() * 128, 2 + frnd() * 20, 1 + frnd() * 4); }
+      g.fillStyle = 'rgba(0,0,0,0.6)'; for (let k = 0; k < 16; k++) g.fillRect(k * 64, 0, 2, 128); g.fillRect(0, 40, 1024, 2);
+      g.fillStyle = 'rgba(150,150,150,0.5)'; for (let k = 0; k < 1024; k += 9) { g.fillRect(k, 46, 2, 2); g.fillRect(k + 4, 118, 2, 2); }
+      return ftex(c); })(), color: 0xffffff, metalness: 0.25, roughness: 0.8 }),
+    merlin: fmat({ color: 0x55575b, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide }),
+    chamber: fmat({ color: 0x8a6a4c, metalness: 0.85, roughness: 0.35 }),
+    mvacDark: fmat({ color: 0x2a2928, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide }),
+    mvacExt: fmat({ color: 0x6e6c6a, metalness: 0.85, roughness: 0.3, side: THREE.DoubleSide }),
+    titanium: fmat({ color: 0x5d5a57, metalness: 0.9, roughness: 0.42 }),
+    lattice: fmat({ color: 0x625e5a, metalness: 0.9, roughness: 0.42, alphaMap: lattice, alphaTest: 0.5, side: THREE.DoubleSide }),
+    black: fmat({ color: 0x16171a, metalness: 0.2, roughness: 0.6 }),
+    steel: fmat({ color: 0xb8bcc2, metalness: 0.9, roughness: 0.35 }),
+    solar: fmat({ map: solar, color: 0xffffff, metalness: 0.4, roughness: 0.3, side: THREE.DoubleSide }),
+    radiator: fmat({ map: radiator, color: 0xffffff, metalness: 0.15, roughness: 0.45, side: THREE.DoubleSide }),
+    window: fmat({ color: 0x0a0d12, metalness: 0.6, roughness: 0.15 }),
+  };
+  return FCACHE;
+}
 const latheF = (pts, mat, seg = 40, from = 0, len = Math.PI * 2) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r * VS, y * VS)), seg, from, len), mat);
-function merlins(g, list, y) { list.forEach(([x, z, r, l, m]) => { const b = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.42 * VS, r * VS, l * VS, 18, 1, true), m || matMerlin); b.position.set(x * VS, (y - l / 2) * VS, z * VS); g.add(b); }); }
-function falconCore(nose) {
-  const g = new THREE.Group();
-  g.add(cyl(1.83, 40.5, matWhite, 1.5));
-  g.add(latheF([[1.2, 0], [1.83, 0.3], [1.83, 1.5]], matDark, 32));            // the octaweb, under its heat shield
-  if (nose) g.add(latheF([[1.83, 42], [1.8, 43.5], [1.55, 45.3], [1.05, 46.8], [0.35, 47.8], [0, 48]], matWhite, 32));
-  else { g.add(cyl(1.85, 6, matBlack, 42)); g.add(cyl(1.86, 0.5, matBlack, 39.5)); }
-  const nine = [[0, 0, 0.46, 1.2]]; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; nine.push([Math.sin(a) * 1.15, Math.cos(a) * 1.15, 0.46, 1.2]); }
-  merlins(g, nine, 0.1);
+// a picture on the body (in metres): a curved patch of radius r, centred at height y and angle a, w wide by h tall
+function fdecal(parent, canvas, r, y, a, w, h, rotate = false) {
+  const tex = ftex(canvas); tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  if (rotate) { tex.center.set(0.5, 0.5); tex.rotation = Math.PI / 2; }
+  const arc = w / r, geo = new THREE.CylinderGeometry(r * VS, r * VS, h * VS, 32, 1, true, a - arc / 2, arc); geo.translate(0, y * VS, 0);
+  const m = new THREE.Mesh(geo, fmat({ map: tex, transparent: true, depthWrite: false, metalness: 0.1, roughness: 0.5 })); m.renderOrder = 2; parent.add(m); return m;
+}
+// a Merlin 1D bell: throat to the 0.92 m exit in a bell curve (not a cone), the bronze chamber above it
+function merlinBell(m) {
+  const pts = []; for (let i = 0; i <= 14; i++) { const t = i / 14; pts.push([0.13 + 0.33 * Math.pow(t, 0.62), 1.3 - 1.3 * t]); }
+  const bell = latheF(pts.reverse(), m.merlin, 24);
+  const ch = latheF([[0.13, 1.3], [0.2, 1.42], [0.21, 1.75], [0.12, 1.85]], m.chamber, 16);
+  const g = new THREE.Group(); g.add(bell, ch); return g;
+}
+function falconCore(nose, side = 0) {
+  const m = falconMaterials(), g = new THREE.Group();
+  // soot: this flight's booster by its own count; Falcon Heavy's centre core (usually new, expended) clean; its side
+  // boosters, whose counts the data doesn't give, as flown boosters
+  const flights = VEH === 'fh' ? (side ? null : 1) : BOOSTER_FLIGHTS;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(1.83 * VS, 1.83 * VS, 40.5 * VS, 72, 1, true), fmat({ map: firstStageSkin(flights), color: 0xffffff, metalness: 0.1, roughness: 0.5 }));
+  body.position.y = (1.5 + 40.5 / 2) * VS; g.add(body);
+  // the raceway up one side (cables, the pressurisation and propellant lines)
+  { const r = new THREE.Mesh(new THREE.BoxGeometry(0.22 * VS, 37.5 * VS, 0.16 * VS), m.white); r.position.set(-1.88 * VS, (3 + 37.5 / 2) * VS, 0); g.add(r); }
+  // the wordmark up the body and the flag above it (on the side facing the camera at the pad)
+  fdecal(g, spacexWordmark('#0f1012'), 1.845, 27.2, 0.05, 1.6, 10.2, true);
+  fdecal(g, flagCanvas(), 1.845, 36.7, 0.05, 1.5, 0.79);
+  if (!nose) fdecal(g, falcon9Mark(), 1.845, 39.3, 0.05, 1.6, 1.0);
+  // the octaweb under its heat shield: the skirt narrowing to the shield, the shield, nine Merlins
+  // (per photos of Block 5: the octaweb's skirt black and soot-dark, a rim flaring out over the engines, the heat
+  // shield between the bells; each leg on a big bracket at the skirt)
+  g.add(latheF([[1.62, 0.12], [1.95, 0.32], [1.95, 0.55], [1.86, 0.75], [1.86, 1.6]], m.shield, 56));
+  g.add(latheF([[0.01, 0.16], [1.63, 0.13]], m.shield, 56));
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, br = new THREE.Mesh(new THREE.BoxGeometry(0.62 * VS, 1.1 * VS, 0.5 * VS), m.black); br.position.set(Math.sin(a) * 1.98 * VS, 1.05 * VS, Math.cos(a) * 1.98 * VS); br.rotation.y = a; g.add(br); }
+  const nine = [[0, 0]]; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 8; nine.push([Math.sin(a) * 1.18, Math.cos(a) * 1.18]); }
+  nine.forEach(([x, z]) => { const b = merlinBell(m); b.position.set(x * VS, -1.05 * VS, z * VS); g.add(b); });
+  if (nose) {
+    // a side booster's composite nose cone, its seam, and the struts toward the centre core
+    g.add(latheF([[1.83, 42], [1.83, 42.3], [1.79, 43.6], [1.6, 45.2], [1.2, 46.6], [0.62, 47.6], [0.18, 48.0], [0, 48.05]], m.paint, 48));
+    g.add(latheF([[1.845, 41.9], [1.845, 42.15]], m.black, 48));
+    if (side) for (const y of [2.2, 40.6]) {
+      const s = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * VS, 0.14 * VS, 0.75 * VS, 12), m.steel); s.rotation.z = Math.PI / 2; s.position.set(-side * 2.15 * VS, y * VS, 0); g.add(s);
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.3 * VS, 0.5 * VS, 0.5 * VS), m.black); b.position.set(-side * 1.86 * VS, y * VS, 0); g.add(b);
+    }
+  } else {
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.86 * VS, 1.86 * VS, 6 * VS, 72, 1, true), m.inter)); g.children[g.children.length - 1].position.y = 45 * VS;
+    g.add(latheF([[1.86, 48], [1.7, 48.05]], m.inter, 48));
+    // the cold-gas RCS thruster pods, either side near the top
+    for (const a of [0, Math.PI]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.55 * VS, 0.8 * VS, 0.22 * VS), m.black); p.position.set(Math.sin(a) * 1.95 * VS, 46.9 * VS, Math.cos(a) * 1.95 * VS); p.rotation.y = a; g.add(p); }
+  }
   const legs = [], fins = [];
+  const legShape = new THREE.Shape(); legShape.moveTo(-0.72, 0); legShape.lineTo(0.72, 0); legShape.lineTo(0.2, 9.3); legShape.lineTo(-0.2, 9.3); legShape.closePath();
+  const legGeo = new THREE.ExtrudeGeometry(legShape, { depth: 0.22, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 3 }); legGeo.scale(VS, VS, VS); legGeo.translate(0, 0, 0.02 * VS);
   for (let i = 0; i < 4; i++) {
     const piv = new THREE.Group(); piv.rotation.y = i * Math.PI / 2 + Math.PI / 4; g.add(piv);
-    // a leg: a long tapered carbon strut, hinged at the bottom, its foot at the top while folded
-    const hinge = new THREE.Group(); hinge.position.set(0, 1.4 * VS, 1.88 * VS);
-    const legGeo = new THREE.CylinderGeometry(0.22 * VS, 0.42 * VS, 9.5 * VS, 4, 1); legGeo.rotateY(Math.PI / 4); legGeo.scale(1.6, 1, 0.55);
-    const leg = new THREE.Mesh(legGeo, matBlack); leg.position.set(0, 4.75 * VS, 0.12 * VS);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(1.0 * VS, 0.3 * VS, 0.5 * VS), matBlack); foot.position.set(0, 9.5 * VS, 0.15 * VS);
-    hinge.add(leg, foot); piv.add(hinge); legs.push(hinge);
-    // a grid fin: a waffle of titanium, folded flat against the body until after separation
-    const fh = new THREE.Group(); fh.position.set(0, (nose ? 40.5 : 45.5) * VS, 1.86 * VS);
-    const fin = new THREE.Group(); fin.position.set(0, 0.85 * VS, 0.1 * VS);
-    fin.add(new THREE.Mesh(new THREE.BoxGeometry(1.3 * VS, 1.7 * VS, 0.08 * VS), matFin));
-    for (let k = -2; k <= 2; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(1.3 * VS, 0.06 * VS, 0.22 * VS), matFin); b.position.y = k * 0.38 * VS; fin.add(b); const c = new THREE.Mesh(new THREE.BoxGeometry(0.06 * VS, 1.7 * VS, 0.22 * VS), matFin); c.position.x = k * 0.28 * VS; fin.add(c); }
+    // a leg: a tapered carbon blade hinged at the bottom of the body, its foot pad at the top while folded
+    const hinge = new THREE.Group(); hinge.position.set(0, 1.4 * VS, 1.86 * VS);
+    const leg = new THREE.Mesh(legGeo, m.carbon); hinge.add(leg);
+    const foot = latheF([[0, 0], [0.42, 0.02], [0.45, 0.12], [0.3, 0.3], [0, 0.32]], m.black, 20); foot.rotation.x = -Math.PI / 2; foot.position.set(0, 9.25 * VS, 0.2 * VS); hinge.add(foot);
+    piv.add(hinge); legs.push(hinge);
+    // its telescoping pusher, from the body to the leg's middle: lies along the body folded, stretches as the leg opens
+    const pusher = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * VS, 0.12 * VS, 1, 10), m.steel); piv.add(pusher);
+    const bodyPt = new THREE.Vector3(0, 7.8 * VS, 1.8 * VS), legPt = new THREE.Vector3(), mid = new THREE.Vector3(), Yv = new THREE.Vector3(0, 1, 0), d = new THREE.Vector3();
+    pusher.onBeforeRender = () => {
+      const th = hinge.rotation.x, L = 4.6 * VS, o = 0.2 * VS;
+      legPt.set(0, hinge.position.y + L * Math.cos(th) - o * Math.sin(th), hinge.position.z + L * Math.sin(th) + o * Math.cos(th));
+      d.subVectors(legPt, bodyPt); const len = Math.max(1e-6, d.length());
+      mid.addVectors(bodyPt, legPt).multiplyScalar(0.5); pusher.position.copy(mid); pusher.scale.set(1, len, 1);
+      pusher.quaternion.setFromUnitVectors(Yv, d.divideScalar(len)); pusher.updateMatrixWorld();
+    };
+    // a grid fin: a titanium frame round a diamond lattice, on its hinge block; folded flat until after separation
+    const fh = new THREE.Group(); fh.position.set(0, (nose ? 40.4 : 42.25) * VS, 1.9 * VS);   // (at the interstage's foot, per photos)
+    const fin = new THREE.Group(); fin.position.set(0, 0.8 * VS, 0.12 * VS);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.25 * VS, 1.55 * VS, 0.2 * VS), m.lattice); fin.add(plate);
+    for (const [w, h, x, y] of [[1.33, 0.07, 0, 0.78], [1.33, 0.07, 0, -0.78], [0.07, 1.62, 0.63, 0], [0.07, 1.62, -0.63, 0]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w * VS, h * VS, 0.24 * VS), m.titanium); b.position.set(x * VS, y * VS, 0); fin.add(b); }
+    const blk = new THREE.Mesh(new THREE.BoxGeometry(0.45 * VS, 0.35 * VS, 0.3 * VS), m.black); blk.position.set(0, -0.82 * VS, -0.05 * VS); fin.add(blk);
     fh.add(fin); piv.add(fh); fins.push(fh);
   }
   const heat = heatSprite(2, 0, 26); g.add(heat);
@@ -1322,38 +1481,68 @@ function falconCore(nose) {
   return g;
 }
 function falconUpper() {
-  const g = new THREE.Group(), ud = g.userData;
-  g.add(cyl(1.83, 12.6, matWhite, 0));
-  // the Merlin Vacuum: a 3 m bell, dark niobium, out of the interstage
-  g.add(latheF([[0.45, 0.2], [0.55, -0.4], [0.9, -1.4], [1.3, -2.4], [1.6, -3.2]], matMvac, 36));
+  const m = falconMaterials(), g = new THREE.Group(), ud = g.userData;
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.83 * VS, 1.83 * VS, 12.6 * VS, 72, 1, true), m.white)); g.children[0].position.y = 6.3 * VS;
+  g.add(latheF([[1.83, 0], [1.55, -0.05], [0.6, -0.15]], m.white, 48));                        // the aft dome's skirt
+  g.add(latheF([[1.845, 11.9], [1.845, 12.6]], m.inter, 48));                                    // the forward band
+  // the Merlin Vacuum: the dark regeneratively cooled section, then the lighter niobium extension to its 3.3 m exit
+  { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push([0.22 + 0.33 * Math.pow(t, 0.7), 0.1 - 1.0 * t]); } g.add(latheF(pts, m.mvacDark, 36));
+    const ext = []; for (let i = 0; i <= 14; i++) { const t = i / 14; ext.push([0.55 + 1.1 * Math.pow(t, 0.8), -0.9 - 2.3 * t]); } g.add(latheF(ext, m.mvacExt, 48));
+    for (const t of [0.25, 0.55, 0.85]) { const r = 0.55 + 1.1 * Math.pow(t, 0.8) + 0.02, y = -0.9 - 2.3 * t; g.add(latheF([[r, y - 0.04], [r + 0.04, y], [r, y + 0.04]], m.mvacDark, 48)); }
+    g.add(latheF([[0.24, 0.1], [0.3, 0.45], [0.18, 0.75]], m.chamber, 20)); }
   if (isDragon) {
     const cap = new THREE.Group();
-    const trunk = cyl(1.85, 3.7, matWhite, 12.6); cap.add(trunk);
-    // the trunk's solar cells, on one side
-    cap.add(new THREE.Mesh(new THREE.CylinderGeometry(1.87 * VS, 1.87 * VS, 3.0 * VS, 32, 1, true, -Math.PI / 2, Math.PI), new THREE.MeshStandardMaterial({ color: 0x1a2135, metalness: 0.4, roughness: 0.35, emissive: 0x060a16, emissiveIntensity: 0.6, side: THREE.DoubleSide })));
-    cap.children[cap.children.length - 1].position.y = 14.45 * VS;
-    // the capsule: heat shield, the sloped sides, the nose cone
-    cap.add(latheF([[0, 16.3], [1.85, 16.4], [1.95, 16.7], [1.7, 17.5], [1.15, 19.6], [0.9, 20.2], [0.85, 20.6], [0.55, 21.2], [0, 21.4]], new THREE.MeshStandardMaterial({ color: 0xf0f0ee, roughness: 0.45, metalness: 0.15 }), 40));
-    cap.add(latheF([[1.86, 16.32], [1.96, 16.68], [1.86, 16.95]], matBlack, 40));          // the heat shield's rim
+    cap.add(latheF([[1.83, 12.6], [1.86, 12.75], [1.86, 13.0]], m.black, 48));                   // the adapter ring
+    // the trunk: half a solar array, half radiators, four fins at its foot
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(1.86 * VS, 1.86 * VS, 3.3 * VS, 64, 1, true, -Math.PI / 2, Math.PI), m.solar); tr.position.y = 14.65 * VS; cap.add(tr);
+    const rd = new THREE.Mesh(new THREE.CylinderGeometry(1.86 * VS, 1.86 * VS, 3.3 * VS, 64, 1, true, Math.PI / 2, Math.PI), m.radiator); rd.position.y = 14.65 * VS; cap.add(rd);
+    // the trunk's fins (black, per photos): a tapering blade from its top down most of its side, four round it
+    { const fs = new THREE.Shape(); fs.moveTo(0, 0); fs.lineTo(0, 2.3); fs.lineTo(0.62, 2.0); fs.lineTo(0.62, 0.55); fs.closePath();
+      const fg = new THREE.ExtrudeGeometry(fs, { depth: 0.06, bevelEnabled: false }); fg.translate(0, 0, -0.03); fg.scale(VS, VS, VS);
+      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2, f = new THREE.Mesh(fg, m.black), h = new THREE.Group(); f.rotation.y = -Math.PI / 2; f.position.set(0, 13.95 * VS, 1.84 * VS); h.add(f); h.rotation.y = a; cap.add(h); } }
+    cap.add(latheF([[1.86, 16.25], [1.88, 16.35]], m.black, 48));
+    // the capsule: the heat shield's dark rim, the sloped sides, the nose cap
+    cap.add(latheF([[0, 16.3], [1.82, 16.34], [1.95, 16.55], [1.93, 16.8], [0.01, 16.8]], m.black, 56));
+    cap.add(latheF([[1.93, 16.8], [1.84, 17.2], [1.55, 18.3], [1.2, 19.5], [0.98, 20.15]], m.paint, 56));
+    cap.add(latheF([[0.98, 20.15], [0.92, 20.45], [0.75, 20.8], [0.45, 21.05], [0.01, 21.15]], m.paint, 48));
+    cap.add(latheF([[0.985, 20.12], [0.985, 20.2]], m.black, 48));                                 // the nose cap's seam
+    fdecal(cap, xLogo('#15161a'), 1.36, 19.05, 0.05, 0.62, 0.31);
+    fdecal(cap, flagCanvas(), 1.62, 18.35, Math.PI / 2 + 0.6, 0.5, 0.26);
+    // the windows, and the four pairs of SuperDraco ports under their cowlings
+    for (let i = 0; i < 4; i++) {
+      const a = i / 4 * Math.PI * 2 + Math.PI / 4, r = 1.42, y = 18.75;
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.17 * VS, 0.17 * VS, 0.06 * VS, 20), m.window); w.rotation.x = Math.PI / 2; const hold = new THREE.Group(); hold.add(w); hold.rotation.y = a; w.position.set(0, 0, r * VS); hold.position.y = y * VS; hold.rotateOnAxis(new THREE.Vector3(1, 0, 0), 0); cap.add(hold);
+      // a SuperDraco pod: a rounded cowling standing proud of the sloped side ("eyebrows" in photos), the pair of
+      // engine ports dark under its lower edge
+      const b = i * Math.PI / 2, hc = new THREE.Group(); hc.rotation.y = b; hc.position.y = 17.75 * VS; cap.add(hc);
+      const cg = new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2); cg.rotateX(Math.PI / 2); cg.scale(0.55 * VS, 0.75 * VS, 0.24 * VS);
+      const cw = new THREE.Mesh(cg, m.paint); cw.position.set(0, 0, 1.6 * VS); cw.rotation.x = -0.32; hc.add(cw);
+      for (const dx of [-0.17, 0.17]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * VS, 0.1 * VS, 0.06 * VS, 14), m.black); p.rotation.x = Math.PI / 2 - 0.32; p.position.set(dx * VS, -0.55 * VS, 1.86 * VS); hc.add(p); }
+    }
     g.add(cap); ud.capsule = cap;
   } else {
-    // the fairing: an adapter flaring out to 5.2 m, then the cylinder and the ogive nose, in two halves thrown off sideways
-    const fm = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4, side: THREE.DoubleSide });
+    // the fairing: an adapter flaring out to 5.2 m, the cylinder and the ogive nose, two halves (seam, logo on one)
     const prof = [[1.84, 12.6], [2.6, 13.6], [2.6, 19.4]];
-    for (let i = 1; i <= 12; i++) { const t = i / 12; prof.push([Math.max(0.05, 2.6 * Math.sqrt(1 - Math.pow(t, 1.7))), 19.4 + 6.3 * t]); }
-    ud.fairing = [0, 1].map(i => { const h = new THREE.Group(); h.add(latheF(prof, fm, 24, i * Math.PI, Math.PI)); g.add(h); return h; });
-    // what is under it: a stack of Starlink satellites, or one satellite with folded solar panels
+    for (let i = 1; i <= 14; i++) { const t = i / 14; prof.push([Math.max(0.12, 2.6 * Math.sqrt(1 - Math.pow(t, 1.7))), 19.4 + 6.3 * t]); }
+    prof.push([0.001, 25.75]);
+    ud.fairing = [0, 1].map(i => {
+      const h = new THREE.Group(); h.add(latheF(prof, m.paint, 32, i * Math.PI, Math.PI));
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.04 * VS, 5.8 * VS, 0.03 * VS), m.black); seam.position.set(0, 16.5 * VS, (i ? -1 : 1) * 2.605 * VS); h.add(seam);   // (along the cylinder)
+      if (i === 0) fdecal(h, spacexWordmark('#101113'), 2.615, 16.6, Math.PI / 2, 1.0, 5.6, true);
+      g.add(h); return h;
+    });
     if (isStarlink) {
-      const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
+      // Starlink V2 mini: flat satellites stacked, solar array on top, grey sides
+      const side = fmat({ color: 0x9aa0a8, metalness: 0.7, roughness: 0.4 });
+      const mats = [side, side, m.solar, fmat({ color: 0x3a3e46, metalness: 0.6, roughness: 0.45 }), side, side];
       ud.sats = [];
-      for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(3.2 * VS, 0.24 * VS, 1.6 * VS), slab); g.add(m); ud.sats.push(m); }
+      for (let i = 0; i < 22; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(3.2 * VS, 0.24 * VS, 1.6 * VS), mats); g.add(s); ud.sats.push(s); }
     } else {
       const sat = new THREE.Group();
-      sat.add(new THREE.Mesh(new THREE.BoxGeometry(2.4 * VS, 3.4 * VS, 2.4 * VS), new THREE.MeshStandardMaterial({ color: 0xc9a44a, metalness: 0.8, roughness: 0.35, emissive: 0x3a2c0c, emissiveIntensity: 0.6 })));
-      const pm = new THREE.MeshStandardMaterial({ color: 0x1c3f8a, metalness: 0.5, roughness: 0.4, emissive: 0x0a1a40, emissiveIntensity: 0.7 });
+      sat.add(new THREE.Mesh(new THREE.BoxGeometry(2.4 * VS, 3.4 * VS, 2.4 * VS), fmat({ color: 0xc9a44a, metalness: 0.85, roughness: 0.32 })));
       ud.panels = [1, -1].map(sd => {
         const geo = new THREE.BoxGeometry(6.5 * VS, 0.12 * VS, 2.2 * VS); geo.translate(3.25 * VS, 0, 0);
-        const m = new THREE.Mesh(geo, pm); m.position.x = sd * 1.2 * VS; if (sd < 0) m.rotation.y = Math.PI; sat.add(m); return m;
+        const p = new THREE.Mesh(geo, m.solar); p.position.x = sd * 1.2 * VS; if (sd < 0) p.rotation.y = Math.PI; sat.add(p); return p;
       });
       g.add(sat); ud.sat = sat;
     }
@@ -1642,7 +1831,7 @@ const vehLabel = label(VEH_NAME, 'veh');
 const s2Label = label('', 'veh');
 upper.add(s2Label); scene.add(vehLabel);
 boosterDefs.forEach(bd => {
-  bd.obj = VEH === 'ss' ? (SSM ? superHeavy3d() : superHeavy()) : falconCore(bd.who === 'side');
+  bd.obj = VEH === 'ss' ? (SSM ? superHeavy3d() : superHeavy()) : falconCore(bd.who === 'side', bd.who === 'side' ? bd.side : 0);
   bd.offset = bd.who === 'side' ? new THREE.Vector3(bd.side * 4.1 * VS, 0, 0) : new THREE.Vector3();
   scene.add(bd.obj);
   bd.label = label('', 'veh booster'); bd.obj.add(bd.label);
@@ -2011,14 +2200,85 @@ const padStruct = addStructure(padFixed, g => {
       [1, -1].forEach(sd => { const piv = new THREE.Group(); piv.position.set((ox + sd * 5.9) * VS, ARM_Y * VS, (oz - 11) * VS); piv.rotation.y = sd * 0.55; piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); put(piv); });
     }
     g.userData.tall = all.concat(g.userData.arms);
-  } else {                                                       // the pad and the strongback
-    // the transporter-erector's strongback right beside the rocket, and the crew tower where the pad has one
-    const tall = [lattice(3.6, 62, 3.6, 0, 31, -5.5)];
-    if (/39A/.test(PAD_LABEL)) tall.push(lattice(12, 90, 12, -16, 45, -20), box(1.4, 26, 1.4, matTower, -16, 103, -20));
-    else if (/SLC-40|LC-40|\b40\b/.test(PAD_LABEL)) tall.push(lattice(10, 80, 10, -16, 40, -18));
-    const trench = box(10, 0.2, 10, new THREE.MeshStandardMaterial({ color: 0x1e2024, roughness: 1 }), 0, 0.12, 0);
-    const base = slab(60, 2); g.add(base, trench, ...tall);
-    g.userData.tall = tall.concat(base);
+  } else {
+    // A Falcon pad as it stands, placed from the aerial imagery (metres from the pad, x east, z south): the hardstand,
+    // the flame trench, the transporter-erector's strongback beside the rocket; at LC-39A the shuttle-era fixed service
+    // structure with the crew access arm and its lightning mast, the water tower, the propellant spheres, the hangar
+    // down the ramp; at SLC-40 the crew access tower, four lightning towers on the catenary, the tank farm, the hangar;
+    // at SLC-4E (Vandenberg) the hangar up the diagonal ramp and the tanks beside the pad.
+    const site = /39A/.test(PAD_LABEL) ? '39A' : /SLC-?40|LC-?40|\b40\b/.test(PAD_LABEL) ? '40' : /4E/.test(PAD_LABEL) ? '4E' : '';
+    const all = [];
+    const put = (m) => { g.add(m); all.push(m); return m; };
+    const matWhiteSt = new THREE.MeshStandardMaterial({ color: 0xe8eaec, metalness: 0.3, roughness: 0.55, emissive: 0x15181c, emissiveIntensity: 0.4 });
+    const matGreySt = new THREE.MeshStandardMaterial({ color: 0x8f949b, metalness: 0.55, roughness: 0.5, emissive: 0x11141a, emissiveIntensity: 0.45 });
+    const matRoof = new THREE.MeshStandardMaterial({ color: 0x9da2a8, roughness: 0.7 });
+    const matBld = new THREE.MeshStandardMaterial({ color: 0xe4e6e8, roughness: 0.75, emissive: 0x15181c, emissiveIntensity: 0.3 });
+    const matHole = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 1 });
+    const concrete = (w, d, x, z, y = 0.15, rot = 0) => { const t = concreteTexture(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w / 24, d / 24);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w * VS, 0.3 * VS, d * VS), new THREE.MeshStandardMaterial({ map: t, color: 0xc3c6ca, roughness: 0.95 })); m.position.set(x * VS, (y - 0.15) * VS, z * VS); m.rotation.y = rot; return put(m); };
+    // a building: walls, a slightly darker roof; long ones get the hangar's tall door at one end
+    const building = (w, h, d, x, z, rot = 0, door = false) => {
+      const grp = new THREE.Group(); grp.add(box(w, h, d, matBld, 0, h / 2, 0)); grp.add(box(w + 0.6, 0.6, d + 0.6, matRoof, 0, h + 0.3, 0));
+      if (door) grp.add(box(w * 0.7, h * 0.85, 0.4, matGreySt, 0, h * 0.425, -d / 2 - 0.1));
+      grp.position.set(x * VS, 0, z * VS); grp.rotation.y = rot; return put(grp); };
+    // a steel tower: an open lattice with a solid core, service floors every 6 m
+    const tower = (w, h, x, z, mat = matGreySt) => { const t = put(lattice(w, h, w, x, h / 2, z)); for (let y = 6; y < h; y += 6) put(box(w + 1.2, 0.5, w + 1.2, mat, x, y, z)); return t; };
+    // a lightning tower: a tall tapering lattice mast with a spike
+    const mast = (h, x, z) => { put(lattice(2.6, h, 2.6, x, h / 2, z));   // (a slim lattice tower, per photos)
+      put(box(0.25, 8, 0.25, matGreySt, x, h + 4, z)); return [x, h + 6, z]; };
+    const wire = (a, b) => { const sag = 8, pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push(new THREE.Vector3((a[0] + (b[0] - a[0]) * t) * VS, (a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t)) * VS, (a[2] + (b[2] - a[2]) * t) * VS)); }
+      put(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.12 * VS, 4, false), matGreySt)); };
+    const sphereTank = (r, x, z) => { const s = new THREE.Mesh(new THREE.SphereGeometry(r * VS, 28, 18), matWhiteSt); s.position.set(x * VS, (r + 3) * VS, z * VS); put(s); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; put(box(0.8, r + 3, 0.8, matGreySt, x + Math.cos(a) * r * 0.75, (r + 3) / 2, z + Math.sin(a) * r * 0.75)); } };
+    const hTank = (r, len, x, z, rot = 0) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(r * VS, len * VS, 6, 18), matWhiteSt); m.rotation.z = Math.PI / 2; const h = new THREE.Group(); h.add(m); h.position.set(x * VS, (r + 1) * VS, z * VS); h.rotation.y = rot; put(h); };
+    const waterTower = (x, z, h, r) => { for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4; put(box(1, h, 1, matGreySt, x + Math.cos(a) * r * 0.7, h / 2, z + Math.sin(a) * r * 0.7)); }
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, r * 1.6 * VS, 28), matWhiteSt); t.position.set(x * VS, (h + r * 0.8) * VS, z * VS); put(t);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(r * VS, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), matWhiteSt); cap.scale.y = 0.4; cap.position.set(x * VS, (h + r * 1.6) * VS, z * VS); put(cap); };
+    // the strongback: the white truss the rocket was raised on, standing beside it, its arms reaching to the stages
+    const strongback = () => { put(lattice(3.6, 64, 3.6, 0, 32, -5.6)).children[0].material.color.setHex(0xe9ebee);
+      for (const y of [20, 40, 58]) put(box(1.2, 0.9, 3.4, matWhiteSt, 0, y, -3.4));
+      put(box(9, 4, 7, matWhiteSt, 0, 2, -6.5)); };
+    // (the hardstand, the ramps and the roads are the aerial imagery itself, under all this)
+    // the flame trench: an open slot in the hardstand the exhaust is turned down into
+    // the flame trench: the slot down into the deflector under the rocket, concrete walls either side, opening out to the
+    // side the exhaust leaves by
+    const trench = (w, len, dirZ) => { put(box(w, 0.3, len, matHole, 0, 0.02, dirZ * (len / 2 + 2)));
+      for (const sx of [-1, 1]) put(box(1.6, 2.2, len, matGreySt, sx * (w / 2 + 0.8), 1.1, dirZ * (len / 2 + 2)));
+      put(box(w + 3.2, 3.2, 2.2, matGreySt, 0, 1.6, -dirZ * 1.6)); };
+    if (site === '39A') {
+      trench(12, 60, -1);
+      // the fixed service structure west of the rocket: the grey shuttle-era tower, its lightning mast, and the crew
+      // access arm out to Dragon's hatch (a white enclosed walkway)
+      tower(12, 80, -24, -4); put(box(14, 3, 14, matGreySt, -24, 81.5, -4));
+      const ms = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * VS, 1.4 * VS, 32 * VS, 8), matGreySt); ms.position.set(-24 * VS, 99 * VS, -4 * VS); put(ms);
+      put(box(16, 3.4, 3.2, matWhiteSt, -10, 66, -1.5)); put(box(4, 4.4, 4.2, matWhiteSt, -2.8, 66, -1.5));
+      for (const [x, z] of [[-150, -170], [150, -160]]) wire([-24, 115, -4], [x, 2, z]);       // its catenary down to the anchors
+      strongback();
+      waterTower(77, -128, 52, 8);
+      sphereTank(11, -407, -270); sphereTank(11, 370, -262);               // liquid oxygen, and the other old sphere
+      building(52, 30, 120, -8, 442, 0, true);                             // the hangar down the ramp
+      building(30, 9, 18, -220, 80); building(22, 7, 14, 133, -60); building(16, 6, 20, 285, -15);
+    } else if (site === '40') {
+      trench(10, 50, -1);
+      // the crew access tower west of the rocket with its arm; four lightning towers on their catenary
+      tower(10, 80, -22, -2); put(box(16, 3.4, 3.2, matWhiteSt, -9, 66, -1.5)); put(box(4, 4.4, 4.2, matWhiteSt, -2.8, 66, -1.5));
+      const tops = [[-45, -45], [45, -45], [45, 45], [-45, 45]].map(([x, z]) => mast(90, x, z));
+      for (let i = 0; i < 4; i++) wire(tops[i], tops[(i + 1) % 4]);
+      strongback();
+      waterTower(-93, -125, 40, 7);
+      for (let i = 0; i < 6; i++) hTank(2.6, 20, 110 + (i % 2) * 9, -45 + Math.floor(i / 2) * 32, 0);
+      building(52, 30, 110, -43, 209, 0, true); building(36, 10, 22, -60, 250);
+    } else if (site === '4E') {
+      // the diagonal ramp up to the hangar north-east of the pad
+      trench(10, 40, 1);
+      strongback();
+      building(46, 32, 120, 160, -268, Math.atan2(115, -80), true);
+      for (let i = 0; i < 4; i++) hTank(2.4, 16, -40 - i * 7, -96, Math.PI / 2);
+      building(26, 8, 16, -60, 30); building(18, 6, 24, -45, 80);
+      waterTower(-90, -40, 36, 6);
+    } else {
+      strongback(); trench(10, 40, -1);
+    }
+    g.userData.tall = all;
   }
 });
 boosterDefs.forEach(bd => {
@@ -2027,9 +2287,22 @@ boosterDefs.forEach(bd => {
     g.userData.showFrom = bd.landT - 90;   // away from the ground cameras: only when its booster is coming in
     if (bd.land.kind === 'asds') g.add(box(52, 4, 91, matDeck, 0, -2, 0), ring(16, 18, 0.2), ring(6, 7, 0.2));
     else {
+      // a landing zone as SpaceX paints them: a round concrete pad, a white ring round its edge, a circle in the middle with
+      // the X logo inside it, scorched dark at the centre from earlier landings
       const r = bd.sideOff ? 24 : 43;
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, 0.8 * VS, 48), matConcrete); m.position.set(bd.sideOff * VS, -0.4 * VS, 0);
-      g.add(m, ring(r * 0.55, r * 0.62, 0.15, bd.sideOff), ring(r * 0.18, r * 0.24, 0.15, bd.sideOff));
+      const c = document.createElement('canvas'); c.width = c.height = 1024; const cg = c.getContext('2d');
+      cg.fillStyle = '#9b9ea2'; cg.fillRect(0, 0, 1024, 1024);
+      for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) { const v = 140 + ((i * 7 + j * 13) % 9) * 3; cg.fillStyle = `rgb(${v},${v + 2},${v + 4})`; cg.fillRect(i * 114 + 1, j * 114 + 1, 112, 112); }
+      const sc = cg.createRadialGradient(512, 512, 0, 512, 512, 330); sc.addColorStop(0, 'rgba(25,24,22,0.75)'); sc.addColorStop(1, 'rgba(25,24,22,0)'); cg.fillStyle = sc; cg.fillRect(0, 0, 1024, 1024);
+      cg.strokeStyle = '#f2f2f0'; cg.lineWidth = 34; cg.beginPath(); cg.arc(512, 512, 470, 0, Math.PI * 2); cg.stroke();
+      cg.lineWidth = 22; cg.beginPath(); cg.arc(512, 512, 250, 0, Math.PI * 2); cg.stroke();
+      cg.fillStyle = '#f2f2f0'; cg.save(); cg.translate(512, 512); cg.scale(0.9, 0.9);
+      cg.beginPath(); cg.moveTo(-170, -130); cg.lineTo(-95, -130); cg.lineTo(170, 130); cg.lineTo(95, 130); cg.closePath(); cg.fill();
+      cg.beginPath(); cg.moveTo(-170, 130); cg.lineTo(-95, 130); cg.lineTo(-30, 62); cg.lineTo(-68, 26); cg.closePath(); cg.fill();
+      cg.beginPath(); cg.moveTo(-50, 42); cg.quadraticCurveTo(70, -80, 230, -120); cg.quadraticCurveTo(90, -60, -14, 78); cg.closePath(); cg.fill(); cg.restore();
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, 0.8 * VS, 64), [matConcrete, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }), matConcrete]); m.position.set(bd.sideOff * VS, -0.4 * VS, 0);
+      g.add(m);
     }
   });
 });
