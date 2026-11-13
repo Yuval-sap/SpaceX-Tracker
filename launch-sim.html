@@ -1524,6 +1524,14 @@ function falconUpper() {
       for (const dx of [-0.17, 0.17]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * VS, 0.1 * VS, 0.06 * VS, 14), m.black); p.rotation.x = Math.PI / 2 - 0.32; p.position.set(dx * VS, -0.55 * VS, 1.86 * VS); hc.add(p); }
     }
     g.add(cap); ud.capsule = cap;
+    if (/\bcrew-\d/i.test(String(cfg.name || cfg.displayName || ''))) {
+      const wc = fcanvas(1024, 300), wg = wc.getContext('2d'); wg.fillStyle = '#d0222e'; wg.font = "900 260px 'Arial Rounded MT Bold', 'Rubik', 'Arial Black', sans-serif"; wg.textAlign = 'center'; wg.textBaseline = 'middle'; wg.fillText('NASA', 512, 160);
+      fdecal(g, wc, 1.845, 8.6, 0.05, 1.6, 4.4, true);
+      const mc = fcanvas(256, 256), mg = mc.getContext('2d'); mg.fillStyle = '#0b3d91'; mg.beginPath(); mg.arc(128, 128, 120, 0, Math.PI * 2); mg.fill();
+      mg.strokeStyle = '#fc3d21'; mg.lineWidth = 16; mg.beginPath(); mg.moveTo(30, 170); mg.quadraticCurveTo(140, 90, 230, 70); mg.stroke();
+      mg.fillStyle = '#fff'; mg.font = "800 66px 'Arial Black', sans-serif"; mg.textAlign = 'center'; mg.textBaseline = 'middle'; mg.fillText('NASA', 128, 132);
+      fdecal(g, mc, 1.845, 4.4, 0.05, 1.3, 1.3);
+    }
   } else {
     // the fairing: an adapter flaring out to 5.2 m, the cylinder and the ogive nose, two halves (seam, logo on one)
     const prof = [[1.84, 12.6], [2.6, 13.6], [2.6, 19.4]];
@@ -2229,7 +2237,9 @@ const padStruct = addStructure(padFixed, g => {
     const tower = (w, h, x, z, mat = matGreySt) => { const t = put(lattice(w, h, w, x, h / 2, z)); for (let y = 6; y < h; y += 6) put(box(w + 1.2, 0.5, w + 1.2, mat, x, y, z)); return t; };
     // a lightning tower: a tall tapering lattice mast with a spike
     const mast = (h, x, z) => { put(lattice(2.6, h, 2.6, x, h / 2, z));   // (a slim lattice tower, per photos)
-      put(box(0.25, 8, 0.25, matGreySt, x, h + 4, z)); return [x, h + 6, z]; };
+      // the white fibreglass mast on top, a quarter of the tower's height, tapering to the tip (per photos of SLC-40)
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * VS, 0.9 * VS, h * 0.28 * VS, 12), matWhiteSt); top.position.set(x * VS, h * 1.14 * VS, z * VS); put(top);
+      return [x, h * 1.28, z]; };
     const wire = (a, b) => { const sag = 8, pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push(new THREE.Vector3((a[0] + (b[0] - a[0]) * t) * VS, (a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t)) * VS, (a[2] + (b[2] - a[2]) * t) * VS)); }
       put(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.12 * VS, 4, false), matGreySt)); };
     const sphereTank = (r, x, z) => { const s = new THREE.Mesh(new THREE.SphereGeometry(r * VS, 28, 18), matWhiteSt); s.position.set(x * VS, (r + 3) * VS, z * VS); put(s); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; put(box(0.8, r + 3, 0.8, matGreySt, x + Math.cos(a) * r * 0.75, (r + 3) / 2, z + Math.sin(a) * r * 0.75)); } };
@@ -2238,9 +2248,26 @@ const padStruct = addStructure(padFixed, g => {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, r * 1.6 * VS, 28), matWhiteSt); t.position.set(x * VS, (h + r * 0.8) * VS, z * VS); put(t);
       const cap = new THREE.Mesh(new THREE.SphereGeometry(r * VS, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), matWhiteSt); cap.scale.y = 0.4; cap.position.set(x * VS, (h + r * 1.6) * VS, z * VS); put(cap); };
     // the strongback: the white truss the rocket was raised on, standing beside it, its arms reaching to the stages
-    const strongback = () => { put(lattice(3.6, 64, 3.6, 0, 32, -5.6)).children[0].material.color.setHex(0xe9ebee);
+    // the transporter-erector (photos of SLC-4E and the Cape): a white truss as tall as the rocket, wide and splayed at
+    // its foot and narrowing up the stage, standing on its pivot behind the launch mount; arms out to the vehicle; the
+    // raised steel deck of the launch mount with its yellow rails under the rocket
+    const strongback = () => {
+      const whiteLat = (w, h, d, x, y, z) => { const l = put(lattice(w, h, d, x, y, z)); l.children[0].material.color.setHex(0xeef0f2); l.children[1].material = matWhiteSt; return l; };
+      whiteLat(9, 22, 5, 0, 11, -7.2); whiteLat(5.5, 22, 4, 0, 33, -6.4); whiteLat(3.6, 22, 3.6, 0, 55, -5.8);
+      for (const sx of [-1, 1]) { const brace = box(0.8, 26, 0.8, matWhiteSt, sx * 5.5, 12, -11); brace.rotation.x = 0.35; put(brace); }   // the struts down to its pivot
       for (const y of [20, 40, 58]) put(box(1.2, 0.9, 3.4, matWhiteSt, 0, y, -3.4));
-      put(box(9, 4, 7, matWhiteSt, 0, 2, -6.5)); };
+      put(box(12, 2.2, 12, matGreySt, 0, 1.1, 0));                                    // the launch mount's deck
+      const matYel = new THREE.MeshStandardMaterial({ color: 0xe2b72c, roughness: 0.6 });
+      for (const [w, d, x, z] of [[12, 0.12, 0, 6], [12, 0.12, 0, -6], [0.12, 12, 6, 0], [0.12, 12, -6, 0]]) put(box(w, 1.1, d, matYel, x, 2.75, z));
+    };
+    const crewArm = (x0, y) => {
+      const len = -x0 - 3.4, cx = x0 + len / 2;
+      put(box(len, 4.2, 4.4, matWhiteSt, cx, y, -0.6));
+      put(box(len - 2, 1.3, 0.1, new THREE.MeshStandardMaterial({ color: 0x15181d, metalness: 0.5, roughness: 0.25 }), cx + 1, y + 0.5, 1.65));
+      put(box(len, 0.35, 4.6, matGreySt, cx, y - 2.2, -0.6));
+      const hood = new THREE.Mesh(new THREE.CylinderGeometry(2.0 * VS, 2.2 * VS, 2.4 * VS, 18, 1, true), new THREE.MeshStandardMaterial({ color: 0x24262b, roughness: 0.85, side: THREE.DoubleSide }));
+      hood.rotation.z = Math.PI / 2; hood.position.set(-2.4 * VS, y * VS, -0.6 * VS); put(hood);
+    };
     // (the hardstand, the ramps and the roads are the aerial imagery itself, under all this)
     // the flame trench: an open slot in the hardstand the exhaust is turned down into
     // the flame trench: the slot down into the deflector under the rocket, concrete walls either side, opening out to the
@@ -2254,7 +2281,7 @@ const padStruct = addStructure(padFixed, g => {
       // access arm out to Dragon's hatch (a white enclosed walkway)
       tower(12, 80, -24, -4); put(box(14, 3, 14, matGreySt, -24, 81.5, -4));
       const ms = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * VS, 1.4 * VS, 32 * VS, 8), matGreySt); ms.position.set(-24 * VS, 99 * VS, -4 * VS); put(ms);
-      put(box(16, 3.4, 3.2, matWhiteSt, -10, 66, -1.5)); put(box(4, 4.4, 4.2, matWhiteSt, -2.8, 66, -1.5));
+      crewArm(-18, 66.4);
       for (const [x, z] of [[-150, -170], [150, -160]]) wire([-24, 115, -4], [x, 2, z]);       // its catenary down to the anchors
       strongback();
       waterTower(77, -128, 52, 8);
@@ -2262,13 +2289,17 @@ const padStruct = addStructure(padFixed, g => {
       building(52, 30, 120, -8, 442, 0, true);                             // the hangar down the ramp
       building(30, 9, 18, -220, 80); building(22, 7, 14, 133, -60); building(16, 6, 20, 285, -15);
     } else if (site === '40') {
-      trench(10, 50, -1);
+      // the flame trench runs out east, ending in the concrete deflector exit with its steel frame (photo)
+      put(box(50, 0.3, 10, matHole, 27, 0.02, 0)); for (const sz of [-1, 1]) put(box(50, 2.2, 1.6, matGreySt, 27, 1.1, sz * 5.8));
+      put(box(8, 7, 14, matGreySt, 55, 3.5, 0)); put(box(10, 0.6, 16, matGreySt, 55, 7.3, 0));
       // the crew access tower west of the rocket with its arm; four lightning towers on their catenary
-      tower(10, 80, -22, -2); put(box(16, 3.4, 3.2, matWhiteSt, -9, 66, -1.5)); put(box(4, 4.4, 4.2, matWhiteSt, -2.8, 66, -1.5));
+      tower(10, 80, -22, -2); crewArm(-17, 66.4);
       const tops = [[-45, -45], [45, -45], [45, 45], [-45, 45]].map(([x, z]) => mast(90, x, z));
       for (let i = 0; i < 4; i++) wire(tops[i], tops[(i + 1) % 4]);
       strongback();
       waterTower(-93, -125, 40, 7);
+      sphereTank(8, 70, 45);                                                 // the white sphere east of the trench (photo)
+      building(30, 9, 14, 30, -55); building(34, 8, 16, 80, -35);            // the low buildings north of the pad
       for (let i = 0; i < 6; i++) hTank(2.6, 20, 110 + (i % 2) * 9, -45 + Math.floor(i / 2) * 32, 0);
       building(52, 30, 110, -43, 209, 0, true); building(36, 10, 22, -60, 250);
     } else if (site === '4E') {
@@ -2276,11 +2307,32 @@ const padStruct = addStructure(padFixed, g => {
       trench(10, 40, 1);
       strongback();
       building(46, 32, 120, 160, -268, Math.atan2(115, -80), true);
-      for (let i = 0; i < 4; i++) hTank(2.4, 16, -40 - i * 7, -96, Math.PI / 2);
-      building(26, 8, 16, -60, 30); building(18, 6, 24, -45, 80);
-      waterTower(-90, -40, 36, 6);
+      // (photos looking west to the ocean: south of the pad the cluster of white spheres in their frame and the
+      // horizontal tanks, the white control building; north of it the row of white tube-trailers; the tall slim
+      // lattice tower north-west; the white fabric tent south-west)
+      for (let i = 0; i < 5; i++) { const sp = new THREE.Mesh(new THREE.SphereGeometry(2.6 * VS, 18, 12), matWhiteSt); sp.position.set((-30 + i * 6) * VS, 3.2 * VS, 46 * VS); put(sp); }
+      put(box(32, 0.5, 8, matGreySt, -18, 0.5, 46));
+      for (let i = 0; i < 3; i++) hTank(1.4, 10, 4, 34 + i * 3.4, 0);
+      building(20, 7, 12, -6, 28);
+      for (let i = 0; i < 6; i++) hTank(2.1, 14, 34 + (i % 2) * 2, -22 - i * 5, Math.PI / 2 + 0.15);
+      put(lattice(1.6, 70, 1.6, -40, 35, -95));
+      { const tent = new THREE.Mesh(new THREE.CylinderGeometry(9 * VS, 9 * VS, 34 * VS, 20, 1, false, 0, Math.PI), matWhiteSt); tent.rotation.z = Math.PI / 2; tent.rotation.y = Math.PI / 2; tent.position.set(-95 * VS, 0, 60 * VS); put(tent); }
+      building(16, 6, 10, -60, -60); building(12, 5, 8, 70, 40);
     } else {
       strongback(); trench(10, 40, -1);
+    }
+    // the neighbour up the coast from SLC-40 (ULA's SLC-41, ~2.4 km north - seen from SLC-40 and from LC-39A's cameras):
+    // its four lightning towers with the white masts, the dark crew access tower beside the pad, the white sphere east of
+    // it, and the tall Vertical Integration Facility south of the pad (photos of SLC-41)
+    if (site === '40' || site === '39A') {
+      const [ox, oz] = [(-80.5830 - PAD.lon) * Math.cos(PAD.lat * DEG) * 111320, -(28.5834 - PAD.lat) * 110574];
+      const t41 = [[-38, -38], [38, -38], [38, 38], [-38, 38]].map(([x, z]) => mast(70, ox + x, oz + z));
+      for (let i = 0; i < 4; i++) wire(t41[i], t41[(i + 1) % 4]);
+      put(box(12, 62, 12, matTower, ox - 14, 31, oz)); put(box(14, 2, 14, matTower, ox - 14, 63, oz));
+      sphereTank(9, ox + 70, oz - 10);
+      for (let i = 0; i < 3; i++) hTank(2.4, 18, ox - 60 - i * 8, oz - 30, 0);
+      building(40, 88, 50, ox - 30, oz + 540);                                          // the VIF
+      building(30, 60, 40, ox - 30, oz + 470);
     }
     g.userData.tall = all;
   }
@@ -2328,15 +2380,48 @@ boosterDefs.forEach(bd => {
       cg.fillStyle = '#9b9ea2'; cg.fillRect(0, 0, 1024, 1024);
       for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) { const v = 140 + ((i * 7 + j * 13) % 9) * 3; cg.fillStyle = `rgb(${v},${v + 2},${v + 4})`; cg.fillRect(i * 114 + 1, j * 114 + 1, 112, 112); }
       const sc = cg.createRadialGradient(512, 512, 0, 512, 512, 330); sc.addColorStop(0, 'rgba(25,24,22,0.75)'); sc.addColorStop(1, 'rgba(25,24,22,0)'); cg.fillStyle = sc; cg.fillRect(0, 0, 1024, 1024);
-      cg.strokeStyle = '#f2f2f0'; cg.lineWidth = 34; cg.beginPath(); cg.arc(512, 512, 470, 0, Math.PI * 2); cg.stroke();
-      cg.lineWidth = 22; cg.beginPath(); cg.arc(512, 512, 250, 0, Math.PI * 2); cg.stroke();
-      cg.fillStyle = '#f2f2f0'; cg.save(); cg.translate(512, 512); cg.scale(0.9, 0.9);
+      // LZ-4 at Vandenberg (photo from the SAOCOM 1A webcast): light concrete, no rings - only a big blue X across the
+      // middle, its long stroke a thin sweep; a darker rim of older concrete round it
+      const lz4 = /LZ-?4(?!\d)/i.test(bd.land.name || '') || !!(bd.land.at && Math.abs(bd.land.at[0] - 34.6332) < 0.01);
+      if (lz4) { cg.fillStyle = '#d4d6d8'; cg.fillRect(0, 0, 1024, 1024); for (let i = 0; i < 900; i++) { cg.fillStyle = `rgba(150,152,155,${0.04 + Math.random() * 0.06})`; cg.fillRect(Math.random() * 1024, Math.random() * 1024, 3 + Math.random() * 30, 2 + Math.random() * 6); }
+        cg.strokeStyle = '#8e9094'; cg.lineWidth = 46; cg.beginPath(); cg.arc(512, 512, 489, 0, Math.PI * 2); cg.stroke(); }
+      if (!lz4) { cg.strokeStyle = '#f2f2f0'; cg.lineWidth = 34; cg.beginPath(); cg.arc(512, 512, 470, 0, Math.PI * 2); cg.stroke();
+      cg.lineWidth = 22; cg.beginPath(); cg.arc(512, 512, 250, 0, Math.PI * 2); cg.stroke(); }
+      cg.fillStyle = lz4 ? '#2c5fb8' : '#f2f2f0'; cg.save(); cg.translate(512, 512); cg.scale(lz4 ? 1.55 : 0.9, lz4 ? 1.55 : 0.9);
       cg.beginPath(); cg.moveTo(-170, -130); cg.lineTo(-95, -130); cg.lineTo(170, 130); cg.lineTo(95, 130); cg.closePath(); cg.fill();
       cg.beginPath(); cg.moveTo(-170, 130); cg.lineTo(-95, 130); cg.lineTo(-30, 62); cg.lineTo(-68, 26); cg.closePath(); cg.fill();
       cg.beginPath(); cg.moveTo(-50, 42); cg.quadraticCurveTo(70, -80, 230, -120); cg.quadraticCurveTo(90, -60, -14, 78); cg.closePath(); cg.fill(); cg.restore();
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
       const m = new THREE.Mesh(new THREE.CylinderGeometry(r * VS, r * VS, 0.8 * VS, 64), [matConcrete, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }), matConcrete]); m.position.set(bd.sideOff * VS, -0.4 * VS, 0);
       g.add(m);
+      if (lz4) {
+        // LZ-4's surroundings (SAOCOM 1A webcast photo): the pad stands on a raised fill, its slopes dark with erosion-control
+        // matting; a light pole and camera masts round the edge; the access road curving in from the east; a small
+        // equipment shed; the yellow boom lift parked to the north-west (the scrub round it is the ground imagery)
+        const matSlope = new THREE.MeshStandardMaterial({ color: 0x3a3631, roughness: 1 });
+        const matMat = new THREE.MeshStandardMaterial({ color: 0x1d1e20, roughness: 0.9 });
+        const matRoad = new THREE.MeshStandardMaterial({ color: 0x8b8a86, roughness: 0.95 });
+        const matPole = new THREE.MeshStandardMaterial({ color: 0x9a9fa6, metalness: 0.6, roughness: 0.45 });
+        const matYellow = new THREE.MeshStandardMaterial({ color: 0xe0b52a, metalness: 0.3, roughness: 0.55 });
+        const matShed = new THREE.MeshStandardMaterial({ color: 0xe4e6e8, roughness: 0.75 });
+        // the fill: a low truncated cone round the pad, its top flush with the pad's rim
+        const fill = new THREE.Mesh(new THREE.CylinderGeometry((r + 1) * VS, (r + 16) * VS, 4.2 * VS, 72, 1, true), matSlope); fill.position.y = -2.15 * VS; g.add(fill);
+        // the matting down the slopes on the seaward side: dark strips laid down the fall line
+        for (let k = 0; k < 14; k++) { const ang = Math.PI * 0.55 + k * 0.075, mt = new THREE.Mesh(new THREE.BoxGeometry(3.4 * VS, 0.12 * VS, 16.6 * VS), matMat);
+          mt.position.set(Math.sin(ang) * (r + 8.4) * VS, -2 * VS, Math.cos(ang) * (r + 8.4) * VS); mt.rotation.y = ang; mt.rotation.x = 0.26; g.add(mt); }
+        // the access road from the east, and the apron where it meets the pad
+        const road = new THREE.Mesh(new THREE.BoxGeometry(160 * VS, 0.2 * VS, 8 * VS), matRoad); road.position.set((r + 80) * VS, -0.25 * VS, 14 * VS); road.rotation.y = -0.12; g.add(road);
+        const apron = new THREE.Mesh(new THREE.BoxGeometry(14 * VS, 0.25 * VS, 16 * VS), matRoad); apron.position.set((r + 4) * VS, -0.15 * VS, 12 * VS); g.add(apron);
+        // light pole and camera masts round the rim
+        for (const [ang, h] of [[0.3, 18], [1.9, 8], [3.6, 8], [5.0, 12]]) { const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * VS, 0.22 * VS, h * VS, 8), matPole);
+          pl.position.set(Math.sin(ang) * (r + 3) * VS, h / 2 * VS, Math.cos(ang) * (r + 3) * VS); g.add(pl);
+          const head = new THREE.Mesh(new THREE.BoxGeometry(0.9 * VS, 0.5 * VS, 0.6 * VS), matShed); head.position.set(pl.position.x, h * VS, pl.position.z); g.add(head); }
+        // the equipment shed, and the boom lift parked north-west of the pad
+        const shed = new THREE.Mesh(new THREE.BoxGeometry(6 * VS, 3 * VS, 4 * VS), matShed); shed.position.set(-(r + 14) * VS, 1.5 * VS, -(r - 6) * VS); g.add(shed);
+        const lift = new THREE.Group(); lift.position.set(-(r + 30) * VS, 0, -(r + 6) * VS); lift.rotation.y = 0.5; g.add(lift);
+        lift.add(box(6, 2, 3, matYellow, 0, 1, 0));
+        const boom = box(26, 0.9, 0.9, matYellow, 12, 0, 0); const piv = new THREE.Group(); piv.position.set(-2 * VS, 2.2 * VS, 0); piv.rotation.z = 0.22; piv.add(boom); lift.add(piv);
+      }
     }
   });
 });
