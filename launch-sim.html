@@ -1471,9 +1471,11 @@ function falconCore(nose, side = 0) {
     // a grid fin: a titanium frame round a diamond lattice, on its hinge block; folded flat until after separation
     const fh = new THREE.Group(); fh.position.set(0, (nose ? 40.4 : 42.25) * VS, 1.9 * VS);   // (at the interstage's foot, per photos)
     const fin = new THREE.Group(); fin.position.set(0, 0.8 * VS, 0.12 * VS);
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.25 * VS, 1.55 * VS, 0.2 * VS), m.lattice); fin.add(plate);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.25 * VS, 1.55 * VS, 0.32 * VS), m.lattice); fin.add(plate);
+    for (const z of [-0.08, 0.08]) { const lay = new THREE.Mesh(new THREE.PlaneGeometry(1.25 * VS, 1.55 * VS), m.lattice); lay.position.z = z * VS; fin.add(lay); }   // (its depth reads as a lattice from the side too)
     for (const [w, h, x, y] of [[1.33, 0.07, 0, 0.78], [1.33, 0.07, 0, -0.78], [0.07, 1.62, 0.63, 0], [0.07, 1.62, -0.63, 0]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w * VS, h * VS, 0.24 * VS), m.titanium); b.position.set(x * VS, y * VS, 0); fin.add(b); }
-    const blk = new THREE.Mesh(new THREE.BoxGeometry(0.45 * VS, 0.35 * VS, 0.3 * VS), m.black); blk.position.set(0, -0.82 * VS, -0.05 * VS); fin.add(blk);
+    const blk = new THREE.Mesh(new THREE.BoxGeometry(0.55 * VS, 0.42 * VS, 0.36 * VS), m.black); blk.position.set(0, -0.84 * VS, -0.05 * VS); fin.add(blk);
+    const act = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * VS, 0.11 * VS, 0.75 * VS, 12), m.steel); act.rotation.z = Math.PI / 2; act.position.set(0, -0.84 * VS, -0.1 * VS); fin.add(act);
     fh.add(fin); piv.add(fh); fins.push(fh);
   }
   const heat = heatSprite(2, 0, 26); g.add(heat);
@@ -1507,6 +1509,8 @@ function falconUpper() {
     cap.add(latheF([[0.98, 20.15], [0.92, 20.45], [0.75, 20.8], [0.45, 21.05], [0.01, 21.15]], m.paint, 48));
     cap.add(latheF([[0.985, 20.12], [0.985, 20.2]], m.black, 48));                                 // the nose cap's seam
     fdecal(cap, xLogo('#15161a'), 1.36, 19.05, 0.05, 0.62, 0.31);
+    { const hingeBox = new THREE.Mesh(new THREE.BoxGeometry(0.35 * VS, 0.22 * VS, 0.25 * VS), m.paint); hingeBox.position.set(0, 20.35 * VS, -0.92 * VS); cap.add(hingeBox);   // (the nose cap's hinge, aft side)
+      const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * VS, 0.06 * VS, 0.04 * VS, 14), m.window); cam.rotation.x = Math.PI / 2 - 0.9; cam.position.set(0, 20.75 * VS, 0.72 * VS); cap.add(cam); }
     fdecal(cap, flagCanvas(), 1.62, 18.35, Math.PI / 2 + 0.6, 0.5, 0.26);
     // the windows, and the four pairs of SuperDraco ports under their cowlings
     for (let i = 0; i < 4; i++) {
@@ -2285,7 +2289,37 @@ boosterDefs.forEach(bd => {
   if (!bd.landFixed || bd.land.kind === 'catch') return;
   addStructure(bd.landFixed.clone().setLength(R), g => {
     g.userData.showFrom = bd.landT - 90;   // away from the ground cameras: only when its booster is coming in
-    if (bd.land.kind === 'asds') g.add(box(52, 4, 91, matDeck, 0, -2, 0), ring(16, 18, 0.2), ring(6, 7, 0.2));
+    if (bd.land.kind === 'asds') {
+      // the droneship (after photos of "Of Course I Still Love You" / "A Shortfall of Gravitas"): a grey barge 91 x 52 m,
+      // its deck painted with a white ring and the X in a circle, scorched at the middle; the tall blast walls along the
+      // stern and on both sides of it, the four thruster pods at the corners, the deck's edge rail, Octagrabber parked aft
+      const c = document.createElement('canvas'); c.width = 512; c.height = 896; const cg = c.getContext('2d');
+      cg.fillStyle = '#5d6168'; cg.fillRect(0, 0, 512, 896);
+      for (let i = 0; i < 600; i++) { cg.fillStyle = `rgba(${Math.random() < 0.5 ? '30,30,32' : '140,140,145'},${0.04 + Math.random() * 0.08})`; cg.fillRect(Math.random() * 512, Math.random() * 896, 4 + Math.random() * 40, 2 + Math.random() * 10); }
+      cg.fillStyle = 'rgba(40,42,46,0.6)'; for (let k = 1; k < 8; k++) cg.fillRect(0, k * 112, 512, 2);
+      const sc = cg.createRadialGradient(256, 448, 0, 256, 448, 190); sc.addColorStop(0, 'rgba(20,20,20,0.8)'); sc.addColorStop(1, 'rgba(20,20,20,0)'); cg.fillStyle = sc; cg.fillRect(0, 0, 512, 896);
+      cg.strokeStyle = '#ececea'; cg.lineWidth = 16; cg.beginPath(); cg.arc(256, 448, 230, 0, Math.PI * 2); cg.stroke();
+      cg.lineWidth = 10; cg.beginPath(); cg.arc(256, 448, 96, 0, Math.PI * 2); cg.stroke();
+      cg.fillStyle = '#ececea'; cg.save(); cg.translate(256, 448); cg.scale(0.42, 0.42);
+      cg.beginPath(); cg.moveTo(-170, -130); cg.lineTo(-95, -130); cg.lineTo(170, 130); cg.lineTo(95, 130); cg.closePath(); cg.fill();
+      cg.beginPath(); cg.moveTo(-170, 130); cg.lineTo(-95, 130); cg.lineTo(-30, 62); cg.lineTo(-68, 26); cg.closePath(); cg.fill();
+      cg.beginPath(); cg.moveTo(-50, 42); cg.quadraticCurveTo(70, -80, 230, -120); cg.quadraticCurveTo(90, -60, -14, 78); cg.closePath(); cg.fill(); cg.restore();
+      const deckTex = new THREE.CanvasTexture(c); deckTex.colorSpace = THREE.SRGBColorSpace; deckTex.anisotropy = 8;
+      const matHull = new THREE.MeshStandardMaterial({ color: 0x3f444b, metalness: 0.5, roughness: 0.6 });
+      const matWall = new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.4, roughness: 0.65 });
+      const matDeckTop = new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.85, metalness: 0.2 });
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(52 * VS, 4 * VS, 91 * VS), [matHull, matHull, matDeckTop, matHull, matHull, matHull])); g.children[g.children.length - 1].position.y = -2 * VS;
+      g.add(box(52, 7, 4, matWall, 0, 3.5, 43.5));                                     // the stern's blast wall
+      for (const sx of [-1, 1]) {
+        g.add(box(3, 6, 14, matWall, sx * 24.5, 3, 34));                                // the walls round the stern's corners
+        g.add(box(52 / 2 - 1, 0.25, 0.25, matWall, sx * 12.5, 1.1, -45.4));
+        g.add(box(0.25, 1.1, 91, matWall, sx * 25.9, 0.55, 0));                          // the edge rail
+        for (const sz of [-1, 1]) { const pod = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * VS, 2.6 * VS, 5 * VS, 20), matHull); pod.position.set(sx * 23 * VS, -1.2 * VS, sz * 40 * VS); g.add(pod);
+          g.add(box(5.4, 2.4, 5.4, matWall, sx * 23, 1.2, sz * 40)); }                  // the thruster pods' housings at the corners
+      }
+      // Octagrabber, the robot that holds the booster down, parked in its garage by the stern wall
+      g.add(box(6, 1.6, 6, new THREE.MeshStandardMaterial({ color: 0xc8202d, roughness: 0.6 }), 0, 0.8, 37));
+    }
     else {
       // a landing zone as SpaceX paints them: a round concrete pad, a white ring round its edge, a circle in the middle with
       // the X logo inside it, scorched dark at the centre from earlier landings
