@@ -1220,7 +1220,13 @@ const H_TRUE = VEH === 'ss' ? 123 : VEH === 'fh' ? 70 : 70;            // metres
 // vehicle stops being drawn at its full size on the screen (at the 400x cap) to three times that.
 function flownLineFade(pos) { const full = 400 * H_TRUE / (0.33 * Math.min(1, camera.aspect)) / 1000 * SCALE, d = camera.position.distanceTo(pos); return smooth((d - full) / (2 * full)); }
 function setFlownLine(line, tip, f) { f *= smooth((camera.position.distanceTo(tip.position) - M(3000)) / M(30000)); line.material.opacity = 0.95 * f; line.visible = f > 0.02; tip.visible = tip.visible && f > 0.02; }
-function enlarge(pos) { const cap = 1 + Math.max(0, (pos.length() / SCALE - RE) * 1000 - 1000) / 120; return Math.max(1, Math.min(400, cap, 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE)) / 400; }
+// how much bigger than life the models are drawn: enough to fill about a third of the view at the camera's distance. Once
+// the viewer has the camera, that size stays what it was when they took it (zoomRef: the camera's distance then), so a
+// zoom really brings the model nearer - up to 6x, from where it shrinks on toward true size as the camera keeps coming in
+let zoomRef = null;
+function enlarge(pos) { const cap = 1 + Math.max(0, (pos.length() / SCALE - RE) * 1000 - 1000) / 120; let fit = 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE;
+  if (zoomRef) fit *= Math.min(6, zoomRef / Math.max(1e-12, camera.position.distanceTo(controls.target)));
+  return Math.max(1, Math.min(400, cap, fit)) / 400; }
 const M = (m) => m * SCALE / 1000;                             // metres -> scene units
 const H_BOOST = VEH === 'ss' ? 71 : 47;                          // a landing booster's height, metres
 const matWhite = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, metalness: 0.25, roughness: 0.4, emissive: 0x1a2230, emissiveIntensity: 0.6 });
@@ -2532,7 +2538,7 @@ document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => {
 });
 $('ev-toggle').onclick = () => document.body.classList.toggle('ev-open');
 // a drag on the scene hands the camera to the viewer
-function onCamStart() { userCam = true; if (camAuto) { camAuto = false; markCam(camMode === 'orbit' || camMode === 'site' ? 'chase' : camMode); } }
+function onCamStart() { if (zoomRef == null) zoomRef = camera.position.distanceTo(controls.target); userCam = true; if (camAuto) { camAuto = false; markCam(camMode === 'orbit' || camMode === 'site' ? 'chase' : camMode); } }
 // zoom into what the pointer is on: a wheel turned over the ship / upper stage or a booster first makes it the camera's
 // centre (the camera stays where it is and turns to it, then follows it), so the zoom goes into it instead of past it.
 // Tested once per wheel gesture (the models are detailed enough that testing every notch would stutter).
@@ -2552,7 +2558,7 @@ renderer.domElement.addEventListener('wheel', (e) => {
   if (!best) return;
   const target = simT < sepT ? 's2' : best.who, mode = target === 's2' ? 'chase' : 'booster';   // (still stacked: the whole stack)
   if (camMode === mode && camTarget === target) return;
-  camAuto = false; camMode = mode; camTarget = target; lastTarget = null; userCam = true; markCam(mode);
+  camAuto = false; camMode = mode; camTarget = target; lastTarget = null; userCam = true; zoomRef = best.d; markCam(mode);
 }, { capture: true, passive: true });
 function seek(t) { simT = Math.max(-20, Math.min(END_T, t)); resetTrail(); lastTarget = null; if (camMode !== 'earth' && camMode !== 'pad') setCam(camMode, camTarget); }
 
@@ -2569,7 +2575,7 @@ function focusFn(target) {
   return s2At;
 }
 function setCam(mode, target) {
-  camMode = mode; camTarget = target || (mode === 'booster' ? 'booster' : 's2'); lastTarget = null; userCam = false;
+  camMode = mode; camTarget = target || (mode === 'booster' ? 'booster' : 's2'); lastTarget = null; userCam = false; zoomRef = null;
   if (mode === 'earth') {
     const t = Math.max(1, simT), r = s2At(t), n = r.clone().cross(s2At(t + 1).sub(s2At(t - 1)));
     const dir = r.clone().normalize(); if (n.lengthSq() > 1e-18) dir.multiplyScalar(0.8).addScaledVector(n.normalize(), 0.6).normalize();
