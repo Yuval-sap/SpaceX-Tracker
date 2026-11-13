@@ -1984,7 +1984,7 @@ function namedSerialCanvas(name, serial) {
   g.fillStyle = '#f2f2f0'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
   const gap = pn * 0.25, total = pn * 0.75 + gap + ps * 0.74, top = -total / 2;
   g.strokeStyle = 'rgba(8, 9, 11, 0.95)'; g.lineJoin = 'round';                  // a fine black outline under the white
-  g.font = F(pn); g.lineWidth = Math.max(3, pn * 0.05); g.strokeText(name, 0, top + pn * 0.75); g.fillText(name, 0, top + pn * 0.75);
+  g.font = F(pn); g.lineWidth = Math.max(3, ps * 0.03);   /* (the same outline as the serial's, not thinner) */ g.strokeText(name, 0, top + pn * 0.75); g.fillText(name, 0, top + pn * 0.75);
   g.font = F(ps); g.lineWidth = Math.max(3, ps * 0.03); g.strokeText(serial, 0, top + pn * 0.75 + gap + ps * 0.74); g.fillText(serial, 0, top + pn * 0.75 + gap + ps * 0.74);
   return c;
 }
@@ -2034,13 +2034,15 @@ function serialCanvas(text, upward = false) {
   };
   // (per photos of Ship 42: the tube runs down to just above the band across the top of the aft skirt, widens there into
   // a thicker foot, and the foot ends ~3.3 m above the ship's base in a rounded hood, open and dark underneath)
-  const RW_FOOT_TOP = S0 + 6.3, RW_END = S0 + 3.3;
-  const fTop = ringY(59) + 0.85, groupsFor = [[sLox, 's-tanks', RW_FOOT_TOP, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
+  // (Ship 42 on; earlier ships keep the tube all the way down the aft skirt, rounded off at its foot)
+  const S42 = sh >= 42, RW_FOOT_TOP = S0 + 6.3, RW_END = S0 + 3.3;
+  const fTop = ringY(59) + 0.85, groupsFor = S42 ? [[sLox, 's-tanks', RW_FOOT_TOP, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]]
+    : [[sAft, 's-tanks', S0 + 0.8, S0 + 5.2], [sLox, 's-tanks', S0 + 5.2, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
   for (const da of [-0.36, 0.36]) {
     const a = LEEWARD + da;
     for (const [grp, pid, ya, yb] of groupsFor) {
       const len = yb - ya, pts = [];
-      const capTop = grp === sPay, capBot = false;
+      const capTop = grp === sPay, capBot = grp === sAft;
       for (let k = 0; k <= 12; k++) { const u = k / 12; pts.push([capBot ? 0.28 * Math.sin(u * Math.PI / 2) : 0.28, ya + u * Math.min(0.5, len)]); }
       pts.push([0.28, yb - (capTop ? 0.5 : 0)]);
       if (capTop) for (let k = 1; k <= 12; k++) { const u = k / 12; pts.push([Math.max(0.001, 0.28 * Math.cos(u * Math.PI / 2)), yb - 0.5 + 0.5 * Math.sin(u * Math.PI / 2)]); }
@@ -2057,7 +2059,7 @@ function serialCanvas(text, upward = false) {
       }
     }
     // the foot: out from the tube's 0.28 m to 0.38 m over 0.4 m, straight down, then the hood's rounded lower edge
-    {
+    if (S42) {
       const pts = [[0.3, RW_END + 0.02]];
       for (let k = 0; k <= 8; k++) { const u = k / 8; pts.push([0.3 + 0.08 * Math.sin(u * Math.PI / 2), RW_END + 0.02 + 0.2 * (1 - Math.cos(u * Math.PI / 2))]); }
       pts.push([0.38, RW_FOOT_TOP - 0.45]);
@@ -2075,8 +2077,8 @@ function serialCanvas(text, upward = false) {
     }
   }
   // the band round the top of the aft skirt (on the steel side, between the aft flaps): a slightly proud ring - a comb
-  // of short vertical stringers above, a row of vertical slots, plain steel below (photos of Ship 42)
-  {
+  // of short vertical stringers above, a row of vertical slots, plain steel below (photos of Ship 42; Ship 42 on)
+  if (S42) {
     const yb0 = S0 + 3.9, yb1 = S0 + 5.6, half = 1.42, arcM = 2 * half * (R + 0.05);
     const W = 4096, H = 256, c = mkCanvas(W, H), g = c.getContext('2d'), pxm = H / (yb1 - yb0), py = m => H - m * pxm;   // (v: height above the band's foot)
     g.fillStyle = '#9a9ea5'; g.fillRect(0, 0, W, H);
@@ -2104,11 +2106,11 @@ function serialCanvas(text, upward = false) {
     const m = new THREE.Mesh(geo, mat); m.userData.part = 's-tanks'; m.userData.label = 'Aft skirt stringer band'; m.castShadow = m.receiveShadow = true; sAft.add(m);
   }
   // the logo again, white, low on the aft skirt under the raceways (photo of Ship 42), its X centred the same way
-  { const ly = ringY(40); decal(sAft, 's-tanks', logoCanvas('#f1f2f4'), ly, LEEWARD + (0.5 - 0.303) * 1.9 / hullRadius(ly), 1.9, 0.95, 0.05); }   // (mid-ring, clear of the welds)
+  if (S42) { const ly = ringY(40); decal(sAft, 's-tanks', logoCanvas('#f1f2f4'), ly, LEEWARD + (0.5 - 0.303) * 1.9 / hullRadius(ly), 1.9, 0.95, 0.05); }   // (mid-ring, clear of the welds)
   // three vents below the Pez slot (photos of Ship 42): the flush port between the raceways' tops (above), a small round
   // hole left of the left raceway on the methane tank, and a bigger one right of the right raceway low on the oxygen
-  // tank, inside a ring of small slots
-  {
+  // tank, inside a ring of small slots (Ship 42 on)
+  if (S42) {
     const holeCanvas = (ring) => {
       const c = mkCanvas(256, 256), g = c.getContext('2d');
       if (ring) for (const [rr, n, w] of [[96, 30, 5], [116, 38, 4]]) for (let i = 0; i < n; i++) {
