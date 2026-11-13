@@ -1519,7 +1519,7 @@ async function loadStarshipModel() {
     if (sv) q.set('s', sv); if (bv) q.set('b', bv); if (nv) q.set('n', nv);
     try { await Promise.race([document.fonts.load("700 84px 'Stardos Stencil'"), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}   // the serials' stencil
     const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location',
-      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD };');
+      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD, R, satR };');
     return run(THREE, mergeGeometries, renderer, new THREE.Scene(), MOBILE, renderer.capabilities.getMaxAnisotropy(), { search: '?' + q.toString() });
   } catch (e) { console.warn('launch sim: the 3D Starship model could not be used, drawing the simple one', e); return null; }
 }
@@ -1538,9 +1538,9 @@ function ssStage(which) {
   const drop = new Set(SSM.fluids);
   SSM.engines.forEach(en => drop.add(en.e));                     // (each engine's flame, glow and pick proxy; its metal is batched apart)
   if (SSM.deployer) { SSM.deployer.sats.forEach(x => drop.add(x)); drop.add(SSM.deployer.car); }
+  drop.forEach(o => { if (o.parent) o.parent.remove(o); });       // (whole, first: the satellite kept as the template keeps its parts)
   const kill = [];
   body.traverse(o => {
-    if (drop.has(o)) { kill.push(o); return; }
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     if (mats.every(mt => innerMats.has(mt) || mt.isShaderMaterial || mt.visible === false)) kill.push(o);
@@ -1584,19 +1584,22 @@ function ship3d() {
   ud.heat = heatSprite(22, 5, 62); ud.heat2 = heatSprite(5, 4, 46); g.add(ud.heat, ud.heat2);
   const d = SSM.deployer;
   ud.pezY = d ? d.YC - 72.8 : PEZ_Y;                             // (the Pez slot's height on this ship)
-  // the Starlink V3 satellites it pushes out of its side - the 3D page's own satellite - one after the other
-  if (A.s2.deploy != null) {
-    const d0 = A.s2.deploy, d1 = A.s2.deployEnd != null && A.s2.deployEnd > d0 ? A.s2.deployEnd : d0 + 600, N = 10;
-    const tpl = d && d.sats[0];
-    if (tpl) tpl.traverse(o => { if (o.isMesh) { o.material.clippingPlanes = null; if (o.material.isMeshStandardMaterial) { o.material.envMap = SS_ENV; o.material.envMapIntensity = 0.75; } o.material.needsUpdate = true; } });
-    const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
-    ud.pez = []; ud.pezT = []; ud.pezEnd = d1 + 1500;
-    for (let i = 0; i < N; i++) {
-      let m;
-      if (tpl) { m = new THREE.Group(); const s = tpl.clone(); s.position.set(0, 0, 0); s.rotation.set(0, Math.PI / 2, 0); m.add(s); m.scale.setScalar(VS); }   // (its long axis out through the slot)
-      else m = new THREE.Mesh(new THREE.BoxGeometry(6.2 * VS, 0.35 * VS, 3.2 * VS), slab);
-      m.visible = false; g.add(m); ud.pez.push(m); ud.pezT.push(d0 + (i + 0.5) / N * (d1 - d0));
-    }
+  // the Starlink V3 satellites: the mission's own count (the 3D page's too), each the 3D page's satellite, pushed out of
+  // the Pez slot one after the other across the deploy, in the 3D page's own motion (its satR: gathering speed inside
+  // the bay, then a steady 1.8 m/s straight out, tumbling a little once clear of the hull), then drifting on away.
+  // One instanced mesh per material, so all of them cost a handful of draws.
+  if (A.s2.deploy != null && d) {
+    const d0 = A.s2.deploy, d1 = A.s2.deployEnd != null && A.s2.deployEnd > d0 ? A.s2.deployEnd : d0 + 600, N = d.N;
+    const tpl = d.sats[0]; tpl.updateMatrixWorld(true);
+    const inv = tpl.matrixWorld.clone().invert(), grp = new THREE.Group(), parts = [];
+    grp.scale.setScalar(VS); g.add(grp);
+    tpl.traverse(o => {
+      if (!o.isMesh) return;
+      const mt = o.material; mt.clippingPlanes = null; if (mt.isMeshStandardMaterial) { mt.envMap = SS_ENV; mt.envMapIntensity = 0.75; } mt.needsUpdate = true;
+      const im = new THREE.InstancedMesh(o.geometry, mt, N); im.frustumCulled = false; im.renderOrder = 3; grp.add(im);
+      parts.push([im, new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)]);
+    });
+    ud.sat3 = { grp, parts, N, RS: d.RS, t: Array.from({ length: N }, (_, i) => d0 + (i + 0.5) / N * (d1 - d0)), end: d1 + 1500 };
   }
   ud.plume = plumeOn(g, 70, 4, 0x8fd3ff);
   return g;
@@ -2530,6 +2533,27 @@ document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => {
 $('ev-toggle').onclick = () => document.body.classList.toggle('ev-open');
 // a drag on the scene hands the camera to the viewer
 function onCamStart() { userCam = true; if (camAuto) { camAuto = false; markCam(camMode === 'orbit' || camMode === 'site' ? 'chase' : camMode); } }
+// zoom into what the pointer is on: a wheel turned over the ship / upper stage or a booster first makes it the camera's
+// centre (the camera stays where it is and turns to it, then follows it), so the zoom goes into it instead of past it.
+// Tested once per wheel gesture (the models are detailed enough that testing every notch would stutter).
+const pickRay = new THREE.Raycaster(), pickNdc = new THREE.Vector2();
+let lastWheel = 0;
+renderer.domElement.addEventListener('wheel', (e) => {
+  const now = performance.now(), fresh = now - lastWheel > 350; lastWheel = now;
+  if (!fresh) return;
+  pickNdc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  pickRay.setFromCamera(pickNdc, camera);
+  let best = null;
+  [[upper, 's2'], ...boosterDefs.map(bd => [bd.obj, bd.who === 'side' ? 'sides' : 'booster'])].forEach(([o, who]) => {
+    if (!o.visible) return;
+    const h = pickRay.intersectObject(o, true).find(x => x.object.visible && x.object.isMesh && !(x.object.material && (x.object.material.isShaderMaterial || x.object.material.blending === THREE.AdditiveBlending)));
+    if (h && (!best || h.distance < best.d)) best = { d: h.distance, who };
+  });
+  if (!best) return;
+  const target = simT < sepT ? 's2' : best.who, mode = target === 's2' ? 'chase' : 'booster';   // (still stacked: the whole stack)
+  if (camMode === mode && camTarget === target) return;
+  camAuto = false; camMode = mode; camTarget = target; lastTarget = null; userCam = true; markCam(mode);
+}, { capture: true, passive: true });
 function seek(t) { simT = Math.max(-20, Math.min(END_T, t)); resetTrail(); lastTarget = null; if (camMode !== 'earth' && camMode !== 'pad') setCam(camMode, camTarget); }
 
 // ---------------------------------------------------------------- cameras
@@ -2601,9 +2625,12 @@ function autoCamNow(force) {
 const EV_TIMES = EVENTS.map(e => e.t).concat(boosterDefs.map(b => b.landT)).sort((a, b) => a - b);
 const LANDING_WINDOWS = boosterDefs.filter(b => b.land.kind !== 'expend' && b.lbStart != null).map(b => [b.lbStart - 8, b.landT + 10])
   .concat(VEH === 'ss' && A.s2.lbStart != null ? [[A.s2.lbStart - 20, A.s2.land + 12]] : []);
+// each Starlink satellite's way out of the slot (~12 s) at x4, so it can be seen leaving; on to the next one at speed
+const DEPLOY_T = (upper.userData.sat3 || {}).t || [];
 function autoSpeed(t) {
   if (t < 0) return 2;
   if (LANDING_WINDOWS.some(([a, b]) => t >= a && t <= b)) return 1;
+  if (DEPLOY_T.some(x => t >= x - 1.5 && t <= x + 11)) return 4;
   let prev = -Infinity, next = Infinity;
   for (const x of EV_TIMES) { if (x <= t) prev = x; else { next = x; break; } }
   const near = Math.min(t - prev, next - t);
@@ -2674,6 +2701,25 @@ function animatePayload() {
   if (ud.sats) { const age = simT - dep, sp = age > 0 ? 1 - Math.exp(-age / 90) : 0; ud.sats.forEach((m, i) => { m.visible = simT >= fT && age < 2400; m.position.y = (13 + i * 0.3 + sp * (10 + i * 3.4)) * VS; m.rotation.x = sp * 0.5 * (i % 2 ? 1 : -1); m.rotation.y = sp * i * 0.21; }); }
   if (ud.sat) { const age = simT - dep, a = Math.max(0, age), open = smooth((age - 15) / 25); ud.sat.visible = simT >= fT && age < 2400; ud.sat.position.y = (15.5 + Math.min(90, a * 0.9)) * VS; ud.panels.forEach(p => { p.scale.x = 0.12 + 0.88 * open; }); }
   if (ud.capsule) ud.capsule.position.y = Math.min(110, Math.max(0, simT - dep) * 0.8) * VS;
+  if (ud.sat3) {
+    const S = ud.sat3, y0 = ud.pezY, on = simT >= S.t[0] && simT < S.end; S.grp.visible = on;
+    if (on) {
+      const mm = new THREE.Matrix4(), mi = new THREE.Matrix4(), q = new THREE.Quaternion(), qx = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), none = new THREE.Vector3(0, 0, 0);
+      for (let i = 0; i < S.N; i++) {
+        const w = simT - S.t[i];
+        if (w < 0) mm.makeScale(0, 0, 0);
+        else {
+          // = the 3D page's placeDeploy, out through the slot (-z here); each one leaves a hair off the line of the last
+          const r = SSM.satR(S.RS, w), out = Math.max(0, r - (SSM.R + 0.6)), f = out * out / (out + 3), tumble = Math.min(1, f / 18) * 0.5;
+          const side = (((i * 2654435761) >>> 0) % 1000 / 1000 - 0.5) * 0.08 * out;
+          e.set(0, Math.PI / 2, tumble * 0.4); q.setFromEuler(e).multiply(qx.setFromAxisAngle(new THREE.Vector3(1, 0, 0), tumble * 0.25));
+          mm.compose(p.set(side, y0 + f * 0.06, -r), q, one);
+        }
+        S.parts.forEach(([im, loc]) => im.setMatrixAt(i, mi.multiplyMatrices(mm, loc)));
+      }
+      S.parts.forEach(([im]) => { im.instanceMatrix.needsUpdate = true; });
+    }
+  }
   if (ud.pez) ud.pez.forEach((m, i) => { const age = simT - ud.pezT[i], a = Math.max(0, age); m.visible = age >= 0 && simT < ud.pezEnd; m.position.set(0, ((ud.pezY ?? PEZ_Y) - 110 * (1 - Math.exp(-a / 240))) * VS, -(6.2 + 70 * (1 - Math.exp(-a / 45))) * VS); m.rotation.y = a * 0.01; });
 }
 function frame() {
@@ -2685,7 +2731,11 @@ function frame() {
   }
   scrub.value = simT;
   if (camAuto) autoCamNow(false);
-  earthGroup.rotation.y = gmst(T0 + simT * 1000);
+  { const rot = gmst(T0 + simT * 1000), dRot = rot - earthGroup.rotation.y;
+    earthGroup.rotation.y = rot;
+    // a ground view the viewer has taken over (drag or zoom) stays put on the ground: it turns with the Earth. The scene
+    // is in the stars' frame, so left alone it was swept off sideways at the Earth's turning speed times the playback's
+    if ((camMode === 'pad' || camMode === 'site') && userCam && dRot) { const q = new THREE.Quaternion().setFromAxisAngle(Y, dRot); camera.position.applyQuaternion(q); controls.target.applyQuaternion(q); } }
   // the Sun where it really is at this moment of the flight: day, night and twilight follow the clock
   SUN.copy(sunDir(T0 + simT * 1000));
   { // stars fade out for a camera in daylight low in the atmosphere
