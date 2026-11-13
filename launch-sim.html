@@ -68,7 +68,12 @@
   #eng-svg .e.on { fill: #f7f8fa; stroke: #fff; }
 
   #events { top: 16px; left: 16px; width: 300px; max-height: calc(100vh - 170px); overflow: auto; padding: 10px; scrollbar-width: thin; }
-  #events h3 { margin: 4px 8px 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
+  #events h3 { margin: 4px 8px 8px; font-size: 13px; color: var(--muted); font-weight: 500; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  #ev-fold { padding: 2px 10px; font: 500 11px 'Rubik', sans-serif; color: var(--muted); background: transparent; border: 0; border-radius: 999px; }
+  @media (hover: hover) { #ev-fold:hover { color: #fff; background: rgba(255, 255, 255, 0.08); } }
+  #events.folded #ev-list { display: none; }
+  #events.folded h3 { margin-bottom: 4px; }
+  @media (max-width: 760px) { #ev-fold { display: none; } #events.folded #ev-list { display: block; } }
   .ev-row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 8px; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
   .ev-row:hover { background: rgba(255, 255, 255, 0.05); }
   .ev-row .t { font: 500 11.5px 'Orbitron', sans-serif; color: #71717a; direction: ltr; text-align: start; padding-top: 3px; white-space: nowrap; }
@@ -209,7 +214,7 @@
 <button id="close" type="button" aria-label="Close">×</button>
 <button id="cine-exit" type="button" aria-label="">✕</button>
 <div id="pip-frame"><span id="pip-label"></span></div>
-<div id="events" class="panel"><h3 id="ev-h"></h3><div id="ev-list"></div></div>
+<div id="events" class="panel"><h3 id="ev-h-row"><span id="ev-h"></span><button type="button" id="ev-fold"></button></h3><div id="ev-list"></div></div>
 
 <div id="controls" class="panel">
   <div class="row">
@@ -699,7 +704,44 @@ const ascDr = (t) => {
   const f = Math.min(drPost.length - 1.001, t - meco), i = Math.floor(f);
   return drPre[145] + drPost[i] + (drPost[i + 1] - drPost[i]) * (f - i);
 };
-const fixedOnTrack = (alt, dr) => { const [la, lo] = destination(PAD.lat, PAD.lon, AZIMUTH, dr); return ecef(la, lo, alt); };
+// ---- the ground's own height where the pad stands on a hill (Vandenberg: SLC-4E ~154 m up on its terrace, LZ-4 ~120 m,
+// the ocean 3 km west, down a slope). Elevation from the open Terrarium tiles (Mapzen's, on AWS Open Data - from USGS
+// 3DEP), sampled into a mesh of the real ground round the pad (draped with the Sentinel-2 imagery), and the pad, the
+// landing zone and everything on them set at their real heights. Elsewhere (the Cape, Starbase: a few metres above the
+// sea) the ground stays the flat sea-level globe. If the tiles can't be had, Vandenberg is flat too, as before.
+const GROUND_R = 9;                                              // km: how far the real ground reaches, faded to sea level over its last 2 km
+const TERR = isVSFB ? await (async () => {
+  try {
+    const z = 13, n = 2 ** z, K = 2;
+    const tx = (lon) => (lon + 180) / 360 * n, ty = (lat) => (1 - Math.asinh(Math.tan(lat * DEG)) / Math.PI) / 2 * n;
+    const cx = Math.floor(tx(PAD.lon)), cy = Math.floor(ty(PAD.lat)), W = (2 * K + 1) * 256;
+    const cv = document.createElement('canvas'); cv.width = cv.height = W; const g = cv.getContext('2d', { willReadFrequently: true });
+    const jobs = [];
+    for (let dy = -K; dy <= K; dy++) for (let dx = -K; dx <= K; dx++) jobs.push((async () => {
+      const r = await fetch(`https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${z}/${cx + dx}/${cy + dy}.png`, { mode: 'cors' });
+      if (!r.ok) throw new Error('elevation tile ' + r.status);
+      g.drawImage(await createImageBitmap(await r.blob()), (dx + K) * 256, (dy + K) * 256);
+    })());
+    await Promise.race([Promise.all(jobs), new Promise((_, no) => setTimeout(() => no(new Error('elevation timeout')), 8000))]);
+    const d = g.getImageData(0, 0, W, W).data;
+    const at = (i, j) => { i = Math.max(0, Math.min(W - 1, i)); j = Math.max(0, Math.min(W - 1, j)); const k = (j * W + i) * 4; return d[k] * 256 + d[k + 1] + d[k + 2] / 256 - 32768; };
+    const hAt = (lat, lon) => {
+      const px = (tx(lon) - (cx - K)) * 256 - 0.5, py = (ty(lat) - (cy - K)) * 256 - 0.5, i = Math.floor(px), j = Math.floor(py), fx = px - i, fy = py - j;
+      const h = (at(i, j) * (1 - fx) + at(i + 1, j) * fx) * (1 - fy) + (at(i, j + 1) * (1 - fx) + at(i + 1, j + 1) * fx) * fy;
+      return Math.max(0, h);                                     // (the sea at sea level)
+    };
+    return { hAt };
+  } catch (e) { console.warn('launch sim: no elevation data, the ground stays flat', e); return null; }
+})() : null;
+// the ground's height in metres (0 at sea level, and everywhere away from a hill pad)
+function groundM(lat, lon) {
+  if (!TERR) return 0;
+  const dk = Math.hypot((lon - PAD.lon) * Math.cos(PAD.lat * DEG) * 111.32, (lat - PAD.lat) * 110.574), f = 1 - smooth((dk - (GROUND_R - 2)) / 2);
+  return f > 0 ? TERR.hAt(lat, lon) * f : 0;
+}
+const H0 = groundM(PAD.lat, PAD.lon) / 1000;                       // km: the pad's own height
+// (paths are flown above the ground they leave: the pad's height under the vehicle low down, gone by 6 km up)
+const fixedOnTrack = (alt, dr) => { const [la, lo] = destination(PAD.lat, PAD.lon, AZIMUTH, dr); return ecef(la, lo, alt + H0 * (1 - smooth(alt / 6))); };
 
 // ---------------------------------------------------------------- the second stage / ship: ascent, orbit, and home again
 const vcirc = (rk) => Math.sqrt(MU / rk);
@@ -789,7 +831,7 @@ function shipApproach() {
   return (shipApproachV = a.normalize());
 }
 function s2Inertial(t) {                                         // scene units
-  if (t < 0) return toInertial(ecef(PAD.lat, PAD.lon, MOUNT_H / 1000), t);
+  if (t < 0) return toInertial(ecef(PAD.lat, PAD.lon, H0 + MOUNT_H / 1000), t);
   if (t <= seco1) return ascentInertial(t);
   if (homeA == null || t < homeA) return orbitAt(t).multiplyScalar(SCALE);
   const land = A.s2.land;
@@ -846,13 +888,13 @@ function makeBooster(bd) {
     if (VEH === 'fh' && !bd.land.at) landAt = bd.side > 0 ? LZ['LZ-1'] : LZ['LZ-2'];
   }
   bd.landAt = landAt;
-  const landFixed = landAt ? ecef(landAt[0], landAt[1], 0).normalize() : null;
+  const landFixed = landAt ? ecef(landAt[0], landAt[1], 0).normalize() : null, landH = landAt && k !== 'asds' ? groundM(landAt[0], landAt[1]) / 1000 : H0;
   bd.fixedAt = (t) => {
     const tt = Math.min(t, bd.landT);
     const p = fixedOnTrack(bd.alt(tt), bd.dr(tt));
     if (!landFixed) return p;
     const r = p.length(), u = p.clone().normalize().lerp(landFixed, smooth((tt - sep) / (bd.landT - sep))).normalize();
-    return u.multiplyScalar(r);
+    return u.multiplyScalar(r + (landH - H0) * SCALE * smooth((tt - (bd.landT - 90)) / 90));   // (onto the landing zone's own height)
   };
   bd.landFixed = k === 'expend' ? null : bd.fixedAt(bd.landT);
   bd.burns = [[0, bd.who === 'side' ? beco : meco]];
@@ -879,7 +921,7 @@ function buildPath(fn, t0, t1) {
 function idxAt(path, t) { let lo = 0, hi = path.length - 1; if (t <= path[0].t) return 0; if (t >= path[hi].t) return hi; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (path[m].t <= t) lo = m; else hi = m; } return lo; }
 function sample(path, t) { const i = idxAt(path, t), a = path[i], b = path[Math.min(i + 1, path.length - 1)]; if (b === a || b.t === a.t) return a.p.clone(); return a.p.clone().lerp(b.p, clamp01((t - a.t) / (b.t - a.t))); }
 const s2Path = buildPath(s2Inertial, 0, END_T);
-const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, MOUNT_H / 1000), t) : t > END_T ? s2Inertial(t) : sample(s2Path, t));   // (past the end straight from the flight: a frozen point would read as Earth-rotation speed and spin the ship)
+const s2At = (t) => (t < 0 ? toInertial(ecef(PAD.lat, PAD.lon, H0 + MOUNT_H / 1000), t) : t > END_T ? s2Inertial(t) : sample(s2Path, t));   // (past the end straight from the flight: a frozen point would read as Earth-rotation speed and spin the ship)
 boosterDefs.forEach(bd => {
   const tEnd = bd.landT + (bd.land.kind === 'expend' ? 0 : 0);
   bd.path = buildPath(t => boosterInertial(bd, t), bd.sep, tEnd);
@@ -1116,7 +1158,7 @@ function clearLabel(lbl, obj, lenM) {
   const el = lbl.element, w = el.offsetWidth, h = el.offsetHeight; if (!w) return;
   // the vehicle's two ends on the screen: its engines (the model's origin) and the tag's anchor at its nose
   if (obj) lpA.copy(obj.position); else lpA.copy(pS2Now);
-  lbl.getWorldPosition(lpB);
+  camera.updateMatrixWorld(); lbl.updateWorldMatrix(true, false); lbl.getWorldPosition(lpB);   // (with this frame's placing: a stale one threw the tag off for a frame)
   const toPx = (v) => { const q = v.clone().project(camera); return [(q.x + 1) / 2 * innerWidth, (1 - q.y) / 2 * innerHeight, q.z]; };
   const a = toPx(lpA), b = toPx(lpB);
   let ux = b[0] - a[0], uy = b[1] - a[1], L = Math.hypot(ux, uy);
@@ -1225,7 +1267,9 @@ function setFlownLine(line, tip, f) { f *= smooth((camera.position.distanceTo(ti
 // zoom really brings the model nearer - up to 6x, from where it shrinks on toward true size as the camera keeps coming in
 let zoomRef = null;
 function enlarge(pos) { const cap = 1 + Math.max(0, (pos.length() / SCALE - RE) * 1000 - 1000) / 120; let fit = 0.33 * Math.min(1, camera.aspect) * camera.position.distanceTo(pos) / SCALE * 1000 / H_TRUE;
-  if (zoomRef) fit *= Math.min(6, zoomRef / Math.max(1e-12, camera.position.distanceTo(controls.target)));
+  // (measured to the followed vehicle's point on its path, not to the view's centre: the centre is the model's middle, which
+  // moves with the size - measured to it, size and centre fed each other and the zoomed-in vehicle shook)
+  if (zoomRef) fit *= Math.min(6, zoomRef / Math.max(1e-12, camera.position.distanceTo(lastTarget || controls.target)));
   return Math.max(1, Math.min(400, cap, fit)) / 400; }
 const M = (m) => m * SCALE / 1000;                             // metres -> scene units
 const H_BOOST = VEH === 'ss' ? 71 : 47;                          // a landing booster's height, metres
@@ -1744,7 +1788,9 @@ function ssStage(which) {
   Object.values(SSM.parts).forEach(p => Object.entries(p.cache).forEach(([k, mt]) => { if (k.includes('@in')) innerMats.add(mt); }));
   const drop = new Set(SSM.fluids);
   SSM.engines.forEach(en => drop.add(en.e));                     // (each engine's flame, glow and pick proxy; its metal is batched apart)
-  if (SSM.deployer) { SSM.deployer.sats.forEach(x => drop.add(x)); drop.add(SSM.deployer.car); }
+  if (SSM.deployer) SSM.deployer.sats.forEach(x => drop.add(x));
+  const keepCar = SSM.deployer ? SSM.deployer.car : null;
+  const inCar = (o) => { for (let q = o; q; q = q.parent) if (q === keepCar) return true; return false; };
   drop.forEach(o => { if (o.parent) o.parent.remove(o); });       // (whole, first: the satellite kept as the template keeps its parts)
   // (inside parts that show through the open ends stay: the ship's engines hang from its thrust structure under the aft
   // dome, inside the engine shield - without them they floated in an empty skirt; the booster's domes show below and
@@ -1754,12 +1800,13 @@ function ssStage(which) {
   body.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (inCar(o)) return;
     if (mats.every(mt => mt.isShaderMaterial || mt.visible === false) || (mats.every(mt => innerMats.has(mt)) && !SEEN(o))) kill.push(o);
   });
   kill.forEach(o => { if (o.parent) o.parent.remove(o); });
   body.updateMatrixWorld(true);
   const inv = body.matrixWorld.clone().invert(), buckets = new Map();
-  body.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) { if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(o); } });
+  body.traverse(o => { if (o.isMesh && !Array.isArray(o.material) && !inCar(o)) { if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(o); } });
   for (const [mt, list] of buckets) {
     if (list.length < 2) continue;
     const geos = list.map(o => {
@@ -2149,7 +2196,32 @@ function lattice(w, h, d, x, y, z) {
   const core = new THREE.Mesh(new THREE.BoxGeometry(w * 0.35 * VS, h * VS, d * 0.35 * VS), matTower);
   grp.add(skin, core); grp.position.set(x * VS, y * VS, z * VS); return grp;
 }
-const padFixed = ecef(PAD.lat, PAD.lon, 0);
+const padFixed = ecef(PAD.lat, PAD.lon, H0);
+if (TERR) {
+  { const cr = document.getElementById('credit'); if (cr) cr.insertAdjacentHTML('beforeend', ' · Elevation: Terrarium (Mapzen, AWS Open Data; USGS 3DEP)'); }
+  const N = 150, E = GROUND_R, cos0 = Math.cos(PAD.lat * DEG), mapK = (u) => E * (0.16 * u + 0.84 * u * u * u);   // (fine near the pad)
+  const lonSpan = E / (111.32 * cos0), latSpan = E / 110.574, center = ecef(PAD.lat, PAD.lon, 0);
+  const pos = [], uv = [], idx = [];
+  for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+    const ex = mapK(i / N * 2 - 1), ny = mapK(j / N * 2 - 1), lat = PAD.lat + ny / 110.574, lon = PAD.lon + ex / (111.32 * cos0);
+    const v = ecef(lat, lon, groundM(lat, lon) / 1000).sub(center); pos.push(v.x, v.y, v.z);
+    uv.push((lon - (PAD.lon - lonSpan)) / (2 * lonSpan), (lat - (PAD.lat - latSpan)) / (2 * latSpan));
+  }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, b = a + N + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+  // the imagery over it: Sentinel-2 cloudless tiles (the same as the ground elsewhere), stitched into one picture
+  const cv = document.createElement('canvas'); cv.width = 1536; cv.height = 1280; const cg = cv.getContext('2d'); cg.fillStyle = '#6b6450'; cg.fillRect(0, 0, cv.width, cv.height);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const zE = 12, sp = 180 / 2 ** zE, lon0 = PAD.lon - lonSpan, lat1 = PAD.lat + latSpan;
+  for (let ty = Math.floor((90 - lat1) / sp); ty <= Math.floor((90 - (PAD.lat - latSpan)) / sp); ty++) for (let tx = Math.floor((lon0 + 180) / sp); tx <= Math.floor((PAD.lon + lonSpan + 180) / sp); tx++) {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { const x0 = ((tx * sp - 180) - lon0) / (2 * lonSpan) * cv.width, y0 = ((lat1 - (90 - ty * sp))) / (2 * latSpan) * cv.height, w = sp / (2 * lonSpan) * cv.width, h = sp / (2 * latSpan) * cv.height;
+      cg.drawImage(im, x0, y0, w, h); tex.needsUpdate = true; };
+    im.src = EOX(zE, ty, tx);
+  }
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0 }));
+  mesh.position.copy(center); mesh.renderOrder = -18; earthGroup.add(mesh);
+}
 const padStruct = addStructure(padFixed, g => {
   if (VEH === 'ss') {
     // Starbase's launch site, both pads where they stand (placed from the aerial photo: Pad 1 on the old concrete, Pad 2
@@ -2339,7 +2411,7 @@ const padStruct = addStructure(padFixed, g => {
 });
 boosterDefs.forEach(bd => {
   if (!bd.landFixed || bd.land.kind === 'catch') return;
-  addStructure(bd.landFixed.clone().setLength(R), g => {
+  addStructure(bd.land.kind === 'asds' ? bd.landFixed.clone().setLength(R) : ecef(bd.landAt[0], bd.landAt[1], groundM(bd.landAt[0], bd.landAt[1]) / 1000), g => {
     g.userData.showFrom = bd.landT - 90;   // away from the ground cameras: only when its booster is coming in
     if (bd.land.kind === 'asds') {
       // the droneship (after photos of "Of Course I Still Love You" / "A Shortfall of Gravitas"): a grey barge 91 x 52 m,
@@ -2453,7 +2525,7 @@ scene.add(puffs);
 const flameLight = new THREE.PointLight(0xffa155, 0, 1, 0); scene.add(flameLight);
 const emitters = [{ fixed: padFixed, t0: -2.5, dur: 13, life: 15, R: 240, rise: 110, share: 3, a: 0.6 }];
 if (VEH === 'ss' && isStarbase) [1, -1].forEach(sx => emitters.push({ fixed: padFixed, mouth: [sx * 20, 0], go: 260, t0: -1, dur: 9, life: 9, R: 45, rise: 70, share: 2, a: 0.7, hot: true }));
-boosterDefs.forEach(bd => { if (bd.landFixed) emitters.push({ fixed: bd.landFixed.clone().setLength(R), t0: bd.landT - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 }); });
+boosterDefs.forEach(bd => { if (bd.landFixed) emitters.push({ fixed: bd.land.kind === 'asds' || !bd.landAt ? bd.landFixed.clone().setLength(R) : ecef(bd.landAt[0], bd.landAt[1], groundM(bd.landAt[0], bd.landAt[1]) / 1000), t0: bd.landT - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 }); });
 if (VEH === 'ss') emitters.push({ fixed: toFixed(s2At(A.s2.land), A.s2.land).setLength(R), t0: A.s2.land - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 });
 emitters.forEach(e => { e.b = groundBasis(e.fixed); e.lit = THREE.MathUtils.smoothstep(toInertial(e.fixed, e.t0).normalize().dot(SUN), -0.1, 0.2); });
 const puffSeed = (() => { const tot = emitters.reduce((a, e) => a + e.share, 0), out = []; let k = 0;
@@ -2600,6 +2672,12 @@ function emit(p, color) {
 // the readout folded to its title line, or open (remembered on this device)
 try { if (localStorage.getItem('lsim_hud_folded') === '1') document.getElementById('hud-top').classList.add('folded'); } catch (e) {}
 let hudAutoFolded = false, hudTouched = false;              // (a tap on it during a landing leaves it as the viewer set it)
+try { if (localStorage.getItem('lsim_ev_folded') === '1') document.getElementById('events').classList.add('folded'); } catch (e) {}
+document.getElementById('ev-fold').onclick = () => {
+  const f = document.getElementById('events').classList.toggle('folded');
+  try { localStorage.setItem('lsim_ev_folded', f ? '1' : '0'); } catch (e) {}
+  document.getElementById('ev-fold').textContent = f ? I.expand : I.collapse;
+};
 document.getElementById('hud-fold').onclick = () => {
   hudAutoFolded = false; hudTouched = true;
   const f = document.getElementById('hud-top').classList.toggle('folded');
@@ -2837,6 +2915,7 @@ function uiTexts() {
   $('g-l').textContent = I.gforce;
   $('hud-fold').textContent = $('hud-top').classList.contains('folded') ? I.expand : I.collapse;
   $('ev-h').textContent = I.timeline;
+  $('ev-fold').textContent = $('events').classList.contains('folded') ? I.expand : I.collapse;
   $('speed-l').textContent = I.speed;
   $('cam-l').textContent = I.camera;
   $('speed-auto').textContent = I.auto;
@@ -2946,7 +3025,7 @@ document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => {
 });
 $('ev-toggle').onclick = () => document.body.classList.toggle('ev-open');
 // a drag on the scene hands the camera to the viewer
-function onCamStart() { if (zoomRef == null) zoomRef = camera.position.distanceTo(controls.target); userCam = true; if (camAuto) { camAuto = false; markCam(camMode === 'orbit' || camMode === 'site' ? 'chase' : camMode); } }
+function onCamStart() { if (zoomRef == null) zoomRef = camera.position.distanceTo(lastTarget || controls.target); userCam = true; if (camAuto) { camAuto = false; markCam(camMode === 'orbit' || camMode === 'site' ? 'chase' : camMode); } }
 // zoom into what the pointer is on: a wheel turned over the ship / upper stage or a booster first makes it the camera's
 // centre (the camera stays where it is and turns to it, then follows it), so the zoom goes into it instead of past it.
 // Tested once per wheel gesture (the models are detailed enough that testing every notch would stutter).
@@ -2966,7 +3045,7 @@ renderer.domElement.addEventListener('wheel', (e) => {
   if (!best) return;
   const target = simT < sepT ? 's2' : best.who, mode = target === 's2' ? 'chase' : 'booster';   // (still stacked: the whole stack)
   if (camMode === mode && camTarget === target) return;
-  camAuto = false; camMode = mode; camTarget = target; lastTarget = null; userCam = true; zoomRef = best.d; markCam(mode);
+  camAuto = false; camMode = mode; camTarget = target; lastTarget = null; userCam = true; zoomRef = camera.position.distanceTo(focusFn(target)(simT)); markCam(mode);
 }, { capture: true, passive: true });
 function seek(t) { simT = Math.max(-20, Math.min(END_T, t)); resetTrail(); lastTarget = null; if (camMode !== 'earth' && camMode !== 'pad') setCam(camMode, camTarget); }
 
@@ -3099,8 +3178,9 @@ const inBurn = (list, t) => list.some(([a, b]) => b != null && t >= a && t <= b)
 const vel = (fn, t) => fn(t + 0.5).sub(fn(t - 0.5));
 // the direction to point along: the motion over the ground low down; above the air the motion against the stars
 function heading(fn, t) {
-  const a = fn(t - 0.5), b = fn(t + 0.5), inertial = b.clone().sub(a);
-  const overGround = toInertial(toFixed(b, t + 0.5).sub(toFixed(a, t - 0.5)), t);
+  const h = t < 1200 ? 0.5 : (homeA != null && t >= homeA - 60) ? 1.2 : t < 6000 ? 2.5 : 12;   // (> the path's step there: the direction then turns smoothly)
+  const a = fn(t - h), b = fn(t + h), inertial = b.clone().sub(a);
+  const overGround = toInertial(toFixed(b, t + h).sub(toFixed(a, t - h)), t);
   const k = smooth((b.length() / SCALE - RE - 60) / 120);       // 60 km up: the ground's; 180 km up and beyond: the stars'
   const d = overGround.normalize().multiplyScalar(1 - k).add(inertial.normalize().multiplyScalar(k));
   return d.lengthSq() > 1e-12 ? d.normalize() : b.clone().normalize();
@@ -3116,12 +3196,31 @@ function animatePayload() {
   if (ud.sat) { const age = simT - dep, a = Math.max(0, age), open = smooth((age - 15) / 25); ud.sat.visible = simT >= fT && age < 2400; ud.sat.position.y = (15.5 + Math.min(90, a * 0.9)) * VS; ud.panels.forEach(p => { p.scale.x = 0.12 + 0.88 * open; }); }
   if (ud.capsule) ud.capsule.position.y = Math.min(110, Math.max(0, simT - dep) * 0.8) * VS;
   if (ud.sat3) {
-    const S = ud.sat3, y0 = ud.pezY, on = simT >= S.t[0] && simT < S.end; S.grp.visible = on;
+    const S = ud.sat3, y0 = ud.pezY, D = SSM.deployer, on = simT < S.end; S.grp.visible = on;
+    // each satellite's handling before its release (seconds, as on the 3D page): the carriage down, grab, lift
+    const phase = (i) => { const down = 0.45 + (D.YC - D.ys[i]) * 0.11, a = S.t[i] - down, g0 = a - 0.35; return { d0: g0 - down, g0, a, t: S.t[i] }; };
+    if (D && D.car) {
+      let carY = D.YC, pushX = 0, clamp = false;
+      for (let i = 0; i < S.N; i++) {
+        const ph = phase(i), sm = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+        if (simT < ph.d0 || simT > ph.t + 4) continue;
+        if (simT < ph.g0) carY = D.YC + (D.ys[i] - D.YC) * sm((simT - ph.d0) / (ph.g0 - ph.d0));
+        else if (simT < ph.a) { carY = D.ys[i]; clamp = true; }
+        else if (simT < ph.t) { carY = D.ys[i] + (D.YC - D.ys[i]) * sm((simT - ph.a) / (ph.t - ph.a)); clamp = true; }
+        else { const w = simT - ph.t, reach = SSM.R + 0.35 - S.RS; pushX = w < 3 ? Math.min(reach, SSM.satR(S.RS, w) - S.RS) : reach * (1 - sm((w - 3) / 0.8)); clamp = w < 3; }
+        break;
+      }
+      D.car.position.y = carY; D.pusher.position.x = pushX; D.clamps.forEach(c => { c.position.y = clamp ? 0 : 0.12; });
+    }
     if (on) {
       const mm = new THREE.Matrix4(), mi = new THREE.Matrix4(), q = new THREE.Quaternion(), qx = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), none = new THREE.Vector3(0, 0, 0);
       for (let i = 0; i < S.N; i++) {
         const w = simT - S.t[i];
-        if (w < 0) mm.makeScale(0, 0, 0);
+        if (w < 0) {
+          // still in the bay: in the stack, or being lifted to the slot
+          const ph = phase(i), u = Math.min(1, Math.max(0, (simT - ph.a) / (ph.t - ph.a))), yy = D.ys[i] + (D.YC - D.ys[i]) * u * u * (3 - 2 * u);
+          e.set(0, Math.PI / 2, 0); q.setFromEuler(e); mm.compose(p.set(0, yy - 72.8, -S.RS), q, one);
+        }
         else {
           // = the 3D page's placeDeploy, out through the slot (-z here); each one leaves a hair off the line of the last
           const r = SSM.satR(S.RS, w), out = Math.max(0, r - (SSM.R + 0.6)), f = out * out / (out + 3), tumble = Math.min(1, f / 18) * 0.5;
@@ -3390,10 +3489,10 @@ function frame() {
   } else if ((camMode === 'pad' || camMode === 'site') && !userCam) {
     // on the ground: at the pad, or at the landing site of what is landing
     let base;
-    if (camMode === 'pad') base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
+    if (camMode === 'pad') base = earthGroup.localToWorld(padFixed.clone());
     else if (camTarget === 'sides') { const sd = boosterDefs.filter(b => b.who === 'side'); base = earthGroup.localToWorld(sd[0].landFixed.clone().add(sd[1].landFixed).multiplyScalar(0.5)); }
-    else if (camTarget === 'booster') { const bd = focusBooster(); base = earthGroup.localToWorld((bd.landFixed || ecef(PAD.lat, PAD.lon, 0)).clone()); }
-    else base = earthGroup.localToWorld(ecef(PAD.lat, PAD.lon, 0));
+    else if (camTarget === 'booster') { const bd = focusBooster(); base = earthGroup.localToWorld((bd.landFixed || padFixed).clone()); }
+    else base = earthGroup.localToWorld(padFixed.clone());
     const up = base.clone().normalize(), east = Y.clone().cross(up).normalize(), north = up.clone().cross(east);
     const far = camMode === 'pad' ? M(3.6 * H_TRUE) : M(5 * H_BOOST);
     groundUp.copy(up); groundFocus = base.clone().lerp(camera.position, 0.3);
@@ -3434,7 +3533,7 @@ function frame() {
   const fb = showB ? focusBooster() : null;
   const fpos = fb && simT >= fb.sep ? fb.at(simT) : pS2;
   const ffn = fb && simT >= fb.sep ? fb.at : s2At;
-  const altKm = Math.max(0, fpos.length() / SCALE - RE);
+  const altKm = Math.max(0, fpos.length() / SCALE - RE - (TERR ? (([la, lo]) => groundM(la, lo))(latLonOf(toFixed(fpos.clone(), simT))) / 1000 : 0));
   const gs = simT <= 0 ? 0 : toFixed(ffn(simT + 0.5), simT + 0.5).distanceTo(toFixed(ffn(simT - 0.5), simT - 0.5)) / SCALE * 3600;
   const k = mi ? 0.621371 : 1;
   $('alt').textContent = (altKm * k).toFixed(altKm < 10 ? 1 : 0);
@@ -3491,7 +3590,7 @@ setInterval(() => {
 }, 1000);
 liveLabel();
 if (liveAvail() && Q.get('live') !== '0') setLive(true);
-window.__lsim = { get upper() { return upper; }, SS_INSERT: () => SS_INSERT, EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
+window.__lsim = { get upper() { return upper; }, get s2Label() { return s2Label; }, SS_INSERT: () => SS_INSERT, EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
   tiles: () => { const o = {}; tiles.forEach(t => { const k = t.lv.id; o[k] = o[k] || { vis: 0 }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff: tilesOff.g || tilesOff.e, off: tilesOff, total: tiles.size }; },
   lookDown: (lat, lon, altKm) => { document.querySelector('[data-cam="earth"]').click(); camera.position.copy(toInertial(ecef(lat, lon, altKm), simT)); },
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
