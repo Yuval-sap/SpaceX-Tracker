@@ -888,13 +888,15 @@ function makeBooster(bd) {
     if (VEH === 'fh' && !bd.land.at) landAt = bd.side > 0 ? LZ['LZ-1'] : LZ['LZ-2'];
   }
   bd.landAt = landAt;
-  const landFixed = landAt ? ecef(landAt[0], landAt[1], 0).normalize() : null, landH = landAt && k !== 'asds' ? groundM(landAt[0], landAt[1]) / 1000 : H0;
+  // (the ground's height where it lands: a landing zone's own; at sea - a droneship, or into the ocean - sea level, not the
+  // pad's: from Vandenberg's 146 m terrace that left the booster standing in the air over the droneship)
+  const landFixed = landAt ? ecef(landAt[0], landAt[1], 0).normalize() : null, landH = landAt && k !== 'asds' ? groundM(landAt[0], landAt[1]) / 1000 : 0;
   bd.fixedAt = (t) => {
     const tt = Math.min(t, bd.landT);
-    const p = fixedOnTrack(bd.alt(tt), bd.dr(tt));
-    if (!landFixed) return p;
+    const p = fixedOnTrack(bd.alt(tt), bd.dr(tt)), dh = (landH - H0) * SCALE * smooth((tt - (bd.landT - 90)) / 90);   // (onto the landing zone's own height, or the sea's)
+    if (!landFixed) return p.setLength(p.length() + dh);
     const r = p.length(), u = p.clone().normalize().lerp(landFixed, smooth((tt - sep) / (bd.landT - sep))).normalize();
-    return u.multiplyScalar(r + (landH - H0) * SCALE * smooth((tt - (bd.landT - 90)) / 90));   // (onto the landing zone's own height)
+    return u.multiplyScalar(r + dh);
   };
   bd.landFixed = k === 'expend' ? null : bd.fixedAt(bd.landT);
   bd.burns = [[0, bd.who === 'side' ? beco : meco]];
@@ -1028,6 +1030,12 @@ const earthMat = new THREE.ShaderMaterial({
       float spec = texture2D(specMap, vUv).r;
       vec3 h = normalize(sunDir + v);
       col += vec3(1.0, 0.92, 0.8) * pow(max(dot(n, h), 0.0), 60.0) * spec * lit * 0.9;
+      // the sea seen from low down (a camera by a splashdown or a droneship): it mirrors the sky, more and more toward the
+      // horizon - at a low Sun the lit water alone was black under a bright sky
+      float lowCam = 1.0 - smoothstep(0.01, 0.05, length(cameraPosition) - length(vW));
+      vec3 skyRef = mix(vec3(0.015, 0.02, 0.04), vec3(0.42, 0.56, 0.74), smoothstep(-0.12, 0.25, d)) + vec3(0.45, 0.3, 0.2) * exp(-pow(d * 7.0, 2.0)) * smoothstep(-0.12, 0.0, d);
+      float fres = 0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+      col = mix(col, skyRef, fres * lowCam * spec);
       vec3 lights = night * vec3(1.0, 0.82, 0.55) * 1.6 * (1.0 - dayMix);
       col = mix(lights + day * 0.05, col, dayMix);
       float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
@@ -1999,6 +2007,12 @@ function makeTile(lv, y, x) {
         // the Sun's glint on the sea, as on the globe below (there from its water map, here from the Blue Marble's own blue)
         float sea = (1.0 - land) * smoothstep(0.0, 0.06, day.b - day.r * 1.15) * smoothstep(0.55, 0.8, day.b / (day.g + 0.001));   // deep blue, and the shallows' turquoise
         col += vec3(1.0, 0.92, 0.8) * pow(max(dot(n, normalize(sunDir + v)), 0.0), 60.0) * sea * lit * 0.9;
+        // the sea seen from low down (a camera by a splashdown or a droneship): it mirrors the sky, more and more toward the
+        // horizon - at a low Sun the lit water alone was black under a bright sky
+        float lowCam = 1.0 - smoothstep(0.01, 0.05, length(cameraPosition) - length(vW));
+        vec3 skyRef = mix(vec3(0.015, 0.02, 0.04), vec3(0.42, 0.56, 0.74), smoothstep(-0.12, 0.25, d)) + vec3(0.45, 0.3, 0.2) * exp(-pow(d * 7.0, 2.0)) * smoothstep(-0.12, 0.0, d);
+        float fres = 0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+        float seaRef = fres * lowCam * sea;
         float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
         // (the limb's blue is for a view from up high: from a camera standing by the pad every bit of ground is seen
         // edge-on, and the same glow washed it all out white)
@@ -2008,6 +2022,7 @@ function makeTile(lv, y, x) {
         // lights below it. (The edge fades by distance, not by an angle's cosine.)
         vec3 lights = texture2D(nightMap, vUv).rgb * vec3(1.0, 0.82, 0.55) * 1.7 * hasNight;
         col = mix(lights + day * 0.03, col, mix(1.0, dayMix, hasNight));
+        col = mix(col, skyRef, seaRef);
         float nightA = hasNight > 0.5 ? 1.0 : mix(land > 0.5 ? 0.0 : 0.55, 1.0, dayMix);
         gl_FragColor = vec4(col, opacity * (1.0 - water) * nightA * (1.0 - smoothstep(fade.y, fade.x, distance(normalize(vL), center))));
         #include <tonemapping_fragment>
@@ -2638,21 +2653,21 @@ trailGeo.setAttribute('lit', new THREE.BufferAttribute(trailLit, 1));
 trailGeo.setAttribute('inert', new THREE.BufferAttribute(trailW, 1));
 trailGeo.setAttribute('born', new THREE.BufferAttribute(trailT, 1));
 const trail = new THREE.Points(trailGeo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
-  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 }, tNow: { value: 0 } },
+  uniforms: { map: { value: glowTexture('#ffffff', '#ffffff') }, scale: { value: innerHeight }, dark: { value: 0 }, far: { value: 1 }, tNow: { value: 0 } },
   // lit: 0 in the Earth's shadow; above it (from 60 km up) the gas spreads out wide and, sunlit over a dark sky, glows
-  vertexShader: `attribute float age; attribute float lit; attribute float inert; attribute float born; uniform float tNow; varying float vA; varying vec3 vC; varying float vL; uniform float scale; uniform float dark;
+  vertexShader: `attribute float age; attribute float lit; attribute float inert; attribute float born; uniform float tNow; varying float vA; varying vec3 vC; varying float vL; varying float vV; uniform float scale; uniform float dark; uniform float far;
 #include <common>
 #include <logdepthbuf_pars_vertex>
-  void main(){ vA = age; vL = lit * dark; vC = mix(color, vec3(0.78, 0.9, 1.0), vL); float ra = inert * (born - tNow) * 7.2921159e-5, cr = cos(ra), sr = sin(ra); vec3 pp = vec3(position.x * cr + position.z * sr, position.y, -position.x * sr + position.z * cr); vec4 mv = modelViewMatrix * vec4(pp, 1.0);
+  void main(){ vA = age; vL = lit * dark * far; vV = clamp(inert * 2.5, 0.0, 1.0) * (1.0 - far); vC = mix(color, vec3(0.78, 0.9, 1.0), vL); float ra = inert * (born - tNow) * 7.2921159e-5, cr = cos(ra), sr = sin(ra); vec3 pp = vec3(position.x * cr + position.z * sr, position.y, -position.x * sr + position.z * cr); vec4 mv = modelViewMatrix * vec4(pp, 1.0);
     float grow = 0.0009 + 0.004 * (1.0 - age) + vL * 0.05 * sqrt(age);
     gl_PointSize = clamp(scale * grow / -mv.z, 0.0, mix(60.0, 300.0, vL)); gl_Position = projectionMatrix * mv;
 #include <logdepthbuf_vertex>
   }`,
-  fragmentShader: `uniform sampler2D map; varying float vA; varying vec3 vC; varying float vL;
+  fragmentShader: `uniform sampler2D map; varying float vA; varying vec3 vC; varying float vL; varying float vV;
 #include <logdepthbuf_pars_fragment>
   void main(){
 #include <logdepthbuf_fragment>
-    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC, t.a * (1.0 - vA) * mix(0.55, 0.018, vL)); }   // (hundreds of them overlap, added up)` }));
+    vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC, t.a * (1.0 - vA) * mix(0.55, 0.018, vL) * mix(1.0, 0.05, vV)); }   // (vV: in vacuum, seen from near by - only a faint glow)   // (hundreds of them overlap, added up)` }));
 trail.frustumCulled = false;
 // low down kept in the Earth's frame: the smoke stays in the air, which turns with the Earth (laid out against the stars,
 // the trail of a rocket climbing slowly near the pad leaned off at ~400 m/s and read as a second flame beside the real one);
@@ -3452,6 +3467,9 @@ function frame() {
   trail.material.uniforms.tNow.value = simT;
   // how dark the sky is where the camera is: the glow shows against a dark sky, and is lost in daylight
   trail.material.uniforms.dark.value = 1 - THREE.MathUtils.smoothstep(tmp.copy(camera.position).normalize().dot(SUN), -0.08, 0.06) * (1 - THREE.MathUtils.smoothstep(camera.position.length() / SCALE - RE, 40, 160));
+  // the sunlit cloud of spread-out gas is a sight from far away (from the ground hundreds of km off, or from orbit): from a
+  // camera following the vehicle it was a white blob bigger than the ship. Near by, in vacuum, only the engines' faint glow
+  trail.material.uniforms.far.value = THREE.MathUtils.smoothstep(camera.position.distanceTo(pS2) / SCALE, 250, 700);
   const si = simT <= 0 ? 0 : idxAt(s2Path, simT);
   s2Done.setCount(si);
   setTip(s2Tip, s2Path[si].p, separated ? upper.position : pS2, simT > 0);
@@ -3608,7 +3626,7 @@ window.__lsim = { get upper() { return upper; }, get s2Label() { return s2Label;
   aimMoon: () => { userCam = true; controls.target.copy(camera.position).addScaledVector(moon.position.clone().sub(camera.position).normalize(), 0.01); const sm = moon.position.clone().normalize().dot(SUN); return { illum: Math.round((1 - sm) / 2 * 100) + '%' }; },
   camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
   toggle: (what, on) => { ({ clouds: padClouds, sky: skyDome })[what].userData.off = !on; },
-  dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, renderer, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
+  dbg: { groundM, latLonOf, structures, earthGroup, padFixed, H0, s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, renderer, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
 // every material made ready for the graphics card up front, hidden ones too (a flame, a glow, a model first shown in

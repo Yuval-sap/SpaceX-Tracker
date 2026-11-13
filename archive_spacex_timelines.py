@@ -66,6 +66,9 @@ def main():
             m = re.search(r"tranche\s+(\d+)\s+transport\s+layer\s+([a-z])\b", raw, re.I)
             if m: cands.append("sda-t%stl-%s" % (m.group(1), m.group(2).lower()))
             cands += [re.sub(r"[^a-z0-9]", "", payload.lower()), re.sub(r"[^a-z0-9]+", "-", payload.lower()).strip("-")]
+            # (as the site guesses: the words run together with the numbers' dash kept, and each distinctive word)
+            cands.append(re.sub(r"[^a-z0-9-]", "", re.sub(r"\s+", "", payload.lower())))
+            cands += [w for w in re.split(r"[^a-z]+", payload.lower()) if len(w) >= 5 and not re.match(r"^(mission|rideshare|dedicated|space|telescope|satellite|satellites|launch|falcon|heavy|starlink|group|block|starship|flight|demonstration|others)$", w)]
             guessed[name] = [c for c in cands if len(c) >= 4]
     except Exception as e:
         print("past launches unavailable:", e)

@@ -8360,7 +8360,8 @@
         }
         const GENERIC_CMS_TITLE_CORES = /^(starlink|starship|falcon(?: 9| heavy)?|crew|transporter|starshield)$/;
         const GENERIC_CMS_SLUGS = /^(starlink|falcon|mission|spacex)$/;
-        const MAX_CMS_SLUG_GUESSES = 5;
+        const MAX_CMS_SLUG_GUESSES = 6;
+        const GENERIC_SLUG_WORDS = /^(mission|rideshare|dedicated|space|telescope|satellite|satellites|launch|falcon|heavy|starlink|group|block|starship|flight|demonstration|others)$/;
         // Hourly, not by-the-minute: postLaunchTimeline itself is published once per mission and
         // doesn't change afterward (T+ events for a given flight profile are fixed well ahead of
         // launch) - it's exactly as static, per mission, as the hand-written
@@ -8436,6 +8437,11 @@
             }
             add(payload.toLowerCase().replace(/[^a-z0-9]/g, ''));
             add(payload.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+            // the words run together, the numbers' dash kept ("bluebird11-13" for "BlueBird 11-13")
+            add(payload.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-]/g, ''));
+            // one distinctive word of the name ("roman" for "Nancy Grace Roman Space Telescope", "twilight" for "Pandora /
+            // Twilight rideshare mission"); a page found this way still has to name this mission (namesReferToSameMission)
+            payload.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 5 && !GENERIC_SLUG_WORDS.test(w)).forEach(add);
             // Starship's own CMS slugs are "starship-flight-N" (confirmed live for Flight 13) -
             // the app's own name for these is "Starship | Flight N", so payload alone ("flight
             // 14") never guesses the actual slug. Without this, a Starship mission's real
@@ -12407,7 +12413,7 @@
         // 3D simulation of the hero's launch (launch-sim.html) in a full-screen same-origin iframe, loaded only on
         // the button's click. The sim pulls everything from here: the launch (getLaunchSimConfig), SpaceX's own
         // timeline for it, the event texts in the site language (launchSimLocalizeEvent), the language and units.
-        const LAUNCH_SIM_VERSION = '35';   // bump on every launch-sim.html change so browsers don't show a cached old copy
+        const LAUNCH_SIM_VERSION = '36';   // bump on every launch-sim.html change so browsers don't show a cached old copy
         const LAUNCH_SIM_LABEL_I18N = { en: 'Launch Sim', he: 'סימולציית שיגור', es: 'Simulación', fr: 'Simulation', de: 'Simulation', ru: 'Симуляция', zh: '发射模拟', it: 'Simulazione', cs: 'Simulace', sv: 'Simulering', nl: 'Simulatie', da: 'Simulering', pt: 'Simulação', pl: 'Symulacja', hi: 'सिमुलेशन', ar: 'محاكاة الإطلاق', tr: 'Simülasyon' };
         function applyLaunchSimLabel() {
             const el = document.getElementById('hero-sim-label');
@@ -26518,7 +26524,10 @@
                         entry.player.cueVideoById({ videoId, startSeconds: findResumePosition() });
                     }
                 } else if (typeof entry.player.loadVideoById === 'function') {
-                    entry.player.loadVideoById(videoId); // live content - keeps its own autoplay behavior
+                    // live content - keeps its own autoplay behavior. YouTube's player takes the same live video back up
+                    // where it was stopped (closing the player only stops it): once it plays, it is moved to the live edge
+                    entry.liveJump = true;
+                    entry.player.loadVideoById(videoId);
                 }
                 if (resumable) entry.saveTimer = setInterval(() => saveResumePositionIfNeeded(entry), YT_RESUME_SAVE_INTERVAL_MS);
                 return entry.player;
@@ -26552,6 +26561,15 @@
                             if (liveEntry && liveEntry.resumable && e.data === YT.PlayerState.ENDED) {
                                 localStorage.removeItem(YT_RESUME_KEY_PREFIX + liveEntry.videoId);
                             }
+                            // a live broadcast opened again: to what is happening now, not the moment it was closed
+                            // (only while it is live - a finished broadcast is an ordinary video and starts as it is)
+                            if (liveEntry && !liveEntry.resumable && liveEntry.liveJump && e.data === YT.PlayerState.PLAYING) {
+                                liveEntry.liveJump = false;
+                                try {
+                                    const vd = e.target.getVideoData && e.target.getVideoData();
+                                    if (vd && vd.isLive) e.target.seekTo(e.target.getDuration(), true);
+                                } catch (err) { }
+                            }
                         }
                     }
                 });
@@ -26572,6 +26590,18 @@
             if (!entry || !entry.player) return;
             saveResumePositionIfNeeded(entry);
             if (entry.saveTimer) { clearInterval(entry.saveTimer); entry.saveTimer = null; }
+            if (!entry.resumable) {
+                // a live broadcast: the player is taken down altogether, so opening it again starts a fresh one at what is
+                // live now - a player only stopped took the same live video back up at the moment it was closed
+                let parent = null, next = null;
+                try { const f = entry.player.getIframe(); if (f) { parent = f.parentNode; next = f.nextSibling; } } catch (e) { }
+                try { entry.player.destroy(); } catch (e) { }
+                delete ytPlayerRegistry[iframeId];
+                let el = document.getElementById(iframeId);
+                if (el && el.tagName === 'IFRAME') { parent = el.parentNode; next = el.nextSibling; el.remove(); el = null; }
+                if (!el && parent) { el = document.createElement('div'); el.id = iframeId; el.className = entry.originalClassName || ''; parent.insertBefore(el, next); }
+                return;
+            }
             try { entry.player.stopVideo(); } catch (e) { }
         }
 
