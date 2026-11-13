@@ -8493,8 +8493,42 @@
             return { title: mission.title || '', slug: slug || '', postLaunchTimeline, orbitAltKm };
         }
 
+        const TIMELINES_STORE_KEY = 'spacex_timelines_v1';
+        function readStoredTimelines() { try { return JSON.parse(localStorage.getItem(TIMELINES_STORE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+        function storeTimeline(missionId, data) {
+            if (!missionId || !data || !data.postLaunchTimeline || !data.postLaunchTimeline.length) return;
+            const all = readStoredTimelines(); all[missionId] = { title: data.title, slug: data.slug, postLaunchTimeline: data.postLaunchTimeline, orbitAltKm: data.orbitAltKm || null, at: Date.now() };
+            const ids = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0)); ids.slice(200).forEach(k => delete all[k]);   // (the latest 200)
+            try { localStorage.setItem(TIMELINES_STORE_KEY, JSON.stringify(all)); } catch (e) { }
+        }
+        // SpaceX's own timeline for a flight: kept on this device; else from the site's archive (spacex-timelines.json, every
+        // mission's timeline as SpaceX published it, saved by the scheduled workflow - SpaceX takes many past pages down);
+        // else from its mission page on SpaceX's website. null if none of them has it.
+        const timelineFetches = {};
+        let timelineArchive = null;
+        const loadTimelineArchive = () => timelineArchive || (timelineArchive = fetch('spacex-timelines.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+        function timelineForMission(m) {
+            if (!m || !m.id) return Promise.resolve(null);
+            const kept = readStoredTimelines()[m.id];
+            if (kept) return Promise.resolve(kept);
+            if (timelineFetches[m.id]) return timelineFetches[m.id];
+            const name = m.patchTagName || m.name || '', slugs = candidateSlugsFromMissionName(name);
+            const tryAt = (i) => i >= slugs.length ? Promise.resolve(null) : fetchSpacexCms(SPACEX_MISSION_DETAIL_URL_BASE + encodeURIComponent(slugs[i]))
+                .then(r => r.ok ? r.json() : null).catch(() => null)
+                .then(mission => { const d = mission && parseCmsPostLaunchTimeline(mission, slugs[i]); if (d && namesReferToSameMission(d.title, d.slug, name)) { storeTimeline(m.id, d); return d; } return tryAt(i + 1); });
+            return (timelineFetches[m.id] = loadTimelineArchive().then(arch => {
+                for (const slug of Object.keys(arch || {})) {
+                    const rec = arch[slug];
+                    if (!namesReferToSameMission(rec.title, slug, name)) continue;
+                    const d = parseCmsPostLaunchTimeline(rec, slug);
+                    if (d) { storeTimeline(m.id, d); return d; }
+                }
+                return tryAt(0);
+            }));
+        }
         function applyRealMissionTimelineData(data) {
             realMissionTimelineData = data;
+            if (typeof currentHeroMissionId !== 'undefined' && realTimelineMatchesMission(window.currentActiveHeroMissionName || '')) storeTimeline(currentHeroMissionId, data);
             if (data && data.postLaunchTimeline && data.postLaunchTimeline.length && typeof currentHeroMissionId !== 'undefined') {
                 rememberTimelineEnd(currentHeroMissionId, Math.max(...data.postLaunchTimeline.map(e => e.seconds)));
             }
@@ -12422,14 +12456,16 @@
             const m = window.getLaunchSimMission();
             if (!m) return null;
             const fullName = m.patchTagName || m.name;
-            const matches = realMissionTimelineData && (realTimelineMatchesMission(m.name) || realTimelineMatchesMission(fullName));
+            const own = window.launchSimMissionOverride && window.launchSimTimelineOverride;
+            const tlData = own ? window.launchSimTimelineOverride : realMissionTimelineData;
+            const matches = own || (realMissionTimelineData && (realTimelineMatchesMission(m.name) || realTimelineMatchesMission(fullName)));
             const sim = m.sim || {};
             return {
                 name: fullName, displayName: m.name, vehicle: m.vehicle, t0: Date.parse(m.date), site: m.site,
                 pad: sim.pad || null, stages: sim.stages || [], orbitCode: sim.orbit || m.orbitCode || '',
                 landing: m.landing, landingShip: m.landingShipName, boosterSerial: m.boosterSerial,
-                orbitAltKm: matches ? (realMissionTimelineData.orbitAltKm || null) : null,
-                events: matches ? realMissionTimelineData.postLaunchTimeline.map(e => ({ t: e.seconds, raw: e.event })) : []
+                orbitAltKm: matches ? (tlData.orbitAltKm || null) : null,
+                events: matches ? tlData.postLaunchTimeline.map(e => ({ t: e.seconds, raw: e.event })) : []
             };
         };
         // one SpaceX timeline line (or an English line the sim made up for an event the timeline leaves out) in the
@@ -12454,6 +12490,7 @@
         window.openLaunchSimForOpenMission = function () {
             if (!window.launchSimTileMission) return;
             window.launchSimMissionOverride = window.launchSimTileMission;
+            window.launchSimTimelineOverride = window.launchSimTileTimeline || null;
             openLaunchSim();
         };
         function openLaunchSim() {
@@ -12473,7 +12510,7 @@
             modal.classList.add('hidden');
             modal.style.display = 'none';
             if (frame) frame.src = 'about:blank';
-            window.launchSimMissionOverride = null;
+            window.launchSimMissionOverride = null; window.launchSimTimelineOverride = null;
             unlockBodyScroll();
         }
         window.addEventListener('message', e => {
@@ -28720,8 +28757,12 @@ setTimeout(() => {
             {
                 const flown = isPastMission && m.sim && m.sim.pad;
                 const st = document.getElementById('modal-status-tile'), ls = document.getElementById('modal-launch-sim-tile');
-                if (st && ls) { st.classList.toggle('hidden', !!flown); ls.classList.toggle('hidden', !flown); }
-                window.launchSimTileMission = flown ? m : null;
+                const showSim = (on) => { if (st && ls) { st.classList.toggle('hidden', on); ls.classList.toggle('hidden', !on); } };
+                showSim(false); window.launchSimTileMission = null; window.launchSimTimelineOverride = null;
+                if (flown) timelineForMission(m).then(tl => {
+                    if (!tl || !window._openMissionObj || window._openMissionObj.id !== m.id) return;   // (no real timeline: the status stays)
+                    window.launchSimTileMission = m; window.launchSimTileTimeline = tl; showSim(true);
+                });
                 const k = ((document.documentElement.lang || 'en').toLowerCase().split('-')[0]).replace('iw', 'he');
                 const lbl = document.getElementById('i18n-launch-sim-tile'), sub = document.getElementById('i18n-launch-sim-tile-sub');
                 if (lbl) lbl.textContent = LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en;
