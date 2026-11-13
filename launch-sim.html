@@ -1525,7 +1525,7 @@ async function loadStarshipModel() {
     if (sv) q.set('s', sv); if (bv) q.set('b', bv); if (nv) q.set('n', nv);
     try { await Promise.race([document.fonts.load("700 84px 'Stardos Stencil'"), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}   // the serials' stencil
     const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location',
-      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD, R, satR };');
+      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD, R, satR, RSL, RVAC };');
     return run(THREE, mergeGeometries, renderer, new THREE.Scene(), MOBILE, renderer.capabilities.getMaxAnisotropy(), { search: '?' + q.toString() });
   } catch (e) { console.warn('launch sim: the 3D Starship model could not be used, drawing the simple one', e); return null; }
 }
@@ -1545,11 +1545,15 @@ function ssStage(which) {
   SSM.engines.forEach(en => drop.add(en.e));                     // (each engine's flame, glow and pick proxy; its metal is batched apart)
   if (SSM.deployer) { SSM.deployer.sats.forEach(x => drop.add(x)); drop.add(SSM.deployer.car); }
   drop.forEach(o => { if (o.parent) o.parent.remove(o); });       // (whole, first: the satellite kept as the template keeps its parts)
+  // (inside parts that show through the open ends stay: the ship's engines hang from its thrust structure under the aft
+  // dome, inside the engine shield - without them they floated in an empty skirt; the booster's domes show below and
+  // between the hot-stage struts)
+  const SEEN = (o) => /^(LOX aft dome|Ship engine shield|Thrust structure)$/.test(o.userData.label || '') || (o.userData.label === 'Forward dome' && o.userData.part === 'b-ch4');
   const kill = [];
   body.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    if (mats.every(mt => innerMats.has(mt) || mt.isShaderMaterial || mt.visible === false)) kill.push(o);
+    if (mats.every(mt => mt.isShaderMaterial || mt.visible === false) || (mats.every(mt => innerMats.has(mt)) && !SEEN(o))) kill.push(o);
   });
   kill.forEach(o => { if (o.parent) o.parent.remove(o); });
   body.updateMatrixWorld(true);
@@ -1607,13 +1611,25 @@ function ship3d() {
     });
     ud.sat3 = { grp, parts, N, RS: d.RS, t: Array.from({ length: N }, (_, i) => d0 + (i + 0.5) / N * (d1 - d0)), end: d1 + 1500 };
   }
-  ud.plume = plumeOn(g, 70, 4, 0x8fd3ff);
+  // a flame from each engine's own nozzle (the 3D page's engines: three sea-level Raptors in the middle, then three Raptor
+  // Vacuums), in the same order as the engine diagram, so the frame loop lights the ones that are firing
+  ud.plumes = SSM.engines.filter(en => en.stage === 's-raptors').map((en, i) => {
+    const E = i < 3 ? SSM.RSL : SSM.RVAC, a = -SSM.WINDWARD, x = en.x * Math.cos(a) + en.z * Math.sin(a), z = -en.x * Math.sin(a) + en.z * Math.cos(a);
+    const pl = plumeOn(g, i < 3 ? 34 : 46, E.rE, 0x8fd3ff); pl.position.set(x * VS, (en.y + E.yE - 72.8) * VS, z * VS); pl.userData.perEngine = true;
+    return pl;
+  });
+  ud.plume = ud.plumes[0];
   return g;
 }
 function superHeavy3d() {
   const g = new THREE.Group(); g.add(ssStage('booster'));
   const heat = heatSprite(3, 0, 60); g.add(heat);
-  g.userData = { legs: [], fins: [], heat, plume: plumeOn(g, 140, 9, 0xff9a4a) };
+  // a jet from each of the 33 Raptors' own nozzles (the 3D page's engines, in the engine diagram's order: the middle 3,
+  // the 10 around them, the outer 20), lit as the diagram lights them; the one big merged flame only while all 33 burn
+  const plumes = SSM.engines.filter(en => en.stage === 'b-raptors').map(en => {
+    const pl = plumeOn(g, 45, SSM.RSL.rE, 0xff9a4a); pl.position.set(en.x * VS, (en.y + SSM.RSL.yE) * VS, en.z * VS); return pl;
+  });
+  g.userData = { legs: [], fins: [], heat, plume: plumeOn(g, 140, 9, 0xff9a4a), plumes };
   return g;
 }
 // caught, the ship hangs just under its forward flaps (their lowest point resting above the arms' top)
@@ -2851,7 +2867,8 @@ function frame() {
     bd.obj.scale.setScalar(sc);
     const hangNow = simT < bd.sep ? 0 : (bd.land.kind === 'catch' && !towerShown ? 0 : bd.hang) * VS * sc * smooth((simT - (bd.landT - 40)) / 35);
     const burn = simT >= 0 && (simT < bd.sep ? simT <= (bd.who === 'side' ? beco : meco) : inBurn(bd.burns.slice(1), simT));
-    const pl = bd.obj.userData.plume; pl.visible = burn;
+    const pl = bd.obj.userData.plume, jets = bd.obj.userData.plumes, onE = jets ? engineState(bd, simT).on : null;
+    pl.visible = burn && (!jets || onE.length > 13);
     pl.material.uniforms.time.value = ptime;
     const bAlt = p.length() / SCALE - RE;
     pl.material.uniforms.spread.value = 1 + Math.min(4, bAlt / 18);
@@ -2859,6 +2876,13 @@ function frame() {
     // near the ground the flame is only as long as the room under the engines (the models are enlarged, the altitude is not)
     const onStack = simT < bd.sep, room = (bAlt * SCALE + (onStack ? 0 : hangNow)) / ((VEH === 'ss' ? 140 : 80) * VS * sc);
     pl.material.uniforms.len.value = Math.min(1 - 0.35 * clamp01(bAlt / 60), onStack ? 0.2 + room : Math.max(0.06, room));
+    if (jets) jets.forEach((j, i) => {                                // (each engine's own jet, by the same schedule as the diagram)
+      const u = j.material.uniforms, roomJ = room * 140 / 45, vac = smooth((bAlt - 30) / 50);
+      j.visible = onE.includes(i);
+      u.time.value = ptime + i * 0.37; u.spread.value = 1 + Math.min(1.5, bAlt / 30);
+      u.diamonds.value = 1 - smooth(bAlt / 14); u.vac.value = 0.6 * vac;
+      u.len.value = Math.min(1 - 0.25 * vac, onStack ? 0.2 + roomJ : Math.max(0.06, roomJ));
+    });
     const ud = bd.obj.userData, legA = bd.land.kind === 'expend' ? 0 : 2.0 * smooth((simT - (bd.landT - 10)) / 5), finA = Math.PI / 2 * smooth((simT - bd.sep - 8) / 5);
     ud.legs.forEach(l => { l.rotation.x = legA; });
     ud.fins.forEach(f => { f.rotation.x = finA; });
@@ -2866,6 +2890,7 @@ function frame() {
     setHeat(ud.heat, heat);
     bd.glow.position.copy(p); bd.glow.visible = separated && !gone && simT >= bd.sep && !ground;
     bd.glow.scale.setScalar(camera.position.distanceTo(p) * 0.025 * (burn ? 1 : 0.5));
+    bd.glow.material.opacity = flownLineFade(p); if (bd.glow.material.opacity < 0.02) bd.glow.visible = false;
     const bi = simT <= bd.sep ? 0 : idxAt(bd.path, simT);
     bd.done.setCount(bi);
     setTip(bd.tip, bd.path[bi].p, p, simT > bd.sep && simT <= bd.landT && !gone);
@@ -2898,10 +2923,17 @@ function frame() {
     const on = simT >= 0 && simT < Math.min(meco, 60) && alt0 < 4;
     flameLight.visible = on; if (on) { flameLight.position.copy(p0); flameLight.distance = M(900); flameLight.intensity = (2.6 + 0.6 * Math.sin(ptime * 37) + 0.4 * Math.sin(ptime * 59)) * (1 - THREE.MathUtils.smoothstep(alt0, 1, 4)); } }
   updatePadClouds();
-  upper.userData.plume.visible = s2Burn;
-  upper.userData.plume.material.uniforms.time.value = ptime;
-  upper.userData.plume.material.uniforms.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : 2;
-  { const a2 = pS2.length() / SCALE - RE; upper.userData.plume.material.uniforms.diamonds.value = 1 - smooth(a2 / 14); upper.userData.plume.material.uniforms.vac.value = smooth((a2 - 30) / 50); upper.userData.plume.material.uniforms.len.value = 1 - 0.45 * smooth((a2 - 30) / 50); }
+  { const a2 = pS2.length() / SCALE - RE, onIdx = upper.userData.plumes ? shipEngineState(simT).on : null;
+    (upper.userData.plumes || [upper.userData.plume]).forEach((pl, i) => {
+      const u = pl.material.uniforms;
+      pl.visible = s2Burn && (!onIdx || onIdx.includes(i));         // (each engine's own flame only while that engine fires)
+      u.time.value = ptime + i * 1.7;
+      const vac = smooth((a2 - 30) / 50), one = pl.userData.perEngine;
+      // one engine's own flame keeps to its own bell and stays visible in vacuum (as on SpaceX's footage of the engines
+      // firing in space), so which of the six are burning reads as in the engine diagram
+      u.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : one ? 1 + 0.35 * vac : 2;
+      u.diamonds.value = 1 - smooth(a2 / 14); u.vac.value = one ? 0.6 * vac : vac; u.len.value = 1 - (one ? 0.25 : 0.45) * vac;
+    }); }
   const stackBurn = simT >= 0 && simT <= meco;
   vehLabel.visible = !separated; pS2Now.copy(pS2);
   vehLabel.position.copy(pS2).add(new THREE.Vector3(0, (VEH === 'ss' ? 135 : 70) * VS * vScale, 0).applyQuaternion(qStack));
@@ -2909,6 +2941,9 @@ function frame() {
   const camD = camera.position.distanceTo(pS2);
   glowS2.visible = !ground;
   glowS2.position.copy(pS2); glowS2.scale.setScalar(camD * 0.03 * (stackBurn || s2Burn ? 1 : 0.55));
+  // (the glow marks where the vehicle is from far away; near enough to see the vehicle itself it fades out - up close it
+  // sat between the engines like a flame of its own)
+  glowS2.material.opacity = flownLineFade(pS2); if (glowS2.material.opacity < 0.02) glowS2.visible = false;
   if (playing && simT > 0) {
     const n = Math.min(8, Math.ceil(dt * speed * 2));
     for (let k = 0; k < n; k++) { if (stackBurn) emit(pS2, [1.0, 0.55, 0.25]); if (s2Burn) emit(upper.position, [0.55, 0.8, 1.0]); }
