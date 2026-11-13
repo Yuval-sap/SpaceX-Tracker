@@ -1960,9 +1960,9 @@ function tiledPad(group, pid, yc, ang, w, h, depth, cr, f, label) {
   return add(group, g, pid, 'tileSolid', label);
 }
 // SpaceX "X" logo, black, on the steel side below the Pez slot (Reuters photo of Ship 41/42)
-function logoCanvas() {
+function logoCanvas(color = '#121418') {
   const c = mkCanvas(1024, 512), g = c.getContext('2d');
-  g.fillStyle = '#121418'; g.lineCap = 'butt';
+  g.fillStyle = color; g.lineCap = 'butt';
   // short stroke: top-left to bottom-right
   g.beginPath(); g.moveTo(150, 120); g.lineTo(250, 120); g.lineTo(470, 400); g.lineTo(370, 400); g.closePath(); g.fill();
   // lower-left arm of the long stroke
@@ -2032,12 +2032,15 @@ function serialCanvas(text, upward = false) {
     }
     P.needsUpdate = true;   // normals kept: the outer side must shade exactly as before
   };
-  const fTop = ringY(59) + 0.85, groupsFor = [[sAft, 's-tanks', S0 + 0.8, S0 + 5.2], [sLox, 's-tanks', S0 + 5.2, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
+  // (per photos of Ship 42: the tube runs down to just above the band across the top of the aft skirt, widens there into
+  // a thicker foot, and the foot ends ~3.3 m above the ship's base in a rounded hood, open and dark underneath)
+  const RW_FOOT_TOP = S0 + 6.3, RW_END = S0 + 3.3;
+  const fTop = ringY(59) + 0.85, groupsFor = [[sLox, 's-tanks', RW_FOOT_TOP, S0 + 19], [sCh4, 's-tanks', S0 + 19, S0 + 28.4], [sPay, 's-payload', S0 + 28.4, fTop]];
   for (const da of [-0.36, 0.36]) {
     const a = LEEWARD + da;
     for (const [grp, pid, ya, yb] of groupsFor) {
       const len = yb - ya, pts = [];
-      const capTop = grp === sPay, capBot = grp === sAft;
+      const capTop = grp === sPay, capBot = false;
       for (let k = 0; k <= 12; k++) { const u = k / 12; pts.push([capBot ? 0.28 * Math.sin(u * Math.PI / 2) : 0.28, ya + u * Math.min(0.5, len)]); }
       pts.push([0.28, yb - (capTop ? 0.5 : 0)]);
       if (capTop) for (let k = 1; k <= 12; k++) { const u = k / 12; pts.push([Math.max(0.001, 0.28 * Math.cos(u * Math.PI / 2)), yb - 0.5 + 0.5 * Math.sin(u * Math.PI / 2)]); }
@@ -2053,13 +2056,142 @@ function serialCanvas(text, upward = false) {
         add(grp, c, pid, 'steelNC', 'Raceway (cable & line tunnel)');
       }
     }
+    // the foot: out from the tube's 0.28 m to 0.38 m over 0.4 m, straight down, then the hood's rounded lower edge
+    {
+      const pts = [[0.3, RW_END + 0.02]];
+      for (let k = 0; k <= 8; k++) { const u = k / 8; pts.push([0.3 + 0.08 * Math.sin(u * Math.PI / 2), RW_END + 0.02 + 0.2 * (1 - Math.cos(u * Math.PI / 2))]); }
+      pts.push([0.38, RW_FOOT_TOP - 0.45]);
+      for (let k = 1; k <= 8; k++) { const u = k / 8; pts.push([0.38 - 0.1 * (0.5 - 0.5 * Math.cos(u * Math.PI)), RW_FOOT_TOP - 0.45 + 0.45 * u]); }
+      pts.push([0.28, RW_FOOT_TOP + 0.05]);
+      const g = lathe(pts, 24); g.scale(1, 1, 0.75);
+      g.rotateY(a); g.translate(Math.sin(a) * (R + 0.1), 0, Math.cos(a) * (R + 0.1));
+      scaleUV(g, 0.05, (RW_FOOT_TOP - RW_END) / TEXM);
+      outsideHull(g);
+      add(sAft, g, 's-tanks', 'steelNC', 'Raceway (cable & line tunnel)');
+      // the hood's open end: dark, a half-disc under it on the skin
+      const sc = mkCanvas(256, 128), sg = sc.getContext('2d');
+      sg.fillStyle = '#0d0e10'; sg.beginPath(); sg.ellipse(128, 0, 120, 118, 0, 0, Math.PI); sg.fill();
+      decal(sAft, 's-tanks', sc, RW_END - 0.14, a, 0.74, 0.3, 0.06);
+    }
+  }
+  // the band round the top of the aft skirt (on the steel side, between the aft flaps): a slightly proud ring - a comb
+  // of short vertical stringers above, a row of vertical slots, plain steel below (photos of Ship 42)
+  {
+    const yb0 = S0 + 3.9, yb1 = S0 + 5.6, half = 1.42, arcM = 2 * half * (R + 0.05);
+    const W = 4096, H = 256, c = mkCanvas(W, H), g = c.getContext('2d'), pxm = H / (yb1 - yb0), py = m => H - m * pxm;   // (v: height above the band's foot)
+    g.fillStyle = '#9a9ea5'; g.fillRect(0, 0, W, H);
+    const ux = m => m / arcM * W;
+    // comb: stringers every ~9 cm over the top 0.8 m, each a lit edge and a shadow, the teeth ending at slightly
+    // different heights
+    for (let x = 0, k = 0; x < arcM; x += 0.09, k++) {
+      const len = 0.62 + (k % 3 === 0 ? 0.08 : 0) + (k % 7 === 0 ? 0.05 : 0);
+      g.fillStyle = '#c9ccd1'; g.fillRect(ux(x), py(1.62), ux(0.03), len * pxm);
+      g.fillStyle = '#5d6168'; g.fillRect(ux(x + 0.03), py(1.62), ux(0.012), len * pxm);
+    }
+    g.fillStyle = '#4a4e55'; g.fillRect(0, py(1.7), W, 0.035 * pxm);                 // the band's top rim
+    g.fillStyle = '#6a6e75'; g.fillRect(0, py(0.82), W, 0.03 * pxm);                 // seam under the comb
+    // the row of slots, long and short in turn
+    for (let x = 0.14, k = 0; x < arcM; x += 0.28, k++) {
+      const h = k % 2 ? 0.2 : 0.32, y0 = 0.36;
+      g.fillStyle = '#1b1d21'; g.beginPath(); g.roundRect(ux(x), py(y0 + h), Math.max(3, ux(0.045)), h * pxm, ux(0.02)); g.fill();
+    }
+    g.fillStyle = '#62666d'; g.fillRect(0, py(0.28), W, 0.025 * pxm);                // the seam under the slots
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso;
+    const bump = new THREE.CanvasTexture(c); bump.anisotropy = maxAniso;
+    const mat = new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 1.2, metalness: 0.75, roughness: 0.45, side: THREE.DoubleSide });
+    mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
+    const geo = new THREE.CylinderGeometry(R + 0.05, R + 0.05, yb1 - yb0, 192, 1, true, LEEWARD - half, 2 * half); geo.translate(0, (yb0 + yb1) / 2, 0);
+    const m = new THREE.Mesh(geo, mat); m.userData.part = 's-tanks'; m.userData.label = 'Aft skirt stringer band'; m.castShadow = m.receiveShadow = true; sAft.add(m);
+  }
+  // the logo again, white, low on the aft skirt under the raceways (photo of Ship 42), its X centred the same way
+  { const ly = ringY(40); decal(sAft, 's-tanks', logoCanvas('#f1f2f4'), ly, LEEWARD + (0.5 - 0.303) * 1.9 / hullRadius(ly), 1.9, 0.95, 0.05); }   // (mid-ring, clear of the welds)
+  // three vents below the Pez slot (photos of Ship 42): the flush port between the raceways' tops (above), a small round
+  // hole left of the left raceway on the methane tank, and a bigger one right of the right raceway low on the oxygen
+  // tank, inside a ring of small slots
+  {
+    const holeCanvas = (ring) => {
+      const c = mkCanvas(256, 256), g = c.getContext('2d');
+      if (ring) for (const [rr, n, w] of [[96, 30, 5], [116, 38, 4]]) for (let i = 0; i < n; i++) {
+        const t = i / n * TAU; g.save(); g.translate(128 + Math.cos(t) * rr, 128 + Math.sin(t) * rr); g.rotate(t); g.fillStyle = 'rgba(28,30,34,0.9)'; g.fillRect(-w, -1.6, 2 * w, 3.2); g.restore();
+      }
+      g.fillStyle = '#060708'; g.beginPath(); g.arc(128, 128, ring ? 58 : 120, 0, TAU); g.fill();
+      return c;
+    };
+    decal(sCh4, 's-tanks', holeCanvas(false), S0 + 26.5, LEEWARD - 0.85, 0.75, 0.75);
+    decal(sLox, 's-tanks', holeCanvas(true), S0 + 7.5, LEEWARD + 0.78, 2.0, 2.0);
+  }
+  // Ship 42 on (its photos): the details below
+  if (sh >= 42) {
+    const steelPanel = (y0, y1, half, r, draw, label, bumpScale = 1) => {
+      // a ring panel over the steel side between the aft flaps, its look drawn into a canvas (v: metres above y0)
+      const arcM = 2 * half * r, W = 4096, H = Math.round(256 * (y1 - y0) / 1.7), c = mkCanvas(W, H), g = c.getContext('2d');
+      draw(g, W, H, m => m / arcM * W, m => H - m * H / (y1 - y0));
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso;
+      const bump = new THREE.CanvasTexture(c); bump.anisotropy = maxAniso;
+      const mat = new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale, metalness: 0.75, roughness: 0.45, side: THREE.DoubleSide });
+      mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
+      const geo = new THREE.CylinderGeometry(r, r, y1 - y0, 192, 1, true, LEEWARD - half, 2 * half); geo.translate(0, (y0 + y1) / 2, 0);
+      const m = new THREE.Mesh(geo, mat); m.userData.part = 's-tanks'; m.userData.label = label; m.castShadow = m.receiveShadow = true; sAft.add(m);
+      return m;
+    };
+    // 3. the aft skirt below the band: close vertical stiffeners, a few seams across, small "+" marks
+    steelPanel(S0 + 0.15, S0 + 3.9, 1.42, R + 0.02, (g, W, H, ux, py) => {
+      g.fillStyle = '#a2a6ad'; g.fillRect(0, 0, W, H);
+      for (let x = 0, k = 0; ux(x) < W; x += 0.085, k++) {
+        g.fillStyle = '#d0d3d8'; g.fillRect(ux(x), 0, Math.max(2, ux(0.022)), H);
+        g.fillStyle = '#6b6f76'; g.fillRect(ux(x + 0.022), 0, Math.max(1, ux(0.008)), H);
+      }
+      g.fillStyle = '#5d6168';
+      for (const y of [0.95, 2.05, 3.1]) g.fillRect(0, py(y), W, Math.max(2, 0.02 * H / 3.75));
+      g.fillStyle = '#3a3d42';
+      for (let x = 0.6, k = 0; ux(x) < W; x += 1.7, k++) for (const y of [1.5, 2.6]) { const cx = ux(x + (k % 2) * 0.4), cy = py(y + (k % 3) * 0.12); g.fillRect(cx - 6, cy - 1.5, 12, 3); g.fillRect(cx - 1.5, cy - 6, 3, 12); }
+    }, 'Aft skirt stiffeners', 1.4);
+    // 2. the small bolt heads all over the steel side: short columns of dots (a fine texture over the steel, darkening it
+    // only a touch from far away - the mipmaps blend the dots out)
+    {
+      const y0 = S0 + 5.65, y1 = ringY(59) - 0.6, half = 1.42, r = R + 0.012, arcM = 2 * half * r;
+      const W = 2048, H = 2048, c = mkCanvas(W, H), g = c.getContext('2d');
+      const repX = Math.round(arcM / 3), repY = Math.round((y1 - y0) / 3), cw = W / 3, ch = H / 3;   // one 3 x 3 m tile, repeated
+      let sd = 42; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      g.fillStyle = 'rgba(20,22,26,0.85)';
+      for (let col = 0.1; col < 3; col += 0.2) {
+        let y = 0.05 + rnd() * 0.3;
+        while (y < 3) { const n = 3 + Math.floor(rnd() * 8); for (let i = 0; i < n && y < 3; i++, y += 0.1) { g.beginPath(); g.arc(col * cw, H - y * ch, 5, 0, TAU); g.fill(); } y += 0.25 + rnd() * 0.5; }
+      }
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(repX, repY);
+      const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, metalness: 0.3, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -1 });
+      mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
+      for (const [grp, a0, a1] of [[sLox, y0, S0 + 19], [sCh4, S0 + 19, S0 + 28.4], [sPay, S0 + 28.4, y1]]) {
+        const geo = new THREE.CylinderGeometry(r, r, a1 - a0, 192, 1, true, LEEWARD - half, 2 * half); geo.translate(0, (a0 + a1) / 2, 0);
+        scaleUV(geo, 1, (a1 - a0) / (y1 - y0), 0, (a0 - y0) / (y1 - y0));
+        const m = new THREE.Mesh(geo, mat); m.renderOrder = 1; m.userData.part = grp === sPay ? 's-payload' : 's-tanks'; grp.add(m);
+      }
+    }
+    // 1. two plates with red covers between the raceways, at the band (umbilical / fill ports, per photos)
+    {
+      const pc = mkCanvas(128, 384), g = pc.getContext('2d');
+      g.fillStyle = '#c3c6cb'; g.beginPath(); g.roundRect(4, 4, 120, 376, 14); g.fill();
+      g.strokeStyle = '#6e727a'; g.lineWidth = 5; g.beginPath(); g.roundRect(6, 6, 116, 372, 13); g.stroke();
+      g.fillStyle = '#d9dbdf'; g.fillRect(18, 22, 92, 340);
+      g.fillStyle = '#d65a63'; g.fillRect(24, 96, 80, 26);                         // the red bar
+      g.fillStyle = '#e07a82'; g.beginPath(); g.arc(64, 196, 38, 0, TAU); g.fill();   // the red cover
+      g.fillStyle = '#b84852'; g.beginPath(); g.arc(64, 196, 38, 0.2, 2.6); g.fill();
+      for (const da of [-0.062, 0.062]) decal(sAft, 's-tanks', pc, S0 + 4.15, LEEWARD + da, 0.45, 1.3, 0.09);
+    }
+    // 4. two small black sensor bumps on the band's row of slots, either side of the raceways
+    for (const da of [-0.85, 0.85]) {
+      const a = LEEWARD + da, g = new THREE.SphereGeometry(0.11, 20, 12); g.scale(1, 0.8, 0.65);
+      const m = add(sAft, g, 's-tanks', 'engineDark', 'Sensor');
+      m.position.set(Math.sin(a) * (R + 0.09), S0 + 4.35, Math.cos(a) * (R + 0.09)); m.rotation.y = a;
+    }
   }
   // ports just under the slot: a flush black port in the middle, a protruding round port each side
   const portY = ringY(59) + 0.1;
   const hole = mkCanvas(128, 128), hg = hole.getContext('2d');
   hg.fillStyle = '#07080a'; hg.beginPath(); hg.ellipse(64, 64, 60, 46, 0, 0, TAU); hg.fill();
-  decal(sPay, 's-payload', hole, portY, LEEWARD, 1.0, 0.75);
-  for (const da of [-0.72, 0.72]) {
+  const NEW_PORTS = sh >= 42;                                     // (Ship 42's photos: the side ports gone, the middle one off centre)
+  decal(sPay, 's-payload', hole, portY, LEEWARD + (NEW_PORTS ? 0.15 : 0), 1.0, 0.75);
+  if (!NEW_PORTS) for (const da of [-0.72, 0.72]) {
     const a = LEEWARD + da, boss = new THREE.CylinderGeometry(0.5, 0.56, 0.32, 32); boss.rotateX(Math.PI / 2);
     const m = add(sPay, boss, 's-payload', 'steelNC', 'Docking port');
     m.position.set(Math.sin(a) * (R + 0.14), portY, Math.cos(a) * (R + 0.14)); m.rotation.y = a;

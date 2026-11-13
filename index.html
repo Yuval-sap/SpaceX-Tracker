@@ -8825,6 +8825,13 @@
             const t0 = new Date(window.currentActiveHeroLaunchAt || '').getTime();
             if (!heroName || isNaN(t0)) return;
             const minutesToLaunch = (t0 - Date.now()) / 60000;
+            // a flight many hours long (a day-long Starship flight): also from 90 min before its timeline's last event
+            // until 5 min after it - re-entry and landing - looking for a new broadcast even when one was found
+            // (SpaceX's website only, never Launch Library)
+            const tl = realMissionTimelineData && realTimelineMatchesMission(heroName) ? realMissionTimelineData.postLaunchTimeline : null;
+            const lastSec = tl && tl.length ? Math.max(...tl.map(e => e.seconds)) : 0;
+            const sinceMin = -minutesToLaunch;
+            if (lastSec > 3 * 3600 && sinceMin >= lastSec / 60 - 90 && sinceMin <= lastSec / 60 + 5) { fetchRealMissionTimeline(); return; }
             if (minutesToLaunch > 60 || minutesToLaunch < -30) return;
             const hx = window._heroXBroadcast;
             if (hx && hx.id && hx.heroName === heroName) return;
@@ -12323,7 +12330,7 @@
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
         // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
         // language/unit switches live. The iframe is unloaded on close so it stops rendering.
-        const STARSHIP_SIM_VERSION = '67';
+        const STARSHIP_SIM_VERSION = '68';
         function openStarshipSim() {
             const modal = document.getElementById('starship-sim-modal');
             const frame = document.getElementById('starship-sim-frame');
@@ -28175,8 +28182,11 @@ setTimeout(() => {
                 // the latest Launch Library data for this mission too - `m` is the copy the modal was opened with, from
                 // before a later refresh may have brought the broadcast in
                 const fresh = dbMissions.concat(rawPastMissions).find(x => x && x.id === m.id);
-                xId = nasaLiveStreamFor(m) ? null : m.xBroadcastId || (fresh && fresh.xBroadcastId)
-                    || (heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null)
+                // (for the flight in the hero, SpaceX's website's broadcast first: it is looked up again while the flight
+                // goes on, so when SpaceX ends the launch's broadcast and starts a new one - e.g. for re-entry on a
+                // day-long Starship flight - that is the one played, not Launch Library's copy of the first)
+                const heroXId = heroX && heroX.id && (m.id === currentHeroMissionId || namesReferToSameMission(m.patchTagName || m.name, '', heroX.heroName)) ? heroX.id : null;
+                xId = nasaLiveStreamFor(m) ? null : heroXId || m.xBroadcastId || (fresh && fresh.xBroadcastId)
                     || savedXBroadcastFor(m.patchTagName || m.name);
                 window._liveOnX = !!xId;
                 const ytPlay = document.getElementById('modal-live-yt-play');
@@ -28310,7 +28320,13 @@ setTimeout(() => {
             window._onHeroXBroadcast = function () {
                 const had = xId;
                 applyXId();
-                if (!had && xId && !preferYoutube && videoSection && !videoSection.classList.contains('hidden') && !videoSection.classList.contains('x-live')) {
+                const open = videoSection && !videoSection.classList.contains('hidden');
+                if (!had && xId && !preferYoutube && open && !videoSection.classList.contains('x-live')) {
+                    openLiveVideo();
+                }
+                // SpaceX started a different broadcast (a new id): a player open on the old one switches to it. Only on a
+                // change - finding the same broadcast again (one continuous broadcast) never reloads the player
+                else if (had && xId && xId !== had && !preferYoutube && open && videoSection.classList.contains('x-live')) {
                     openLiveVideo();
                 }
             };
