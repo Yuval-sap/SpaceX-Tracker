@@ -12362,6 +12362,17 @@
             setTextIfChanged(el, LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en);
         }
         new MutationObserver(applyLaunchSimLabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        // the hero's details button ("Mission Details"), in the site's language
+        const HERO_DETAILS_LABEL_I18N = { en: 'Mission Details', he: 'פרטי המשימה', es: 'Detalles de la misión', fr: 'Détails de la mission', de: 'Missionsdetails', ru: 'Детали миссии', zh: '任务详情', it: 'Dettagli della missione', cs: 'Podrobnosti mise', sv: 'Uppdragsdetaljer', nl: 'Missiedetails', da: 'Missionsdetaljer', pt: 'Detalhes da missão', pl: 'Szczegóły misji', hi: 'मिशन विवरण', ar: 'تفاصيل المهمة', tr: 'Görev Detayları' };
+        function applyHeroDetailsLabel() {
+            const el = document.getElementById('hero-details-label');
+            if (!el) return;
+            let k = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+            if (k === 'iw') k = 'he';
+            setTextIfChanged(el, HERO_DETAILS_LABEL_I18N[k] || HERO_DETAILS_LABEL_I18N.en);
+        }
+        new MutationObserver(applyHeroDetailsLabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        document.addEventListener('DOMContentLoaded', applyHeroDetailsLabel);
         // the hero's second button on Starship flights: the 3D Starship (otherwise only inside the flight's card)
         function applyStarship3dButton() {
             const b = document.getElementById('hero-s3d-btn'), l = document.getElementById('hero-s3d-label');
@@ -14979,10 +14990,10 @@
                          it hugging the left edge. -->
                     <div class="space-y-3 order-last lg:order-none lg:pt-6">
                         <div class="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3">
-                            <button id="hero-details-btn"
-                                class="group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
-                                <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i> View
-                                Brief
+                            <button id="hero-details-btn" translate="no"
+                                class="notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-zinc-800 md:hover:bg-emerald-500 md:hover:text-black border border-zinc-700 md:hover:border-emerald-500 text-zinc-300 text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-colors duration-150 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0">
+                                <i class="fa-solid fa-circle-info text-emerald-400 md:group-hover:text-black transition-colors duration-150"></i>
+                                <span id="hero-details-label">Mission Details</span>
                             </button>
 
                             <!-- 3D launch simulation of the hero's launch (launch-sim.html, #launch-sim-modal) -->
