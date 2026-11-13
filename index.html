@@ -12305,12 +12305,12 @@
             const bGrid = document.getElementById('modal-booster-info-grid');
             const t = id => document.getElementById(id);
             const vehicle = t('modal-vehicle-tile'), site = t('modal-site-click-target'), orbit = t('modal-orbit-click-target'),
-                status = t('modal-status-tile'), sim = t('modal-starship-sim-tile'), booster = t('modal-booster-tile'),
+                status = t('modal-status-tile'), sim = t('modal-starship-sim-tile'), lsim = t('modal-launch-sim-tile'), booster = t('modal-booster-tile'),
                 landing = t('modal-landing-click-target'), preflight = t('modal-preflight-status-tile'), program = t('modal-program-tile');
             if (!vGrid || !bGrid || !vehicle || !site || !orbit || !status || !sim || !booster || !landing || !preflight || !program) return;
             const isStarship = category === 'starship';
             if (isStarship) {
-                vGrid.append(vehicle, booster, status, sim);
+                vGrid.append(vehicle, booster, status, lsim, sim);
                 bGrid.append(site, orbit, landing, preflight, program);
                 sim.classList.remove('hidden');
                 vGrid.classList.add('starship-row');
@@ -12319,7 +12319,7 @@
                 bGrid.classList.remove('grid-cols-2', 'grid-cols-3', 'md:grid-cols-3', 'md:grid-cols-4');
                 bGrid.classList.add('grid-cols-2', n === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3');
             } else {
-                vGrid.append(vehicle, site, orbit, status, sim);
+                vGrid.append(vehicle, site, orbit, status, lsim, sim);
                 bGrid.append(booster, landing, preflight, program);
                 sim.classList.add('hidden');
                 vGrid.classList.remove('starship-row');
@@ -12373,7 +12373,7 @@
         // 3D simulation of the hero's launch (launch-sim.html) in a full-screen same-origin iframe, loaded only on
         // the button's click. The sim pulls everything from here: the launch (getLaunchSimConfig), SpaceX's own
         // timeline for it, the event texts in the site language (launchSimLocalizeEvent), the language and units.
-        const LAUNCH_SIM_VERSION = '33';   // bump on every launch-sim.html change so browsers don't show a cached old copy
+        const LAUNCH_SIM_VERSION = '34';   // bump on every launch-sim.html change so browsers don't show a cached old copy
         const LAUNCH_SIM_LABEL_I18N = { en: 'Launch Sim', he: 'סימולציית שיגור', es: 'Simulación', fr: 'Simulation', de: 'Simulation', ru: 'Симуляция', zh: '发射模拟', it: 'Simulazione', cs: 'Simulace', sv: 'Simulering', nl: 'Simulatie', da: 'Simulering', pt: 'Simulação', pl: 'Symulacja', hi: 'सिमुलेशन', ar: 'محاكاة الإطلاق', tr: 'Simülasyon' };
         function applyLaunchSimLabel() {
             const el = document.getElementById('hero-sim-label');
@@ -12419,7 +12419,7 @@
         };
         document.addEventListener('DOMContentLoaded', applyLaunchSimLabel);
         window.getLaunchSimConfig = function () {
-            const m = window.currentActiveHeroMission;
+            const m = window.getLaunchSimMission();
             if (!m) return null;
             const fullName = m.patchTagName || m.name;
             const matches = realMissionTimelineData && (realTimelineMatchesMission(m.name) || realTimelineMatchesMission(fullName));
@@ -12447,10 +12447,19 @@
             if (gem && (!explain || (key !== 'en' && explain === english.explain))) explain = gem;
             return { title: english.title, explain: explain || '' };   // the hero's own timeline also keeps SpaceX's title
         };
+        // the flight the simulation shows: one opened from its own card's tile, else the hero's
+        window.launchSimMissionOverride = null;
+        window.getLaunchSimMission = () => window.launchSimMissionOverride || window.currentActiveHeroMission;
+        const LAUNCH_SIM_SUB_I18N = { en: '3D replay', he: 'שחזור תלת-ממדי', es: 'Repetición 3D', fr: 'Rejeu 3D', de: '3D-Wiederholung', ru: '3D-повтор', zh: '3D 回放', it: 'Replay 3D', cs: '3D záznam', sv: '3D-repris', nl: '3D-herhaling', da: '3D-gengivelse', pt: 'Replay 3D', pl: 'Powtórka 3D', hi: '3D रीप्ले', ar: 'إعادة ثلاثية الأبعاد', tr: '3D tekrar' };
+        window.openLaunchSimForOpenMission = function () {
+            if (!window.launchSimTileMission) return;
+            window.launchSimMissionOverride = window.launchSimTileMission;
+            openLaunchSim();
+        };
         function openLaunchSim() {
             const modal = document.getElementById('launch-sim-modal');
             const frame = document.getElementById('launch-sim-frame');
-            if (!modal || !frame || !window.currentActiveHeroMission) return;
+            if (!modal || !frame || !window.getLaunchSimMission()) return;
             modal.classList.remove('hidden');
             modal.style.display = 'block';
             frame.src = 'launch-sim.html?embed=1&v=' + LAUNCH_SIM_VERSION;
@@ -12464,6 +12473,7 @@
             modal.classList.add('hidden');
             modal.style.display = 'none';
             if (frame) frame.src = 'about:blank';
+            window.launchSimMissionOverride = null;
             unlockBodyScroll();
         }
         window.addEventListener('message', e => {
@@ -17894,6 +17904,18 @@
                         <div id="modal-status"
                             class="text-xs sm:text-sm font-semibold mt-0.5 leading-tight notranslate lang-en-lock"
                             translate="no" lang="en"></div>
+                    </div>
+                    <!-- A flight that has flown: the launch simulation of that flight, in the status tile's place -->
+                    <div class="hidden cursor-pointer md:hover:bg-emerald-500/10 p-1 rounded-xl transition-colors"
+                        id="modal-launch-sim-tile" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openLaunchSimForOpenMission()">
+                        <div class="flex items-center gap-2">
+                            <div id="i18n-launch-sim-tile"
+                                class="modal-subhead text-sm sm:text-base text-emerald-400 font-semibold tracking-wider uppercase mt-1 notranslate"
+                                translate="no" lang="en">Launch Sim</div>
+                            <i class="fa-solid fa-earth-americas text-emerald-400/70 text-[10px] mt-1"></i>
+                        </div>
+                        <div id="i18n-launch-sim-tile-sub" translate="no"
+                            class="text-xs sm:text-sm font-semibold text-zinc-200 mt-0.5 leading-tight notranslate">3D replay</div>
                     </div>
                     <!-- Starship flights only: opens the interactive 3D vehicle (#starship-sim-modal).
                          applyStarshipTileLayout() shows it and regroups the tiles around it. -->
@@ -28695,6 +28717,16 @@ setTimeout(() => {
                 window.currentMissionCrew = [];
             }
 
+            {
+                const flown = isPastMission && m.sim && m.sim.pad;
+                const st = document.getElementById('modal-status-tile'), ls = document.getElementById('modal-launch-sim-tile');
+                if (st && ls) { st.classList.toggle('hidden', !!flown); ls.classList.toggle('hidden', !flown); }
+                window.launchSimTileMission = flown ? m : null;
+                const k = ((document.documentElement.lang || 'en').toLowerCase().split('-')[0]).replace('iw', 'he');
+                const lbl = document.getElementById('i18n-launch-sim-tile'), sub = document.getElementById('i18n-launch-sim-tile-sub');
+                if (lbl) lbl.textContent = LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en;
+                if (sub) sub.textContent = LAUNCH_SIM_SUB_I18N[k] || LAUNCH_SIM_SUB_I18N.en;
+            }
             const statusEl = document.getElementById('modal-status');
             statusEl.setAttribute('translate', 'no');
             statusEl.setAttribute('lang', 'en');

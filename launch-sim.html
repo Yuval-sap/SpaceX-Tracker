@@ -1348,7 +1348,7 @@ const fcanvas = (w, h) => { const c = document.createElement('canvas'); c.width 
 const ftex = (c, srgb = true, rep) => { const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep[0], rep[1]); return t; };
 let fseed = 11; const frnd = () => (fseed = (fseed * 16807) % 2147483647) / 2147483647;
 // how many times this flight's booster has flown (the site's mission data), for its soot
-const BOOSTER_FLIGHTS = (() => { try { const m = P && P.currentActiveHeroMission, n = parseInt(m && m.boosterFlightNum, 10); return n > 0 ? n : null; } catch (e) { return null; } })();
+const BOOSTER_FLIGHTS = (() => { try { const m = P && (P.getLaunchSimMission ? P.getLaunchSimMission() : P.currentActiveHeroMission), n = parseInt(m && m.boosterFlightNum, 10); return n > 0 ? n : null; } catch (e) { return null; } })();
 // the SPACEX wordmark, the X's long stroke sweeping out to the right (drawn horizontally; the decal turns it upright)
 function spacexWordmark(color) {
   const c = fcanvas(2048, 320), g = c.getContext('2d');
@@ -1762,7 +1762,7 @@ async function loadStarshipModel() {
     const src = await (await fetch('starship-3d.html', { cache: 'no-cache' })).text();
     const cut = (a, b) => { const i = src.indexOf(a), j = i < 0 ? -1 : src.indexOf(b, i + a.length); if (i < 0 || j < 0) throw new Error('starship-3d.html: no ' + a); return src.slice(i, j); };
     const code = [cut('const V2 = THREE.Vector2', '// ----------------'), cut('const FINITE_GLSL', 'const clampPass'), cut('// @model-begin', '// @model-end')].join('\n');
-    const m = (() => { try { return (P && P.currentActiveHeroMission) || {}; } catch (e) { return {}; } })();
+    const m = (() => { try { return (P && (P.getLaunchSimMission ? P.getLaunchSimMission() : P.currentActiveHeroMission)) || {}; } catch (e) { return {}; } })();
     const num = (v) => { const x = String(v || '').match(/(\d+)/); return x ? x[1] : ''; };
     const q = new URLSearchParams();
     const sv = num(m.shipSerial || m.shipLabel), bv = num(m.boosterSerial || cfg.boosterSerial || (boosterDefs[0] || {}).serial);
