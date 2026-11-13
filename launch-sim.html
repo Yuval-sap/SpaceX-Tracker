@@ -653,7 +653,10 @@ const OFFICIAL_ALT = REAL_ORBIT && REAL_ORBIT.alt >= 140 && REAL_ORBIT.alt <= 70
 // is inside the air (left alone, it comes back down), still climbing; it coasts up to the ellipse's high point - the
 // published altitude - and the orbital insertion burn there raises the low point, making the orbit round. The
 // ellipse is solved so its high point falls in the middle of that burn; the burn adds exactly the speed missing.
-const SS_SECO_ALT = 190;
+// (Flight 15's webcast: 153 km at T+7:31, 166 km at cutoff ~T+8:30, then coasting up to 187 km by T+10:30)
+const SS_SECO_ALT = 165;
+// (still climbing at cutoff, so it coasts up to its high point - ~200 km on a suborbital flight; 195 on Flight 12)
+const SS_VR = VEH === 'ss' ? 0.08 : 0.03;
 let SS_INSERT = null;                                            // { vh, vr, dv } km/s, rp km: the climb to orbit on an ellipse
 if (VEH === 'ss' && OFFICIAL_ALT && OFFICIAL_ALT > SS_SECO_ALT + 5 && A.s2.ses2 != null && A.s2.seco2 != null && A.s2.seco2 > A.s2.ses2) {
   const r0 = RE + SS_SECO_ALT, ra = RE + OFFICIAL_ALT, tGoal = (A.s2.ses2 + A.s2.seco2) / 2 - seco1;
@@ -670,32 +673,43 @@ if (VEH === 'ss' && OFFICIAL_ALT && OFFICIAL_ALT > SS_SECO_ALT + 5 && A.s2.ses2 
     SS_INSERT = { vh: sol.vh, vr: sol.vr, dv: Math.sqrt(MU / ra) - sol.va, rp: (lo + hi) / 2 - RE };
   }
 }
-const secoAlt = SS_INSERT ? SS_SECO_ALT : OFFICIAL_ALT ?? (VEH === 'ss' ? 190 : orbitKind === 'ISS' ? 205 : orbitKind === 'SSO' ? 300 : isStarlink ? 230 : 212);
+const secoAlt = SS_INSERT ? SS_SECO_ALT : OFFICIAL_ALT ?? (VEH === 'ss' ? SS_SECO_ALT : orbitKind === 'ISS' ? 205 : orbitKind === 'SSO' ? 300 : isStarlink ? 230 : 212);
 // (a Falcon Heavy: its side boosters let go at about the height a Falcon 9 stages at - 128 s into the base profile)
 const ascW = warp(VEH === 'fh' ? [[0, 0], [128, beco], [145, meco], [530, seco1]] : [[0, 0], [145, meco], [530, seco1]]);
 const rPre = VEH === 'fh' ? 128 / beco : 145 / meco, rMid = VEH === 'fh' ? 17 / (meco - beco) : rPre;   // base seconds per real second
 // altitude: the base climb to staging (a Falcon Heavy's core keeps climbing at the same rate after its side boosters
 // go), then one smooth curve from there to the orbit's altitude, flat at engine cutoff
-const ascAltPre = (tb) => VEH === 'fh' && tb > 128 ? ascAltB(128) + (ascAltB(tb) - ascAltB(128)) * (rPre / rMid) : ascAltB(tb);
+// (Starship's stack climbs lower than a Falcon 9 to staging: Flight 15's webcast showed 48.4 km at T+2:10, the Falcon 9
+// curve gave 58 - the same shape, 0.83 of the height)
+const PRE_K = VEH === 'ss' ? 0.83 : 1;
+const ascAltPre = (tb) => PRE_K * (VEH === 'fh' && tb > 128 ? ascAltB(128) + (ascAltB(tb) - ascAltB(128)) * (rPre / rMid) : ascAltB(tb));
 const altM = ascAltPre(145), vM = (ascAltPre(145) - ascAltPre(144)) * rMid;                    // km and km/s at staging
 const ascAlt = (t) => {
   if (t <= meco) return ascAltPre(ascW(t));
-  const T = Math.max(30, seco1 - meco), u = Math.min(1, (t - meco) / T), d = secoAlt - altM, m0 = Math.max(0, Math.min(vM * T, 2.8 * Math.abs(d))), m1 = (SS_INSERT ? SS_INSERT.vr : 0.03) * T,   /* (climbing into the ellipse at cutoff) */ u2 = u * u, u3 = u2 * u;
+  const T = Math.max(30, seco1 - meco), u = Math.min(1, (t - meco) / T), d = secoAlt - altM, m0 = Math.max(0, Math.min(vM * T, 2.8 * Math.abs(d))), m1 = (SS_INSERT ? SS_INSERT.vr : SS_VR) * T,   /* (climbing into the ellipse at cutoff) */ u2 = u * u, u3 = u2 * u;
   return (2 * u3 - 3 * u2 + 1) * altM + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * secoAlt + (u3 - u2) * m1;
 };
 // ground speed: the base profile's to staging, scaled to the speed SpaceX's webcasts show there for each kind of
 // flight (km/s); then on the base profile's shape up to the speed the orbit itself has over the ground
 const mainLand = ((boosterDefs.find(b => b.id === 'b' || b.id === 'center') || {}).land || {}).kind;
-const V_MECO = VEH === 'ss' ? 1.55 : VEH === 'fh' ? (mainLand === 'expend' ? 3.6 : 2.9) : mainLand === 'rtls' ? 1.65 : mainLand === 'expend' ? 2.6 : 2.25;
+const V_MECO = VEH === 'ss' ? 1.65 : VEH === 'fh' ? (mainLand === 'expend' ? 3.6 : 2.9) : mainLand === 'rtls' ? 1.65 : mainLand === 'expend' ? 2.6 : 2.25;
 const bp = (x) => ascDrB(x + 0.5) - ascDrB(x - 0.5);            // the base profile's ground speed, km per base second
 const vhM = Math.sqrt(Math.max(0.05, V_MECO * V_MECO - vM * vM));
 const vhB = VEH === 'fh' ? Math.sqrt(Math.max(0.05, 1.6 * 1.6 - Math.pow((ascAltB(128) - ascAltB(127)) * rPre, 2))) : 0;   // at the side boosters' separation
 const DR_K = VEH === 'fh' ? vhB / (bp(127.5) * rPre) : vhM / (bp(144.5) * rPre);
 const drPre = (() => { const out = new Float64Array(147); for (let i = 1; i < 147; i++) { const x = i - 0.5; out[i] = out[i - 1] + (VEH === 'fh' && x > 128 ? (vhB + (vhM - vhB) * (x - 128) / 17) / rMid : bp(x) * DR_K); } return out; })();
 let vhS = 7.4, drPost = null;                                   // vhS: the orbit's speed over the ground, set below
+// Starship's ship gains its speed late, as its propellant burns off: the share of the speed gained from staging to
+// cutoff against the share of the burn's time, from Flight 15's webcast (5,800 km/h at staging; 7,450 at T+3:42, 9,061
+// at 4:30, 11,942 at 5:30, 21,666 at 7:31, ~26,500 at cutoff)
+const SS_VSHAPE = monotone([[0, 0, 0], [0.1, 0, 0.03], [0.23, 0, 0.1], [0.36, 0, 0.18], [0.53, 0, 0.31], [0.7, 0, 0.5], [0.86, 0, 0.765], [1, 0, 1]], 2);
 function buildPost() {
   const n = Math.ceil(Math.max(30, seco1 - meco)) + 2, out = new Float64Array(n), b0 = bp(145.5), b1 = bp(529);
-  for (let i = 1; i < n; i++) { const x = Math.min(529.5, ascW(meco + i - 0.5)); out[i] = out[i - 1] + vhM + (vhS - vhM) * clamp01((bp(x) - b0) / (b1 - b0)); }
+  for (let i = 1; i < n; i++) {
+    const x = Math.min(529.5, ascW(meco + i - 0.5));
+    const f = VEH === 'ss' ? SS_VSHAPE(clamp01((i - 0.5) / Math.max(30, seco1 - meco))) : clamp01((bp(x) - b0) / (b1 - b0));
+    out[i] = out[i - 1] + vhM + (vhS - vhM) * f;
+  }
   drPost = out;
 }
 buildPost();
@@ -763,7 +777,7 @@ const orb = new Float64Array(orbN * 3);                          // inertial km,
   const radial = b.clone().normalize();
   v.sub(radial.clone().multiplyScalar(v.dot(radial)));
   if (SS_INSERT) v.setLength(SS_INSERT.vh).addScaledVector(radial, SS_INSERT.vr);   // still climbing, on the ellipse
-  else v.setLength(vcirc(b.length()) * ORB_K);
+  else { v.setLength(vcirc(b.length()) * ORB_K); if (VEH === 'ss') v.addScaledVector(radial, SS_VR); }
   const burns = [];
   if (A.s2.ses2 != null && A.s2.seco2 != null && A.s2.seco2 > A.s2.ses2) {
     const dv = SS_INSERT ? SS_INSERT.dv : VEH === 'ss' ? (OFFICIAL_ALT ? 0.003 : 0.06) : ESCAPE ? 3.1 : orbitKind === 'GTO' ? 2.45 : orbitKind === 'MEO' ? 1.9 : 0.05;
@@ -855,7 +869,8 @@ const B_ASDS = [[149, 71, 79], [180, 98, 138], [220, 118, 212], [260, 124, 286],
   [400, 31, 548], [420, 19, 578], [440, 10.5, 590], [460, 5.2, 596], [480, 2.4, 598.8], [495, 0.45, 599.85], [500, 0.05, 599.99], [502, 0, 600]];
 const B_RTLS = [[149, 71, 79], [160, 80, 90], [185, 92, 98], [210, 103, 99], [240, 112, 92], [270, 116, 78], [300, 112, 62], [330, 98, 44], [360, 76, 27],
   [380, 58, 17], [400, 40, 9], [420, 24, 4], [440, 8, 1.2], [455, 1.4, 0.2], [462, 0.12, 0.01], [465, 0, 0]];
-const B_SH = [[141, 66, 62], [146, 69, 66], [165, 76, 72], [182, 82, 74], [220, 91, 70], [260, 88, 56], [300, 70, 36], [330, 45, 18], [355, 14, 5], [370, 2.2, 0.8], [376, 0.95, 0.28], [381, 0.42, 0.1], [385, 0.18, 0.012], [389, 0.07, 0], [392, 0.025, 0], [395, 0, 0]];   // (over the pad before its body reaches the arms: straight down between them)   // (down to the pad: its hang lifts it into the arms, 88 m up)
+// (Super Heavy, from Flight 15's webcast: 92.3 km at T+3:42 near the top of its arc, 81.3 at 4:30, 36.6 at 5:30)
+const B_SH = [[141, 58, 62], [146, 61, 66], [165, 72, 72], [182, 84, 74], [222, 92.3, 70], [245, 90.5, 63], [270, 81.3, 52], [300, 63, 36], [330, 36.6, 18], [345, 21, 10], [355, 12.5, 5], [370, 2.2, 0.8], [376, 0.95, 0.28], [381, 0.42, 0.1], [385, 0.18, 0.012], [389, 0.07, 0], [392, 0.025, 0], [395, 0, 0]];   // (over the pad before its body reaches the arms: straight down between them)   // (down to the pad: its hang lifts it into the arms, 88 m up)
 const B_EXP = [[149, 71, 79], [200, 108, 165], [260, 128, 280], [320, 118, 390], [380, 78, 495], [430, 30, 575], [479, 0, 625]];
 function makeBooster(bd) {
   const k = bd.land.kind, sep = bd.sep;
@@ -1808,7 +1823,7 @@ function ssStage(which) {
   body.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    if (inCar(o)) return;
+    if (inCar(o)) return;
     if (mats.every(mt => mt.isShaderMaterial || mt.visible === false) || (mats.every(mt => innerMats.has(mt)) && !SEEN(o))) kill.push(o);
   });
   kill.forEach(o => { if (o.parent) o.parent.remove(o); });
