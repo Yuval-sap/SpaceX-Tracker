@@ -7,7 +7,7 @@
 <title>Launch Simulation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Orbitron:wght@500;700&family=Stardos+Stencil:wght@700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #02040a;
@@ -227,7 +227,6 @@
     <button type="button" data-cam="auto" class="on"></button>
     <button type="button" data-cam="chase"></button>
     <button type="button" data-cam="booster"></button>
-    <button type="button" data-cam="pad"></button>
     <button type="button" data-cam="earth"></button>
     <button type="button" id="ev-toggle"></button>
     <button type="button" id="cine" aria-label="">🎬</button>
@@ -275,6 +274,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ================================================================ language, units, embed
 // Embedded in the site (same-origin iframe): language and units follow the parent page live, the launch comes
@@ -896,6 +896,12 @@ if (A.s2.deorbit != null) S2_BURNS.push([A.s2.deorbit, A.s2.deorbitEnd ?? A.s2.d
 if (VEH === 'ss') S2_BURNS.push([A.s2.lbStart, A.s2.land]);
 
 // ================================================================ scene
+// depth: three's logarithmic depth takes log2(1 + w), w in scene units - 1000 km here - so up close (w ~ 1e-5) the
+// 32-bit "1 + w" kept only ~10 cm of it and layers a few cm apart (heat-shield tiles over the steel) flickered through
+// each other. w is counted in centimetres instead; the scale matches both cameras' far plane (2000 units)
+{ const S = '1e8', FC = '(2.0 / log2(2000.0 * 1e8 + 1.0))';
+  THREE.ShaderChunk.logdepthbuf_vertex = THREE.ShaderChunk.logdepthbuf_vertex.replace('1.0 + gl_Position.w', `1.0 + gl_Position.w * ${S}`).replace('gl_Position.w + 1.0', `gl_Position.w * ${S} + 1.0`).replace('logDepthBufFC', FC);
+  THREE.ShaderChunk.logdepthbuf_fragment = THREE.ShaderChunk.logdepthbuf_fragment.replace('logDepthBufFC', FC); }
 const container = $('scene');
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }); }
@@ -1494,15 +1500,124 @@ function ship() {
   ud.plume = plumeOn(g, 70, 4, 0x8fd3ff);
   return g;
 }
+// ---------------------------------------------------------------- Starship from the 3D Starship (starship-3d.html)
+// One model for both pages: the code between starship-3d.html's @model markers is fetched and run here as it is, with
+// this page's renderer and the flight's ship / booster serials and satellite count. Everything inside the hull is then
+// dropped (tanks, propellant, the deployer and the satellites stacked in the bay, the 3D page's own engine flames - this
+// page draws its own) and each stage's pieces are merged by material, so it draws in a few calls. If it can't be
+// loaded, the simpler model above is used.
+async function loadStarshipModel() {
+  try {
+    const src = await (await fetch('starship-3d.html', { cache: 'no-cache' })).text();
+    const cut = (a, b) => { const i = src.indexOf(a), j = i < 0 ? -1 : src.indexOf(b, i + a.length); if (i < 0 || j < 0) throw new Error('starship-3d.html: no ' + a); return src.slice(i, j); };
+    const code = [cut('const V2 = THREE.Vector2', '// ----------------'), cut('const FINITE_GLSL', 'const clampPass'), cut('// @model-begin', '// @model-end')].join('\n');
+    const m = (() => { try { return (P && P.currentActiveHeroMission) || {}; } catch (e) { return {}; } })();
+    const num = (v) => { const x = String(v || '').match(/(\d+)/); return x ? x[1] : ''; };
+    const q = new URLSearchParams();
+    const sv = num(m.shipSerial || m.shipLabel), bv = num(m.boosterSerial || cfg.boosterSerial || (boosterDefs[0] || {}).serial);
+    const nv = num((String(m.description || '').match(/(\d+)\s+(?:next[- ]generation\s+)?(?:Starlink\s+)?(?:V\d\s+)?(?:Starlink\s+)?satellites/i) || [])[1]);
+    if (sv) q.set('s', sv); if (bv) q.set('b', bv); if (nv) q.set('n', nv);
+    try { await Promise.race([document.fonts.load("700 84px 'Stardos Stencil'"), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}   // the serials' stencil
+    const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location',
+      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD };');
+    return run(THREE, mergeGeometries, renderer, new THREE.Scene(), MOBILE, renderer.capabilities.getMaxAnisotropy(), { search: '?' + q.toString() });
+  } catch (e) { console.warn('launch sim: the 3D Starship model could not be used, drawing the simple one', e); return null; }
+}
+const SSM = VEH === 'ss' ? await loadStarshipModel() : null;
+// what the steel reflects: an even grey all round (the 3D page's studio, with its bright strips of light, drew stripes
+// down the hull out here; the sun's own light and glints come from the scene's lights)
+const SS_ENV = SSM ? (() => { const e = new THREE.Scene(); e.add(new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ color: 0x9aa2ae, side: THREE.BackSide })));
+  const pm = new THREE.PMREMGenerator(renderer), t = pm.fromScene(e, 0).texture; pm.dispose(); return t; })() : null;
+// one stage of the 3D model ('ship' or 'booster'): its outside only, merged by material, in this page's units and turned
+// so its heat shield faces +z like the model above (the ship's base at this group's origin, as upperBase expects)
+function ssStage(which) {
+  const body = new THREE.Group();
+  SSM.groups.filter(g => !!g.userData.ship === (which === 'ship')).forEach(g => body.add(g));
+  const innerMats = new Set();
+  Object.values(SSM.parts).forEach(p => Object.entries(p.cache).forEach(([k, mt]) => { if (k.includes('@in')) innerMats.add(mt); }));
+  const drop = new Set(SSM.fluids);
+  SSM.engines.forEach(en => drop.add(en.e));                     // (each engine's flame, glow and pick proxy; its metal is batched apart)
+  if (SSM.deployer) { SSM.deployer.sats.forEach(x => drop.add(x)); drop.add(SSM.deployer.car); }
+  const kill = [];
+  body.traverse(o => {
+    if (drop.has(o)) { kill.push(o); return; }
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (mats.every(mt => innerMats.has(mt) || mt.isShaderMaterial || mt.visible === false)) kill.push(o);
+  });
+  kill.forEach(o => { if (o.parent) o.parent.remove(o); });
+  body.updateMatrixWorld(true);
+  const inv = body.matrixWorld.clone().invert(), buckets = new Map();
+  body.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) { if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(o); } });
+  for (const [mt, list] of buckets) {
+    if (list.length < 2) continue;
+    const geos = list.map(o => {
+      const mx = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+      let g = o.geometry.clone(); g = g.index ? g.toNonIndexed() : g; g.applyMatrix4(mx);
+      for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+      if (!g.attributes.normal) g.computeVertexNormals();
+      if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+      if (mx.determinant() < 0) for (const k of ['position', 'normal', 'uv']) {   // a mirrored piece: keep its faces facing out
+        const at = g.attributes[k], n = at.itemSize;
+        for (let i = 0; i + 2 < at.count; i += 3) for (let c = 0; c < n; c++) { const t = at.array[(i + 1) * n + c]; at.array[(i + 1) * n + c] = at.array[(i + 2) * n + c]; at.array[(i + 2) * n + c] = t; }
+      }
+      g.clearGroups(); return g;
+    });
+    const merged = mergeGeometries(geos, false); if (!merged) continue;
+    body.add(new THREE.Mesh(merged, mt)); list.forEach(o => o.parent.remove(o));
+  }
+  // layers a few cm apart (tiles over the steel, the black band over the tiles) are closer than this page's depth buffer
+  // can tell apart up close (its scene unit is 1000 km), so they are drawn inside out and the later one wins a tie: the
+  // bay's liner, then the hull's skin, the tiles, the band, and last everything that stands out of the hull
+  const kindOf = new Map(); Object.values(SSM.parts).forEach(p => Object.entries(p.cache).forEach(([k, mt]) => kindOf.set(mt, k.split('@')[0])));
+  const LAYER = { darkSlot: -1, steel: 0, steelSlot: 0, steelMatte: 0, tile: 1, noseTile: 1, shieldBand: 2 };
+  body.traverse(o => { if (!o.isMesh || (Array.isArray(o.material) ? o.material[0] : o.material).transparent) return; const k = kindOf.get(Array.isArray(o.material) ? o.material[0] : o.material); o.renderOrder = k in LAYER ? LAYER[k] : 3; });
+  body.traverse(o => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = false; (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt => {
+    mt.clippingPlanes = null; if (mt.isMeshStandardMaterial) { mt.envMap = SS_ENV; mt.envMapIntensity = 0.75; } mt.needsUpdate = true; }); });
+  body.scale.setScalar(VS);
+  if (which === 'ship') { body.position.y = -72.8 * VS; body.rotation.y = -SSM.WINDWARD; }
+  const g = new THREE.Group(); g.add(body); return g;
+}
+function ship3d() {
+  const g = new THREE.Group(), ud = g.userData;
+  g.add(ssStage('ship'));
+  ud.heat = heatSprite(22, 5, 62); ud.heat2 = heatSprite(5, 4, 46); g.add(ud.heat, ud.heat2);
+  const d = SSM.deployer;
+  ud.pezY = d ? d.YC - 72.8 : PEZ_Y;                             // (the Pez slot's height on this ship)
+  // the Starlink V3 satellites it pushes out of its side - the 3D page's own satellite - one after the other
+  if (A.s2.deploy != null) {
+    const d0 = A.s2.deploy, d1 = A.s2.deployEnd != null && A.s2.deployEnd > d0 ? A.s2.deployEnd : d0 + 600, N = 10;
+    const tpl = d && d.sats[0];
+    if (tpl) tpl.traverse(o => { if (o.isMesh) { o.material.clippingPlanes = null; if (o.material.isMeshStandardMaterial) { o.material.envMap = SS_ENV; o.material.envMapIntensity = 0.75; } o.material.needsUpdate = true; } });
+    const slab = new THREE.MeshStandardMaterial({ color: 0xcfd4dc, metalness: 0.6, roughness: 0.35, emissive: 0x55606e, emissiveIntensity: 0.5 });
+    ud.pez = []; ud.pezT = []; ud.pezEnd = d1 + 1500;
+    for (let i = 0; i < N; i++) {
+      let m;
+      if (tpl) { m = new THREE.Group(); const s = tpl.clone(); s.position.set(0, 0, 0); s.rotation.set(0, Math.PI / 2, 0); m.add(s); m.scale.setScalar(VS); }   // (its long axis out through the slot)
+      else m = new THREE.Mesh(new THREE.BoxGeometry(6.2 * VS, 0.35 * VS, 3.2 * VS), slab);
+      m.visible = false; g.add(m); ud.pez.push(m); ud.pezT.push(d0 + (i + 0.5) / N * (d1 - d0));
+    }
+  }
+  ud.plume = plumeOn(g, 70, 4, 0x8fd3ff);
+  return g;
+}
+function superHeavy3d() {
+  const g = new THREE.Group(); g.add(ssStage('booster'));
+  const heat = heatSprite(3, 0, 60); g.add(heat);
+  g.userData = { legs: [], fins: [], heat, plume: plumeOn(g, 140, 9, 0xff9a4a) };
+  return g;
+}
+// caught, the ship hangs just under its forward flaps (their lowest point resting above the arms' top)
+const SHIP_HANG = SSM ? SSM.FF_Y - 72.8 + SSM.FF_DROP - 1.6 - 0.3 : 37;
 // bodies: the upper stage, and each booster. Stacked until they separate, then each flies on its own.
-const upper = VEH === 'ss' ? ship() : falconUpper();
+const upper = VEH === 'ss' ? (SSM ? ship3d() : ship()) : falconUpper();
 const upperBase = VEH === 'ss' ? 72.8 : 48;                     // metres above the stack's base
 scene.add(upper);
 const vehLabel = label(VEH_NAME, 'veh');
 const s2Label = label('', 'veh');
 upper.add(s2Label); scene.add(vehLabel);
 boosterDefs.forEach(bd => {
-  bd.obj = VEH === 'ss' ? superHeavy() : falconCore(bd.who === 'side');
+  bd.obj = VEH === 'ss' ? (SSM ? superHeavy3d() : superHeavy()) : falconCore(bd.who === 'side');
   bd.offset = bd.who === 'side' ? new THREE.Vector3(bd.side * 4.1 * VS, 0, 0) : new THREE.Vector3();
   scene.add(bd.obj);
   bd.label = label('', 'veh booster'); bd.obj.add(bd.label);
@@ -2312,7 +2427,6 @@ function uiTexts() {
   // the follow camera named after what it follows: the ship on a Starship flight, the capsule on a Dragon flight, else the payload
   document.querySelector('[data-cam="chase"]').textContent = VEH === 'ss' ? 'Starship' : isDragon ? 'Dragon' : I.payload;
   document.querySelector('[data-cam="booster"]').textContent = VEH === 'ss' ? 'Super Heavy' : I.booster;
-  document.querySelector('[data-cam="pad"]').textContent = I.pad;
   document.querySelector('[data-cam="earth"]').textContent = I.earth;
   $('ev-toggle').textContent = I.events;
   $('cine').title = I.cine; $('cine').setAttribute('aria-label', I.cine); $('cine-exit').setAttribute('aria-label', I.cine);
@@ -2560,7 +2674,7 @@ function animatePayload() {
   if (ud.sats) { const age = simT - dep, sp = age > 0 ? 1 - Math.exp(-age / 90) : 0; ud.sats.forEach((m, i) => { m.visible = simT >= fT && age < 2400; m.position.y = (13 + i * 0.3 + sp * (10 + i * 3.4)) * VS; m.rotation.x = sp * 0.5 * (i % 2 ? 1 : -1); m.rotation.y = sp * i * 0.21; }); }
   if (ud.sat) { const age = simT - dep, a = Math.max(0, age), open = smooth((age - 15) / 25); ud.sat.visible = simT >= fT && age < 2400; ud.sat.position.y = (15.5 + Math.min(90, a * 0.9)) * VS; ud.panels.forEach(p => { p.scale.x = 0.12 + 0.88 * open; }); }
   if (ud.capsule) ud.capsule.position.y = Math.min(110, Math.max(0, simT - dep) * 0.8) * VS;
-  if (ud.pez) ud.pez.forEach((m, i) => { const age = simT - ud.pezT[i], a = Math.max(0, age); m.visible = age >= 0 && simT < ud.pezEnd; m.position.set(0, (PEZ_Y - 110 * (1 - Math.exp(-a / 240))) * VS, -(6.2 + 70 * (1 - Math.exp(-a / 45))) * VS); m.rotation.y = a * 0.01; });
+  if (ud.pez) ud.pez.forEach((m, i) => { const age = simT - ud.pezT[i], a = Math.max(0, age); m.visible = age >= 0 && simT < ud.pezEnd; m.position.set(0, ((ud.pezY ?? PEZ_Y) - 110 * (1 - Math.exp(-a / 240))) * VS, -(6.2 + 70 * (1 - Math.exp(-a / 45))) * VS); m.rotation.y = a * 0.01; });
 }
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.1);
@@ -2642,7 +2756,7 @@ function frame() {
       }
     }
     // a caught ship hangs from the tower's arms
-    const shipHang = VEH === 'ss' && shipCatch && towerShown ? (ARM_Y - 37) * VS * vScale *   /* (caught just under its forward flaps, which rest above the arms) */ smooth((simT - (A.s2.land - 40)) / 35) : 0;
+    const shipHang = VEH === 'ss' && shipCatch && towerShown ? (ARM_Y - SHIP_HANG) * VS * vScale *   /* (caught just under its forward flaps, which rest above the arms) */ smooth((simT - (A.s2.land - 40)) / 35) : 0;
     const tau = simT - sepT, lit = Math.max(0, simT - ses1);
     const gap = (upperBase + 14 * (1 - Math.exp(-tau / 3)) + 70 * (1 - Math.exp(-lit / 12))) * (1 - smooth((tau - 25) / 60));
     const along = d.clone().normalize();
@@ -2894,9 +3008,7 @@ setInterval(() => {
 }, 1000);
 liveLabel();
 if (liveAvail() && Q.get('live') !== '0') setLive(true);
-$('loading').style.opacity = '0';
-setTimeout(() => $('loading').remove(), 700);
-window.__lsim = { SS_INSERT: () => SS_INSERT, EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
+window.__lsim = { get upper() { return upper; }, SS_INSERT: () => SS_INSERT, EVENTS, A, boosterDefs, SHOTS, END_T, AZIMUTH, INC, orbitKind, OFFICIAL_ALT, DR_K, seek: (t) => { setLive(false); seek(t); }, get t() { return simT; }, get live() { return live; },
   tiles: () => { const o = {}; tiles.forEach(t => { const k = t.lv.id; o[k] = o[k] || { vis: 0 }; o[k][t.state] = (o[k][t.state] || 0) + 1; if (t.mesh.visible) o[k].vis++; }); return { o, tileSpeed, tilesOff: tilesOff.g || tilesOff.e, off: tilesOff, total: tiles.size }; },
   lookDown: (lat, lon, altKm) => { document.querySelector('[data-cam="earth"]').click(); camera.position.copy(toInertial(ecef(lat, lon, altKm), simT)); },
   tilt: (t) => { const r = s2At(t).normalize(), d = t <= 0 ? r : heading(s2At, t).lerp(r, 1 - smooth(t / 12)).normalize(); return Math.round(Math.acos(Math.min(1, d.dot(r))) / DEG); },
@@ -2906,16 +3018,19 @@ window.__lsim = { SS_INSERT: () => SS_INSERT, EVENTS, A, boosterDefs, SHOTS, END
   aimMoon: () => { userCam = true; controls.target.copy(camera.position).addScaledVector(moon.position.clone().sub(camera.position).normalize(), 0.01); const sm = moon.position.clone().normalize().dot(SUN); return { illum: Math.round((1 - sm) / 2 * 100) + '%' }; },
   camInfo: () => ({ mode: camMode, userCam, km: camera.position.distanceTo(upper.position) / SCALE, scale: upper.scale.x * 400, tgtKm: controls.target.distanceTo(upper.position) / SCALE, aspect: camera.aspect }),
   toggle: (what, on) => { ({ clouds: padClouds, sky: skyDome })[what].userData.off = !on; },
-  dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
+  dbg: { s2At, toFixed, RE, SCALE, seco1, sepT, secoAlt, camera, renderer, VEH, shipCatch, hasFairing, isDragon, isStarlink, padLabel: PAD_LABEL },
   sunElev: (t) => Math.round(Math.asin(toInertial(ecef(PAD.lat, PAD.lon, 0), t).normalize().dot(sunDir(T0 + t * 1000))) / DEG * 10) / 10, T0, PAD,
   probe: (t, b) => { const fn = b ? boosterDefs[0].at : s2At; return { alt: Math.round((fn(t).length() / SCALE - RE) * 10) / 10, kmh: Math.round(toFixed(fn(t + 0.5), t + 0.5).distanceTo(toFixed(fn(t - 0.5), t - 0.5)) / SCALE * 3600) }; } };
 // every material made ready for the graphics card up front, hidden ones too (a flame, a glow, a model first shown in
 // the middle of the flight otherwise had its shaders built right then, and that frame stalled for a tenth of a second)
 try {
   const hidden = []; scene.traverse(o => { if (!o.visible) { hidden.push(o); o.visible = true; } });
-  renderer.compile(scene, camera);
-  hidden.forEach(o => { o.visible = false; });
+  // (built in parallel where the browser can, instead of one after the other - the 3D Starship brings many materials)
+  if (renderer.compileAsync) { const p = renderer.compileAsync(scene, camera); hidden.forEach(o => { o.visible = false; }); await p; }
+  else { renderer.compile(scene, camera); hidden.forEach(o => { o.visible = false; }); }
 } catch (e) {}
+$('loading').style.opacity = '0';                                 // (only once it can draw)
+setTimeout(() => $('loading').remove(), 700);
 requestAnimationFrame(frame);
 </script>
 </body>

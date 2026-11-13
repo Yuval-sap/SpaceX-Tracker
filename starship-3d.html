@@ -472,6 +472,8 @@ function buildEnv() {
 }
 scene.environment = buildEnv();
 
+// @model-begin - launch-sim.html runs the code from here down to @model-end as its own Starship model (one model
+// for both pages), so keep these two marker lines; the code between them may change freely
 // ---------------------------------------------------------------- procedural textures
 const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const toTex = (c, srgb) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = maxAniso; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
@@ -779,6 +781,8 @@ const aftTiled = (d, y) => {
 // 1.79 m) down to the plain tile edge; the black section's outer edge below runs parallel to it (FWD_SLOPE m per rad)
 const FWD_SLOPE = 3.6;
 const tileLoYr = d => 1.79 - (2.29 - d) * FWD_SLOPE;
+const BAND_AFT_D = 1.62 + (1.92 - 1.62) * AFT_END;                     // the aft flap's steel-side face
+const BAND_AFT_LO = (Math.round(AFT_TOP / RING) - 4) * RING;           // a weld, four rings under the flap's top
 const tileHiYr = d => d < FLAP_D ? 1e9 : 3.48 - (d - FLAP_D) * 1.27;
 function tileAt(th, y) {
   const d = angDist(th, WINDWARD), rel = y - S0;
@@ -931,24 +935,14 @@ function shieldTex() {
   // a whole number of tile repeats around the hull, so the pattern closes up where the wrap meets itself
   const repU = Math.round(CIRC / tileTex.w), repV = SHIP_H / tileTex.h;
   // hex lattice of the tile texture, in its own canvas pixels (see makeTiles)
-  const n = 18, TW = 1024, hw = TW / n, TH = Math.round(n * 1.5 * hw / Math.sqrt(3)), rowH = TH / n;
+  const n = 18, TW = 1024, hw = TW / n, TH = Math.round(n * 1.5 * hw / Math.sqrt(3));
   const W = 2048, H = 3072, c = mkCanvas(W, H), g = c.getContext('2d'), img = g.createImageData(W, H), d = img.data;
   for (let r = 0; r < H; r++) {
     const v = 1 - (r + 0.5) / H, Y = (1 - v * repV) * TH;
-    const row0 = Math.floor(Y / rowH);
     for (let q = 0; q < W; q++) {
       const X = (q + 0.5) / W * repU * TW;
-      let best = 1e9, bx = 0, by = 0;
-      for (let rr = row0 - 1; rr <= row0 + 1; rr++) {
-        const off = (((rr % 2) + 2) % 2) ? hw / 2 : 0, cy = rr * rowH, col = Math.round((X - off) / hw);
-        for (let cc = col - 1; cc <= col + 1; cc++) {
-          const cx = cc * hw + off, dd = (cx - X) * (cx - X) + (cy - Y) * (cy - Y);
-          if (dd < best) { best = dd; bx = cx; by = cy; }
-        }
-      }
       // tested at the pixel itself, not at its tile's centre: the edge tiles are cut along the line, so the heat shield
       // ends in a clean straight edge down the sides (as on the real ship) instead of a zigzag of whole hexagons
-      void bx; void by;
       const th = X / (repU * TW) * TAU, y = S0 + (1 - Y / TH) / repV * SHIP_H;
       const on = tileAt(th, y) ? 255 : 0, i = (r * W + q) * 4;
       d[i] = d[i + 1] = d[i + 2] = on; d[i + 3] = 255;
@@ -1009,7 +1003,7 @@ function edgeStrip(group, y0, y1) {
   // column edges: an even grid plus every angle where the outline jumps (strip -> frame, flap line, tongue edge), so no
   // column straddles a jump; each column's limits are evaluated just inside its own edges (a column evaluated across a
   // jump came out as a slanted wedge - the steps and slivers along the strip)
-  const cuts = new Set([BAND_STRIP, FLAP_D, 2.07, TONGUE_D, BAND_D1]);
+  const cuts = new Set([BAND_STRIP, FLAP_D, 2.07, TONGUE_D, BAND_D1, BAND_AFT_D]);
   for (let d = BAND_D0; d < BAND_D1 - 1e-6; d += DD) cuts.add(Math.round(d * 1e4) / 1e4);
   const xs = [...cuts].filter(x => x >= BAND_D0 && x <= BAND_D1).sort((p, q) => p - q);
   const cl = v => Math.min(y1, Math.max(y0, v));
@@ -1019,6 +1013,8 @@ function edgeStrip(group, y0, y1) {
     const e = [i === 0 ? BAND_D0 - 0.012 : a0 - 0.001, a1 + 0.001];
     const pieces = dm >= TONGUE_D ? [[x => blackLoYr(x), x => blackHiYr(x)]] : [[x => blackLoYr(x), x => Math.min(blackHiYr(x), tileLoYr(x))]];
     if (dm >= FLAP_D && dm < TONGUE_D) pieces.push([x => Math.max(blackLoYr(x), tileHiYr(x)), x => blackHiYr(x)]);
+    if (dm > BAND_AFT_D && dm < BAND_STRIP) pieces.push([() => BAND_AFT_LO - NOSE0,
+      x => AFT_TOP - NOSE0 + clamp(((x - 1.62) / (1.92 - 1.62) - AFT_END) / (1 - AFT_END)) * AFT_PT]);
     for (const [fLo, fHi] of pieces) {
       if (fHi(dm) <= fLo(dm)) continue;
       const lo = ein.map(x => cl(NOSE0 + fLo(x))), hi = ein.map(x => cl(NOSE0 + Math.max(fLo(x), fHi(x))));
@@ -1869,15 +1865,13 @@ function flap(group, a, y0, cr, ct, span, drop, rootR, tilt, label, kind = 'tile
   {
     // (per photos: one long, smooth half cone, no wider than the hinge it caps, tapering up the hull to a blunt
     // point - no straight section, no shoulder)
-    const HR = 0.42, HH = 0, CH = 1.7, prof = [];
+    const HR = 0.42, HH = 0, CH = 1.1, prof = [];
     for (let i = 0; i <= 24; i++) { const q = i / 24; prof.push([Math.max(0.03, HR * Math.pow(1 - q, 0.8)), CH * q]); }   // gently full, then to the point
     prof[prof.length - 1][0] = 0.001;
     // lathe sweeps round +y; the half from -90 to +90 degrees about x is the half facing away from the hull (+x)
     const hg = lathe(prof, 24, 0, Math.PI), uv = hg.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.PI * HR / tileTex.w, uv.getY(i) * (HH + CH) / tileTex.h);
-    // leaning like the heat shield's diagonal cut right beside it (aftCurveY: 1.35 m across for 2.8 m up), top toward
-    // the windward side; turning about the radial axis keeps the flat side flush on the hull
-    hg.rotateX((Math.sin(a - WINDWARD) > 0 ? 1 : -1) * Math.atan2((1.92 - 1.62) * R, AFT_H - AFT_PT));
+    // straight up the hinge line, continuing the flap's own root edge (no lean to either side)
     // foot just over the flap top (the root's top end, tilted with the flap)
     const yT = y0 + cr * Math.cos(tilt) - 0.32;   // sunk onto the flap's top edge, not perched over it
     {
@@ -2075,6 +2069,7 @@ function serialCanvas(text, upward = false) {
   }
 }
 
+// @model-end
 // ---------------------------------------------------------------- stage, lights
 const floorGlow = (() => { const c = mkCanvas(256, 256), g = c.getContext('2d'), gr = g.createRadialGradient(100, 110, 0, 128, 128, 128);
   gr.addColorStop(0, '#fff'); gr.addColorStop(0.55, '#5a6070'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c); })();
