@@ -26707,6 +26707,14 @@
                 watchLiveBtn.className = HERO_LIVE_BTN_CLASS_LIVE;
                 if (watchLiveIcon) watchLiveIcon.className = 'fa-solid fa-play text-[10px] animate-pulse';
                 watchLiveBtn.onclick = function () {
+                    // X's player was opened on this page already: the page loads again first (a fresh memory for it - see
+                    // openLiveVideo) and only then opens the window with the broadcast, not the window twice
+                    if (window._xPlayerOpenedThisPage && 'credentialless' in HTMLIFrameElement.prototype && nextLaunch && nextLaunch.id
+                        && !(typeof nasaLiveStreamFor === 'function' && nasaLiveStreamFor(nextLaunch))) {
+                        try { sessionStorage.setItem('reopenLiveAfterReload', JSON.stringify({ id: nextLaunch.id, at: Date.now() })); } catch (e) { }
+                        location.reload();
+                        return;
+                    }
                     openMissionModal(nextLaunch);
                     const modalLiveBtn = document.getElementById('modal-watch-live-btn');
                     if (modalLiveBtn) modalLiveBtn.click();
