@@ -2119,7 +2119,7 @@ function serialCanvas(text, upward = false) {
       g.fillStyle = '#060708'; g.beginPath(); g.arc(128, 128, ring ? 58 : 120, 0, TAU); g.fill();
       return c;
     };
-    decal(sCh4, 's-tanks', holeCanvas(false), S0 + 26.5, LEEWARD - 0.85, 0.75, 0.75);
+    window.__ssBigHole = holeCanvas(true);
     decal(sLox, 's-tanks', holeCanvas(true), S0 + 7.5, LEEWARD + 0.78, 2.0, 2.0);
   }
   // Ship 42 on (its photos): the details below
@@ -2182,8 +2182,8 @@ function serialCanvas(text, upward = false) {
     }
     // 5. the band of stringers below the Pez slot (photo of Ship 42): across the whole steel side from tile edge to tile edge,
     // a ring of close vertical stiffeners with a rim above and below, about 1.1 m tall, ~1.5 m under the raceways' tops
-    {
-      const y0 = ringY(58) - 0.35, y1 = y0 + 1.1, half = 1.5, r = R + 0.035, arcM = 2 * half * r;
+    const stringerBand = (y0, y1, grp, pid) => {
+      const half = 1.5, r = R + 0.035, arcM = 2 * half * r;
       const W = 4096, H = 192, c = mkCanvas(W, H), g = c.getContext('2d'), py = m => H - m / (y1 - y0) * H, ux = m => m / arcM * W;
       g.fillStyle = '#9ea2a9'; g.fillRect(0, 0, W, H);
       for (let x = 0, k = 0; x < arcM; x += 0.075, k++) {
@@ -2198,7 +2198,66 @@ function serialCanvas(text, upward = false) {
       const mat = new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 1.3, metalness: 0.75, roughness: 0.45, side: THREE.DoubleSide });
       mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
       const geo = new THREE.CylinderGeometry(r, r, y1 - y0, 192, 1, true, LEEWARD - half, 2 * half); geo.translate(0, (y0 + y1) / 2, 0);
-      const m = new THREE.Mesh(geo, mat); m.userData.part = 's-payload'; m.userData.label = 'Stringer band'; m.castShadow = m.receiveShadow = true; sPay.add(m);
+      const m = new THREE.Mesh(geo, mat); m.userData.part = pid; m.userData.label = 'Stringer band'; m.castShadow = m.receiveShadow = true; grp.add(m);
+    };
+    const grpAt = (y) => y >= S0 + 28.4 ? [sPay, 's-payload'] : y >= S0 + 19 ? [sCh4, 's-tanks'] : [sLox, 's-tanks'];
+    // (heights from a photo of Ship 42 taken square on, ~58 px a metre: the upper band 0.9 m tall; the lower one 0.7 m
+    // tall, its top 9.5 m under the upper band's foot; the big hole 7.4 m under it, above the lower band)
+    const BAND1 = ringY(58) - 0.35, BAND2 = BAND1 - 9.5 - 0.7;
+    stringerBand(BAND1, BAND1 + 0.9, sPay, 's-payload');
+    stringerBand(BAND2, BAND2 + 0.7, ...grpAt(BAND2));
+    { const yb = BAND1 - 7.4, [grp, pid] = grpAt(yb); decal(grp, pid, window.__ssBigHole, yb, LEEWARD - 0.81, 1.2, 1.2); delete window.__ssBigHole; }
+    // 6. small holes under each band, two outboard of each raceway (the reaction-control ports, photo of Ship 42): round
+    // bores lined with steel - the lit lower wall, the upper one in its own shadow, dark at the bottom - not flat black
+    {
+      const c = mkCanvas(256, 256), g = c.getContext('2d');
+      const wall = g.createLinearGradient(0, 28, 0, 228);
+      wall.addColorStop(0, '#3b3e44'); wall.addColorStop(0.45, '#6f747b'); wall.addColorStop(1, '#d6d9de');
+      g.fillStyle = '#2a2c30'; g.beginPath(); g.arc(128, 128, 112, 0, TAU); g.fill();               // the rim's edge
+      g.fillStyle = wall; g.beginPath(); g.arc(128, 128, 104, 0, TAU); g.fill();                    // the steel bore
+      for (let i = 0; i < 28; i++) { const t = i / 28 * TAU; g.strokeStyle = `rgba(255,255,255,${0.05 + 0.05 * (i % 3)})`; g.lineWidth = 2; g.beginPath(); g.moveTo(128 + Math.cos(t) * 62, 128 + Math.sin(t) * 62); g.lineTo(128 + Math.cos(t) * 100, 128 + Math.sin(t) * 100); g.stroke(); }
+      const bottom = g.createRadialGradient(128, 118, 4, 128, 122, 64);
+      bottom.addColorStop(0, '#050506'); bottom.addColorStop(0.8, '#131417'); bottom.addColorStop(1, '#2c2e33');
+      g.fillStyle = bottom; g.beginPath(); g.arc(128, 122, 60, 0, TAU); g.fill();                   // the bottom, a little high
+      const bc = mkCanvas(256, 256), bg = bc.getContext('2d');                                        // bump: sunk inside the rim
+      bg.fillStyle = '#ffffff'; bg.fillRect(0, 0, 256, 256);
+      const dip = bg.createRadialGradient(128, 128, 60, 128, 128, 112); dip.addColorStop(0, '#000'); dip.addColorStop(0.85, '#555'); dip.addColorStop(1, '#fff');
+      bg.fillStyle = dip; bg.beginPath(); bg.arc(128, 128, 112, 0, TAU); bg.fill();
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso;
+      const bump = new THREE.CanvasTexture(bc);
+      const alpha = mkCanvas(256, 256), ag = alpha.getContext('2d'); ag.fillStyle = '#000'; ag.fillRect(0, 0, 256, 256); ag.fillStyle = '#fff'; ag.beginPath(); ag.arc(128, 128, 114, 0, TAU); ag.fill();
+      const mat = new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 2, alphaMap: new THREE.CanvasTexture(alpha), transparent: true, depthWrite: false,
+        metalness: 0.75, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -2 });
+      mat.clippingPlanes = CLIPS; mat.clipIntersection = true;
+      const holeAt = (y, ang, D) => {
+        const [grp, pid] = grpAt(y), r = hullRadius(y) + 0.045, arc = D / r;
+        const geo = new THREE.CylinderGeometry(r, r, D, 12, 1, true, ang - arc / 2, arc); geo.translate(0, y, 0);
+        const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.userData.part = pid; m.userData.label = 'Reaction-control port'; grp.add(m);
+      };
+      // each pair on a plate outlined by its bolts; the upper holes ringed by short radial bolt marks (photo of Ship 42)
+      const plate = (y, a0, a1, h, holes) => {
+        const [grp, pid] = grpAt(y), r = hullRadius(y), w = (a1 - a0) * r, W = 512, H = Math.round(512 * h / w);
+        const c = mkCanvas(W, H), g = c.getContext('2d'), px = m => m / w * W, ax = a => px((a - a0) * r);
+        g.fillStyle = 'rgba(40,43,48,0.75)';
+        for (let x = 6; x < W - 4; x += 18) { g.fillRect(x, 4, 8, 3); g.fillRect(x, H - 7, 8, 3); }
+        for (let y2 = 6; y2 < H - 4; y2 += 18) { g.fillRect(4, y2, 3, 8); g.fillRect(W - 7, y2, 3, 8); }
+        for (const [a, d, petals] of holes) if (petals) for (let i = 0; i < 12; i++) {
+          const t = i / 12 * TAU, cx = ax(a), cy = H / 2, rr = px(d * 0.78);
+          g.save(); g.translate(cx + Math.cos(t) * rr, cy + Math.sin(t) * rr); g.rotate(t); g.fillRect(-px(0.05), -1.5, px(0.1), 3); g.restore();
+        }
+        decal(grp, pid, c, y, (a0 + a1) / 2, w, h, 0.04);
+      };
+      // upper: under the upper band, 1.2 m below its foot - two on each side, 0.59 and 0.84 rad round from the steel
+      // side's middle (the raceways are at 0.36); lower: 0.9 m under the lower band, a big hole and a small one on each
+      // side, the big one on the left of each pair (as seen from outside)
+      const yU = BAND1 - 1.2, yL = BAND2 - 0.9;
+      for (const side of [-1, 1]) {
+        const aU = [0.59, 0.84].map(k => LEEWARD + side * k), aL = side < 0 ? [LEEWARD - 1.04, LEEWARD - 0.88] : [LEEWARD + 0.88, LEEWARD + 1.04];
+        plate(yU, Math.min(...aU) - 0.12, Math.max(...aU) + 0.12, 1.1, aU.map(a => [a, 0.36, true]));
+        aU.forEach(a => holeAt(yU, a, 0.36));
+        plate(yL, aL[0] - 0.1, aL[1] + 0.1, 0.9, [[aL[0], 0.3, false], [aL[1], 0.13, false]]);
+        holeAt(yL, aL[0], 0.3); holeAt(yL, aL[1], 0.13);
+      }
     }
     // 4. two small black sensor bumps on the band's row of slots, either side of the raceways
     for (const da of [-0.85, 0.85]) {
