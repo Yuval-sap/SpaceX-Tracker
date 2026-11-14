@@ -840,11 +840,12 @@ if (VEH === 'ss') {
 const shipCatchFixed = ecef(PAD.lat, PAD.lon, 0).normalize();
 const SHIP_DIVERT = 0.5;                                         // km: how far short of the tower the ship falls before its flip
 // km short of the tower along the approach, by time: the fall short (from transonic), then from 4 s before the flip an
-// S-shaped move in (gathering sideways speed, then braking it) that ends 2 s before the catch, with two small corrections
+// S-shaped move in (gathering sideways speed, then braking it) that ends 8 s before the catch - the ship then still
+// above the tower, coming straight down between the arms - with two small corrections
 // (a sway of a few metres, dying out) like those seen on the catch videos
 function shipDivertOff(tt) {
   const land = A.s2.land, tr = A.s2.transonic, F = A.s2.flip ?? A.s2.lbStart;
-  const t0 = F - 4, t1 = land - 2, u = clamp01((tt - t0) / Math.max(6, t1 - t0));
+  const t0 = F - 4, t1 = land - 8, u = clamp01((tt - t0) / Math.max(6, t1 - t0));   // (done 8 s out, still above the tower)
   const s5 = u * u * u * (u * (u * 6 - 15) + 10);                  // (smootherstep: no jerk at either end)
   const sway = 0.006 * Math.sin(u * Math.PI * 3) * Math.sin(u * Math.PI) * (1 - u);   // km
   return SHIP_DIVERT * smooth((tt - tr) / 90) * (1 - s5) + (u > 0 && u < 1 ? sway : 0);
@@ -858,7 +859,8 @@ let shipApproachV = null;
 function shipApproach() {
   if (shipApproachV) return shipApproachV;
   const tr = A.s2.transonic, up = shipCatch ? shipCatchFixed : shipFixedDir(tr);
-  let a = shipCatch ? shipCatchFixed.clone().sub(shipFixedDir(tr - 60)) : shipFixedDir(tr - 40).sub(shipFixedDir(tr - 80));
+  // (a catch: moving north, into the mouth between the arms - from the side it came through an arm)
+  let a = shipCatch ? (() => { const e = new THREE.Vector3(0, 1, 0).cross(up).normalize(); return e.cross(up).normalize().negate(); })() : shipFixedDir(tr - 40).sub(shipFixedDir(tr - 80));
   a.sub(up.clone().multiplyScalar(a.dot(up)));
   if (a.lengthSq() < 1e-14) a = new THREE.Vector3(0, 1, 0).cross(up);
   return (shipApproachV = a.normalize());
@@ -2111,12 +2113,12 @@ function tileGeometry(lv, y, x) {
 function makeTile(lv, y, x) {
   const u = uniOf(lv), uOp = { value: 0 }, uMap = { value: blank }, uNight = { value: blank }, uHasNight = { value: 0 };
   const mat = new THREE.ShaderMaterial({
-    uniforms: { map: uMap, nightMap: uNight, hasNight: uHasNight, sunDir: earthMat.uniforms.sunDir, center: u.center, fade: u.fade, opacity: uOp, land: { value: lv.land }, mid: { value: new THREE.Vector3() } },
+    uniforms: { map: uMap, nightMap: uNight, hasNight: uHasNight, sunDir: earthMat.uniforms.sunDir, center: u.center, fade: u.fade, opacity: uOp, land: { value: lv.land }, mid: { value: new THREE.Vector3() }, seaMap: earthMat.uniforms.specMap },
     blending: THREE.CustomBlending, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, depthTest: false, depthWrite: false,
     vertexShader: `uniform vec3 mid; varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
       void main() { vUv = uv; vec3 p = position + mid; vL = normalize(p); vN = normalize(mat3(modelMatrix) * p); vW = (modelMatrix * vec4(position, 1.0)).xyz;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,   // (modelViewMatrix: worked out on the CPU in full precision, near the camera it is small)
-    fragmentShader: `uniform sampler2D map; uniform sampler2D nightMap; uniform float hasNight; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity; uniform float land;
+    fragmentShader: `uniform sampler2D map; uniform sampler2D nightMap; uniform sampler2D seaMap; uniform float hasNight; uniform vec3 sunDir; uniform vec3 center; uniform vec2 fade; uniform float opacity; uniform float land;
       varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying vec3 vL;
       void main() {
         vec3 n = normalize(vN);
@@ -2126,6 +2128,15 @@ function makeTile(lv, y, x) {
         float water = land * smoothstep(0.008, 0.035, day.b - max(day.r, day.g));
         // the darker water of the aerial photos near a coast, bluish and dark, gives way too (dark forest is greener, shade greyer)
         water = max(water, land * step(day.r * 1.1, day.b) * step(day.g * 0.9, day.b) * (1.0 - smoothstep(0.16, 0.26, max(day.r, max(day.g, day.b)))));
+        // and out at sea (the globe's own water map says so) the photos' green-blue shallows too - their edge, where a finer
+        // picture's coverage ended or its water turned teal, was a jagged staircase against the even ocean beyond; the beach
+        // and the surf (bright) and the shore's plants (no blue in them) stay
+        {
+          vec3 q = normalize(vL); vec2 suv = vec2(atan(-q.z, q.x) / 6.2831853 + 0.5, asin(clamp(q.y, -1.0, 1.0)) / 3.1415927 + 0.5);
+          float sea = smoothstep(0.3, 0.7, texture2D(seaMap, suv).r), mx = max(day.r, max(day.g, day.b));
+          float wet = smoothstep(1.05, 1.3, day.b / (day.r + 0.001)) * smoothstep(1.1, 1.4, day.g / (day.r + 0.001)) * (1.0 - smoothstep(0.22, 0.35, mx));
+          water = max(water, land * sea * wet);
+        }
         // the Blue Marble's sea is its sea-floor relief in blues - from up close it read as blue land: one even ocean blue
         day = mix(day, vec3(0.008, 0.028, 0.08), (1.0 - land) * smoothstep(0.04, 0.12, day.b - max(day.r, day.g * 0.75)));
         day = pow(day, vec3(0.86)) * 1.12;                        // both pictures are darker on a screen than the Earth looks from orbit
@@ -3600,7 +3611,6 @@ function frame() {
       setHeat(upper.userData.heat, 0); setHeat(upper.userData.heat2, 0);
       pl.visible = h > 0.02; pl.userData.uni.op.value = h; pl.userData.uni.phase.value = sE != null && tr > sE ? clamp01((simT - sE) / (tr - sE)) : 0;
     } else { setHeat(upper.userData.heat, h); setHeat(upper.userData.heat2, h * 0.7); }
-    if (h > 0.2 && playing) emit(pS2, [1.0, 0.45, 0.2]);
   }
   // the ground: models as large as the vehicles, only from near by; the tower's arms close on a catch
   // (a tower enlarged like the rocket would stand tens of kilometres out of the Earth: towers are for the ground cameras)
