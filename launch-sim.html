@@ -1614,6 +1614,10 @@ function falconUpper() {
       if (i === 0) fdecal(h, spacexWordmark('#101113'), 2.615, 16.6, Math.PI / 2, 1.0, 5.6, true);
       g.add(h); return h;
     });
+    // the payload adapter on top of the stage (it stays with the stage): a cone up to what the payload stands on - a low
+    // ring under a Starlink stack, the rideshare column's foot, or a single satellite's separation ring
+    { const top = isStarlink ? 12.85 : RIDE_T.length >= 2 ? 13.3 : 13.8, rTop = isStarlink ? 1.6 : RIDE_T.length >= 2 ? 0.62 : 0.95;
+      g.add(latheF([[1.8, 12.6], [rTop, top], [0.01, top]], m.inter, 48)); }
     if (isStarlink) {
       // Starlink V2 mini: flat satellites stacked, solar array on top, grey sides
       const side = fmat({ color: 0x9aa0a8, metalness: 0.7, roughness: 0.4 });
@@ -1625,8 +1629,10 @@ function falconUpper() {
       // SpaceX's timeline lists, of mixed sizes and finishes (gold foil, bare aluminium, dark solar cells), each let go at
       // its own "... deploys" time
       const N = RIDE_T.length, per = N > 48 ? 10 : N > 18 ? 8 : 6, tiers = Math.ceil(N / per), H0r = 13.9, Hr = 21.6 - H0r, th = Math.min(1.1, Hr / tiers);
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * VS, 0.55 * VS, (tiers * th + 0.4) * VS, 24), fmat({ color: 0x8c9096, metalness: 0.8, roughness: 0.35 }));
-      col.position.y = (H0r + (tiers * th + 0.4) / 2 - 0.2) * VS; g.add(col);
+      // (the column stands on the payload adapter on top of the stage, 13.3 m up - not floating over it)
+      const colB = 13.3, colT = H0r + tiers * th + 0.2;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * VS, 0.55 * VS, (colT - colB) * VS, 24), fmat({ color: 0x8c9096, metalness: 0.8, roughness: 0.35 }));
+      col.position.y = (colB + colT) / 2 * VS; g.add(col);
       for (let k = 0; k <= tiers; k++) { const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.25 * VS, 1.25 * VS, 0.06 * VS, 32), fmat({ color: 0x6f747b, metalness: 0.7, roughness: 0.4 })); ring.position.y = (H0r + k * th - 0.03) * VS; g.add(ring); }
       const fin = [fmat({ color: 0xc9a44a, metalness: 0.85, roughness: 0.32 }), fmat({ color: 0xb8bcc2, metalness: 0.75, roughness: 0.35 }), fmat({ color: 0x1d2433, metalness: 0.5, roughness: 0.4 }), fmat({ color: 0xe8e8e4, metalness: 0.2, roughness: 0.6 })];
       ud.ride = RIDE_T.map((t, i) => {
