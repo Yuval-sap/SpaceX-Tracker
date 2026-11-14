@@ -17779,8 +17779,11 @@
                     <div id="modal-video-iframe" class="w-full h-full absolute inset-0"></div>
                     <!-- SpaceX's live broadcast on X (wireModalLiveButton), shown instead of the YouTube player when the
                          mission has one - X's own embeddable broadcast player -->
+                    <!-- credentialless: X's player keeps where it was watched in its own session memory (back hours in a live
+                         broadcast, it came back there, not to the live point); this way that memory lasts only as long as
+                         this page - see openLiveVideo's X branch -->
                     <iframe id="modal-x-iframe" class="hidden w-full h-full absolute inset-0 border-0" title="SpaceX on X"
-                        allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
+                        allow="autoplay; fullscreen; encrypted-media" allowfullscreen credentialless></iframe>
                     <!-- Used to have a #modal-video-tap-overlay here (catching the first mobile
                          tap to "reveal controls" before letting a second tap reach the real
                          YouTube player) - removed 2026-08-18: it made EVERY interaction with the
@@ -26762,6 +26765,12 @@
             };
             go();
         };
+        // the page loaded again to give X's player a fresh memory (openLiveVideo): open that broadcast again now
+        try {
+            const again = JSON.parse(sessionStorage.getItem('reopenLiveAfterReload') || 'null');
+            sessionStorage.removeItem('reopenLiveAfterReload');
+            if (again && again.id && Date.now() - again.at < 120000) window.appWatchLive(again.id);
+        } catch (e) { }
 
         const HERO_LIVE_BTN_CLASS_LIVE = 'notranslate group inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-red-600 md:hover:bg-red-500 border border-red-500 md:hover:border-red-400 text-white text-[11px] sm:text-sm font-bold tracking-wide rounded-xl transition-all duration-300 shadow-sm text-center whitespace-normal sm:whitespace-nowrap shrink-0';
         // same look (and hover, in every theme) as "View Brief" beside it: nothing to watch yet, so nothing red or pulsing
@@ -28325,6 +28334,16 @@ setTimeout(() => {
                     const xFrame = document.getElementById('modal-x-iframe');
                     videoSection.classList.add('x-live');
                     if (xFrame) {
+                        // X's player opened once already on this page: it would come back where it was left. The browser
+                        // gives it a fresh memory only with a fresh page, so the page loads again and opens the broadcast
+                        // right after (window.appWatchLive below) - at the live point. (Only where the browser keeps the
+                        // embedded player's memory per page - Chrome, Edge, the Android app.)
+                        if (window._xPlayerOpenedThisPage && 'credentialless' in HTMLIFrameElement.prototype && m && m.id) {
+                            try { sessionStorage.setItem('reopenLiveAfterReload', JSON.stringify({ id: m.id, at: Date.now() })); } catch (e) { }
+                            location.reload();
+                            return;
+                        }
+                        window._xPlayerOpenedThisPage = true;
                         xFrame.src = `https://studio.x.com/embed/broadcast/${encodeURIComponent(xId)}?dnt=true&lang=en`;
                         xFrame.classList.remove('hidden');
                     }
