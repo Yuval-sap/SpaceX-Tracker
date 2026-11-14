@@ -392,6 +392,13 @@ const AZIMUTH = azimuthFor(INC);
 const stagesIn = (cfg.stages || []).filter(Boolean);
 const LZ = { 'LZ-4': [34.6332, -120.6152], 'LZ-1': [28.4858, -80.5444], 'LZ-2': [28.4875, -80.5428], 'LZ-40': [28.5635, -80.5743], 'LZ-39A': [28.6113, -80.6019] };
 const SHIPS = { OCISLY: 'OCISLY', ASOG: 'ASOG', JRTI: 'JRTI' };
+// what really happened on a flight, where it differs from its plan (SpaceX's timeline / Launch Library still show the plan)
+// - Flight 15 (Starlink Group 31-2): Super Heavy wasn't caught; it splashed down in the Gulf just off Starbase
+const FLIGHT_OUTCOMES = [
+  { match: /starship\s*flight\s*15\b|starlink\s+group\s+31-2\b/i, booster: { kind: 'splash', name: 'Gulf of Mexico', at: [25.995, -97.11] },
+    renames: [[/^super heavy landing burn shutdown and catch$/i, 'Super Heavy landing burn shutdown and splashdown']] },
+];
+const OUTCOME = VEH === 'ss' ? FLIGHT_OUTCOMES.find(o => o.match.test(String(cfg.name || '') + ' ' + String(cfg.displayName || ''))) : null;
 function landingFrom(st, fallbackStr) {
   const type = String((st && st.landingType) || '').toUpperCase(), loc = String((st && st.loc) || ''), locName = String((st && st.locName) || '');
   const str = String(fallbackStr || '').toLowerCase();
@@ -424,6 +431,7 @@ if (VEH === 'fh') {
   if (land.kind === 'asds' && !land.name && cfg.landingShip) land.name = cfg.landingShip;
   boosterDefs = [{ id: 'b', serial: (st && st.serial) || cfg.boosterSerial, land }];
 }
+if (OUTCOME && OUTCOME.booster) boosterDefs.forEach(b => { b.land = Object.assign({}, OUTCOME.booster); });
 
 // ================================================================ events: SpaceX's own, then estimates for the rest
 const KINDS = [
@@ -460,8 +468,9 @@ function whoOf(raw, kind) {
   return 's2';
 }
 const real = (cfg.events || []).filter(e => e && isFinite(e.t) && e.raw).map(e => {
-  const kind = kindOf(e.raw);
-  return { t: +e.t, raw: e.raw, kind, who: whoOf(e.raw, kind), est: false };
+  const raw = ((OUTCOME && OUTCOME.renames) || []).reduce((r, [re, to]) => re.test(r) ? to : r, String(e.raw));   // (what really happened)
+  const kind = kindOf(raw);
+  return { t: +e.t, raw, kind, who: whoOf(raw, kind), est: false };
 });
 const HAS_TL = real.length > 0;
 if (VEH === 'f9' && HAS_TL) {
@@ -538,14 +547,14 @@ boosterDefs.forEach(bd => {
   bd.who = w; bd.sep = sep0;
   const k = bd.land.kind;
   const nm = w === 'side' ? 'Side boosters' : w === 'center' ? 'Center core' : VEH === 'ss' ? 'Super Heavy' : '1st stage';
-  if (k === 'rtls' || k === 'catch') {
+  if (k === 'rtls' || k === 'catch' || k === 'splash') {
     const ss = VEH === 'ss';
     const fw = (a, b) => ss ? 'Super Heavy ' + a : nm + ' ' + b;   // Starship's wording, and Falcon's
     bd.bbStart = need(w, 'bbStart', A[w].bbStart ?? sep0 + (ss ? 5 : 12), fw('boostback burn start', 'boostback burn begins'));
     bd.bbEnd = need(w, 'bbEnd', A[w].bbEnd ?? sep0 + (ss ? 41 : 58), fw('boostback burn shutdown', 'boostback burn ends'));
     if (!ss) { bd.entryStart = need(w, 'entryStart', A[w].entryStart ?? sep0 + 232, nm + ' entry burn begins'); bd.entryEnd = need(w, 'entryEnd', A[w].entryEnd ?? bd.entryStart + 18, nm + ' entry burn ends'); }
     bd.land = Object.assign(bd.land, {});
-    bd.landT = need(w, 'land', A[w].land ?? sep0 + (ss ? 254 : 318), ss ? 'Super Heavy landing burn shutdown and catch' : nm + ' landing');
+    bd.landT = need(w, 'land', A[w].land ?? sep0 + (ss ? 254 : 318), ss ? (k === 'splash' ? 'Super Heavy landing burn shutdown and splashdown' : 'Super Heavy landing burn shutdown and catch') : nm + ' landing');
     bd.lbStart = need(w, 'lbStart', A[w].lbStart ?? bd.landT - (ss ? 25 : 26), ss ? 'Super Heavy landing burn start' : w === 'side' ? 'Side boosters landing burns start' : nm + ' landing burn begins');
   } else if (k === 'asds') {
     bd.entryStart = need(w, 'entryStart', A[w].entryStart ?? sep0 + 216, nm + ' entry burn begins');
@@ -875,7 +884,7 @@ const B_EXP = [[149, 71, 79], [200, 108, 165], [260, 128, 280], [320, 118, 390],
 function makeBooster(bd) {
   const k = bd.land.kind, sep = bd.sep;
   let prof, W;
-  if (k === 'catch') { prof = B_SH; W = warpSmooth([[141, sep], [146, bd.bbStart], [182, bd.bbEnd], [370, bd.lbStart], [395, bd.landT]]); }
+  if (k === 'catch' || k === 'splash') { prof = B_SH; W = warpSmooth([[141, sep], [146, bd.bbStart], [182, bd.bbEnd], [370, bd.lbStart], [395, bd.landT]]); }
   else if (k === 'rtls') { prof = B_RTLS; W = warpSmooth([[149, sep], [160, bd.bbStart], [210, bd.bbEnd], [380, bd.entryStart], [400, bd.entryEnd], [440, bd.lbStart], [465, bd.landT]]); }
   else if (k === 'asds') { prof = B_ASDS; W = warpSmooth([[149, sep], [363, bd.entryStart], [386, bd.entryEnd], [480, bd.lbStart], [502, bd.landT]]); }
   else { prof = B_EXP; W = warp([[149, sep], [479, bd.landT]]); }
@@ -885,7 +894,7 @@ function makeBooster(bd) {
   // it lands (back at the launch site; at the droneship's real distance; or, with no landing, as far as its speed takes it)
   const altSep = ascAlt(sep), drSep = ascDr(sep), tEnd = prof[prof.length - 1][0], d0 = base0[2], dEnd = prof[prof.length - 1][2];
   let drScale, drBase = 0;
-  if (k === 'rtls' || k === 'catch') drScale = drSep / d0;
+  if (k === 'rtls' || k === 'catch' || k === 'splash') drScale = drSep / d0;
   else {
     if (k === 'asds') { const want = bd.land.dr || (VEH === 'fh' ? (bd.who === 'side' ? 800 : 1200) : orbitKind === 'GTO' ? 650 : 600); drScale = (Math.max(drSep + 120, Math.min(drSep + 1600, want)) - drSep) / (dEnd - d0); }
     else { const vS = ascDr(sep) - ascDr(sep - 1), vP = (drF(base0[0] + 4) - d0) / 4 * (W(sep + 1) - W(sep)); drScale = Math.max(0.6, Math.min(5, vS / Math.max(0.2, vP))); }
@@ -895,7 +904,7 @@ function makeBooster(bd) {
   bd.dr = (t) => drBase + drF(W(t)) * drScale;
   // where it comes down
   let landAt = null;
-  if (k === 'rtls' || k === 'catch') {
+  if (k === 'rtls' || k === 'catch' || k === 'splash') {
     if (bd.land.at) landAt = bd.land.at;
     else if (k === 'catch') landAt = [PAD.lat, PAD.lon];
     else if (isVSFB) landAt = LZ['LZ-4'];
@@ -1207,7 +1216,7 @@ const landSites = [];
 boosterDefs.forEach(bd => {
   if (!bd.landFixed) return;
   const [la, lo] = latLonOf(bd.landFixed);
-  if (bd.land.kind === 'catch') return;                          // the tower is the pad
+  if (bd.land.kind === 'catch' || bd.land.kind === 'splash') return;   // the tower is the pad; the sea has none
   if (landSites.some(x => Math.abs(x.lat - la) < 0.003 && Math.abs(x.lon - lo) < 0.003)) return;
   landSites.push({ lat: la, lon: lo, bd, ...addSite(la, lo, '', '#ffae42') });
 });
@@ -1972,7 +1981,7 @@ boosterDefs.forEach(bd => {
   bd.glow = glowSprite('#ffae42'); scene.add(bd.glow);
   // enlarged models: a caught Super Heavy hangs from the tower's arms, a Falcon stands on its legs
   // (a caught booster by its pins just under the grid fins: the fins stay above the arms)
-  bd.hang = bd.land.kind === 'catch' ? ARM_Y - 62 : bd.land.kind === 'expend' ? 0 : 3.2;
+  bd.hang = bd.land.kind === 'catch' ? ARM_Y - 62 : bd.land.kind === 'expend' || bd.land.kind === 'splash' ? 0 : 3.2;
   // Falcon Heavy's two side boosters coming down at the same spot (no landing zone of their own): set apart to see both;
   // at LZ-1 and LZ-2 each stands on its own real pad
   const twin = bd.who === 'side' && boosterDefs.some(o => o !== bd && o.who === 'side' && o.landAt && bd.landAt && Math.abs(o.landAt[0] - bd.landAt[0]) + Math.abs(o.landAt[1] - bd.landAt[1]) < 1e-4);
@@ -2366,10 +2375,38 @@ const padStruct = addStructure(padFixed, g => {
       put(box(60, 1.2, 1.2, matTower, fx + 38, 4, fz - 24));       // the pipe rack to the pad
       put(box(40, 10, 25, matBuilding, fx + 244, 5, fz + 79));    // the ground-systems building
     }
-    g.userData.arms = [1, -1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 5.9 * VS, ARM_Y * VS, -11 * VS); piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); g.add(piv); return piv; });
+    // the chopsticks (photo from under the ship at Flight 15's catch): each an open triangular truss 40 m long - two
+    // chords along its top, one under them, zig-zag lacing down both sides and across the top - its root closing in
+    // toward the carriage's middle in a V underneath, the catch rail along its top, two posts standing at its tip
+    const beam = (grp, a, b, t, mat) => {                         // a member from a to b (metres, the arm's own frame)
+      const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), L = A.distanceTo(B);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(t * VS, t * VS, L * VS), mat);
+      m.position.copy(A.clone().add(B).multiplyScalar(0.5 * VS)); m.lookAt(B.clone().multiplyScalar(VS).add(grp.position).sub(grp.position)); grp.add(m);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), B.clone().sub(A).normalize());
+    };
+    const matRail = new THREE.MeshStandardMaterial({ color: 0x2a2d32, metalness: 0.5, roughness: 0.6 });
+    const chopstick = (sd) => {
+      const piv = new THREE.Group(), Lr = 40, W = 1.2, Ht = 1.5, Hb = -1.7;
+      for (const x of [-W, W]) beam(piv, [x, Ht, 0], [x, Ht, Lr], 0.45, matTower);          // the top chords
+      beam(piv, [0, Hb, 0], [0, Hb, Lr - 1.5], 0.5, matTower);                                // the bottom chord
+      for (let z = 0, k = 0; z < Lr - 1.5; z += 2.6, k++) {
+        const z2 = Math.min(Lr - 1.5, z + 2.6);
+        for (const x of [-W, W]) beam(piv, [x, Ht, k % 2 ? z2 : z], [0, Hb, k % 2 ? z : z2], 0.22, matTower);   // side lacing
+        beam(piv, [-W, Ht, z], [W, Ht, z], 0.2, matTower);                                    // across the top
+      }
+      beam(piv, [-W, Ht, Lr], [0, Hb, Lr - 1.5], 0.3, matTower); beam(piv, [W, Ht, Lr], [0, Hb, Lr - 1.5], 0.3, matTower);   // the closed tip
+      // the V under the root, in toward the carriage's middle (between the two arms' hinges)
+      beam(piv, [0, Hb, 7], [-sd * 5.0, Hb - 0.6, -0.5], 0.45, matTower);
+      beam(piv, [0, Hb, 3.5], [-sd * 5.0, Hb - 0.6, -0.5], 0.3, matTower);
+      // the catch rail on top, on the side facing the other arm, where the vehicle's pins come to rest
+      piv.add(box(0.7, 0.35, 22, matRail, -sd * 0.8, Ht + 0.35, 24));
+      for (const zz of [Lr - 0.6, Lr - 2.6]) piv.add(box(0.35, 3.2, 0.35, matTower, 0, Ht + 1.6, zz));   // the tip's posts
+      return piv;
+    };
+    g.userData.arms = [1, -1].map(sd => { const piv = chopstick(sd); piv.position.set(sd * 5.9 * VS, ARM_Y * VS, -11 * VS); g.add(piv); return piv; });
     if (onePad) {                                                 // the other tower's arms, standing open
       const ox = active === 1 ? x2 : x1, oz = active === 1 ? z2 : z1;
-      [1, -1].forEach(sd => { const piv = new THREE.Group(); piv.position.set((ox + sd * 5.9) * VS, ARM_Y * VS, (oz - 11) * VS); piv.rotation.y = sd * 0.55; piv.add(box(2.2, 3.2, 40, matTower, 0, 0, 20)); put(piv); });
+      [1, -1].forEach(sd => { const piv = chopstick(sd); piv.position.set((ox + sd * 5.9) * VS, ARM_Y * VS, (oz - 11) * VS); piv.rotation.y = sd * 0.55; put(piv); });
     }
     g.userData.tall = all.concat(g.userData.arms);
   } else {
@@ -2498,7 +2535,7 @@ const padStruct = addStructure(padFixed, g => {
   }
 });
 boosterDefs.forEach(bd => {
-  if (!bd.landFixed || bd.land.kind === 'catch') return;
+  if (!bd.landFixed || bd.land.kind === 'catch' || bd.land.kind === 'splash') return;
   addStructure(bd.land.kind === 'asds' ? bd.landFixed.clone().setLength(R) : ecef(bd.landAt[0], bd.landAt[1], groundM(bd.landAt[0], bd.landAt[1]) / 1000), g => {
     g.userData.showFrom = bd.landT - 90;   // away from the ground cameras: only when its booster is coming in
     if (bd.land.kind === 'asds') {
@@ -3180,6 +3217,7 @@ const SHOTS = (() => {
     if (sides.length === 2) { s.push([Math.max(sideSep + 5, sides[0].landT - 70), 'chase', 'sides']); s.push([sides[0].landT - 12, 'site', 'sides']); s.push([sides[0].landT + 8, 'chase', 's2']); }
   } else if (landers.length) {
     const bd = landers[0];
+    if (bd.land.kind === 'splash') { s.push([bd.landT - 60, 'chase', 'booster']); s.push([bd.landT + 8, 'chase', 's2']); }
     if (bd.land.kind === 'catch') { s.push([bd.landT - 60, 'chase', 'booster']); s.push([bd.landT - 14, 'site', 'booster']); s.push([bd.landT + 8, 'chase', 's2']); }
     else { s.push([(bd.entryStart ?? bd.landT - 140) - 12, 'chase', 'booster']); s.push([bd.landT - 12, 'site', 'booster']); s.push([bd.landT + 6, 'chase', 's2']); }
   }
@@ -3436,7 +3474,7 @@ function frame() {
   const mi = UNITS === 'imperial';
   boosterDefs.forEach(bd => {
     const p = bd.at(simT);
-    const gone = (bd.land.kind === 'expend' && simT > bd.landT) || simT > bd.landT + 1800;
+    const gone = (bd.land.kind === 'expend' && simT > bd.landT) || (bd.land.kind === 'splash' && simT > bd.landT + 15) || simT > bd.landT + 1800;   // (in the sea it topples and breaks up)
     bd.obj.visible = !gone;
     const sc = simT < bd.sep ? vScale : enlarge(p);
     if (simT < bd.sep) {
