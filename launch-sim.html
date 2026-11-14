@@ -330,6 +330,7 @@ const padByName = PADS.find(p => p[0].test(padName));
 const padHit = padByName || PADS.find(p => p[0].test(siteL)) || (VEH === 'ss' ? PADS[5] : polarHint ? PADS[0] : PADS[2]);
 const PAD = padKnown ? { lat: +cfg.pad.lat, lon: +cfg.pad.lon } : { lat: padHit[1], lon: padHit[2] };
 const PAD_LABEL = padByName ? padByName[3] : padKnown ? String(cfg.pad.name) : padHit[3];
+if (Math.hypot((PAD.lat - 34.632) * 110.6, (PAD.lon + 120.611) * 91.6) < 0.3) { PAD.lat = 34.632024; PAD.lon = -120.610619; }   // (SLC-4E: the rocket's own spot, over the flame duct)
 const isVSFB = PAD.lon < -110, isStarbase = PAD.lon < -95 && PAD.lon > -100;
 
 const isStarlink = /starlink/.test(nameL);
@@ -757,10 +758,16 @@ const TERR = isVSFB ? await (async () => {
   } catch (e) { console.warn('launch sim: no elevation data, the ground stays flat', e); return null; }
 })() : null;
 // the ground's height in metres (0 at sea level, and everywhere away from a hill pad)
+const TERRACE = [0.0025, 0.12, -0.035, 0.112, 0.09];                                    // km: the pad's level terrace (the elevation tiles, ~16 m a pixel, smear the graded site into the slopes round it), and where it has blended into them
+const PAD_GROUND = TERR ? TERR.hAt(PAD.lat, PAD.lon) : 0;
 function groundM(lat, lon) {
   if (!TERR) return 0;
   const dk = Math.hypot((lon - PAD.lon) * Math.cos(PAD.lat * DEG) * 111.32, (lat - PAD.lat) * 110.574), f = 1 - smooth((dk - (GROUND_R - 2)) / 2);
-  return f > 0 ? TERR.hAt(lat, lon) * f : 0;
+  if (f <= 0) return 0;
+  const ex = (lon - PAD.lon) * Math.cos(PAD.lat * DEG) * 111.32, sz = -(lat - PAD.lat) * 110.574;   // km east, south of the pad
+  const dt = Math.hypot(Math.max(0, Math.abs(ex - TERRACE[0]) - TERRACE[1]), Math.max(0, Math.abs(sz - TERRACE[2]) - TERRACE[3]));
+  const h = TERR.hAt(lat, lon), lv = smooth(dt / TERRACE[4]);      // (level on the site's terrace)
+  return (PAD_GROUND + (h - PAD_GROUND) * lv) * f;
 }
 const H0 = groundM(PAD.lat, PAD.lon) / 1000;                       // km: the pad's own height
 // (paths are flown above the ground they leave: the pad's height under the vehicle low down, gone by 6 km up)
@@ -2368,16 +2375,51 @@ if (TERR) {
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * (N + 1) + i, b = a + N + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
   // the imagery over it: Sentinel-2 cloudless tiles (the same as the ground elsewhere), stitched into one picture
-  const cv = document.createElement('canvas'); cv.width = 1536; cv.height = 1280; const cg = cv.getContext('2d'); cg.fillStyle = '#6b6450'; cg.fillRect(0, 0, cv.width, cv.height);
+  const cv = document.createElement('canvas'); cv.width = MOBILE ? 1536 : 3072; cv.height = MOBILE ? 1280 : 2560; const cg = cv.getContext('2d'); cg.fillStyle = '#6b6450'; cg.fillRect(0, 0, cv.width, cv.height);
+  cg.imageSmoothingQuality = 'high';
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-  const zE = 12, sp = 180 / 2 ** zE, lon0 = PAD.lon - lonSpan, lat1 = PAD.lat + latSpan;
-  for (let ty = Math.floor((90 - lat1) / sp); ty <= Math.floor((90 - (PAD.lat - latSpan)) / sp); ty++) for (let tx = Math.floor((lon0 + 180) / sp); tx <= Math.floor((PAD.lon + lonSpan + 180) / sp); tx++) {
-    const im = new Image(); im.crossOrigin = 'anonymous';
-    im.onload = () => { const x0 = ((tx * sp - 180) - lon0) / (2 * lonSpan) * cv.width, y0 = ((lat1 - (90 - ty * sp))) / (2 * latSpan) * cv.height, w = sp / (2 * lonSpan) * cv.width, h = sp / (2 * latSpan) * cv.height;
-      cg.drawImage(im, x0, y0, w, h); tex.needsUpdate = true; };
-    im.src = EOX(zE, ty, tx);
-  }
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0 }));
+  const lon0 = PAD.lon - lonSpan, lat1 = PAD.lat + latSpan;
+
+  const drawLevel = (zE, rk, done) => {
+    const sp = 180 / 2 ** zE, rLat = rk / 110.574, rLon = rk / (111.32 * cos0); let left = 0;
+    for (let ty = Math.floor((90 - (PAD.lat + rLat)) / sp); ty <= Math.floor((90 - (PAD.lat - rLat)) / sp); ty++) for (let tx = Math.floor((PAD.lon - rLon + 180) / sp); tx <= Math.floor((PAD.lon + rLon + 180) / sp); tx++) {
+      const im = new Image(); im.crossOrigin = 'anonymous'; left++;
+      const end = () => { if (--left === 0 && done) done(); };
+      im.onload = () => { const x0 = ((tx * sp - 180) - lon0) / (2 * lonSpan) * cv.width, y0 = ((lat1 - (90 - ty * sp))) / (2 * latSpan) * cv.height, w = sp / (2 * lonSpan) * cv.width, h = sp / (2 * latSpan) * cv.height;
+        cg.drawImage(im, x0, y0, w, h); tex.needsUpdate = true; end(); };
+      im.onerror = end;
+      im.src = EOX(zE, ty, tx);
+    }
+  };
+  drawLevel(12, E, MOBILE ? null : () => drawLevel(13, 4));
+  const padL = padFixed.clone().sub(center);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: tex }, sunDir: earthMat.uniforms.sunDir, ctr: { value: center.clone() }, padL: { value: padL }, mPerU: { value: 1000 / SCALE } },
+    vertexShader: `uniform vec3 ctr; uniform vec3 padL; uniform float mPerU; varying vec2 vUv; varying vec3 vN; varying vec3 vUp; varying float vDm;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+      void main() { vUv = uv; vN = normalize(mat3(modelMatrix) * normal); vUp = normalize(mat3(modelMatrix) * (position + ctr)); vDm = length(position - padL) * mPerU;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+#include <logdepthbuf_vertex>
+      }`,
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN; varying vec3 vUp; varying float vDm;
+#include <logdepthbuf_pars_fragment>
+      void main() {
+#include <logdepthbuf_fragment>
+        // (the satellite picture as it is - the far tiles' brightening washed the dark coastal scrub out to sand - and a
+        // touch cooler: its summer picture is drier and browner than the scrub's dark green in the photos from the pad)
+        vec3 day = texture2D(map, vUv).rgb * vec3(0.86, 0.96, 0.9);
+        float up = dot(normalize(vUp), sunDir), gate = smoothstep(-0.05, 0.08, up);
+        float lit = max(dot(normalize(vN), sunDir), 0.0) * gate;    // (the slopes shaded by the Sun - while it is up)
+        vec3 col = day * (0.03 + 0.95 * lit);
+        col += vec3(1.0, 0.45, 0.2) * 0.12 * exp(-pow(up * 8.0, 2.0)) * day.g;   // (dusk's glow)
+        float night = 1.0 - smoothstep(-0.1, 0.1, up);
+        col += day * vec3(1.0, 0.86, 0.68) * night * (0.9 * exp(-vDm / 45.0) + 0.1 * exp(-vDm / 180.0));   // the pad's floodlights
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }` });
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.position.copy(center); mesh.renderOrder = -18; earthGroup.add(mesh);
 }
 const padStruct = addStructure(padFixed, g => {
@@ -2488,7 +2530,7 @@ const padStruct = addStructure(padFixed, g => {
     const matBld = new THREE.MeshStandardMaterial({ color: 0xe4e6e8, roughness: 0.75, emissive: 0x15181c, emissiveIntensity: 0.3 });
     const matHole = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 1 });
     const concrete = (w, d, x, z, y = 0.15, rot = 0) => { const t = concreteTexture(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w / 24, d / 24);
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w * VS, 0.3 * VS, d * VS), new THREE.MeshStandardMaterial({ map: t, color: 0xc3c6ca, roughness: 0.95 })); m.position.set(x * VS, (y - 0.15) * VS, z * VS); m.rotation.y = rot; return put(m); };
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w * VS, 0.3 * VS, d * VS), new THREE.MeshStandardMaterial({ map: t, color: 0xd6d8da, roughness: 0.95 })); m.position.set(x * VS, (y - 0.15) * VS, z * VS); m.rotation.y = rot; return put(m); };
     // a building: walls, a slightly darker roof; long ones get the hangar's tall door at one end
     const building = (w, h, d, x, z, rot = 0, door = false) => {
       const grp = new THREE.Group(); grp.add(box(w, h, d, matBld, 0, h / 2, 0)); grp.add(box(w + 0.6, 0.6, d + 0.6, matRoof, 0, h + 0.3, 0));
@@ -2564,21 +2606,50 @@ const padStruct = addStructure(padFixed, g => {
       for (let i = 0; i < 6; i++) hTank(2.6, 20, 110 + (i % 2) * 9, -45 + Math.floor(i / 2) * 32, 0);
       building(52, 30, 110, -43, 209, 0, true); building(36, 10, 22, -60, 250);
     } else if (site === '4E') {
-      // the diagonal ramp up to the hangar north-east of the pad
+      // SLC-4E (metres from the rocket, x east, z south; placed from the aerial imagery, heights from photos from the
+      // hill east of the pad): a big paved complex on its level terrace; the transporter-erector north of the rocket
+      // with its base and stair; the six long tank sheds to the north-west, the gas trailers and plant between; the
+      // control building and the tank farm in their frame south-west; the light poles round the pad; the hangar
+      // north-east up the road; the tall slim tower over at SLC-4W
       trench(10, 40, 1);
       strongback();
-      building(46, 32, 120, 160, -268, Math.atan2(115, -80), true);
-      // (photos looking west to the ocean: south of the pad the cluster of white spheres in their frame and the
-      // horizontal tanks, the white control building; north of it the row of white tube-trailers; the tall slim
-      // lattice tower north-west; the white fabric tent south-west)
-      for (let i = 0; i < 5; i++) { const sp = new THREE.Mesh(new THREE.SphereGeometry(2.6 * VS, 18, 12), matWhiteSt); sp.position.set((-30 + i * 6) * VS, 3.2 * VS, 46 * VS); put(sp); }
-      put(box(32, 0.5, 8, matGreySt, -18, 0.5, 46));
-      for (let i = 0; i < 3; i++) hTank(1.4, 10, 4, 34 + i * 3.4, 0);
-      building(20, 7, 12, -6, 28);
-      for (let i = 0; i < 6; i++) hTank(2.1, 14, 34 + (i % 2) * 2, -22 - i * 5, Math.PI / 2 + 0.15);
-      put(lattice(1.6, 70, 1.6, -40, 35, -95));
-      { const tent = new THREE.Mesh(new THREE.CylinderGeometry(9 * VS, 9 * VS, 34 * VS, 20, 1, false, 0, Math.PI), matWhiteSt); tent.rotation.z = Math.PI / 2; tent.rotation.y = Math.PI / 2; tent.position.set(-95 * VS, 0, 60 * VS); put(tent); }
-      building(16, 6, 10, -60, -60); building(12, 5, 8, 70, 40);
+      // the paved complex (separate pieces, side by side - overlapping ones flickered)
+      concrete(122, 192, -40, -36, 0.14); concrete(85, 50, 63, 5, 0.13); concrete(30, 90, 0, 105, 0.12);
+      // the transporter-erector's base and its stair (white, north of the rocket's foot)
+      put(box(9, 6, 7, matWhiteSt, 0, 3, -11.5));
+      { const st = box(1.8, 0.5, 13, matWhiteSt, 6.2, 3.2, -9); st.rotation.x = -0.45; put(st); put(box(0.15, 1.1, 13, matGreySt, 7.1, 3.9, -9)).rotation.x = -0.45; }
+      // north-west: six long horizontal tanks side by side (N-S), a round tank north of them, the plant beside them
+      for (let i = 0; i < 6; i++) hTank(2.2, 21, -47 + i * 5.5, -106, Math.PI / 2);
+      for (let i = 0; i < 6; i++) put(box(5, 0.8, 26, matGreySt, -47 + i * 5.5, 0.4, -106));
+      { const t = put(cyl(4, 8, matWhiteSt, 0)); t.position.x = -45 * VS; t.position.z = -122 * VS; }
+      put(box(14, 4, 18, matGreySt, -22, 2, -120));
+      building(14, 10, 16, -64, -82);
+      // the gas trailers: rows of long white tube trailers on dark chassis, and two angled tanks
+      const trailer = (x, z, len, rot = 0) => { const g2 = new THREE.Group(); g2.add(box(2.5, 2.6, len, matWhiteSt, 0, 2.3, 0)); g2.add(box(2.3, 1, len, matHole, 0, 0.5, 0)); g2.position.set(x * VS, 0, z * VS); g2.rotation.y = rot; put(g2); };
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) trailer(-27 + i * 4.2, -80 + r * 7, 12);
+      for (let r = 0; r < 2; r++) for (let i = 0; i < 5; i++) trailer(-34 + i * 4.6, -55 + r * 9, 8);
+      hTank(1.6, 13, -44, -59, -0.25); hTank(1.6, 13, -44, -55, -0.25);
+      building(5, 5, 18, -74, -39); building(13, 4, 8, -63, -24);
+      // south-west: the control building, its white wing and tower; the tank farm in its steel frame (NE-SW), the pipe
+      // rack, a long tank and the white building by it; two tanks just south of the rocket
+      building(26, 7, 26, -64, 26); building(5, 8.5, 28, -79, 26); building(6, 10, 6, -73, 15);
+      { const fg = new THREE.Group(); for (let i = 0; i < 5; i++) { const m = new THREE.Mesh(new THREE.CapsuleGeometry(1.7 * VS, 14 * VS, 6, 18), matWhiteSt); m.rotation.x = Math.PI / 2; m.position.set((i - 2) * 4.2 * VS, 2.6 * VS, 0); fg.add(m); }
+        fg.add(box(22, 0.6, 18, matGreySt, 0, 0.3, 0)); for (const sx of [-11, 11]) for (const sz2 of [-9, 9]) fg.add(box(0.5, 6, 0.5, matGreySt, sx, 3, sz2));
+        fg.add(box(22, 0.4, 0.4, matGreySt, 0, 6, -9)); fg.add(box(22, 0.4, 0.4, matGreySt, 0, 6, 9));
+        fg.position.set(-76 * VS, 0, 62 * VS); fg.rotation.y = Math.PI / 4; put(fg); }
+      put(box(14, 5, 3, matGreySt, -38, 2.5, 52));
+      hTank(1.5, 20, -26, 59, 0); building(9, 4.5, 18, -22, 40);
+      hTank(1.5, 14, 4, 25, Math.PI / 2); hTank(1.5, 14, 9, 25, Math.PI / 2);
+      // the light poles round the pad, their lamps lit at night
+      const matLamp = new THREE.MeshStandardMaterial({ color: 0xfff2d8, emissive: 0xffe2b0, emissiveIntensity: 1.6 });
+      for (const [x, z] of [[-32, -14], [-50, 8], [-34, 34], [22, -26], [26, 18], [-58, -58], [-14, -92], [58, -4], [4, 52], [-86, 44], [-90, -10], [-6, -48]]) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * VS, 0.3 * VS, 24 * VS, 8), matGreySt); pole.position.set(x * VS, 12 * VS, z * VS); put(pole);
+        put(box(2.4, 0.9, 1.2, matLamp, x, 24.3, z));
+      }
+      // the hangar up the road to the north-east, its door toward the pad
+      building(42, 28, 140, 163, -265, Math.atan2(120, -80), true);
+      // the tall slim tower over at SLC-4W
+      put(lattice(2.2, 100, 2.2, -430, 50, -280));
     } else {
       strongback(); trench(10, 40, -1);
     }
@@ -2594,6 +2665,18 @@ const padStruct = addStructure(padFixed, g => {
       for (let i = 0; i < 3; i++) hTank(2.4, 18, ox - 60 - i * 8, oz - 30, 0);
       building(40, 88, 50, ox - 30, oz + 540);                                          // the VIF
       building(30, 60, 40, ox - 30, oz + 470);
+    }
+    if (TERR) {                                                   // (on a hill pad: each on its own ground)
+      g.updateMatrixWorld(true);
+      const inv = g.matrixWorld.clone().invert(), bx = new THREE.Box3(), cos0 = Math.cos(PAD.lat * DEG);
+      const gAt = (x, z) => groundM(PAD.lat - z / 110574, PAD.lon + x / (111320 * cos0)) - H0 * 1000;
+      all.forEach(m => {
+        if (m.parent !== g) return;
+        bx.setFromObject(m).applyMatrix4(inv);
+        const x0 = bx.min.x / VS, x1 = bx.max.x / VS, z0 = bx.min.z / VS, z1 = bx.max.z / VS;
+        const dy = Math.min(gAt(x0, z0), gAt(x1, z0), gAt(x0, z1), gAt(x1, z1), gAt((x0 + x1) / 2, (z0 + z1) / 2));
+        m.position.y += dy * VS;
+      });
     }
     g.userData.tall = all;
   }
