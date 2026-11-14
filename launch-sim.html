@@ -330,7 +330,8 @@ const padByName = PADS.find(p => p[0].test(padName));
 const padHit = padByName || PADS.find(p => p[0].test(siteL)) || (VEH === 'ss' ? PADS[5] : polarHint ? PADS[0] : PADS[2]);
 const PAD = padKnown ? { lat: +cfg.pad.lat, lon: +cfg.pad.lon } : { lat: padHit[1], lon: padHit[2] };
 const PAD_LABEL = padByName ? padByName[3] : padKnown ? String(cfg.pad.name) : padHit[3];
-if (Math.hypot((PAD.lat - 34.632) * 110.6, (PAD.lon + 120.611) * 91.6) < 0.3) { PAD.lat = 34.632024; PAD.lon = -120.610619; }   // (SLC-4E: the rocket's own spot, over the flame duct)
+if (Math.hypot((PAD.lat - 34.632) * 110.6, (PAD.lon + 120.611) * 91.6) < 0.3) { PAD.lat = 34.632024; PAD.lon = -120.610619; }
+if (Math.hypot((PAD.lat - 28.5619) * 110.6, (PAD.lon + 80.5774) * 97.8) < 0.3) { PAD.lat = 28.561828; PAD.lon = -80.577185; }   // (SLC-40: the rocket's spot, south of its crew tower)   // (SLC-4E: the rocket's own spot, over the flame duct)
 const isVSFB = PAD.lon < -110, isStarbase = PAD.lon < -95 && PAD.lon > -100;
 
 const isStarlink = /starlink/.test(nameL);
@@ -2592,19 +2593,56 @@ const padStruct = addStructure(padFixed, g => {
       building(52, 30, 120, -8, 442, 0, true);                             // the hangar down the ramp
       building(30, 9, 18, -220, 80); building(22, 7, 14, 133, -60); building(16, 6, 20, 285, -15);
     } else if (site === '40') {
-      // the flame trench runs out east, ending in the concrete deflector exit with its steel frame (photo)
-      put(box(50, 0.3, 10, matHole, 27, 0.02, 0)); for (const sz of [-1, 1]) put(box(50, 2.2, 1.6, matGreySt, 27, 1.1, sz * 5.8));
-      put(box(8, 7, 14, matGreySt, 55, 3.5, 0)); put(box(10, 0.6, 16, matGreySt, 55, 7.3, 0));
-      // the crew access tower west of the rocket with its arm; four lightning towers on their catenary
-      tower(10, 80, -22, -2); crewArm(-17, 66.4);
-      const tops = [[-45, -45], [45, -45], [45, 45], [-45, 45]].map(([x, z]) => mast(90, x, z));
-      for (let i = 0; i < 4; i++) wire(tops[i], tops[(i + 1) % 4]);
-      strongback();
-      waterTower(-93, -125, 40, 7);
-      sphereTank(8, 70, 45);                                                 // the white sphere east of the trench (photo)
-      building(30, 9, 14, 30, -55); building(34, 8, 16, 80, -35);            // the low buildings north of the pad
-      for (let i = 0; i < 6; i++) hTank(2.6, 20, 110 + (i % 2) * 9, -45 + Math.floor(i / 2) * 32, 0);
-      building(52, 30, 110, -43, 209, 0, true); building(36, 10, 22, -60, 250);
+      // SLC-40 (metres from the rocket, x east, z south): the towers, tanks and buildings where OpenStreetMap and the
+      // aerial imagery put them; their look from photos of the pad. The four lightning towers stand free - grey
+      // lattices with their white fibreglass masts (no wires between them)
+      // the flame trench out east to the exhaust duct's exit
+      put(box(32, 0.3, 10, matHole, 18, 0.02, 0)); for (const sz of [-1, 1]) put(box(32, 2.2, 1.6, matGreySt, 18, 1.1, sz * 5.8));
+      put(box(14, 8, 18, matGreySt, 33, 4, -6)); put(box(16, 0.6, 20, matGreySt, 33, 8.3, -6));
+      // the crew access tower north of the rocket: a dark clad tower, open lattice on its south face, the white crew
+      // access arm high up reaching to the rocket, the lightning mast on top
+      {
+        const matCat = new THREE.MeshStandardMaterial({ color: 0x1d2025, metalness: 0.3, roughness: 0.75, emissive: 0x0a0c10, emissiveIntensity: 0.5 });
+        put(box(11, 80, 11, matCat, 0, 40, -21));
+        put(lattice(11, 80, 2.4, 0, 40, -14.6));
+        put(box(13, 1.2, 13, matCat, 0, 80.6, -21));
+        const ms = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * VS, 0.9 * VS, 16 * VS, 8), matGreySt); ms.position.set(0, 89 * VS, -21 * VS); put(ms);
+        const n0 = all.length; crewArm(-15.5, 69);                   // (built along x toward the rocket: turned to come from the north)
+        const arm = new THREE.Group(); all.slice(n0).forEach(m => { g.remove(m); arm.add(m); }); all.length = n0;
+        arm.rotation.y = -Math.PI / 2; put(arm);
+      }
+      // the four lightning towers (OpenStreetMap)
+      // (photos: a galvanised lattice tapering from a wide foot to a slim top two-thirds up, the white mast above)
+      const matGalv = new THREE.MeshStandardMaterial({ color: 0xb4b9bf, metalness: 0.6, roughness: 0.45, emissive: 0x20242a, emissiveIntensity: 0.5 });
+      for (const [x, z] of [[-29, -78], [49, -65], [-52, 44], [26, 58]]) {
+        [[7.5, 26, 13], [5, 26, 39], [3, 24, 64]].forEach(([w, h, y]) => { const l = put(lattice(w, h, w, x, y, z)); l.children[0].material.color.setHex(0xb4b9bf); l.children[1].material = matGalv; });
+        const top = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * VS, 1.0 * VS, 32 * VS, 12), matWhiteSt); top.position.set(x * VS, 92 * VS, z * VS); put(top);
+      }
+      // the transporter-erector (yellow at SLC-40, photos) on the south side, its rails coming up from the hangar
+      { const n0 = all.length; strongback(); const te = new THREE.Group(); all.slice(n0).forEach(m => { g.remove(m); te.add(m); }); all.length = n0;
+        te.rotation.y = Math.PI; put(te);
+        te.traverse(o => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() > 0xd0d0d0) { o.material = o.material.clone(); o.material.color.setHex(0xe0b52a); } }); }
+      // the launch mount's white legs, splayed out east and west from the rocket's foot (photo)
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const l = box(0.9, 13, 0.9, matWhiteSt, sx * 6, 5.5, sz * 2.2); l.rotation.z = sx * 0.62; put(l); }
+      // the liquid-oxygen sphere south-east, its long horizontal tanks beside it; the tanks and trailers north-east by the
+      // pipeline to the pad; the buildings west of the pad; the square basin north-west
+      sphereTank(6.5, 74, 72);
+      hTank(2.2, 24, 97, 67, -0.55); hTank(2.2, 24, 101, 73, -0.55); hTank(1.8, 22, 38, 60, -1.0); hTank(1.6, 14, 50, 83, -0.9);
+      for (let i = 0; i < 5; i++) hTank(1.7, 14, 105 + i * 1.2, -55 + i * 4, 0.45);
+      for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) { const t2 = box(2.5, 3, 11, matWhiteSt, 124 + i * 3.4 + r * 6, 1.5, -66 + i * 2.6 - r * 8); t2.rotation.y = 0.45; put(t2); }
+      building(30, 9, 24, 110, -117);
+      { const pr = box(72, 1.4, 1.4, matGreySt, 76, 3.5, -38); pr.rotation.y = -0.33; put(pr); }
+      building(11, 8, 25, -80, -25); building(21, 7, 18, -98, -28); building(12, 6, 16, 46, -10); building(12, 6, 17, -181, -59);
+      { const m = new THREE.MeshStandardMaterial({ color: 0x29404a, roughness: 0.3, metalness: 0.2 }); put(box(29, 0.2, 29, m, -90, 0.4, -129));
+        for (const [w, d, x, z] of [[31, 1, -90, -144], [31, 1, -90, -114], [1, 31, -105, -129], [1, 31, -75, -129]]) put(box(w, 1.6, d, matGreySt, x, 0.8, z)); }
+      // the light poles round the pad
+      const matLamp = new THREE.MeshStandardMaterial({ color: 0xfff2d8, emissive: 0xffe2b0, emissiveIntensity: 1.6 });
+      for (const [x, z] of [[-30, -10], [-35, 25], [25, 30], [40, -35], [-10, -50], [60, 20], [-60, 60], [70, -10]]) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * VS, 0.32 * VS, 26 * VS, 8), matGreySt); pole.position.set(x * VS, 13 * VS, z * VS); put(pole);
+        put(box(3, 1.6, 0.6, matLamp, x, 26.4, z));
+      }
+      // the Horizontal Integration Facility south of the pad, its door toward it
+      building(46, 30, 105, -31, 204, 0, true);
     } else if (site === '4E') {
       // SLC-4E (metres from the rocket, x east, z south; placed from the aerial imagery, heights from photos from the
       // hill east of the pad): a big paved complex on its level terrace; the transporter-erector north of the rocket
