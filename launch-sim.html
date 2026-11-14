@@ -839,6 +839,16 @@ if (VEH === 'ss') {
 }
 const shipCatchFixed = ecef(PAD.lat, PAD.lon, 0).normalize();
 const SHIP_DIVERT = 0.5;                                         // km: how far short of the tower the ship falls before its flip
+// km short of the tower along the approach, by time: the fall short (from transonic), then from 4 s before the flip an
+// S-shaped move in (gathering sideways speed, then braking it) that ends 2 s before the catch, with two small corrections
+// (a sway of a few metres, dying out) like those seen on the catch videos
+function shipDivertOff(tt) {
+  const land = A.s2.land, tr = A.s2.transonic, F = A.s2.flip ?? A.s2.lbStart;
+  const t0 = F - 4, t1 = land - 2, u = clamp01((tt - t0) / Math.max(6, t1 - t0));
+  const s5 = u * u * u * (u * (u * 6 - 15) + 10);                  // (smootherstep: no jerk at either end)
+  const sway = 0.006 * Math.sin(u * Math.PI * 3) * Math.sin(u * Math.PI) * (1 - u);   // km
+  return SHIP_DIVERT * smooth((tt - tr) / 90) * (1 - s5) + (u > 0 && u < 1 ? sway : 0);
+}
 function shipFixedDir(tt) {                                      // unit vector (Earth-fixed) under the ship on its way home
   const land = A.s2.land, u = toFixed(orbitAt(tauOf(tt)).normalize(), tt);
   return shipCatch ? u.lerp(shipCatchFixed, smooth((tt - homeA) / Math.max(60, land - 60 - homeA))).normalize() : u;   // (over the pad a minute before: the last part is the divert's alone)
@@ -864,8 +874,7 @@ function s2Inertial(t) {                                         // scene units
     const F = A.s2.flip ?? A.s2.lbStart, tr = A.s2.transonic;
     // the sideways move ends while the ship is still well above the arms (9 s out, ~120 m up with its hang): from there it
     // only comes straight down between them, its catch pins settling onto them from above
-    const off = SHIP_DIVERT * smooth((tt - tr) / 90) * (1 - smooth((tt - (F - 4)) / Math.max(6, land - 9 - (F - 4))));
-    u.addScaledVector(shipApproach(), -off / RE).normalize();
+    u.addScaledVector(shipApproach(), -shipDivertOff(tt) / RE).normalize();
   }
   const fixed = u.multiplyScalar((RE + homeAlt(tt)) * SCALE);
   return toInertial(fixed, t);
@@ -3495,6 +3504,11 @@ function frame() {
       shipZ = radial.clone().multiplyScalar(-Math.cos(th)).addScaledVector(h, Math.sin(th));
       // upright and coming down to the tower: turned as it is caught - a flap out to each side, over each arm (the arms
       // run north-south from the tower, so the flaps point east and west), belly away from the tower, back toward it
+      if (shipCatch && simT > F) {                                // (leaning into its sideways acceleration)
+        const t = Math.min(simT, A.s2.land), dt2 = 0.5, acc = -(shipDivertOff(t + dt2) - 2 * shipDivertOff(t) + shipDivertOff(t - dt2)) / (dt2 * dt2) * 1000;   // m/s2 toward the tower
+        const lean = Math.atan(acc / 16) * smooth((simT - F - 1.5) / 2);   // (16 m/s2: gravity and the landing burn's braking)
+        d.addScaledVector(h, Math.tan(Math.max(-0.5, Math.min(0.5, lean)))).normalize();
+      }
       if (shipCatch) {
         const south = groundBasis(padFixed).south.transformDirection(earthGroup.matrixWorld);
         const want = south, k = smooth((simT - (F + 3)) / 6);
