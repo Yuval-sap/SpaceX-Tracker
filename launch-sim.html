@@ -1045,6 +1045,7 @@ const earthMat = new THREE.ShaderMaterial({
       float d = dot(n, sunDir);
       float dayMix = smoothstep(-0.12, 0.18, d);
       vec3 day = texture2D(dayMap, vUv).rgb;
+      day = mix(day, vec3(0.008, 0.028, 0.08), smoothstep(0.5, 0.9, texture2D(specMap, vUv).r));   // (the open sea, one even blue)
       day = mix(day, pow(day, vec3(0.86)) * 1.12, lift);          // (the Blue Marble mosaic, as its tiles are)
       vec3 night = texture2D(nightMap, vUv).rgb;
       float lit = clamp(d, 0.0, 1.0);
@@ -2075,6 +2076,10 @@ function makeTile(lv, y, x) {
         vec3 day = texture2D(map, vUv).rgb;
         // Sentinel-2: its open water gives way to the Blue Marble below, and its picture is darker than the Blue Marble's
         float water = land * smoothstep(0.008, 0.035, day.b - max(day.r, day.g));
+        // the darker water of the aerial photos near a coast, bluish and dark, gives way too (dark forest is greener, shade greyer)
+        water = max(water, land * step(day.r * 1.1, day.b) * step(day.g * 0.9, day.b) * (1.0 - smoothstep(0.16, 0.26, max(day.r, max(day.g, day.b)))));
+        // the Blue Marble's sea is its sea-floor relief in blues - from up close it read as blue land: one even ocean blue
+        day = mix(day, vec3(0.008, 0.028, 0.08), (1.0 - land) * smoothstep(0.04, 0.12, day.b - max(day.r, day.g * 0.75)));
         day = pow(day, vec3(0.86)) * 1.12;                        // both pictures are darker on a screen than the Earth looks from orbit
         vec3 col = day * (0.06 + 1.15 * lit);
         col += vec3(1.0, 0.45, 0.2) * 0.12 * exp(-pow(d * 8.0, 2.0)) * day.g;
@@ -2650,6 +2655,7 @@ scene.add(puffs);
 const flameLight = new THREE.PointLight(0xffa155, 0, 1, 0); scene.add(flameLight);
 const emitters = [{ fixed: padFixed, t0: -2.5, dur: 13, life: 15, R: 240, rise: 110, share: 3, a: 0.6 }];
 if (VEH === 'ss' && isStarbase) [1, -1].forEach(sx => emitters.push({ fixed: padFixed, mouth: [sx * 20, 0], go: 260, t0: -1, dur: 9, life: 9, R: 45, rise: 70, share: 2, a: 0.7, hot: true }));
+boosterDefs.forEach(bd => { if (bd.land.kind === 'splash' && bd.landAt) emitters.push({ fixed: ecef(bd.landAt[0], bd.landAt[1], 0), t0: bd.landT + 3.6, dur: 2.5, life: 7, R: 90, rise: 45, share: 1, a: 0.55, cold: true }); });
 boosterDefs.forEach(bd => { if (bd.landFixed) emitters.push({ fixed: bd.land.kind === 'asds' || !bd.landAt ? bd.landFixed.clone().setLength(R) : ecef(bd.landAt[0], bd.landAt[1], groundM(bd.landAt[0], bd.landAt[1]) / 1000), t0: bd.landT - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 }); });
 if (VEH === 'ss') emitters.push({ fixed: toFixed(s2At(A.s2.land), A.s2.land).setLength(R), t0: A.s2.land - 5, dur: 5, life: 8, R: 120, rise: 50, share: 1, a: 0.2 });
 emitters.forEach(e => { e.b = groundBasis(e.fixed); e.lit = THREE.MathUtils.smoothstep(toInertial(e.fixed, e.t0).normalize().dot(SUN), -0.1, 0.2); });
@@ -2672,7 +2678,7 @@ function updatePuffs(t) {
     puffPos[i * 3] = v.x; puffPos[i * 3 + 1] = v.y; puffPos[i * 3 + 2] = v.z;
     puffSize[i] = (60 + 220 * u) * VS * vScale;
     puffAlpha[i] = e.a * (vScale < 0.5 ? 1 : 0.3) * Math.pow(1 - u, 1.5) * Math.min(1, age / 0.6);
-    puffWarm[i] = Math.max(0, (e.hot ? 0.6 : 0.75) - u * (e.hot ? 3.0 : 3.5));
+    puffWarm[i] = e.cold ? 0 : Math.max(0, (e.hot ? 0.6 : 0.75) - u * (e.hot ? 3.0 : 3.5));   // (spray off the sea: white)
     any = true; lit = e.lit;
   }
   puffs.visible = any;
@@ -3474,7 +3480,7 @@ function frame() {
   const mi = UNITS === 'imperial';
   boosterDefs.forEach(bd => {
     const p = bd.at(simT);
-    const gone = (bd.land.kind === 'expend' && simT > bd.landT) || (bd.land.kind === 'splash' && simT > bd.landT + 15) || simT > bd.landT + 1800;   // (in the sea it topples and breaks up)
+    const gone = (bd.land.kind === 'expend' && simT > bd.landT) || (bd.land.kind === 'splash' && simT > bd.landT + 16) || simT > bd.landT + 1800;   // (in the sea it topples and breaks up)
     bd.obj.visible = !gone;
     const sc = simT < bd.sep ? vScale : enlarge(p);
     if (simT < bd.sep) {
@@ -3491,7 +3497,13 @@ function frame() {
       const lat = bd.offset.clone().multiplyScalar(sc * (1 - away)).applyQuaternion(qStack);
       if (bd.sideOff) lat.addScaledVector(UPY.clone().cross(up).normalize(), bd.sideOff * VS * sc * away);
       const hang = (bd.land.kind === 'catch' && !towerShown ? 0 : bd.hang) * VS * sc * smooth((simT - (bd.landT - 40)) / 35);   // (hanging from a tower only when the tower is there)
-      orient(bd.obj, p.clone().add(lat).addScaledVector(up, hang), d);
+      let pos = p.clone().add(lat).addScaledVector(up, hang);
+      if (bd.land.kind === 'splash' && simT > bd.landT) {            // in the water: it falls over on its side, then goes under
+        const u = simT - bd.landT, tip = 1.52 * smooth((u - 0.8) / 4.2), side = UPY.clone().cross(up).normalize();
+        d = up.clone().multiplyScalar(Math.cos(tip)).addScaledVector(side, Math.sin(tip)).normalize();
+        pos.addScaledVector(up, -(1.5 + 11 * smooth((u - 4.5) / 9)) * VS * sc);
+      }
+      orient(bd.obj, pos, d);
     }
     bd.obj.scale.setScalar(sc);
     const hangNow = simT < bd.sep ? 0 : (bd.land.kind === 'catch' && !towerShown ? 0 : bd.hang) * VS * sc * smooth((simT - (bd.landT - 40)) / 35);
