@@ -1821,7 +1821,7 @@ async function loadStarshipModel() {
     if (sv) q.set('s', sv); if (bv) q.set('b', bv); if (nv) q.set('n', nv);
     try { await Promise.race([document.fonts.load("700 84px 'Stardos Stencil'"), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}   // the serials' stencil
     const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location',
-      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD, R, satR, RSL, RVAC };');
+      code + '\nreturn { groups, parts, fluids, engines, deployer, FF_Y, FF_DROP, WINDWARD, R, satR, RSL, RVAC, rcsPorts: typeof rcsPorts !== "undefined" ? rcsPorts : [] };');
     return run(THREE, mergeGeometries, renderer, new THREE.Scene(), MOBILE, renderer.capabilities.getMaxAnisotropy(), { search: '?' + q.toString() });
   } catch (e) { console.warn('launch sim: the 3D Starship model could not be used, drawing the simple one', e); return null; }
 }
@@ -1918,6 +1918,29 @@ function ship3d() {
     return pl;
   });
   ud.plume = ud.plumes[0];
+  // the reaction-control puffs: now and then, coasting in space, a short faint blue-white jet of gas out of one of the
+  // ports the 3D page draws (as on SpaceX's footage of Ship 42 in orbit) - a soft cone, widening and fading as it goes
+  if (SSM.rcsPorts && SSM.rcsPorts.length) {
+    const geo = new THREE.ConeGeometry(1, 1, 24, 1, true); geo.translate(0, -0.5, 0); geo.rotateX(Math.PI);   // tip at the port, opening along +y
+    const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      uniforms: { op: { value: 0 } },
+      vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+      void main(){ vUv = uv; vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv;
+#include <logdepthbuf_vertex>
+      }`,
+      fragmentShader: `uniform float op; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+#include <logdepthbuf_pars_fragment>
+      void main(){
+#include <logdepthbuf_fragment>
+        float along = 1.0 - vUv.y, edge = pow(abs(dot(normalize(vN), normalize(vV))), 0.8);
+        float a = op * edge * pow(1.0 - along, 1.4) * smoothstep(0.0, 0.06, along) * 0.9;
+        gl_FragColor = vec4(mix(vec3(0.85, 0.93, 1.0), vec3(0.45, 0.65, 1.0), along), a); }   // (additive: the colour times its alpha)` });
+    const jet = new THREE.Mesh(geo, mat); jet.visible = false; jet.renderOrder = 4; jet.frustumCulled = false; g.add(jet);
+    const ports = SSM.rcsPorts.map(pt => { const a = pt.a - SSM.WINDWARD; return { pos: new THREE.Vector3(Math.sin(a) * pt.r, pt.y - 72.8, Math.cos(a) * pt.r).multiplyScalar(VS), dir: new THREE.Vector3(Math.sin(a), 0, Math.cos(a)) }; });
+    ud.rcs = { jet, ports };
+  }
   return g;
 }
 function superHeavy3d() {
@@ -3503,6 +3526,23 @@ function frame() {
       u.spread.value = VEH === 'ss' && simT > (A.s2.lbStart ?? Infinity) ? 1.2 : one ? 1 + 0.35 * vac : 2;
       u.diamonds.value = 1 - smooth(a2 / 14); u.vac.value = one ? 0.6 * vac : vac; u.len.value = 1 - (one ? 0.25 : 0.45) * vac;
     }); }
+  // the ship's reaction-control puffs while it coasts in space: each 2-minute stretch may have one (seven in ten do), at
+  // a moment, from a port and for a second or two of its own - fixed by the clock, so the same after any jump in time
+  if (upper.userData.rcs) {
+    const rc = upper.userData.rcs, j = rc.jet, SLOT = 120;
+    let op = 0;
+    if (simT > seco1 + 30 && simT < (A.s2.shipEntry ?? Infinity) - 60 && !inBurn(S2_BURNS, simT)) {
+      const k = Math.floor(simT / SLOT), h = (n) => { const x = Math.sin(k * 127.1 + n * 311.7) * 43758.5453; return x - Math.floor(x); };
+      const t0 = k * SLOT + 15 + h(2) * 80, dur = 0.8 + h(3) * 1.6, u = simT - t0;
+      if (h(1) < 0.7 && u > 0 && u < dur + 0.8) {
+        op = Math.min(1, u / 0.15) * (u < dur ? 1 : 1 - (u - dur) / 0.8);
+        const pt = rc.ports[Math.floor(h(4) * rc.ports.length) % rc.ports.length], len = 5.5 * VS;
+        j.position.copy(pt.pos); j.quaternion.setFromUnitVectors(Y, pt.dir);
+        j.scale.set(len * 0.42, len * (0.7 + 0.3 * Math.min(1, u / 0.4)), len * 0.42);
+      }
+    }
+    j.visible = op > 0.01; j.material.uniforms.op.value = op;
+  }
   const stackBurn = simT >= 0 && simT <= meco;
   vehLabel.visible = !separated; pS2Now.copy(pS2);
   vehLabel.position.copy(pS2).add(new THREE.Vector3(0, (VEH === 'ss' ? 135 : 70) * VS * vScale, 0).applyQuaternion(qStack));

@@ -474,6 +474,7 @@ scene.environment = buildEnv();
 
 // @model-begin - launch-sim.html runs the code from here down to @model-end as its own Starship model (one model
 // for both pages), so keep these two marker lines; the code between them may change freely
+const rcsPorts = [];                  // the reaction-control ports' places ({ y, a, r }), for the launch sim's small puffs
 // ---------------------------------------------------------------- procedural textures
 const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const toTex = (c, srgb) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = maxAniso; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
@@ -2233,6 +2234,7 @@ function serialCanvas(text, upward = false) {
         const [grp, pid] = grpAt(y), r = hullRadius(y) + 0.045, arc = D / r;
         const geo = new THREE.CylinderGeometry(r, r, D, 12, 1, true, ang - arc / 2, arc); geo.translate(0, y, 0);
         const m = new THREE.Mesh(geo, mat); m.renderOrder = 2; m.userData.part = pid; m.userData.label = 'Reaction-control port'; grp.add(m);
+        rcsPorts.push({ y, a: ang, r: r - 0.045 });
       };
       // each pair on a plate outlined by its bolts; the upper holes ringed by short radial bolt marks (photo of Ship 42)
       const plate = (y, a0, a1, h, holes) => {
