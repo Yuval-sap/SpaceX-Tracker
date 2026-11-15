@@ -3,13 +3,15 @@
    text-emerald-400 ...) so each mode colours them as it colours the rest of the tab; only what those can't give is
    here - the accent and the grid in each mode, the ground, the day mode's sky behind the rockets. */
 #evo-sec, #evo-modal { --evo-acc: #34d399; --evo-acc-rgb: 52, 211, 153; --evo-grid: rgba(255, 255, 255, .07); --evo-gridtx: rgba(228, 228, 231, .5);
-  --evo-g0: #26272c; --evo-g1: #111114; --evo-plot: transparent; --evo-stage: linear-gradient(180deg, #0d1018, #07080c); }
+  --evo-g0: #26272c; --evo-g1: #111114; --evo-plot: transparent;
+  /* the 3D viewer: a lifted, softly lit backdrop and the floor the rocket's shadow falls on (viewer.js reads --evo-floor) */
+  --evo-stage: radial-gradient(ellipse 80% 70% at 50% 38%, #2b3444 0%, #171c26 55%, #0c0f15 100%); --evo-floor: #6a7488; --evo-light: 0; }
 body.light-theme #evo-sec, body.light-theme #evo-modal { --evo-acc: #047857; --evo-acc-rgb: 4, 120, 87; --evo-grid: rgba(15, 23, 42, .09); --evo-gridtx: rgba(30, 41, 59, .55);
-  --evo-g0: #cbd5e1; --evo-g1: #94a3b8; --evo-plot: linear-gradient(180deg, #e6ebf2 0%, #f1f5f9 70%, #f8fafc 100%); --evo-stage: linear-gradient(180deg, #e2e8f0, #f8fafc); }
+  --evo-g0: #cbd5e1; --evo-g1: #94a3b8; --evo-plot: linear-gradient(180deg, #e6ebf2 0%, #f1f5f9 70%, #f8fafc 100%); --evo-stage: linear-gradient(180deg, #e2e8f0, #f8fafc); --evo-floor: #94a3b8; --evo-light: 1; }
 body.mars-theme #evo-sec, body.mars-theme #evo-modal { --evo-acc: #ff6b35; --evo-acc-rgb: 255, 107, 53; --evo-grid: rgba(255, 170, 130, .08); --evo-gridtx: rgba(243, 230, 216, .5);
-  --evo-g0: #6b2e18; --evo-g1: #2a120a; --evo-stage: linear-gradient(180deg, #1f0d08, #0e0504); }
+  --evo-g0: #6b2e18; --evo-g1: #2a120a; --evo-stage: radial-gradient(ellipse 80% 70% at 50% 38%, #4d2718 0%, #2a130b 55%, #150805 100%); --evo-floor: #9a5636; }
 body.moon-theme #evo-sec, body.moon-theme #evo-modal { --evo-acc: #3fa9f5; --evo-acc-rgb: 63, 169, 245; --evo-grid: rgba(180, 200, 230, .08); --evo-gridtx: rgba(232, 238, 246, .5);
-  --evo-g0: #4a4f58; --evo-g1: #22252b; --evo-stage: linear-gradient(180deg, #0f1522, #06080d); }
+  --evo-g0: #4a4f58; --evo-g1: #22252b; --evo-stage: radial-gradient(ellipse 80% 70% at 50% 38%, #2a3650 0%, #161e2e 55%, #0a0e16 100%); --evo-floor: #6c7a92; }
 
 /* the chart: the rockets standing on the ground at the same pixels per metre (--pxm) */
 #evo-chart { position: relative; overflow: hidden; --plotH: clamp(300px, 58vh, 620px); --top: 28px; --lab: 104px; --axis: 62px; }
@@ -83,11 +85,14 @@ html[dir="rtl"] #evo-modal .evo-stat b { text-transform: none; letter-spacing: 0
 #evo-modal .evo-nav button { flex: 1; padding: 9px 12px; font-weight: 600; font-size: .88rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
 #evo-modal .evo-nav button:hover, #evo-modal .evo-x:hover { border-color: var(--evo-acc) !important; }
 #evo-modal .evo-nav button:disabled { visibility: hidden; }
+#evo-modal .evo-reset { position: absolute; top: 12px; inset-inline-start: 12px; z-index: 2; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 7px;
+  font-size: .82rem; font-weight: 600; border-radius: 999px; border-width: 1px; border-style: solid; cursor: pointer; appearance: none; font-family: inherit; }
+#evo-modal .evo-reset:hover { border-color: var(--evo-acc) !important; }
 #evo-modal .evo-x { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 2; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; line-height: 1; }
 @media (max-width: 760px) {
   #evo-modal { padding: 0; }
   #evo-modal .evo-box { grid-template-columns: 1fr; grid-template-rows: 56% 44%; height: 100%; border-radius: 0; }
   #evo-modal .evo-info { border-inline-start-width: 0; border-top-width: 1px; border-top-style: solid; padding: 18px 18px calc(16px + env(safe-area-inset-bottom)); gap: 10px; }
-  #evo-modal .evo-x { top: max(10px, env(safe-area-inset-top)); }
+  #evo-modal .evo-x, #evo-modal .evo-reset { top: max(10px, env(safe-area-inset-top)); }
   #evo-modal .evo-stats { gap: 8px; } #evo-modal .evo-stat { padding: 8px 10px; }
 }

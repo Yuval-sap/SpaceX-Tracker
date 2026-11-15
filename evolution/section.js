@@ -87,7 +87,7 @@ function buildModal() {
   modal.className = 'notranslate'; modal.setAttribute('translate', 'no'); modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');
   modal.innerHTML = `<div class="evo-box bg-zinc-950 border border-zinc-800">
     <button class="evo-x bg-zinc-900 border-zinc-800 text-white" type="button">×</button>
-    <div class="evo-stage"><div class="evo-load text-zinc-400"><i></i><span data-t="loading"></span></div><div class="evo-drag text-zinc-400" data-t="drag"></div></div>
+    <div class="evo-stage"><button type="button" class="evo-reset bg-zinc-900 border-zinc-800 text-white"><i class="fa-solid fa-rotate-left"></i><span data-t="reset"></span></button><div class="evo-load text-zinc-400"><i></i><span data-t="loading"></span></div><div class="evo-drag text-zinc-400" data-t="drag"></div></div>
     <div class="evo-info bg-zinc-900 border-zinc-800">
       <div class="evo-myr font-orbitron text-emerald-400" data-f="year"></div>
       <h2 class="font-orbitron text-white" data-f="name"></h2>
@@ -109,6 +109,8 @@ function buildModal() {
   stage = modal.querySelector('.evo-stage'); loadEl = modal.querySelector('.evo-load');
   [prevB, nextB] = modal.querySelectorAll('[data-nav]');
   modal.querySelector('.evo-x').addEventListener('click', closeViewer);
+  // back to the rocket's first view (after turning, zooming, panning)
+  modal.querySelector('.evo-reset').addEventListener('click', () => { if (V && V.reset) V.reset(); });
   modal.addEventListener('click', e => {
     if (e.target === modal) return closeViewer();
     const n = e.target.closest('[data-nav]'); if (n && cur >= 0 && VEHICLES[cur + +n.dataset.nav]) openViewer(cur + +n.dataset.nav);
