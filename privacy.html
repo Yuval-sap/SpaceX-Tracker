@@ -18,11 +18,14 @@
   .meta { color: #a1a1aa; font-size: 0.9rem; margin-bottom: 28px; }
   section[dir="rtl"] { text-align: right; }
   bdi { white-space: nowrap; }   /* (a name in Latin letters inside a right-to-left line kept whole) */
+  .back { display: inline-block; color: #a1a1aa; text-decoration: none; font-size: .95rem; margin-bottom: 28px; padding: 6px 0; }
+  .back:hover { color: #34d399; }
   .note { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 12px 16px; }
 </style>
 </head>
 <body>
 <main>
+  <a class="back" id="back" href="./">← Back to the tracker</a>
   <section lang="en" dir="ltr">
     <h1>Privacy Policy</h1>
     <div class="meta"><bdi>Space Launch Tracker</bdi> (spacexfantracker.com and the Android app) · Last updated: November 15, 2026</div>
@@ -665,6 +668,19 @@
   var sec = document.querySelector('section[lang="' + lang + '"]'); if (!sec) return;
   document.querySelectorAll('main > section').forEach(function (s) { s.hidden = s !== sec; });
   document.documentElement.lang = lang; document.documentElement.dir = sec.dir; document.title = titles[lang];
+})();
+// the way back: to the download page when it was opened from there, else to the site - in the page's language
+(function () {
+  var back = {"en": ["Back to the download page", "Back to the tracker"], "he": ["חזרה לדף ההורדה", "חזרה לאתר"], "ar": ["العودة إلى صفحة التنزيل", "العودة إلى الموقع"], "es": ["Volver a la página de descarga", "Volver al sitio"], "fr": ["Retour à la page de téléchargement", "Retour au site"], "de": ["Zurück zur Download-Seite", "Zurück zur Website"], "ru": ["Назад к странице загрузки", "Назад на сайт"], "zh": ["返回下载页面", "返回网站"], "it": ["Torna alla pagina di download", "Torna al sito"], "cs": ["Zpět na stránku stažení", "Zpět na web"], "sv": ["Tillbaka till nedladdningssidan", "Tillbaka till webbplatsen"], "nl": ["Terug naar de downloadpagina", "Terug naar de site"], "da": ["Tilbage til downloadsiden", "Tilbage til siden"], "pt": ["Voltar à página de download", "Voltar ao site"], "pl": ["Powrót do strony pobierania", "Powrót do strony"], "hi": ["डाउनलोड पेज पर वापस", "साइट पर वापस"], "tr": ["İndirme sayfasına dön", "Siteye dön"]};
+  var lang = document.documentElement.lang, t = back[lang] || back.en, rtl = document.documentElement.dir === 'rtl';
+  var fromApp = new URLSearchParams(location.search).get('from') === 'app' || /\/app\/?(\?|#|$)/.test(document.referrer.replace(location.origin, ''));
+  var a = document.getElementById('back');
+  a.href = fromApp ? 'app/?lang=' + lang : './';
+  a.textContent = (rtl ? '→ ' : '← ') + (fromApp ? t[0] : t[1]);
+  // the browser's own Back when the page it leads to is the one the visitor came from: it comes back as it was, not reloaded
+  a.addEventListener('click', function (e) {
+    try { var r = new URL(document.referrer); if (r.origin === location.origin && (fromApp ? /\/app\//.test(r.pathname) : !/\/app\//.test(r.pathname)) && history.length > 1) { e.preventDefault(); history.back(); } } catch (err) { }
+  });
 })();
 </script>
 </body>
