@@ -9,6 +9,9 @@
 <meta property="og:description" content="Live launch countdowns, reminders, 3D launch simulations and home-screen widgets. Free, no ads.">
 <meta property="og:image" content="https://spacexfantracker.com/icon-512x512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="../icon-192x192.png">
+<!-- Google Analytics (the site's): the page's visits, and each tap on the download button (apk_download) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-R08T8Y5J7E"></script>
+<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag('js', new Date()); gtag('config', 'G-R08T8Y5J7E');</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Space+Grotesk:wght@400;500;600&family=Rubik:wght@400;500;600;700&display=swap">
 <style>
   :root { color-scheme: dark; --g: #34d399; --g2: #10b981; --bg: #09090b; --card: #111114; --line: #27272a; --mut: #a1a1aa; }
@@ -199,6 +202,7 @@ function fmtSize(b) { return (b / 1048576).toFixed(1) + ' MB'; }
 function fmtDate(iso) { try { return new Date(iso).toLocaleDateString(LOCALES[lang] || 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return iso; } }
 fetch('version.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(info => {
   if (!info || !info.sha256) return;
+  appInfo = info;
   document.getElementById('v-ver').textContent = info.versionName;
   document.getElementById('v-date').textContent = fmtDate(info.date);
   document.getElementById('v-size').innerHTML = '<bdi>' + fmtSize(info.size) + '</bdi>';
@@ -207,6 +211,9 @@ fetch('version.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(inf
   document.getElementById('vt').href = 'https://www.virustotal.com/gui/file/' + info.sha256;
   document.getElementById('dl-meta').innerHTML = tr('ver') + ' <bdi>' + info.versionName + '</bdi> · <bdi>' + fmtSize(info.size) + '</bdi>';
 }).catch(() => {});
+// each download counted in Analytics, with the version and the page's language
+let appInfo = null;
+document.getElementById('dl').addEventListener('click', () => { try { gtag('event', 'apk_download', { app_version: appInfo ? appInfo.versionName : '', page_language: lang }); } catch (e) {} });
 // the phone's screenshots, one after another
 const imgs = [...document.querySelectorAll('#phone img')]; let k = 0;
 if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => { imgs[k].classList.remove('on'); k = (k + 1) % imgs.length; imgs[k].classList.add('on'); }, 3200);

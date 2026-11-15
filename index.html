@@ -9,7 +9,14 @@
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
 
+        // the Android app's users told apart (window.AndroidApp is the app's bridge): a user property and the app's
+        // version on every hit, and an android_app_open event each time the app opens - Analytics then shows how many
+        // use the app (right now, per day/month) and which version they have
+        var appVersion = null;
+        try { if (window.AndroidApp && typeof window.AndroidApp.version === 'function') appVersion = String(window.AndroidApp.version() || '?'); } catch (e) { }
+        if (appVersion) gtag('set', 'user_properties', { app_platform: 'android_app', app_version: appVersion });
         gtag('config', 'G-R08T8Y5J7E');
+        if (appVersion) gtag('event', 'android_app_open', { app_version: appVersion });
     </script>
 
     <!-- Google Translate Script - moved here from the end of <body> (2026-08-18) so the
