@@ -209,6 +209,8 @@ document.querySelectorAll('[data-i18n]').forEach(el => {
   } else el.textContent = t;
 });
 document.title = tr('title');
+// the links to the privacy policy open it in the same language
+document.querySelectorAll('a[href="../privacy.html"]').forEach(a => { a.href = '../privacy.html?lang=' + lang; });
 function fmtSize(b) { return (b / 1048576).toFixed(1) + ' MB'; }
 function fmtDate(iso) { try { return new Date(iso).toLocaleDateString(LOCALES[lang] || 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return iso; } }
 fetch('version.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(info => {
