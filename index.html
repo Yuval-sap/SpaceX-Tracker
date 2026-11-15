@@ -19816,6 +19816,10 @@
         // from just below the middle instead, trimming about 21 px off the top: the tip just clears the card's top edge,
         // without the empty sky above it that anchoring the zoom at the very top left.
         const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', '50% 60%'], 'starship-launch.jpg': ['50% 0%', '50% 0%'] };   // (Starship's: its nose high in the photo, kept in the card)
+        // photos whose subject reaches the very top edge (Starship's nose): every place that crops or zooms them keeps
+        // the top edge in view - the past-launch cards (zoomed from the bottom) and the hero (cropped at 19%) cut it off
+        const TOP_ANCHORED_IMAGES = ['starship-launch.jpg'];
+        function imgTopAnchored(src) { return TOP_ANCHORED_IMAGES.includes(String(src || '').split('?')[0].split('/').pop()); }
         function cardImgPosStyle(src) {
             const pos = CARD_IMG_POS[String(src || '').split('?')[0].split('/').pop()];
             const [objectPos, origin] = !pos ? [] : Array.isArray(pos) ? pos : [pos];
@@ -27159,6 +27163,7 @@ setTimeout(() => {
                 const heroImg = document.getElementById('hero-image');
                 if (heroImg) {
                     heroImg.src = nextLaunch.image;
+                    heroImg.style.objectPosition = imgTopAnchored(nextLaunch.image) ? 'center 0%' : '';   // (Starship's nose at the top)
                     heroImg.alt = nextLaunch.name;
                     heroImg.onerror = function () {
                         this.src = FALLBACK_IMAGES[nextLaunch.category] || FALLBACK_IMAGES.falcon;
@@ -27609,7 +27614,7 @@ setTimeout(() => {
                     ? (pastCardDict.watchDetailsVideo || LAUNCH_LABEL_I18N.en.watchDetailsVideo)
                     : (pastCardDict.viewMissionDetails || LAUNCH_LABEL_I18N.en.viewMissionDetails);
                 card.innerHTML = `
-                    <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover object-[center_21%] scale-[1.06] origin-bottom" alt="${escapeHtml(m.name)}" draggable="false" style="-webkit-user-drag: none;">
+                    <img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="absolute inset-0 w-full h-full object-cover ${imgTopAnchored(m.image) ? 'object-top origin-top' : 'object-[center_21%] origin-bottom'} scale-[1.06]" alt="${escapeHtml(m.name)}" draggable="false" style="-webkit-user-drag: none;">
                     <div class="absolute -inset-px z-10 mission-card-fade pointer-events-none"></div>
                     <div class="relative z-20 flex flex-col justify-end min-h-[311px] p-5 pt-[182px]">
                         <div>
@@ -30741,7 +30746,7 @@ setTimeout(() => {
                 // Cover-fit crop, same idea as CSS object-fit:cover.
                 const scale = Math.max(W / photoImg.width, photoH / photoImg.height);
                 const sw = W / scale, sh = photoH / scale;
-                const sx = (photoImg.width - sw) / 2, sy = (photoImg.height - sh) / 2;
+                const sx = (photoImg.width - sw) / 2, sy = imgTopAnchored(m.image) ? 0 : (photoImg.height - sh) / 2;   // (Starship's nose at the top kept)
                 ctx.drawImage(photoImg, sx, sy, sw, sh, 0, 0, W, photoH);
 
                 ctx.fillStyle = 'rgba(0,0,0,0.22)';
