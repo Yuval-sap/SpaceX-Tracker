@@ -13,10 +13,33 @@
 <style>
   :root { color-scheme: dark; --g: #34d399; --g2: #10b981; --bg: #09090b; --card: #111114; --line: #27272a; --mut: #a1a1aa; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: radial-gradient(1200px 600px at 50% -200px, rgba(16,185,129,.12), transparent 70%), var(--bg); color: #e4e4e7;
+  body { margin: 0; background: var(--bg); color: #e4e4e7; min-height: 100vh;
          font: 16px/1.6 'Space Grotesk', Rubik, system-ui, sans-serif; }
   html[lang="he"] body { font-family: Rubik, system-ui, sans-serif; }
-  main { max-width: 1040px; margin: 0 auto; padding: 24px 20px 64px; }
+  /* the sky behind the page: a soft nebula (green like the site, blue and violet), two layers of slowly drifting stars
+     and a planet's glowing rim low down - fixed, the page scrolls over it */
+  .sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+         background:
+           radial-gradient(900px 520px at 12% 6%, rgba(16,185,129,.22), transparent 65%),
+           radial-gradient(800px 600px at 90% 16%, rgba(59,130,246,.18), transparent 65%),
+           radial-gradient(700px 520px at 55% 60%, rgba(139,92,246,.10), transparent 70%),
+           linear-gradient(180deg, #04050a 0%, #070910 55%, #0a0d17 100%); }
+  .sky::before, .sky::after { content: ''; position: absolute; inset: -50%; background-repeat: repeat; }
+  .sky::before { background-image:
+      radial-gradient(1px 1px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 110px 80px, rgba(255,255,255,.8), transparent),
+      radial-gradient(1px 1px at 170px 150px, rgba(255,255,255,.7), transparent), radial-gradient(1.5px 1.5px at 60px 170px, #fff, transparent),
+      radial-gradient(1px 1px at 140px 20px, rgba(255,255,255,.6), transparent), radial-gradient(1px 1px at 90px 120px, rgba(190,220,255,.8), transparent);
+    background-size: 200px 200px; opacity: .6; animation: drift 240s linear infinite; }
+  .sky::after { background-image:
+      radial-gradient(1.5px 1.5px at 50px 90px, #fff, transparent), radial-gradient(2px 2px at 260px 210px, rgba(200,255,235,.9), transparent),
+      radial-gradient(1.5px 1.5px at 330px 40px, rgba(255,255,255,.85), transparent), radial-gradient(1px 1px at 180px 300px, #fff, transparent);
+    background-size: 380px 380px; opacity: .55; animation: drift 420s linear infinite reverse; }
+  .sky i { position: absolute; left: 50%; bottom: -150vmax; width: 220vmax; height: 170vmax; transform: translateX(-50%); border-radius: 50%;
+           background: #070a12; box-shadow: 0 0 0 1px rgba(52,211,153,.35), 0 -6px 40px rgba(52,211,153,.22), 0 -30px 140px rgba(59,130,246,.14); }
+  @keyframes drift { to { transform: translate(200px, 120px); } }
+  @media (prefers-reduced-motion: reduce) { .sky::before, .sky::after { animation: none; } }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 20px 64px; position: relative; z-index: 1; }
+  .feat, .card, details { background: rgba(17,17,20,.74); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
   a { color: var(--g); }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .back { color: var(--mut); text-decoration: none; font-size: .9rem; }
@@ -38,7 +61,6 @@
   .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
   .badge { font-size: .82rem; color: #d4d4d8; border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; background: rgba(255,255,255,.02); }
   .badge b { color: var(--g); font-weight: 600; }
-  .mirror { margin-top: 12px; font-size: .85rem; color: var(--mut); }
   .phone { justify-self: center; width: min(300px, 78vw); aspect-ratio: 9/16; border-radius: 34px; overflow: hidden; border: 8px solid #1c1c21;
            box-shadow: 0 0 0 1px #2e2e35, 0 30px 60px rgba(0,0,0,.6); background: #000; position: relative; }
   .phone img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .8s; }
@@ -69,10 +91,10 @@
 </style>
 </head>
 <body>
+<div class="sky" aria-hidden="true"><i></i></div>
 <main>
   <div class="top">
     <a class="back" href="../" data-i18n="back">← Back to the tracker</a>
-    <div class="langs"><button type="button" data-lang="en">English</button><button type="button" data-lang="he">עברית</button></div>
   </div>
 
   <section class="hero">
@@ -95,7 +117,6 @@
         <span class="badge"><b>✓</b> <span data-i18n="b3">No account</span></span>
         <span class="badge"><b>✓</b> <span data-i18n="b4">Android 7.0 and up</span></span>
       </div>
-      <div class="mirror"><span data-i18n="mirror">Also available from</span> <a href="https://github.com/Yuval-sap/SpaceX-Tracker/releases/tag/android-latest" target="_blank" rel="noopener">GitHub</a></div>
     </div>
     <div class="phone" id="phone">
       <img class="on" src="shots/01-hero.webp" alt="">
@@ -112,7 +133,7 @@
     <div class="feat"><div class="ic">🔔</div><h3 data-i18n="f2t">Launch reminders</h3><p data-i18n="f2">Tap the bell and get notified 24 hours, 12 hours, 1 hour and 10 minutes before liftoff - even with the app closed.</p></div>
     <div class="feat"><div class="ic">🚀</div><h3 data-i18n="f3t">3D launch simulation</h3><p data-i18n="f3">Replay a launch or preview the next one in 3D, from the pad to orbit, built from the real mission timeline.</p></div>
     <div class="feat"><div class="ic">🛰️</div><h3 data-i18n="f4t">Starship in 3D</h3><p data-i18n="f4">Explore Starship and Super Heavy part by part.</p></div>
-    <div class="feat"><div class="ic">📺</div><h3 data-i18n="f5t">Live broadcasts</h3><p data-i18n="f5">Watch the launch webcast right inside the app.</p></div>
+    <div class="feat"><div class="ic">📺</div><h3 data-i18n="f5t">Broadcasts and replays</h3><p data-i18n="f5">Watch launches live in the app, and replay the webcasts of the past year's launches.</p></div>
     <div class="feat"><div class="ic">🧩</div><h3 data-i18n="f6t">Home-screen widgets</h3><p data-i18n="f6">Three widgets: the next launch with its photo, a compact countdown and the upcoming launches.</p></div>
   </div>
 
@@ -135,7 +156,7 @@
 
   <h2 data-i18n="verifyTitle">Safe and verified</h2>
   <div class="card">
-    <p data-i18n="verifyText" style="margin-top:0;color:#d4d4d8">The app is built automatically from its public source code on GitHub, and every version is signed with the same key - Android only installs an update that carries it. You can check the file before installing:</p>
+    <p data-i18n="verifyText" style="margin-top:0;color:#d4d4d8">The app is built automatically from its source code, and every version is signed with the same key - Android only installs an update that carries it. You can check the file before installing:</p>
     <dl class="kv">
       <dt data-i18n="kVer">Version</dt><dd id="v-ver">-</dd>
       <dt data-i18n="kDate">Released</dt><dd id="v-date">-</dd>
@@ -155,64 +176,37 @@
   <p class="note" data-i18n="disclaimer">Space Launch Tracker is an independent fan project. It is not affiliated with, authorized or endorsed by SpaceX.</p>
 </main>
 
+<script src="i18n.js"></script>
 <script>
-const T = {
-  en: {},
-  he: {
-    back: '← חזרה לאתר', sub: 'האפליקציה לאנדרואיד',
-    lead: 'כל השיגורים בכיס שלכם: ספירה לאחור בזמן אמת, תזכורות לפני ההמראה, הדמיות שיגור בתלת-ממד ווידג׳טים למסך הבית.',
-    download: 'הורדה לאנדרואיד', b1: 'חינם', b2: 'בלי פרסומות', b3: 'בלי חשבון', b4: 'אנדרואיד 7.0 ומעלה', mirror: 'זמינה גם דרך',
-    featTitle: 'מה יש באפליקציה',
-    f1t: 'ספירה לאחור בזמן אמת', f1: 'השיגור הבא, חלון השיגור, כן השיגור ומזג האוויר שם - עם עדכוני סטטוס ברגע שהם קורים.',
-    f2t: 'תזכורות לשיגורים', f2: 'לוחצים על הפעמון ומקבלים התראה 24 שעות, 12 שעות, שעה ו-10 דקות לפני ההמראה - גם כשהאפליקציה סגורה.',
-    f3t: 'הדמיית שיגור בתלת-ממד', f3: 'שחזור של שיגור או תצוגה מקדימה של השיגור הבא בתלת-ממד, מכן השיגור ועד המסלול, לפי לוח הזמנים האמיתי של המשימה.',
-    f4t: 'סטארשיפ בתלת-ממד', f4: 'חקרו את סטארשיפ ו-Super Heavy חלק אחר חלק.',
-    f5t: 'שידורים חיים', f5: 'צפייה בשידור השיגור בתוך האפליקציה.',
-    f6t: 'ווידג׳טים למסך הבית', f6: 'שלושה ווידג׳טים: השיגור הבא עם תמונה, ספירה לאחור קטנה ורשימת השיגורים הקרובים.',
-    shotsTitle: 'צילומי מסך', installTitle: 'איך מתקינים',
-    s1: 'בטלפון האנדרואיד, לוחצים על "הורדה לאנדרואיד".',
-    s2: 'כשההורדה מסתיימת, פותחים את הקובץ (מההתראה או מתיקיית ההורדות).',
-    s3: 'אם הטלפון מבקש, מאשרים לדפדפן להתקין אפליקציות ("התקנת אפליקציות לא מוכרות"). זו הודעה רגילה של אנדרואיד לכל אפליקציה שלא מגיעה מ-Google Play.',
-    s4: 'לוחצים "התקנה". לעדכון בהמשך מורידים ומתקינים את הגרסה החדשה באותה דרך - המועדפים והתזכורות נשמרים.',
-    verifyTitle: 'בטוחה ומאומתת',
-    verifyText: 'האפליקציה נבנית אוטומטית מקוד המקור הציבורי שלה ב-GitHub, וכל גרסה חתומה באותו מפתח - אנדרואיד מתקין עדכון רק אם הוא נושא אותו. אפשר לבדוק את הקובץ לפני ההתקנה:',
-    kVer: 'גרסה', kDate: 'פורסמה', kSize: 'גודל', kSha: 'SHA-256 של הקובץ', kCert: 'SHA-256 של תעודת החתימה',
-    vt: 'בדיקת הקובץ ב-VirusTotal', permsTitle: 'הרשאות:',
-    perms: 'אינטרנט, התראות ושעונים מעוררים (לתזכורות שלכם), והפעלה אחרי הפעלה מחדש של הטלפון (כדי לשחזר אותן). בלי מיקום, אנשי קשר, מצלמה, מיקרופון או קבצים.',
-    privacy: 'מדיניות הפרטיות', faqTitle: 'שאלות',
-    q1: 'למה האפליקציה לא ב-Google Play?', a1: 'עדיין לא. עד אז היא מוצעת כאן ישירות, כמו אפליקציות עצמאיות רבות. זו אותה אפליקציה, חתומה על ידינו, והיא מתעדכנת מעל הגרסה שמותקנת אצלכם.',
-    q2: 'זה בחינם?', a2: 'כן - בחינם, בלי פרסומות, בלי רכישות בתוך האפליקציה ובלי חשבון.',
-    q3: 'האפליקציה אוספת מידע עליי?', a3: 'המועדפים, התזכורות וההגדרות נשארים בטלפון שלכם. האפליקציה מציגה את האתר, שסופר ביקורים אנונימיים עם Google Analytics - הפרטים במדיניות הפרטיות.',
-    disclaimer: 'Space Launch Tracker הוא פרויקט מעריצים עצמאי, שאינו קשור לחברת SpaceX ואינו מורשה או מאושר על ידה.'
-  }
-};
+// The page in the language the visitor browsed the site in: ?lang= from the site's button (its current language),
+// else the language the site last saw (Google Translate's cookie, then the saved choice), else the browser's.
+const T = Object.assign({ en: {} }, window.APP_I18N || {});
 document.querySelectorAll('[data-i18n]').forEach(el => { T.en[el.dataset.i18n] = el.textContent; });
-let info = null;
-function fmtSize(b) { return (b / 1048576).toFixed(1) + ' MB'; }
-function fmtDate(iso, lang) { try { return new Date(iso).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return iso; } }
-function paint(lang) {
-  const d = T[lang] || T.en;
-  document.documentElement.lang = lang; document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
-  document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.dataset.i18n; el.textContent = d[k] || T.en[k]; });
-  document.querySelectorAll('.langs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
-  document.title = lang === 'he' ? 'Space Launch Tracker לאנדרואיד - הורדה' : 'Space Launch Tracker for Android - Download';
-  if (info) {
-    document.getElementById('v-ver').textContent = info.versionName;
-    document.getElementById('v-date').textContent = fmtDate(info.date, lang);
-    document.getElementById('v-size').innerHTML = '<bdi>' + fmtSize(info.size) + '</bdi>';
-    document.getElementById('v-sha').textContent = info.sha256;
-    document.getElementById('v-cert').textContent = info.certSha256 || '-';
-    document.getElementById('vt').href = 'https://www.virustotal.com/gui/file/' + info.sha256;
-    document.getElementById('dl-meta').innerHTML = (lang === 'he' ? 'גרסה ' : 'Version ') + '<bdi>' + info.versionName + '</bdi> · <bdi>' + fmtSize(info.size) + '</bdi>';
-  }
+T.en.title = document.title; T.en.ver = 'Version';
+const LOCALES = { en: 'en-US', he: 'he-IL', ar: 'ar', es: 'es', fr: 'fr', de: 'de', ru: 'ru', zh: 'zh-CN', it: 'it', cs: 'cs', sv: 'sv', nl: 'nl', da: 'da', pt: 'pt-BR', pl: 'pl', hi: 'hi', tr: 'tr' };
+function norm(c) { c = String(c || '').toLowerCase().split(/[-_]/)[0]; if (c === 'iw') c = 'he'; return T[c] ? c : null; }
+function siteLang() {
+  const q = norm(new URLSearchParams(location.search).get('lang')); if (q) return q;
+  const ck = (document.cookie.match(/(?:^|;\s*)googtrans=\/[^/]*\/([^;]+)/) || [])[1]; if (norm(ck)) return norm(ck);
+  try { const p = norm(localStorage.getItem('spacex_lang_pref')); if (p) return p; } catch (e) {}
+  return norm(navigator.language) || 'en';
 }
-let lang = 'en';
-try { const p = (localStorage.getItem('spacex_lang_pref') || navigator.language || '').toLowerCase(); if (/^(he|iw)/.test(p)) lang = 'he'; } catch (e) {}
-const q = new URLSearchParams(location.search).get('lang'); if (q === 'he' || q === 'en') lang = q;
-// (a choice made here is the site's language too; just opening the page changes nothing)
-document.querySelectorAll('.langs button').forEach(b => b.addEventListener('click', () => { lang = b.dataset.lang; paint(lang); try { localStorage.setItem('spacex_lang_pref', lang === 'he' ? 'iw' : 'en'); } catch (e) {} }));
-paint(lang);
-fetch('version.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(j => { if (j && j.sha256) { info = j; paint(lang); } }).catch(() => {});
+const lang = siteLang(), d = T[lang] || T.en, tr = k => d[k] || T.en[k];
+document.documentElement.lang = lang; document.documentElement.dir = (lang === 'he' || lang === 'ar') ? 'rtl' : 'ltr';
+document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+document.title = tr('title');
+function fmtSize(b) { return (b / 1048576).toFixed(1) + ' MB'; }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString(LOCALES[lang] || 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return iso; } }
+fetch('version.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).then(info => {
+  if (!info || !info.sha256) return;
+  document.getElementById('v-ver').textContent = info.versionName;
+  document.getElementById('v-date').textContent = fmtDate(info.date);
+  document.getElementById('v-size').innerHTML = '<bdi>' + fmtSize(info.size) + '</bdi>';
+  document.getElementById('v-sha').textContent = info.sha256;
+  document.getElementById('v-cert').textContent = info.certSha256 || '-';
+  document.getElementById('vt').href = 'https://www.virustotal.com/gui/file/' + info.sha256;
+  document.getElementById('dl-meta').innerHTML = tr('ver') + ' <bdi>' + info.versionName + '</bdi> · <bdi>' + fmtSize(info.size) + '</bdi>';
+}).catch(() => {});
 // the phone's screenshots, one after another
 const imgs = [...document.querySelectorAll('#phone img')]; let k = 0;
 if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => { imgs[k].classList.remove('on'); k = (k + 1) % imgs.length; imgs[k].classList.add('on'); }, 3200);
