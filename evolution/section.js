@@ -54,7 +54,7 @@ function applyLang(l) {
   const d = T[lang] || T.en; tr = k => d[k] || T.en[k] || '';
   nf = new Intl.NumberFormat(LOCALES[lang] || 'en-US', { maximumFractionDigits: 1 });
   const set = (id, s) => { const el = document.getElementById(id); if (el && el.textContent !== s) el.textContent = s; };
-  set('i18n-evo-title', tr('secTitle')); set('i18n-evo-hint', tr('hint')); set('evo-note', tr('note'));
+  set('i18n-evo-title', tr('secTitle')); set('i18n-evo-hint', tr('hint'));
   chart.querySelectorAll('.evo-veh').forEach(b => {
     const v = VEHICLES[+b.dataset.i];
     b.setAttribute('aria-label', `${shown(v.name)}, ${v.year}, ${metres(v.h)}. ${tr('view3d')}`);
@@ -68,7 +68,16 @@ function applyLang(l) {
   if (cur >= 0) fillInfo(cur);
 }
 
+// under the chart only on a phone, and only while it scrolls sideways: a small hint that more rockets are there
+function updateScrollHint() {
+  const el = document.getElementById('evo-note'), sc = chart.querySelector('.evo-scroller'); if (!el || !sc || !nf) return;
+  const phone = document.documentElement.classList.contains('in-app') || innerWidth < 768;
+  const show = phone && sc.scrollWidth > sc.clientWidth + 4, text = show ? tr('scrollHint') : '';
+  if (el.textContent !== text) el.textContent = text;
+  el.hidden = !show;
+}
 function layout() {
+  updateScrollHint();
   const pic = chart.querySelector('.evo-pic'); if (!pic || !nf) return;
   const plotH = parseFloat(getComputedStyle(pic).height); if (!plotH) return;
   const pxm = plotH / MAXM; chart.style.setProperty('--pxm', pxm.toFixed(4));
