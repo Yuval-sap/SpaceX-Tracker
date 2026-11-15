@@ -8021,7 +8021,7 @@
         window.currentActiveOrbitCode = 'LEO';
 
         function updateUnitsDisplay() {
-            if (window.latestWeather) {
+            if (window.latestWeather && typeof renderWeatherHTML === 'function') {
                 renderWeatherHTML();
             }
             if (typeof refreshSiteWeatherLabels === 'function') refreshSiteWeatherLabels();
@@ -8046,7 +8046,8 @@
 
             // the vehicle whose dossier is open (it can be any of the four - the scale comparator opens
             // Dragon / Heavy / Starship from a Falcon 9 mission too), not the mission's own vehicle
-            if (!document.getElementById('rocket-modal').classList.contains('hidden') && window.currentOpenRocketType) {
+            const rocketModalEl = document.getElementById('rocket-modal');   // (not there yet on the timer's first ticks)
+            if (rocketModalEl && !rocketModalEl.classList.contains('hidden') && window.currentOpenRocketType) {
                 openRocketSpecs(window.currentOpenRocketType);
             }
         }
@@ -13289,26 +13290,14 @@
         let lastTickerRtlState = null; // see renderNewsTickerTrack() and its Bulletproof Timer hook
         let lastTickerLang = null;     // the language the ticker's own (Gemini) translations were last picked for
         function applyMilestonesTranslations(currentLang) {
-            let key = currentLang.split('-')[0];
-            if (key === 'zh') key = 'zh';
-            if (lastAppliedMilestonesLang === key) return;
-            lastAppliedMilestonesLang = key;
-
-            const dict = MILESTONES_I18N[key] || MILESTONES_I18N.en;
-            const starshipTerm = STARSHIP_I18N[key] || STARSHIP_I18N.en;
-            const fill = (str) => str.replace(/\{\{STARSHIP\}\}/g, starshipTerm);
-
-            const titleEl = document.getElementById('i18n-milestones-title');
-            if (titleEl) titleEl.innerText = dict.title;
-            const subtitleEl = document.getElementById('i18n-milestones-subtitle');
-            if (subtitleEl) subtitleEl.innerText = dict.subtitle;
-
+            // (wiring the drag scrolling comes first and runs on every tick until it's done: on a slow connection this
+            // timer starts before the page's later script defines enableVerticalDragScroll / enableDragScroll)
             // Guarded so this wires up once, not once per language switch - the scrollbox
             // itself (unlike the patches strip / past-launches grid) is static markup, never
             // rebuilt via innerHTML, so there's no risk of duplicate listeners piling up even
             // without the guard, but it's kept consistent with the other two sections anyway.
             const scrollbox = document.querySelector('.milestones-scrollbox');
-            if (scrollbox && !scrollbox.dataset.dragEnabled) {
+            if (scrollbox && !scrollbox.dataset.dragEnabled && typeof enableVerticalDragScroll === 'function') {
                 enableVerticalDragScroll(scrollbox);
                 scrollbox.dataset.dragEnabled = 'true';
             }
@@ -13324,10 +13313,24 @@
             // didn't - it never had this same fix applied, being a brand new carousel this
             // session. Harmless on desktop/vertical: there's no horizontal overflow to drag there
             // (cards are full-width outside the mobile breakpoint), so this is a no-op then.
-            if (scrollbox && !scrollbox.dataset.hDragEnabled) {
+            if (scrollbox && !scrollbox.dataset.hDragEnabled && typeof enableDragScroll === 'function') {
                 enableDragScroll(scrollbox);
                 scrollbox.dataset.hDragEnabled = 'true';
             }
+
+            let key = currentLang.split('-')[0];
+            if (key === 'zh') key = 'zh';
+            if (lastAppliedMilestonesLang === key) return;
+            lastAppliedMilestonesLang = key;
+
+            const dict = MILESTONES_I18N[key] || MILESTONES_I18N.en;
+            const starshipTerm = STARSHIP_I18N[key] || STARSHIP_I18N.en;
+            const fill = (str) => str.replace(/\{\{STARSHIP\}\}/g, starshipTerm);
+
+            const titleEl = document.getElementById('i18n-milestones-title');
+            if (titleEl) titleEl.innerText = dict.title;
+            const subtitleEl = document.getElementById('i18n-milestones-subtitle');
+            if (subtitleEl) subtitleEl.innerText = dict.subtitle;
 
             const cards = document.querySelectorAll('.milestones-scrollbox > div');
             cards.forEach((card, idx) => {
@@ -14469,7 +14472,8 @@
             applyPastLaunchDetailsLabels(currentLang);
             applyCountdownToLaunchLabels(currentLang);
             applyDocEpisodeTranslations(currentLang);
-            if (lastAppliedWeatherLang !== currentLang.split('-')[0]) {
+            // (only once the weather's drawing function has arrived - the first ticks on a slow connection come before it)
+            if (lastAppliedWeatherLang !== currentLang.split('-')[0] && typeof renderWeatherHTML === 'function') {
                 lastAppliedWeatherLang = currentLang.split('-')[0];
                 renderWeatherHTML();
             }
