@@ -787,7 +787,7 @@ public class MainActivity extends Activity {
                         ContentValues values = new ContentValues();
                         values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
                         values.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
-                        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SpaceX Tracker");
+                        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Space Launch Tracker");
                         uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                         if (uri != null) {
                             try (OutputStream out = getContentResolver().openOutputStream(uri)) {
