@@ -779,6 +779,7 @@
         #i18n-recovery-zone,
         #i18n-preflight-status,
         #i18n-program-tile,
+        #i18n-launch-sim-tile,
         #i18n-starship-sim {
             font-size: 0.7rem !important;
             letter-spacing: 0 !important;
@@ -800,6 +801,7 @@
             #i18n-recovery-zone,
             #i18n-preflight-status,
             #i18n-program-tile,
+            #i18n-launch-sim-tile,
             #i18n-starship-sim {
                 font-size: 0.8rem !important;
             }
@@ -919,6 +921,7 @@
         html[dir="rtl"] #i18n-recovery-zone,
         html[dir="rtl"] #i18n-starship-sim,
         html[dir="rtl"] #i18n-preflight-status,
+        html[dir="rtl"] #i18n-launch-sim-tile,
         html[dir="rtl"] #i18n-program-tile {
             font-size: 0.85rem !important;
         }
@@ -935,6 +938,7 @@
             html[dir="rtl"] #i18n-recovery-zone,
             html[dir="rtl"] #i18n-starship-sim,
             html[dir="rtl"] #i18n-preflight-status,
+            html[dir="rtl"] #i18n-launch-sim-tile,
             html[dir="rtl"] #i18n-program-tile {
                 font-size: 0.95rem !important;
             }
@@ -4378,6 +4382,18 @@
            on paper (higher specificity, later source order, confirmed-matching media query) for
            reasons that never resolved. With only one range ever active for a given viewport,
            there's nothing left for width to lose a contest against. */
+        #modal-status-pill:not(.hidden) {
+            position: absolute; z-index: 20; top: 0.85rem; inset-inline-start: 0.85rem;
+            display: inline-flex; align-items: center; gap: 0.45rem; max-width: calc(100% - 5rem);
+            padding: 0.3rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; line-height: 1.2;
+            background: rgba(9, 9, 11, 0.62); border: 1px solid rgba(255, 255, 255, 0.16); color: #34d399;
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap;
+        }
+        #modal-status-pill #modal-status-pill-text { overflow: hidden; text-overflow: ellipsis; }
+        #modal-status-pill .modal-status-pill-dot { width: 0.45rem; height: 0.45rem; border-radius: 9999px; background: currentColor; flex: none; box-shadow: 0 0 8px currentColor; }
+        #modal-status-pill[data-tone="amber"] { color: #fbbf24; }
+        #modal-status-pill[data-tone="zinc"] { color: #d4d4d8; }
+        @media (min-width: 640px) { #modal-status-pill:not(.hidden) { top: 1.1rem; inset-inline-start: 1.1rem; font-size: 0.8rem; } }
         #modal-action-btn-row {
             display: flex !important;
             flex-wrap: wrap !important;
@@ -8513,10 +8529,10 @@
         const timelineFetches = {};
         let timelineArchive = null;
         const loadTimelineArchive = () => timelineArchive || (timelineArchive = fetch('spacex-timelines.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({})));
-        function timelineForMission(m) {
+        function timelineForMission(m, maxAgeMs) {
             if (!m || !m.id) return Promise.resolve(null);
             const kept = readStoredTimelines()[m.id];
-            if (kept) return Promise.resolve(kept);
+            if (kept && (!maxAgeMs || Date.now() - (kept.at || 0) < maxAgeMs)) return Promise.resolve(kept);   // (a coming flight's: only a fresh copy)
             if (timelineFetches[m.id]) return timelineFetches[m.id];
             const name = m.patchTagName || m.name || '', slugs = candidateSlugsFromMissionName(name);
             const tryAt = (i) => i >= slugs.length ? Promise.resolve(null) : fetchSpacexCms(SPACEX_MISSION_DETAIL_URL_BASE + encodeURIComponent(slugs[i]))
@@ -12375,13 +12391,31 @@
                 // 2 per row on phones (these labels are long), all in one row from md up
                 bGrid.classList.remove('grid-cols-2', 'grid-cols-3', 'md:grid-cols-3', 'md:grid-cols-4');
                 bGrid.classList.add('grid-cols-2', n === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3');
+                fixBoosterGridCols();
             } else {
                 vGrid.append(vehicle, site, orbit, status, lsim, sim);
                 bGrid.append(booster, landing, preflight, program);
+                if (window.launchSimNextInBooster) bGrid.append(lsim);   // (a coming flight's: its row has room)
                 sim.classList.add('hidden');
                 vGrid.classList.remove('starship-row');
-                bGrid.classList.remove('md:grid-cols-3', 'md:grid-cols-4');
+                fixBoosterGridCols();
             }
+        }
+        // the second box of a non-Starship card: as many columns as tiles from md up (2-4); on phones two a row, an odd
+        // last tile across the whole row
+        function fixBoosterGridCols() {
+            const vGrid = document.getElementById('modal-vehicle-info-grid'), bGrid = document.getElementById('modal-booster-info-grid');
+            if (!bGrid || !vGrid) return;
+            const vis = vGrid.classList.contains('starship-row') ? [] : [...bGrid.children].filter(c => !c.classList.contains('hidden'));
+            ['modal-program-tile', 'modal-launch-sim-tile'].forEach(id => { const el = document.getElementById(id); if (el && el.parentNode !== bGrid) el.classList.remove('col-span-2', 'md:col-span-1'); });
+            if (vGrid.classList.contains('starship-row')) return;   // (Starship flights lay their boxes out themselves)
+            bGrid.classList.remove('md:grid-cols-3', 'md:grid-cols-4');
+            if (vis.length >= 4) bGrid.classList.add('md:grid-cols-4'); else if (vis.length === 3) bGrid.classList.add('md:grid-cols-3');
+            ['modal-program-tile', 'modal-launch-sim-tile'].forEach(id => {
+                const el = document.getElementById(id); if (!el) return;
+                el.classList.toggle('col-span-2', el.parentNode === bGrid && vis.length % 2 === 1 && vis[vis.length - 1] === el);
+                el.classList.toggle('md:col-span-1', el.parentNode === bGrid);
+            });
         }
 
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
@@ -12432,12 +12466,17 @@
         // timeline for it, the event texts in the site language (launchSimLocalizeEvent), the language and units.
         const LAUNCH_SIM_VERSION = '47';   // bump on every launch-sim.html change so browsers don't show a cached old copy
         const LAUNCH_SIM_LABEL_I18N = { en: 'Launch Sim', he: 'סימולציית שיגור', es: 'Simulación', fr: 'Simulation', de: 'Simulation', ru: 'Симуляция', zh: '发射模拟', it: 'Simulazione', cs: 'Simulace', sv: 'Simulering', nl: 'Simulatie', da: 'Simulering', pt: 'Simulação', pl: 'Symulacja', hi: 'सिमुलेशन', ar: 'محاكاة الإطلاق', tr: 'Simülasyon' };
+        const LAUNCH_SIM_SUB_NEXT_I18N = { en: '3D preview', he: 'תצוגה מקדימה בתלת-ממד', es: 'Vista previa 3D', fr: 'Aperçu 3D', de: '3D-Vorschau', ru: '3D-превью', zh: '3D 预览', it: 'Anteprima 3D', cs: '3D náhled', sv: '3D-förhandsvisning', nl: '3D-voorvertoning', da: '3D-forhåndsvisning', pt: 'Prévia 3D', pl: 'Podgląd 3D', hi: '3D पूर्वावलोकन', ar: 'معاينة ثلاثية الأبعاد', tr: '3D önizleme' };
         function applyLaunchSimLabel() {
-            const el = document.getElementById('hero-sim-label');
-            if (!el) return;
             let k = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
             if (k === 'iw') k = 'he';
-            setTextIfChanged(el, LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en);
+            const el = document.getElementById('hero-sim-label');
+            if (el) setTextIfChanged(el, LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en);
+            // the launch card's tile: a flown flight's replay, or a coming flight's preview
+            const lbl = document.getElementById('i18n-launch-sim-tile'), sub = document.getElementById('i18n-launch-sim-tile-sub');
+            if (lbl) setTextIfChanged(lbl, LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en);
+            const subs = window.launchSimTileFuture ? LAUNCH_SIM_SUB_NEXT_I18N : (typeof LAUNCH_SIM_SUB_I18N !== 'undefined' ? LAUNCH_SIM_SUB_I18N : null);
+            if (sub && subs) setTextIfChanged(sub, subs[k] || subs.en);
         }
         new MutationObserver(applyLaunchSimLabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
         // the hero's details button ("Mission Details"), in the site's language
@@ -12831,11 +12870,11 @@
                 if (!progs.length) {
                     tile.classList.add('hidden');
                     // Starship flights lay this grid out themselves (applyStarshipTileLayout) - leave its columns alone
-                    if (!m || m.category !== 'starship') grid.classList.remove('md:grid-cols-3');
+                    fixBoosterGridCols();
                     return;
                 }
                 tile.classList.remove('hidden');
-                if (!grid.classList.contains('md:grid-cols-4')) grid.classList.add('md:grid-cols-3');
+                fixBoosterGridCols();
                 if (labelEl) labelEl.textContent = programLabel(key);
                 // a programme the GitHub job hasn't translated yet keeps its English name meanwhile - Google Translate
                 // got these names wrong ("National Security Space Launch" -> a product-"launch" in Hebrew)
@@ -17749,6 +17788,11 @@
             <div class="relative overflow-hidden aspect-video border-b border-zinc-800/80 shrink-0">
                 <div id="modal-image" class="absolute inset-0"></div>
                 <div class="absolute inset-0 pointer-events-none modal-hero-fade"></div>
+                <!-- A Starship flight still to come with its launch sim: the sim takes the status tile's place, the status
+                     shows here instead - at the top, on the side away from the close button -->
+                <div id="modal-status-pill" class="hidden notranslate" translate="no" lang="en">
+                    <span class="modal-status-pill-dot"></span><span id="modal-status-pill-text"></span>
+                </div>
                 <div class="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
                     <div class="flex items-center gap-6 min-w-0">
                         <div class="min-w-0">
@@ -18035,7 +18079,7 @@
                     <!-- The programme the mission belongs to (Artemis, Commercial Crew, Starlink...) - renderModalProgram.
                          Not on Starship flights (their row is full, and the programme is just "Starship"), and only when
                          the mission has one. On phones it takes the whole second row. Opens #program-modal. -->
-                    <div class="hidden p-1 cursor-pointer md:hover:bg-emerald-500/10 rounded-xl transition-colors col-span-2 md:col-span-1"
+                    <div class="hidden p-1 cursor-pointer md:hover:bg-emerald-500/10 rounded-xl transition-colors"
                         id="modal-program-tile" role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openProgramModal()">
                         <div class="flex items-center gap-2">
                             <div id="i18n-program-tile"
@@ -19769,7 +19813,7 @@
         // 10% zoom, which grows from the bottom edge and so pushed the top out of the card (36 px). Here the zoom grows
         // from just below the middle instead, trimming about 21 px off the top: the tip just clears the card's top edge,
         // without the empty sky above it that anchoring the zoom at the very top left.
-        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', '50% 60%'] };
+        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', '50% 60%'], 'starship-launch.jpg': ['50% 4%', '50% 12%'] };   // (Starship's: its nose high in the photo, kept in the card)
         function cardImgPosStyle(src) {
             const pos = CARD_IMG_POS[String(src || '').split('?')[0].split('/').pop()];
             const [objectPos, origin] = !pos ? [] : Array.isArray(pos) ? pos : [pos];
@@ -19785,7 +19829,7 @@
         }
 
         const FALLBACK_IMAGES = {
-            starship: "https://spacexfantracker.com/starship-share.jpg",
+            starship: "starship-launch.jpg",
             starlink: "starlink-launch-pad.webp",
             falcon: "https://wp.technologyreview.com/wp-content/uploads/2024/07/AP24191572534430.jpg?w=3000",
             falcon_heavy: "https://cdn.mos.cms.futurecdn.net/fnfyE7cDwV9JWCopNK8Ycb.jpg",
@@ -28831,18 +28875,24 @@ setTimeout(() => {
             }
 
             {
-                const flown = isPastMission && m.sim && m.sim.pad;
-                const st = document.getElementById('modal-status-tile'), ls = document.getElementById('modal-launch-sim-tile');
-                const showSim = (on) => { if (st && ls) { st.classList.toggle('hidden', on); ls.classList.toggle('hidden', !on); } };
-                showSim(false); window.launchSimTileMission = null; window.launchSimTimelineOverride = null;
-                if (flown) timelineForMission(m).then(tl => {
-                    if (!tl || !window._openMissionObj || window._openMissionObj.id !== m.id) return;   // (no real timeline: the status stays)
-                    window.launchSimTileMission = m; window.launchSimTileTimeline = tl; showSim(true);
+                const hasPad = !!(m.sim && m.sim.pad), flown = isPastMission && hasPad, next = !isPastMission && hasPad, isSS = m.category === 'starship';
+                const st = document.getElementById('modal-status-tile'), ls = document.getElementById('modal-launch-sim-tile'), pill = document.getElementById('modal-status-pill');
+                const showSim = (mode) => {                          // null | 'flown' | 'next'
+                    if (!st || !ls) return;
+                    window.launchSimTileFuture = mode === 'next';
+                    window.launchSimNextInBooster = mode === 'next' && !isSS;
+                    st.classList.toggle('hidden', mode === 'flown' || (mode === 'next' && isSS));
+                    ls.classList.toggle('hidden', !mode);
+                    if (pill) pill.classList.toggle('hidden', !(mode === 'next' && isSS));
+                    applyStarshipTileLayout(m.category);
+                    applyLaunchSimLabel();
+                };
+                showSim(null); window.launchSimTileMission = null; window.launchSimTimelineOverride = null;
+                // (no real timeline from SpaceX: no sim, the status stays)
+                if (flown || next) timelineForMission(m, next ? 30 * 60 * 1000 : 0).then(tl => {
+                    if (!tl || !window._openMissionObj || window._openMissionObj.id !== m.id) return;
+                    window.launchSimTileMission = m; window.launchSimTileTimeline = tl; showSim(flown ? 'flown' : 'next');
                 });
-                const k = ((document.documentElement.lang || 'en').toLowerCase().split('-')[0]).replace('iw', 'he');
-                const lbl = document.getElementById('i18n-launch-sim-tile'), sub = document.getElementById('i18n-launch-sim-tile-sub');
-                if (lbl) lbl.textContent = LAUNCH_SIM_LABEL_I18N[k] || LAUNCH_SIM_LABEL_I18N.en;
-                if (sub) sub.textContent = LAUNCH_SIM_SUB_I18N[k] || LAUNCH_SIM_SUB_I18N.en;
             }
             const statusEl = document.getElementById('modal-status');
             statusEl.setAttribute('translate', 'no');
@@ -28856,6 +28906,13 @@ setTimeout(() => {
                 statusEl.className = "text-sm font-semibold text-amber-400 mt-0.5 leading-tight notranslate lang-en-lock";
             } else {
                 statusEl.className = "text-sm font-semibold text-emerald-400 mt-0.5 leading-tight notranslate lang-en-lock";
+            }
+            {
+                const pill = document.getElementById('modal-status-pill'), pt = document.getElementById('modal-status-pill-text');
+                if (pill && pt) {
+                    pt.innerText = m.status || '';
+                    pill.dataset.tone = /tbd|tbc|determined/.test(mStat) ? 'zinc' : /hold|review|delay/.test(mStat) ? 'amber' : 'emerald';
+                }
             }
 
             document.getElementById('modal-image').innerHTML = `<img src="${escapeHtml(m.image)}" onerror="this.src='${FALLBACK_IMAGES[m.category] || FALLBACK_IMAGES.falcon}'" class="w-full h-full object-cover" alt="${escapeHtml(m.name)}">`;
