@@ -174,7 +174,7 @@
   <h2 data-i18n="faqTitle">Questions</h2>
   <details><summary data-i18n="q1">Why isn't the app on Google Play?</summary><p data-i18n="a1">Not yet. Until it is, it is offered here directly, as many independent apps are. It is the same app, signed by us, and it updates over the version you have.</p></details>
   <details><summary data-i18n="q2">Is it free?</summary><p data-i18n="a2">Yes - free, with no ads, no in-app purchases and no account.</p></details>
-  <details><summary data-i18n="q3">Does it collect my data?</summary><p data-i18n="a3">Your favorites, reminders and settings stay on your phone. The app shows the website, which counts anonymous visits with Google Analytics - see the privacy policy.</p></details>
+  <details><summary data-i18n="q3">Does it collect my data?</summary><p data-i18n="a3">Your favorites, reminders and settings stay on your phone. The app shows the website, which counts anonymous visits with Google Analytics - see the [[privacy policy]].</p></details>
 
   <p class="note" data-i18n="disclaimer">Space Launch Tracker is an independent fan project. It is not affiliated with, authorized or endorsed by SpaceX.</p>
 </main>
@@ -196,7 +196,18 @@ function siteLang() {
 }
 const lang = siteLang(), d = T[lang] || T.en, tr = k => d[k] || T.en[k];
 document.documentElement.lang = lang; document.documentElement.dir = (lang === 'he' || lang === 'ar') ? 'rtl' : 'ltr';
-document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+document.querySelectorAll('[data-i18n]').forEach(el => {
+  const t = tr(el.dataset.i18n);
+  // [[words]] in a text: a link to the privacy policy
+  if (t.includes('[[')) {
+    el.textContent = '';
+    t.split(/(\[\[.+?\]\])/).forEach(part => {
+      const m = part.match(/^\[\[(.+)\]\]$/);
+      if (m) { const a = document.createElement('a'); a.href = '../privacy.html'; a.textContent = m[1]; el.appendChild(a); }
+      else el.appendChild(document.createTextNode(part));
+    });
+  } else el.textContent = t;
+});
 document.title = tr('title');
 function fmtSize(b) { return (b / 1048576).toFixed(1) + ' MB'; }
 function fmtDate(iso) { try { return new Date(iso).toLocaleDateString(LOCALES[lang] || 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return iso; } }

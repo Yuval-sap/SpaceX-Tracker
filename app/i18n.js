@@ -26,7 +26,7 @@ window.APP_I18N = {
     privacy: 'מדיניות הפרטיות', faqTitle: 'שאלות',
     q1: 'למה האפליקציה לא ב-Google Play?', a1: 'עדיין לא. עד אז היא מוצעת כאן ישירות, כמו אפליקציות עצמאיות רבות. זו אותה אפליקציה, חתומה על ידינו, והיא מתעדכנת מעל הגרסה שמותקנת אצלכם.',
     q2: 'זה בחינם?', a2: 'כן - בחינם, בלי פרסומות, בלי רכישות בתוך האפליקציה ובלי חשבון.',
-    q3: 'האפליקציה אוספת מידע עליי?', a3: 'המועדפים, התזכורות וההגדרות נשארים בטלפון שלכם. האפליקציה מציגה את האתר, שסופר ביקורים אנונימיים עם Google Analytics - הפרטים במדיניות הפרטיות.',
+    q3: 'האפליקציה אוספת מידע עליי?', a3: 'המועדפים, התזכורות וההגדרות נשארים בטלפון שלכם. האפליקציה מציגה את האתר, שסופר ביקורים אנונימיים עם Google Analytics - הפרטים [[במדיניות הפרטיות]].',
     disclaimer: 'Space Launch Tracker הוא פרויקט מעריצים עצמאי, שאינו קשור לחברת SpaceX ואינו מורשה או מאושר על ידה.'
   },
   ar: {
@@ -54,7 +54,7 @@ window.APP_I18N = {
     privacy: 'سياسة الخصوصية', faqTitle: 'أسئلة',
     q1: 'لماذا التطبيق غير موجود على Google Play؟', a1: 'ليس بعد. حتى ذلك الحين يُقدَّم هنا مباشرة، مثل كثير من التطبيقات المستقلة. إنه التطبيق نفسه، موقّع منا، ويتحدّث فوق الإصدار المثبّت لديك.',
     q2: 'هل هو مجاني؟', a2: 'نعم - مجاني، بدون إعلانات وبدون مشتريات داخل التطبيق وبدون حساب.',
-    q3: 'هل يجمع التطبيق بياناتي؟', a3: 'تبقى مفضلاتك وتذكيراتك وإعداداتك على هاتفك. يعرض التطبيق الموقع، الذي يحصي الزيارات المجهولة باستخدام Google Analytics - التفاصيل في سياسة الخصوصية.',
+    q3: 'هل يجمع التطبيق بياناتي؟', a3: 'تبقى مفضلاتك وتذكيراتك وإعداداتك على هاتفك. يعرض التطبيق الموقع، الذي يحصي الزيارات المجهولة باستخدام Google Analytics - التفاصيل في [[سياسة الخصوصية]].',
     disclaimer: 'Space Launch Tracker مشروع مستقل من المعجبين، ولا ينتمي إلى SpaceX ولا تفوّضه أو تعتمده.'
   },
   es: {
@@ -82,7 +82,7 @@ window.APP_I18N = {
     privacy: 'Política de privacidad', faqTitle: 'Preguntas',
     q1: '¿Por qué la app no está en Google Play?', a1: 'Todavía no. Mientras tanto se ofrece aquí directamente, como muchas apps independientes. Es la misma app, firmada por nosotros, y se actualiza sobre la versión que tienes.',
     q2: '¿Es gratis?', a2: 'Sí: gratis, sin anuncios, sin compras dentro de la app y sin cuenta.',
-    q3: '¿Recoge mis datos?', a3: 'Tus favoritos, recordatorios y ajustes se quedan en tu móvil. La app muestra el sitio web, que cuenta visitas anónimas con Google Analytics; consulta la política de privacidad.',
+    q3: '¿Recoge mis datos?', a3: 'Tus favoritos, recordatorios y ajustes se quedan en tu móvil. La app muestra el sitio web, que cuenta visitas anónimas con Google Analytics; consulta la [[política de privacidad]].',
     disclaimer: 'Space Launch Tracker es un proyecto independiente de aficionados. No está afiliado, autorizado ni respaldado por SpaceX.'
   },
   fr: {
@@ -110,7 +110,7 @@ window.APP_I18N = {
     privacy: 'Politique de confidentialité', faqTitle: 'Questions',
     q1: 'Pourquoi l’appli n’est-elle pas sur Google Play ?', a1: 'Pas encore. En attendant, elle est proposée ici directement, comme de nombreuses applis indépendantes. C’est la même appli, signée par nous, et elle se met à jour par-dessus votre version.',
     q2: 'Est-elle gratuite ?', a2: 'Oui : gratuite, sans publicité, sans achats intégrés et sans compte.',
-    q3: 'Collecte-t-elle mes données ?', a3: 'Vos favoris, rappels et réglages restent sur votre téléphone. L’appli affiche le site web, qui compte les visites anonymes avec Google Analytics ; voir la politique de confidentialité.',
+    q3: 'Collecte-t-elle mes données ?', a3: 'Vos favoris, rappels et réglages restent sur votre téléphone. L’appli affiche le site web, qui compte les visites anonymes avec Google Analytics ; voir la [[politique de confidentialité]].',
     disclaimer: 'Space Launch Tracker est un projet indépendant de passionnés. Il n’est ni affilié à SpaceX, ni autorisé ou approuvé par SpaceX.'
   },
   de: {
@@ -138,7 +138,7 @@ window.APP_I18N = {
     privacy: 'Datenschutzerklärung', faqTitle: 'Fragen',
     q1: 'Warum ist die App nicht bei Google Play?', a1: 'Noch nicht. Bis dahin gibt es sie hier direkt, wie viele unabhängige Apps. Es ist dieselbe App, von uns signiert, und sie aktualisiert sich über deine installierte Version.',
     q2: 'Ist sie kostenlos?', a2: 'Ja – kostenlos, ohne Werbung, ohne In-App-Käufe und ohne Konto.',
-    q3: 'Sammelt sie meine Daten?', a3: 'Deine Favoriten, Erinnerungen und Einstellungen bleiben auf deinem Handy. Die App zeigt die Website, die anonyme Besuche mit Google Analytics zählt – Details in der Datenschutzerklärung.',
+    q3: 'Sammelt sie meine Daten?', a3: 'Deine Favoriten, Erinnerungen und Einstellungen bleiben auf deinem Handy. Die App zeigt die Website, die anonyme Besuche mit Google Analytics zählt – Details in der [[Datenschutzerklärung]].',
     disclaimer: 'Space Launch Tracker ist ein unabhängiges Fanprojekt. Es ist nicht mit SpaceX verbunden und wird von SpaceX weder autorisiert noch unterstützt.'
   },
   ru: {
@@ -166,7 +166,7 @@ window.APP_I18N = {
     privacy: 'Политика конфиденциальности', faqTitle: 'Вопросы',
     q1: 'Почему приложения нет в Google Play?', a1: 'Пока нет. До тех пор оно доступно здесь напрямую, как многие независимые приложения. Это то же приложение, подписанное нами, и оно обновляется поверх вашей версии.',
     q2: 'Это бесплатно?', a2: 'Да — бесплатно, без рекламы, без встроенных покупок и без аккаунта.',
-    q3: 'Приложение собирает мои данные?', a3: 'Избранное, напоминания и настройки остаются на вашем телефоне. Приложение показывает сайт, который считает анонимные посещения через Google Analytics, — подробности в политике конфиденциальности.',
+    q3: 'Приложение собирает мои данные?', a3: 'Избранное, напоминания и настройки остаются на вашем телефоне. Приложение показывает сайт, который считает анонимные посещения через Google Analytics, — подробности в [[политике конфиденциальности]].',
     disclaimer: 'Space Launch Tracker — независимый фанатский проект. Он не связан с SpaceX и не одобрен ею.'
   },
   zh: {
@@ -194,7 +194,7 @@ window.APP_I18N = {
     privacy: '隐私政策', faqTitle: '常见问题',
     q1: '为什么应用不在 Google Play 上？', a1: '暂时还没有。在此之前，它像许多独立应用一样在这里直接提供。这是同一个应用，由我们签名，可直接覆盖更新你已安装的版本。',
     q2: '免费吗？', a2: '是的：免费、无广告、无应用内购买，也无需账户。',
-    q3: '会收集我的数据吗？', a3: '你的收藏、提醒和设置都保存在手机上。应用显示的网站使用 Google Analytics 统计匿名访问，详见隐私政策。',
+    q3: '会收集我的数据吗？', a3: '你的收藏、提醒和设置都保存在手机上。应用显示的网站使用 Google Analytics 统计匿名访问，详见[[隐私政策]]。',
     disclaimer: 'Space Launch Tracker 是独立的爱好者项目，与 SpaceX 无关，也未经 SpaceX 授权或认可。'
   },
   it: {
@@ -222,7 +222,7 @@ window.APP_I18N = {
     privacy: 'Informativa sulla privacy', faqTitle: 'Domande',
     q1: 'Perché l’app non è su Google Play?', a1: 'Non ancora. Nel frattempo è offerta qui direttamente, come molte app indipendenti. È la stessa app, firmata da noi, e si aggiorna sopra la versione che hai.',
     q2: 'È gratuita?', a2: 'Sì: gratuita, senza pubblicità, senza acquisti in-app e senza account.',
-    q3: 'Raccoglie i miei dati?', a3: 'Preferiti, promemoria e impostazioni restano sul tuo telefono. L’app mostra il sito web, che conta le visite anonime con Google Analytics: vedi l’informativa sulla privacy.',
+    q3: 'Raccoglie i miei dati?', a3: 'Preferiti, promemoria e impostazioni restano sul tuo telefono. L’app mostra il sito web, che conta le visite anonime con Google Analytics: vedi l’[[informativa sulla privacy]].',
     disclaimer: 'Space Launch Tracker è un progetto indipendente di appassionati. Non è affiliato, autorizzato né approvato da SpaceX.'
   },
   cs: {
@@ -250,7 +250,7 @@ window.APP_I18N = {
     privacy: 'Zásady ochrany soukromí', faqTitle: 'Otázky',
     q1: 'Proč aplikace není na Google Play?', a1: 'Zatím ne. Do té doby je nabízena přímo zde, jako mnoho nezávislých aplikací. Je to stejná aplikace, podepsaná námi, a aktualizuje se přes vaši verzi.',
     q2: 'Je zdarma?', a2: 'Ano – zdarma, bez reklam, bez nákupů v aplikaci a bez účtu.',
-    q3: 'Sbírá moje data?', a3: 'Vaše oblíbené, připomínky a nastavení zůstávají v telefonu. Aplikace zobrazuje web, který počítá anonymní návštěvy pomocí Google Analytics – podrobnosti v zásadách ochrany soukromí.',
+    q3: 'Sbírá moje data?', a3: 'Vaše oblíbené, připomínky a nastavení zůstávají v telefonu. Aplikace zobrazuje web, který počítá anonymní návštěvy pomocí Google Analytics – podrobnosti v [[zásadách ochrany soukromí]].',
     disclaimer: 'Space Launch Tracker je nezávislý fanouškovský projekt. Není spojen se SpaceX ani jí schválen.'
   },
   sv: {
@@ -278,7 +278,7 @@ window.APP_I18N = {
     privacy: 'Integritetspolicy', faqTitle: 'Frågor',
     q1: 'Varför finns appen inte på Google Play?', a1: 'Inte än. Tills dess erbjuds den här direkt, som många oberoende appar. Det är samma app, signerad av oss, och den uppdateras ovanpå din version.',
     q2: 'Är den gratis?', a2: 'Ja – gratis, utan reklam, utan köp i appen och utan konto.',
-    q3: 'Samlar den in mina uppgifter?', a3: 'Dina favoriter, påminnelser och inställningar stannar i telefonen. Appen visar webbplatsen, som räknar anonyma besök med Google Analytics – se integritetspolicyn.',
+    q3: 'Samlar den in mina uppgifter?', a3: 'Dina favoriter, påminnelser och inställningar stannar i telefonen. Appen visar webbplatsen, som räknar anonyma besök med Google Analytics – se [[integritetspolicyn]].',
     disclaimer: 'Space Launch Tracker är ett oberoende fanprojekt. Det är inte knutet till, godkänt eller stött av SpaceX.'
   },
   nl: {
@@ -306,7 +306,7 @@ window.APP_I18N = {
     privacy: 'Privacybeleid', faqTitle: 'Vragen',
     q1: 'Waarom staat de app niet in Google Play?', a1: 'Nog niet. Tot die tijd wordt hij hier rechtstreeks aangeboden, zoals veel onafhankelijke apps. Het is dezelfde app, door ons ondertekend, en hij werkt bij over je huidige versie.',
     q2: 'Is hij gratis?', a2: 'Ja – gratis, zonder advertenties, zonder in-app-aankopen en zonder account.',
-    q3: 'Verzamelt hij mijn gegevens?', a3: 'Je favorieten, herinneringen en instellingen blijven op je telefoon. De app toont de website, die anonieme bezoeken telt met Google Analytics – zie het privacybeleid.',
+    q3: 'Verzamelt hij mijn gegevens?', a3: 'Je favorieten, herinneringen en instellingen blijven op je telefoon. De app toont de website, die anonieme bezoeken telt met Google Analytics – zie het [[privacybeleid]].',
     disclaimer: 'Space Launch Tracker is een onafhankelijk fanproject. Het is niet verbonden aan, goedgekeurd of gesteund door SpaceX.'
   },
   da: {
@@ -334,7 +334,7 @@ window.APP_I18N = {
     privacy: 'Privatlivspolitik', faqTitle: 'Spørgsmål',
     q1: 'Hvorfor er appen ikke på Google Play?', a1: 'Ikke endnu. Indtil da tilbydes den her direkte, som mange uafhængige apps. Det er den samme app, signeret af os, og den opdateres oven på din version.',
     q2: 'Er den gratis?', a2: 'Ja – gratis, uden reklamer, uden køb i appen og uden konto.',
-    q3: 'Indsamler den mine data?', a3: 'Dine favoritter, påmindelser og indstillinger bliver på din telefon. Appen viser hjemmesiden, som tæller anonyme besøg med Google Analytics – se privatlivspolitikken.',
+    q3: 'Indsamler den mine data?', a3: 'Dine favoritter, påmindelser og indstillinger bliver på din telefon. Appen viser hjemmesiden, som tæller anonyme besøg med Google Analytics – se [[privatlivspolitikken]].',
     disclaimer: 'Space Launch Tracker er et uafhængigt fanprojekt. Det er ikke tilknyttet, godkendt eller støttet af SpaceX.'
   },
   pt: {
@@ -362,7 +362,7 @@ window.APP_I18N = {
     privacy: 'Política de privacidade', faqTitle: 'Perguntas',
     q1: 'Por que o app não está no Google Play?', a1: 'Ainda não. Até lá, ele é oferecido aqui diretamente, como muitos apps independentes. É o mesmo app, assinado por nós, e ele atualiza por cima da versão que você tem.',
     q2: 'É grátis?', a2: 'Sim: grátis, sem anúncios, sem compras no app e sem conta.',
-    q3: 'Ele coleta meus dados?', a3: 'Seus favoritos, lembretes e configurações ficam no celular. O app mostra o site, que conta visitas anônimas com o Google Analytics; veja a política de privacidade.',
+    q3: 'Ele coleta meus dados?', a3: 'Seus favoritos, lembretes e configurações ficam no celular. O app mostra o site, que conta visitas anônimas com o Google Analytics; veja a [[política de privacidade]].',
     disclaimer: 'Space Launch Tracker é um projeto independente de fãs. Não é afiliado, autorizado nem endossado pela SpaceX.'
   },
   pl: {
@@ -390,7 +390,7 @@ window.APP_I18N = {
     privacy: 'Polityka prywatności', faqTitle: 'Pytania',
     q1: 'Dlaczego aplikacji nie ma w Google Play?', a1: 'Jeszcze nie. Do tego czasu jest udostępniana tutaj bezpośrednio, jak wiele niezależnych aplikacji. To ta sama aplikacja, podpisana przez nas, i aktualizuje się na twojej wersji.',
     q2: 'Czy jest darmowa?', a2: 'Tak – darmowa, bez reklam, bez zakupów w aplikacji i bez konta.',
-    q3: 'Czy zbiera moje dane?', a3: 'Twoje ulubione, przypomnienia i ustawienia zostają w telefonie. Aplikacja wyświetla stronę, która liczy anonimowe wizyty za pomocą Google Analytics – szczegóły w polityce prywatności.',
+    q3: 'Czy zbiera moje dane?', a3: 'Twoje ulubione, przypomnienia i ustawienia zostają w telefonie. Aplikacja wyświetla stronę, która liczy anonimowe wizyty za pomocą Google Analytics – szczegóły w [[polityce prywatności]].',
     disclaimer: 'Space Launch Tracker to niezależny projekt fanów. Nie jest powiązany ze SpaceX ani przez nią autoryzowany czy wspierany.'
   },
   hi: {
@@ -418,7 +418,7 @@ window.APP_I18N = {
     privacy: 'गोपनीयता नीति', faqTitle: 'सवाल',
     q1: 'ऐप Google Play पर क्यों नहीं है?', a1: 'अभी नहीं। तब तक यह कई स्वतंत्र ऐप की तरह यहाँ सीधे उपलब्ध है। यह वही ऐप है, हमारे द्वारा साइन किया हुआ, और आपके संस्करण के ऊपर अपडेट होता है।',
     q2: 'क्या यह मुफ़्त है?', a2: 'हाँ - मुफ़्त, बिना विज्ञापन, बिना इन-ऐप खरीदारी और बिना खाते के।',
-    q3: 'क्या यह मेरा डेटा इकट्ठा करता है?', a3: 'आपके पसंदीदा, रिमाइंडर और सेटिंग्स आपके फ़ोन पर रहते हैं। ऐप वेबसाइट दिखाता है, जो Google Analytics से गुमनाम विज़िट गिनती है - विवरण गोपनीयता नीति में।',
+    q3: 'क्या यह मेरा डेटा इकट्ठा करता है?', a3: 'आपके पसंदीदा, रिमाइंडर और सेटिंग्स आपके फ़ोन पर रहते हैं। ऐप वेबसाइट दिखाता है, जो Google Analytics से गुमनाम विज़िट गिनती है - विवरण [[गोपनीयता नीति]] में।',
     disclaimer: 'Space Launch Tracker एक स्वतंत्र प्रशंसक परियोजना है। यह SpaceX से संबद्ध नहीं है और न ही उसके द्वारा अधिकृत या समर्थित है।'
   },
   tr: {
@@ -446,7 +446,7 @@ window.APP_I18N = {
     privacy: 'Gizlilik politikası', faqTitle: 'Sorular',
     q1: 'Uygulama neden Google Play’de değil?', a1: 'Henüz değil. O zamana kadar birçok bağımsız uygulama gibi burada doğrudan sunuluyor. Aynı uygulama, bizim tarafımızdan imzalı ve sizdeki sürümün üzerine güncellenir.',
     q2: 'Ücretsiz mi?', a2: 'Evet – ücretsiz, reklamsız, uygulama içi satın alma yok ve hesap gerekmez.',
-    q3: 'Verilerimi topluyor mu?', a3: 'Favorileriniz, hatırlatmalarınız ve ayarlarınız telefonunuzda kalır. Uygulama, anonim ziyaretleri Google Analytics ile sayan web sitesini gösterir – ayrıntılar gizlilik politikasında.',
+    q3: 'Verilerimi topluyor mu?', a3: 'Favorileriniz, hatırlatmalarınız ve ayarlarınız telefonunuzda kalır. Uygulama, anonim ziyaretleri Google Analytics ile sayan web sitesini gösterir – ayrıntılar [[gizlilik politikasında]].',
     disclaimer: 'Space Launch Tracker bağımsız bir hayran projesidir. SpaceX ile bağlantılı değildir; SpaceX tarafından yetkilendirilmemiş veya onaylanmamıştır.'
   }
 };
