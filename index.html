@@ -10608,7 +10608,9 @@
                     // Dragon's label in the rockets comparison: the site's Hebrew name for it (the Dragon filter tab's),
                     // the proper noun elsewhere - never Google, which renders it as the animal
                     'i18n-scale-dragon': vehicleName('dragon', key),
-                    'i18n-open-youtube': dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube,
+                    'i18n-open-youtube': window._replayOnX
+                        ? (key === 'tr' ? "X'te aç" : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube).replace('YouTube', 'X'))
+                        : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube),
                     // "Open on X" while the live player plays SpaceX's X broadcast (wireModalLiveButton)
                     'i18n-open-youtube-live': window._liveOnX
                         ? (key === 'tr' ? "X'te aç" : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube).replace('YouTube', 'X'))
@@ -19813,7 +19815,7 @@
         // 10% zoom, which grows from the bottom edge and so pushed the top out of the card (36 px). Here the zoom grows
         // from just below the middle instead, trimming about 21 px off the top: the tip just clears the card's top edge,
         // without the empty sky above it that anchoring the zoom at the very top left.
-        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', '50% 60%'], 'starship-launch.jpg': ['50% 4%', '50% 12%'] };   // (Starship's: its nose high in the photo, kept in the card)
+        const CARD_IMG_POS = { 'dragon-launch-pad.jpg': '60% 19%', 'AP24191572534430.jpg': ['50% 0%', '50% 60%'], 'starship-launch.jpg': ['50% 0%', '50% 0%'] };   // (Starship's: its nose high in the photo, kept in the card)
         function cardImgPosStyle(src) {
             const pos = CARD_IMG_POS[String(src || '').split('?')[0].split('/').pop()];
             const [objectPos, origin] = !pos ? [] : Array.isArray(pos) ? pos : [pos];
@@ -28100,6 +28102,67 @@ setTimeout(() => {
             return 'cape';
         }
 
+        // A flown launch's full webcast where Launch Library has none (or only a clip): SpaceX's own broadcast on X, as
+        // its website and its X post carry it. Remove an entry once Launch Library lists the full webcast.
+        const MANUAL_LAUNCH_VIDEOS = {
+            // Starship Flight 15 (2026-11-14): Launch Library's video is not the launch webcast
+            '0f867f0c-5422-4d44-93b8-d7faaae7019b': { x: '2brajgZlOKRMka', url: 'https://x.com/SpaceX/status/2121316300702056595' },
+            'starship | starlink group 31-2 (starship flight 15)': { x: '2brajgZlOKRMka', url: 'https://x.com/SpaceX/status/2121316300702056595' },
+        };
+        function manualLaunchVideoFor(m) {
+            if (!m) return null;
+            return MANUAL_LAUNCH_VIDEOS[m.id] || MANUAL_LAUNCH_VIDEOS[String(m.patchTagName || m.name || '').trim().toLowerCase()] || null;
+        }
+        // "Watch the Launch" for such a flight: X's broadcast player plays the recorded webcast (X keeps the place it was
+        // left at, as for the YouTube replays); the button beside it opens SpaceX's post on X
+        // the replay's "Open on YouTube" / "Open on X" button label, in the site's language
+        function setReplayOpenLabel() {
+            const el = document.getElementById('i18n-open-youtube'); if (!el) return;
+            const key = ((document.documentElement.lang || 'en').toLowerCase().split('-')[0]).replace('iw', 'he');
+            const yt = (LAUNCH_LABEL_I18N[key] || LAUNCH_LABEL_I18N.en).openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube;
+            el.innerText = window._replayOnX ? (key === 'tr' ? "X'te aç" : yt.replace('YouTube', 'X')) : yt;
+        }
+        function wireModalXReplay(xId, xUrl) {
+            const videoSection = document.getElementById('modal-video-section');
+            const videoYtLink = document.getElementById('modal-video-yt-link');
+            const watchBtn = document.getElementById('modal-watch-launch-btn');
+            const videoBtnWrap = document.getElementById('modal-video-btn-wrap');
+            const videoCloseBtn = document.getElementById('modal-video-close-btn');
+            const btnRow = document.getElementById('modal-video-btn-row');
+            window._replayOnX = true;
+            if (videoYtLink) {
+                videoYtLink.href = xUrl || ('https://x.com/i/broadcasts/' + xId);
+                const ic = videoYtLink.querySelector('i'); if (ic) ic.className = 'fa-brands fa-x-twitter text-zinc-200 shrink-0';
+                setReplayOpenLabel();
+                videoYtLink.classList.remove('hidden');
+            }
+            if (watchBtn) {
+                watchBtn.onclick = function () {
+                    if (!videoSection) return;
+                    stopYoutubePlayer('modal-video-iframe');
+                    const ytEl = document.getElementById('modal-video-iframe');
+                    if (ytEl) ytEl.style.display = 'none';
+                    const xFrame = document.getElementById('modal-x-iframe');
+                    if (xFrame) { xFrame.src = `https://studio.x.com/embed/broadcast/${encodeURIComponent(xId)}?dnt=true&lang=en`; xFrame.classList.remove('hidden'); }
+                    videoSection.classList.add('x-live');
+                    videoSection.classList.remove('hidden');
+                    if (btnRow) btnRow.classList.add('hidden');
+                    resetVideoControlsOverlay();
+                };
+                watchBtn.classList.remove('hidden');
+            }
+            if (videoCloseBtn) {
+                videoCloseBtn.onclick = function () {
+                    stopXBroadcast();
+                    if (videoSection) videoSection.classList.add('hidden');
+                    if (btnRow) btnRow.classList.remove('hidden');
+                    if (watchBtn) watchBtn.classList.remove('hidden');
+                    resetVideoControlsOverlay();
+                };
+            }
+            if (videoBtnWrap) videoBtnWrap.classList.remove('hidden');
+        }
+
         // Wires up the mission-modal's watch button + close button for a given YouTube video
         // ID, used both for past-launch replays and for an upcoming mission's live stream.
         function wireModalYoutubePlayer(youtubeId, ytExternalHref) {
@@ -28111,8 +28174,11 @@ setTimeout(() => {
             const videoCloseBtn = document.getElementById('modal-video-close-btn');
 
             window._pendingMissionYoutubeId = youtubeId;
+            window._replayOnX = false;
             if (videoYtLink) {
                 videoYtLink.href = ytExternalHref || ('https://www.youtube.com/watch?v=' + youtubeId);
+                const ic = videoYtLink.querySelector('i'); if (ic) ic.className = 'fa-brands fa-youtube text-red-500 shrink-0';
+                setReplayOpenLabel();
                 videoYtLink.classList.remove('hidden');
             }
             // The only real caller of this function is the past-mission replay path (see its
@@ -28940,7 +29006,12 @@ setTimeout(() => {
             if (videoFallback) videoFallback.classList.add('hidden');
             window._pendingMissionYoutubeId = null;
 
-            if (isPastMission && m.youtubeId) {
+            window._replayOnX = false;
+            const manualVid = isPastMission ? manualLaunchVideoFor(m) : null;
+            if (manualVid && manualVid.x) {
+                wireModalXReplay(manualVid.x, manualVid.url);
+                if (videoBtnWrap) videoBtnWrap.dataset.archiveEligible = '1';
+            } else if (isPastMission && m.youtubeId) {
                 wireModalYoutubePlayer(m.youtubeId, 'https://www.youtube.com/watch?v=' + m.youtubeId);
                 if (videoBtnWrap) videoBtnWrap.dataset.archiveEligible = '1';
             } else if (isPastMission && m.videoUrl && (m.videoUrl.includes('x.com') || m.videoUrl.includes('twitter.com') || m.videoUrl.includes('youtube.com'))) {
