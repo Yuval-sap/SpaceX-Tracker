@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<title>Vehicle render</title>
+<style>html, body { margin: 0; background: transparent; } canvas { display: block; }</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<script type="module">
+// Renders one vehicle of the evolution page to a transparent image, to scale: ?id=<vehicle>&ppm=<pixels per metre>.
+// Used once per vehicle to make the page's images (evolution/img/), and to look at a model while it is worked on.
+import * as THREE from 'three';
+import { VEHICLES, buildVehicle, studioEnv } from './vehicles.js';
+const q = new URLSearchParams(location.search), id = q.get('id') || 'f9b5', ppm = +q.get('ppm') || 14;
+const v0 = VEHICLES.find(x => x.id === (q.get('id') || 'f9b5'));
+const az = (q.has('az') ? +q.get('az') : (v0 && v0.az != null ? v0.az : -24)) * Math.PI / 180, el = (q.has('el') ? +q.get('el') : 3) * Math.PI / 180;
+const v = VEHICLES.find(x => x.id === id);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.setClearColor(0x000000, 0);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(), env = studioEnv(renderer); scene.environment = env;
+const model = await buildVehicle(id, renderer, env); scene.add(model);
+model.updateMatrixWorld(true);
+const box = new THREE.Box3().setFromObject(model, true);
+const H = box.max.y - Math.min(0, box.min.y), Wm = Math.max(box.max.x - box.min.x, box.max.z - box.min.z) * 1.15 + 1;
+const W = Math.ceil(Wm * ppm), Hpx = Math.ceil((H + 0.6) * ppm);
+renderer.setSize(W, Hpx);
+const cam = new THREE.OrthographicCamera(-Wm / 2, Wm / 2, H + 0.3, -0.3, -500, 500);
+cam.position.set(Math.sin(az) * Math.cos(el) * 200, Math.sin(el) * 200, Math.cos(az) * Math.cos(el) * 200);
+cam.lookAt(0, 0, 0); cam.position.y += 0; cam.updateProjectionMatrix();
+// keep the base on the image's bottom edge whatever the elevation: aim at the base, then frame the height
+cam.position.set(Math.sin(az) * Math.cos(el) * 200, Math.sin(el) * 200, Math.cos(az) * Math.cos(el) * 200); cam.lookAt(0, 0, 0);
+// the sun from the upper right of the viewer, so each round body shades off to its left; a cool fill and a rim on the left edge
+const key = new THREE.DirectionalLight(0xfff1e0, 2.9); key.position.set(Math.sin(az + 1.15) * 90, 70, Math.cos(az + 1.15) * 90); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); const sc = key.shadow.camera; sc.left = -40; sc.right = 40; sc.top = 140; sc.bottom = -10; sc.far = 400; key.shadow.bias = -0.0004;
+scene.add(key, new THREE.HemisphereLight(0xcfdcff, 0x1c1a18, 0.32));
+const rim = new THREE.DirectionalLight(0xbfd6ff, 1.3); rim.position.set(Math.sin(az - 2.2) * 90, 30, Math.cos(az - 2.2) * 90); scene.add(rim);
+renderer.render(scene, cam);
+window.__ready = { id, W, H: Hpx, metres: H };
+</script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From Falcon 1 to Starship - every SpaceX rocket to scale</title>
+<meta name="description" content="Every SpaceX rocket side by side, to scale: Falcon 1, Falcon 9, Falcon Heavy, the Grasshopper and Starhopper test vehicles and Starship V1, V2 and V3. Tap any of them to see it in 3D.">
+<meta property="og:title" content="From Falcon 1 to Starship">
+<meta property="og:description" content="Every SpaceX rocket side by side, to scale - and each one in 3D.">
+<meta property="og:image" content="https://spacexfantracker.com/icon-512x512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-192x192.png">
+<!-- the site's Google Analytics: the page's visits -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-R08T8Y5J7E"></script>
+<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag('js', new Date()); gtag('config', 'G-R08T8Y5J7E');</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Space+Grotesk:wght@400;500;600&family=Rubik:wght@400;500;600;700&display=swap">
+<script>
+// the site's look: the mode chosen there (day, night, Mars, Moon) is kept for the tab in sessionStorage
+(function () {
+  let m = null; try { m = sessionStorage.getItem('spacex-visual-mode'); } catch (e) {}
+  if (!m) { const h = new Date().getHours(); m = h >= 6 && h < 18 ? 'day' : 'night'; }
+  if (m === 'heatshield') m = 'night';
+  document.documentElement.className = 'mode-' + (['day', 'night', 'mars', 'moon'].includes(m) ? m : 'night');
+})();
+</script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<style>
+  /* each mode's colours, after the site's: accent, page, text, cards, grid lines, the ground the rockets stand on */
+  :root, .mode-night { color-scheme: dark; --acc: #34d399; --acc-rgb: 52,211,153; --bg: #08090c; --tx: #e4e4e7; --mut: #a1a1aa; --head: #fff;
+    --card: rgba(17,17,20,.62); --line: rgba(255,255,255,.08); --grid: rgba(255,255,255,.07); --gridtx: rgba(228,228,231,.5);
+    --neb1: rgba(16,185,129,.20); --neb2: rgba(59,130,246,.16); --neb3: rgba(139,92,246,.09); --sky0: #04050a; --sky1: #0a0d17;
+    --ground0: #1a1d24; --ground1: #0c0d11; --stars: .6; --panel: linear-gradient(180deg, #0d1018, #07080c); }
+  .mode-day { color-scheme: light; --acc: #047857; --acc-rgb: 4,120,87; --bg: #eef3f8; --tx: #1e293b; --mut: #475569; --head: #0f172a;
+    --card: linear-gradient(180deg, rgba(150,186,226,.55), rgba(214,229,244,.6)); --line: rgba(15,23,42,.10); --grid: rgba(15,23,42,.09); --gridtx: rgba(30,41,59,.55);
+    --neb1: rgba(255,255,255,.55); --neb2: rgba(147,197,253,.35); --neb3: rgba(255,255,255,0); --sky0: #9fc0e3; --sky1: #eaf1f8;
+    --ground0: #b9c3cf; --ground1: #98a3b1; --stars: 0; --panel: linear-gradient(180deg, #a9c7e6, #e4edf6); }
+  .mode-mars { color-scheme: dark; --acc: #ff6b35; --acc-rgb: 255,107,53; --bg: #140806; --tx: #f3e6d8; --mut: #c9a892; --head: #fff3ea;
+    --card: rgba(29,14,10,.66); --line: rgba(140,65,35,.35); --grid: rgba(255,170,130,.08); --gridtx: rgba(243,230,216,.5);
+    --neb1: rgba(255,107,53,.20); --neb2: rgba(196,75,26,.16); --neb3: rgba(255,170,90,.07); --sky0: #0d0503; --sky1: #1c0b07;
+    --ground0: #6b2e18; --ground1: #2a120a; --stars: .45; --panel: linear-gradient(180deg, #1f0d08, #0e0504); }
+  .mode-moon { color-scheme: dark; --acc: #3fa9f5; --acc-rgb: 63,169,245; --bg: #07090e; --tx: #e8eef6; --mut: #9fb0c6; --head: #fff;
+    --card: rgba(14,20,32,.66); --line: rgba(80,100,140,.35); --grid: rgba(180,200,230,.08); --gridtx: rgba(232,238,246,.5);
+    --neb1: rgba(63,169,245,.17); --neb2: rgba(120,140,190,.12); --neb3: rgba(200,210,230,.05); --sky0: #040508; --sky1: #0b0f18;
+    --ground0: #4a4f58; --ground1: #22252b; --stars: .7; --panel: linear-gradient(180deg, #0f1522, #06080d); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--tx); min-height: 100vh; font: 16px/1.55 'Space Grotesk', Rubik, system-ui, sans-serif; overflow-x: hidden; }
+  html[lang="he"] body, html[lang="ar"] body { font-family: Rubik, system-ui, sans-serif; }
+  /* the sky behind the page, like the download page's: a soft nebula in the mode's colours and slowly drifting stars */
+  .sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+         background: radial-gradient(900px 520px at 12% 4%, var(--neb1), transparent 65%), radial-gradient(800px 600px at 90% 14%, var(--neb2), transparent 65%),
+                     radial-gradient(700px 520px at 55% 60%, var(--neb3), transparent 70%), linear-gradient(180deg, var(--sky0) 0%, var(--sky1) 100%); }
+  .sky::before, .sky::after { content: ''; position: absolute; inset: -50%; background-repeat: repeat; opacity: var(--stars); }
+  .sky::before { background-image: radial-gradient(1px 1px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 110px 80px, rgba(255,255,255,.8), transparent),
+      radial-gradient(1px 1px at 170px 150px, rgba(255,255,255,.7), transparent), radial-gradient(1.5px 1.5px at 60px 170px, #fff, transparent),
+      radial-gradient(1px 1px at 140px 20px, rgba(255,255,255,.6), transparent), radial-gradient(1px 1px at 90px 120px, rgba(190,220,255,.8), transparent);
+    background-size: 200px 200px; animation: drift 240s linear infinite; }
+  .sky::after { background-image: radial-gradient(1.5px 1.5px at 50px 90px, #fff, transparent), radial-gradient(2px 2px at 260px 210px, rgba(220,235,255,.9), transparent),
+      radial-gradient(1.5px 1.5px at 330px 40px, rgba(255,255,255,.85), transparent), radial-gradient(1px 1px at 180px 300px, #fff, transparent);
+    background-size: 380px 380px; animation: drift 420s linear infinite reverse; }
+  @keyframes drift { to { transform: translate(200px, 120px); } }
+  @media (prefers-reduced-motion: reduce) { .sky::before, .sky::after { animation: none; } }
+
+  main { position: relative; z-index: 1; max-width: 1360px; margin: 0 auto; padding: 22px 20px 56px; padding-top: max(22px, env(safe-area-inset-top)); }
+  .back { display: inline-flex; align-items: center; gap: 8px; color: var(--tx); text-decoration: none; font-size: 1rem; font-weight: 600;
+          padding: 9px 18px; border-radius: 999px; border: 1px solid rgba(var(--acc-rgb), .45); background: rgba(var(--acc-rgb), .12);
+          -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .back:hover { background: rgba(var(--acc-rgb), .22); border-color: var(--acc); }
+  header { margin: 26px 0 18px; }
+  h1 { font-family: Orbitron, sans-serif; font-weight: 700; font-size: clamp(1.55rem, 4.4vw, 2.7rem); line-height: 1.12; margin: 0; color: var(--head); letter-spacing: .02em; }
+  html[lang="he"] h1, html[lang="ar"] h1, html[lang="hi"] h1, html[lang="zh"] h1 { font-family: Rubik, system-ui, sans-serif; letter-spacing: 0; }
+  .sub { color: var(--acc); font-weight: 600; margin: 6px 0 0; font-size: 1.08rem; }
+
+  /* the chart: a height scale and the rockets standing on the ground, all at the same pixels per metre (--pxm) */
+  .chart { position: relative; border: 1px solid var(--line); border-radius: 22px; background: var(--card); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+           box-shadow: 0 20px 50px -24px rgba(0,0,0,.55); overflow: hidden; --plotH: clamp(330px, 62vh, 700px); --top: 30px; --lab: 104px; --axis: 62px; }
+  .scroller { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: rgba(var(--acc-rgb), .5) transparent; -webkit-overflow-scrolling: touch; }
+  .plot { position: relative; min-width: 100%; width: max-content; padding-inline-start: var(--axis); padding-inline-end: 14px; }
+  /* the grid: a line every 20 m from the ground up */
+  .grid { position: absolute; inset-inline: 0; top: var(--top); height: var(--plotH); pointer-events: none;
+          background: repeating-linear-gradient(to top, var(--grid) 0 1px, transparent 1px var(--gridStep, 80px)); background-position: bottom; }
+  .row { position: relative; display: flex; align-items: flex-end; gap: clamp(6px, 1.4vw, 18px); padding-top: var(--top); }
+  .ground { position: absolute; inset-inline: 0; top: calc(var(--top) + var(--plotH)); height: var(--lab);
+            background: linear-gradient(180deg, var(--ground0), var(--ground1)); opacity: .55; }
+  .ground::before { content: ''; position: absolute; inset-inline: 0; top: 0; height: 1px; background: rgba(var(--acc-rgb), .55); box-shadow: 0 0 14px rgba(var(--acc-rgb), .5); }
+  /* the scale on the start edge, kept in view while the rockets scroll */
+  .axis { position: absolute; inset-inline-start: 0; top: var(--top); height: var(--plotH); width: var(--axis); z-index: 3; pointer-events: none;
+          text-shadow: 0 0 4px var(--bg), 0 0 8px var(--bg); }
+  .axis span { position: absolute; inset-inline-start: 8px; transform: translateY(50%); font-size: .72rem; font-variant-numeric: tabular-nums; color: var(--gridtx); white-space: nowrap; }
+  .veh { appearance: none; border: 0; background: none; padding: 0 4px; margin: 0; font: inherit; color: inherit; cursor: pointer; position: relative;
+         display: flex; flex-direction: column; align-items: center; min-width: clamp(64px, 7.2vw, 108px); flex: 1 0 auto; -webkit-tap-highlight-color: transparent; }
+  .veh .pic { height: var(--plotH); display: flex; align-items: flex-end; justify-content: center; position: relative; }
+  .veh img { display: block; height: calc(var(--h) * var(--pxm) * 1px); width: auto; transition: transform .25s ease, filter .25s ease; transform-origin: bottom center;
+             filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); user-select: none; -webkit-user-drag: none; }
+  .veh .lab { height: var(--lab); padding: 10px 2px 8px; text-align: center; line-height: 1.22; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .veh .yr { font-family: Orbitron, sans-serif; font-weight: 700; font-size: .82rem; color: var(--acc); letter-spacing: .04em; }
+  .veh .nm { font-weight: 600; font-size: .86rem; color: var(--head); max-width: 112px; }
+  /* a height or mass reads in its own direction ("408 ft", "124.4 מ׳") whatever the page's direction */
+  .veh .ht, .axis span, .stat span, .stat small, .veh .pic::after { unicode-bidi: plaintext; }
+  html[dir="rtl"] .stat span, html[dir="rtl"] .stat small { text-align: right; } html[dir="ltr"] .stat span, html[dir="ltr"] .stat small { text-align: left; }
+  .veh .ht { font-size: .78rem; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .veh .tag { font-size: .62rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; margin-top: 2px; }
+  html[lang="he"] .veh .tag, html[lang="ar"] .veh .tag { text-transform: none; letter-spacing: 0; }
+  /* the height line: from the rocket's tip across the chart, with its height, while it's pointed at */
+  .veh .pic::after { content: attr(data-h); position: absolute; left: 50%; bottom: calc(var(--h) * var(--pxm) * 1px + 6px); transform: translate(-50%, 4px);
+                     font-size: .74rem; font-weight: 600; color: var(--acc); white-space: nowrap; opacity: 0; transition: opacity .2s, transform .2s; font-variant-numeric: tabular-nums; }
+  @media (hover: hover) {
+    .veh:hover img { transform: translateY(-4px); filter: drop-shadow(0 0 14px rgba(var(--acc-rgb), .55)) drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+    .veh:hover .pic::after { opacity: 1; transform: translate(-50%, 0); }
+    .veh:hover .nm { color: var(--acc); }
+  }
+  .veh:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; border-radius: 12px; }
+  .veh:active img { transform: translateY(-2px) scale(.99); }
+  .hint { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 0; color: var(--mut); font-size: .92rem; }
+  .hint svg { color: var(--acc); flex: none; }
+  .note { max-width: 760px; margin: 10px auto 0; text-align: center; color: var(--mut); font-size: .82rem; opacity: .9; }
+
+  /* the 3D viewer */
+  .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(0,0,0,.6);
+           -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); opacity: 0; transition: opacity .2s; }
+  .modal.on { opacity: 1; }
+  .modal[hidden] { display: none; }
+  .box { position: relative; width: min(1100px, 100%); height: min(760px, 100%); display: grid; grid-template-columns: 1.35fr 1fr; border-radius: 22px; overflow: hidden;
+         border: 1px solid var(--line); background: var(--bg); box-shadow: 0 30px 80px rgba(0,0,0,.6); transform: translateY(10px) scale(.985); transition: transform .25s; }
+  .modal.on .box { transform: none; }
+  .stage { position: relative; background: var(--panel); min-height: 0; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  .stage canvas:active { cursor: grabbing; }
+  .stage .load { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--mut); font-size: .9rem; pointer-events: none; transition: opacity .3s; }
+  .stage .load i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(var(--acc-rgb), .2); border-top-color: var(--acc); animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .stage .drag { position: absolute; inset-inline: 0; bottom: 12px; text-align: center; font-size: .78rem; color: var(--mut); pointer-events: none; padding: 0 12px; }
+  .info { padding: 30px 28px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: var(--card); border-inline-start: 1px solid var(--line); }
+  .info .yr { font-family: Orbitron, sans-serif; font-weight: 700; color: var(--acc); letter-spacing: .05em; }
+  .info h2 { font-family: Orbitron, sans-serif; font-size: clamp(1.35rem, 2.6vw, 1.9rem); margin: -6px 0 0; color: var(--head); line-height: 1.15; }
+  .info .tag { align-self: flex-start; font-size: .72rem; font-weight: 600; color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; }
+  .info p { margin: 0; color: var(--tx); font-size: 1rem; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+  .stat { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: rgba(var(--acc-rgb), .05); }
+  .stat b { display: block; font-size: .72rem; font-weight: 600; color: var(--mut); text-transform: uppercase; letter-spacing: .05em; }
+  html[lang="he"] .stat b, html[lang="ar"] .stat b { text-transform: none; letter-spacing: 0; }
+  .stat.wide { grid-column: 1 / -1; }
+  .stat small { display: block; font-size: .78rem; color: var(--mut); margin-top: 1px; }
+  .stat span { display: block; font-size: 1.05rem; font-weight: 600; color: var(--head); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .nav { display: flex; gap: 10px; margin-top: auto; padding-top: 6px; }
+  .nav button, .x { appearance: none; font: inherit; cursor: pointer; color: var(--tx); border: 1px solid var(--line); background: rgba(var(--acc-rgb), .08); border-radius: 999px; }
+  .nav button { flex: 1; padding: 9px 12px; font-weight: 600; font-size: .9rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .nav button:hover, .x:hover { border-color: var(--acc); background: rgba(var(--acc-rgb), .18); }
+  .nav button:disabled { visibility: hidden; }
+  .x { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 2; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; line-height: 1; }
+  @media (max-width: 760px) {
+    .modal { padding: 0; }
+    .box { grid-template-columns: 1fr; grid-template-rows: 58% 42%; height: 100%; border-radius: 0; border: 0; }
+    .info { border-inline-start: 0; border-top: 1px solid var(--line); padding: 18px 18px calc(16px + env(safe-area-inset-bottom)); gap: 10px; }
+    .x { top: max(10px, env(safe-area-inset-top)); }
+    .stats { gap: 8px; } .stat { padding: 8px 10px; }
+    .chart { --lab: 96px; --plotH: clamp(300px, 56vh, 560px); border-radius: 18px; }
+    main { padding-inline: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<main>
+  <a class="back" id="back" href="../" data-i18n="back">← Back to the tracker</a>
+  <header>
+    <h1 data-i18n="title">From Falcon 1 to Starship</h1>
+    <p class="sub" data-i18n="sub">Every SpaceX rocket, to scale</p>
+  </header>
+  <section class="chart" id="chart" aria-label="">
+    <div class="axis" id="axis" aria-hidden="true"></div>
+    <div class="scroller" id="scroller">
+      <div class="plot" id="plot">
+        <div class="grid" aria-hidden="true"></div>
+        <div class="ground" aria-hidden="true"></div>
+        <div class="row" id="row"></div>
+      </div>
+    </div>
+  </section>
+  <p class="hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg><span data-i18n="hint">Tap a rocket to see it in 3D</span></p>
+  <p class="note" data-i18n="note">Everything to scale, from the bottom of the engines to the tip. Grasshopper and Starhopper were test vehicles that never went to space.</p>
+</main>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="m-name">
+  <div class="box">
+    <button class="x" id="m-close" type="button" aria-label="Close">×</button>
+    <div class="stage" id="stage">
+      <div class="load" id="m-load"><i></i><span data-i18n="loading">Loading the 3D model…</span></div>
+      <div class="drag" data-i18n="drag">Drag to turn it · pinch or scroll to zoom</div>
+    </div>
+    <div class="info">
+      <div class="yr" id="m-year"></div>
+      <h2 id="m-name"></h2>
+      <span class="tag" id="m-test" data-i18n="test" hidden>Test vehicle</span>
+      <p id="m-note"></p>
+      <div class="stats">
+        <div class="stat"><b data-i18n="height">Height</b><span id="m-h"></span></div>
+        <div class="stat"><b id="m-dl" data-i18n="diameter">Diameter</b><span id="m-d"></span></div>
+        <div class="stat"><b data-i18n="engines">Engines</b><span id="m-e"></span></div>
+        <div class="stat"><b data-i18n="first">First flight</b><span id="m-y"></span></div>
+        <div class="stat"><b id="m-ll">Successful launches</b><span id="m-l"></span><small id="m-ls"></small></div>
+        <div class="stat"><b id="m-sl">Status</b><span id="m-s"></span><small id="m-ss"></small></div>
+        <div class="stat wide"><b data-i18n="payload">Payload to low Earth orbit</b><span id="m-p"></span><small id="m-ps"></small></div>
+      </div>
+      <div class="nav"><button type="button" id="m-prev" aria-label="Previous"></button><button type="button" id="m-next" aria-label="Next"></button></div>
+    </div>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script type="module">
+import { VEHICLES } from './data.js';
+
+// ---- language: the one the visitor browsed the site in (?lang= from the site, Google Translate's cookie, the saved
+// choice), else the browser's - as the download page does
+const T = window.EVO_I18N || { en: {} };
+const LOCALES = { en: 'en-US', he: 'he-IL', ar: 'ar', es: 'es', fr: 'fr', de: 'de', ru: 'ru', zh: 'zh-CN', it: 'it', cs: 'cs', sv: 'sv', nl: 'nl', da: 'da', pt: 'pt-BR', pl: 'pl', hi: 'hi', tr: 'tr' };
+function norm(c) { c = String(c || '').toLowerCase().split(/[-_]/)[0]; if (c === 'iw') c = 'he'; return T[c] ? c : null; }
+function siteLang() {
+  const q = norm(new URLSearchParams(location.search).get('lang')); if (q) return q;
+  const ck = (document.cookie.match(/(?:^|;\s*)googtrans=\/[^/]*\/([^;]+)/) || [])[1]; if (norm(ck)) return norm(ck);
+  try { const p = norm(localStorage.getItem('spacex_lang_pref')); if (p) return p; } catch (e) {}
+  return norm(navigator.language) || 'en';
+}
+const lang = siteLang(), d = T[lang] || T.en, tr = k => d[k] || T.en[k] || '';
+document.documentElement.lang = lang; document.documentElement.dir = (lang === 'he' || lang === 'ar') ? 'rtl' : 'ltr';
+// the browser's own translation (Chrome translating the page into Hebrew or Arabic) marks the page translated-rtl:
+// the layout turns right-to-left then too, oldest rocket on the right
+const rtlNow = () => document.documentElement.dir === 'rtl';
+new MutationObserver(() => {
+  const c = document.documentElement.classList, d = c.contains('translated-rtl') ? 'rtl' : c.contains('translated-ltr') ? 'ltr' : null;
+  if (d && document.documentElement.dir !== d) { document.documentElement.dir = d; layout(); }
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+document.title = tr('title') + ' - ' + tr('sub');
+document.getElementById('chart').setAttribute('aria-label', tr('title'));
+document.getElementById('m-close').setAttribute('aria-label', tr('close'));
+const nf = new Intl.NumberFormat(LOCALES[lang] || 'en-US', { maximumFractionDigits: 1 });
+// units as on the rest of the site: feet and pounds in English, metres and kilograms (tonnes) in every other language
+const IMPERIAL = lang === 'en';
+const metres = v => IMPERIAL ? `${nf.format(Math.round(v * 3.28084))} ${tr('ft')}` : `${nf.format(v)} ${tr('m')}`;
+const heightText = metres;
+const mass = kg => IMPERIAL ? `${nf.format(Math.round(kg * 2.20462 / (kg < 1000 ? 10 : 100)) * (kg < 1000 ? 10 : 100))} ${tr('lb')}`
+  : kg < 1000 ? `${nf.format(kg)} ${tr('kg')}` : `${nf.format(Math.round(kg / 100) / 10)} ${tr('t')}`;
+// the scale: a line every 20 m, or every 50 ft
+
+// the launch counts kept current by the site's scheduled job (stats.json); the built-in ones until it answers
+let STATS = {};
+fetch('stats.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.vehicles) { STATS = j.vehicles; if (!modal.hidden && cur >= 0) fillInfo(cur); } }).catch(() => {});
+
+// back to the site: the page the visitor came from as it was (no reload) when they came from the site
+document.getElementById('back').addEventListener('click', e => {
+  try { const r = new URL(document.referrer); if (r.origin === location.origin && !/\/evolution\//.test(r.pathname) && history.length > 1) { e.preventDefault(); history.back(); } } catch (err) {}
+});
+
+// ---- the chart
+const row = document.getElementById('row'), chart = document.getElementById('chart'), axis = document.getElementById('axis');
+const MAXM = 130;   // the scale's top, in metres
+VEHICLES.forEach((v, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'veh'; b.dataset.i = i;
+  b.style.setProperty('--h', (v.px / 12).toFixed(3));   // the picture's height in metres (12 px per metre, a little room above the tip)
+  b.setAttribute('aria-label', `${v.name}, ${v.year}, ${metres(v.h)}. ${tr('view3d')}`);
+  b.innerHTML = `<span class="pic" data-h="${metres(v.h)}"><img src="img/${v.id}.webp" alt="" loading="${i < 7 ? 'eager' : 'lazy'}" decoding="async"></span>
+    <span class="lab"><span class="yr">${v.year}</span><span class="nm">${v.name}</span><span class="ht">${metres(v.h)}</span>${v.test ? `<span class="tag">${tr('test')}</span>` : ''}</span>`;
+  b.addEventListener('click', () => openViewer(i));
+  row.appendChild(b);
+});
+function layout() {
+  const plotH = parseFloat(getComputedStyle(row.querySelector('.pic')).height);
+  const pxm = plotH / MAXM; chart.style.setProperty('--pxm', pxm.toFixed(4));
+  const stepM = IMPERIAL ? 50 / 3.28084 : 20, stepN = IMPERIAL ? 50 : 20, unit = tr(IMPERIAL ? 'ft' : 'm');
+  chart.style.setProperty('--gridStep', (stepM * pxm).toFixed(2) + 'px');
+  axis.innerHTML = ''; for (let k = 0; k * stepM <= MAXM - 8; k++) { const s = document.createElement('span'); s.style.bottom = (k * stepM * pxm) + 'px'; s.textContent = `${nf.format(k * stepN)} ${unit}`; axis.appendChild(s); }
+}
+layout(); addEventListener('resize', layout);
+
+// ---- the 3D viewer: three.js and the models load the first time a rocket is opened
+const modal = document.getElementById('modal'), stage = document.getElementById('stage'), loadEl = document.getElementById('m-load');
+let V = null, cur = -1, openedByPush = false;
+const prevB = document.getElementById('m-prev'), nextB = document.getElementById('m-next');
+
+function fillInfo(i) {
+  const v = VEHICLES[i];
+  document.getElementById('m-year').textContent = v.year;
+  document.getElementById('m-name').textContent = v.name;
+  document.getElementById('m-test').hidden = !v.test;
+  document.getElementById('m-note').textContent = tr('n_' + v.id);
+  document.getElementById('m-h').textContent = heightText(v.h);
+  document.getElementById('m-dl').textContent = tr(v.id === 'fh' ? 'width' : 'diameter');
+  document.getElementById('m-d').textContent = metres(v.d);
+  document.getElementById('m-e').innerHTML = `<bdi>${v.eng}</bdi>`;
+  document.getElementById('m-y').textContent = v.year;
+  // launches (hops for the test vehicles), and in service or when it left it (its last flight)
+  const st = STATS[v.id] || v;
+  document.getElementById('m-ll').textContent = tr(v.hops ? 'hops' : 'launches');
+  document.getElementById('m-l').textContent = nf.format(v.hops || st.ok);
+  document.getElementById('m-ls').textContent = v.hops ? '' : tr('ofLaunches').replace('{n}', nf.format(st.total));
+  document.getElementById('m-sl').textContent = tr(v.retired ? 'retired' : 'status');
+  document.getElementById('m-s').textContent = v.retired ? new Date(v.retired + 'T12:00:00Z').toLocaleDateString(LOCALES[lang] || 'en-US', { month: 'long', year: 'numeric' }) : tr('inService');
+  document.getElementById('m-ss').textContent = v.retired ? tr('lastFlight') : '';
+  document.getElementById('m-p').textContent = v.pay ? mass(v.pay) : tr('payNone');
+  document.getElementById('m-ps').textContent = v.payReuse ? tr('payReuse').replace('{v}', mass(v.payReuse)) : v.payTarget ? tr('payTarget') : '';
+  const p = VEHICLES[i - 1], n = VEHICLES[i + 1], arrowPrev = rtlNow() ? '→' : '←', arrowNext = rtlNow() ? '←' : '→';
+  prevB.disabled = !p; nextB.disabled = !n;
+  prevB.innerHTML = p ? `<span aria-hidden="true">${arrowPrev}</span> <bdi>${p.name}</bdi>` : `<span aria-hidden="true">${arrowPrev}</span>`;
+  nextB.innerHTML = n ? `<bdi>${n.name}</bdi> <span aria-hidden="true">${arrowNext}</span>` : `<span aria-hidden="true">${arrowNext}</span>`;
+}
+async function openViewer(i) {
+  cur = i; fillInfo(i);
+  if (modal.hidden) {
+    modal.hidden = false; requestAnimationFrame(() => modal.classList.add('on'));
+    document.body.style.overflow = 'hidden';
+    // the phone's back button closes the viewer instead of leaving the page
+    history.pushState({ evo3d: true }, ''); openedByPush = true;
+    document.getElementById('m-close').focus({ preventScroll: true });
+  }
+  loadEl.style.opacity = 1;
+  try {
+    if (!V) V = await import('./viewer.js');
+    await V.show(stage, VEHICLES[i], () => cur === i);
+    if (cur === i) loadEl.style.opacity = 0;
+  } catch (e) { console.error(e); }
+}
+function closeViewer(fromPop) {
+  if (modal.hidden) return;
+  modal.classList.remove('on'); document.body.style.overflow = '';
+  setTimeout(() => { modal.hidden = true; if (V) V.pause(); }, 200);
+  const b = row.children[cur]; if (b) b.focus({ preventScroll: true });
+  if (!fromPop && openedByPush) { openedByPush = false; history.back(); }
+  openedByPush = false; cur = -1;
+}
+document.getElementById('m-close').addEventListener('click', () => closeViewer(false));
+modal.addEventListener('click', e => { if (e.target === modal) closeViewer(false); });
+addEventListener('keydown', e => {
+  if (modal.hidden) return;
+  if (e.key === 'Escape') closeViewer(false);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const step = (e.key === 'ArrowRight') !== rtlNow() ? 1 : -1; const j = cur + step; if (VEHICLES[j]) openViewer(j); }
+});
+addEventListener('popstate', () => { if (!modal.hidden) { openedByPush = false; closeViewer(true); } });
+prevB.addEventListener('click', () => { if (cur > 0) openViewer(cur - 1); });
+nextB.addEventListener('click', () => { if (cur < VEHICLES.length - 1) openViewer(cur + 1); });
+</script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+/* "SpaceX - From history to present": the info tab's to-scale chart of every SpaceX rocket (evolution/section.js) and
+   its 3D viewer. The card, the viewer's panels and their text take the site's own classes (bg-zinc-900, text-white,
+   text-emerald-400 ...) so each mode colours them as it colours the rest of the tab; only what those can't give is
+   here - the accent and the grid in each mode, the ground, the day mode's sky behind the rockets. */
+#evo-sec, #evo-modal { --evo-acc: #34d399; --evo-acc-rgb: 52, 211, 153; --evo-grid: rgba(255, 255, 255, .07); --evo-gridtx: rgba(228, 228, 231, .5);
+  --evo-g0: #26272c; --evo-g1: #111114; --evo-plot: transparent; --evo-stage: linear-gradient(180deg, #0d1018, #07080c); }
+body.light-theme #evo-sec, body.light-theme #evo-modal { --evo-acc: #047857; --evo-acc-rgb: 4, 120, 87; --evo-grid: rgba(15, 23, 42, .09); --evo-gridtx: rgba(30, 41, 59, .55);
+  --evo-g0: #cbd5e1; --evo-g1: #94a3b8; --evo-plot: linear-gradient(180deg, #e6ebf2 0%, #f1f5f9 70%, #f8fafc 100%); --evo-stage: linear-gradient(180deg, #e2e8f0, #f8fafc); }
+body.mars-theme #evo-sec, body.mars-theme #evo-modal { --evo-acc: #ff6b35; --evo-acc-rgb: 255, 107, 53; --evo-grid: rgba(255, 170, 130, .08); --evo-gridtx: rgba(243, 230, 216, .5);
+  --evo-g0: #6b2e18; --evo-g1: #2a120a; --evo-stage: linear-gradient(180deg, #1f0d08, #0e0504); }
+body.moon-theme #evo-sec, body.moon-theme #evo-modal { --evo-acc: #3fa9f5; --evo-acc-rgb: 63, 169, 245; --evo-grid: rgba(180, 200, 230, .08); --evo-gridtx: rgba(232, 238, 246, .5);
+  --evo-g0: #4a4f58; --evo-g1: #22252b; --evo-stage: linear-gradient(180deg, #0f1522, #06080d); }
+
+/* the chart: the rockets standing on the ground at the same pixels per metre (--pxm) */
+#evo-chart { position: relative; overflow: hidden; --plotH: clamp(300px, 58vh, 620px); --top: 28px; --lab: 104px; --axis: 62px; }
+#evo-chart .evo-scroller { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: rgba(var(--evo-acc-rgb), .5) transparent; -webkit-overflow-scrolling: touch; }
+#evo-chart .evo-plot { position: relative; min-width: 100%; width: max-content; padding-inline-start: var(--axis); padding-inline-end: 14px; }
+#evo-chart .evo-sky { position: absolute; inset-inline: 0; top: 0; height: calc(var(--top) + var(--plotH)); background: var(--evo-plot); pointer-events: none; }
+#evo-chart .evo-grid { position: absolute; inset-inline: 0; top: var(--top); height: var(--plotH); pointer-events: none;
+  background: repeating-linear-gradient(to top, var(--evo-grid) 0 1px, transparent 1px var(--gridStep, 80px)); background-position: bottom; }
+#evo-chart .evo-ground { position: absolute; inset-inline: 0; top: calc(var(--top) + var(--plotH)); height: var(--lab); background: linear-gradient(180deg, var(--evo-g0), var(--evo-g1)); opacity: .5; }
+#evo-chart .evo-ground::before { content: ''; position: absolute; inset-inline: 0; top: 0; height: 1px; background: rgba(var(--evo-acc-rgb), .55); box-shadow: 0 0 14px rgba(var(--evo-acc-rgb), .45); }
+#evo-chart .evo-row { position: relative; display: flex; align-items: flex-end; gap: clamp(6px, 1.2vw, 16px); padding-top: var(--top); }
+#evo-chart .evo-axis { position: absolute; inset-inline-start: 0; top: var(--top); height: var(--plotH); width: var(--axis); z-index: 3; pointer-events: none; }
+#evo-chart .evo-axis span { position: absolute; inset-inline-start: 10px; transform: translateY(50%); font-size: .7rem; font-variant-numeric: tabular-nums; color: var(--evo-gridtx); white-space: nowrap; }
+#evo-chart .evo-veh { appearance: none; border: 0; background: none; padding: 0 4px; margin: 0; font: inherit; color: inherit; cursor: pointer; position: relative;
+  display: flex; flex-direction: column; align-items: center; min-width: clamp(64px, 6.6vw, 104px); flex: 1 0 auto; -webkit-tap-highlight-color: transparent; }
+#evo-chart .evo-pic { height: var(--plotH); display: flex; align-items: flex-end; justify-content: center; position: relative; }
+#evo-chart .evo-veh img { display: block; height: calc(var(--h) * var(--pxm) * 1px); width: auto; max-width: none; transition: transform .25s ease, filter .25s ease; transform-origin: bottom center;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .35)); user-select: none; -webkit-user-drag: none; }
+body.light-theme #evo-chart .evo-veh img { filter: drop-shadow(0 4px 8px rgba(15, 23, 42, .28)); }
+#evo-chart .evo-lab { height: var(--lab); padding: 10px 2px 8px; text-align: center; line-height: 1.22; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#evo-chart .evo-yr { font-weight: 700; font-size: .8rem; letter-spacing: .04em; }
+#evo-chart .evo-nm { font-weight: 600; font-size: .84rem; max-width: 110px; }
+#evo-chart .evo-ht { font-size: .76rem; font-variant-numeric: tabular-nums; }
+#evo-chart .evo-tag { font-size: .6rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; border-radius: 999px; padding: 0 7px; margin-top: 2px; }
+html[dir="rtl"] #evo-chart .evo-tag { text-transform: none; letter-spacing: 0; }
+#evo-chart .evo-pic::after { content: attr(data-h); position: absolute; left: 50%; bottom: calc(var(--h) * var(--pxm) * 1px + 6px); transform: translate(-50%, 4px);
+  font-size: .72rem; font-weight: 600; color: var(--evo-acc); white-space: nowrap; opacity: 0; transition: opacity .2s, transform .2s; font-variant-numeric: tabular-nums; }
+@media (hover: hover) {
+  #evo-chart .evo-veh:hover img { transform: translateY(-4px); filter: drop-shadow(0 0 14px rgba(var(--evo-acc-rgb), .55)) drop-shadow(0 6px 10px rgba(0, 0, 0, .3)); }
+  #evo-chart .evo-veh:hover .evo-pic::after { opacity: 1; transform: translate(-50%, 0); }
+  #evo-chart .evo-veh:hover .evo-nm { color: var(--evo-acc) !important; }
+}
+#evo-chart .evo-veh:focus-visible { outline: 2px solid var(--evo-acc); outline-offset: -2px; border-radius: 12px; }
+#evo-chart .evo-veh:active img { transform: translateY(-2px) scale(.99); }
+#evo-sec .evo-note { margin: 10px 0 0; font-size: .75rem; opacity: .9; }
+/* a height or a mass reads in its own direction ("408 ft", "124.4 מ׳") in either page direction */
+#evo-chart .evo-nm, #evo-modal h2, #evo-modal .evo-nav button, #evo-chart .evo-ht, #evo-chart .evo-axis span, #evo-modal .evo-stat span, #evo-modal .evo-stat small, #evo-chart .evo-pic::after { unicode-bidi: plaintext; }
+html[dir="rtl"] #evo-modal .evo-stat span, html[dir="rtl"] #evo-modal .evo-stat small { text-align: right; }
+html[dir="ltr"] #evo-modal .evo-stat span, html[dir="ltr"] #evo-modal .evo-stat small { text-align: left; }
+@media (max-width: 640px) { #evo-chart { --plotH: clamp(280px, 52vh, 520px); --lab: 96px; } }
+
+/* the 3D viewer */
+#evo-modal { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(0, 0, 0, .6);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); opacity: 0; transition: opacity .2s; }
+#evo-modal.on { opacity: 1; }
+#evo-modal[hidden] { display: none; }
+#evo-modal .evo-box { position: relative; width: min(1100px, 100%); height: min(760px, 100%); display: grid; grid-template-columns: 1.35fr 1fr; border-radius: 22px; overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6); transform: translateY(10px) scale(.985); transition: transform .25s; }
+#evo-modal.on .evo-box { transform: none; }
+#evo-modal .evo-stage { position: relative; background: var(--evo-stage); min-height: 0; }
+#evo-modal .evo-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#evo-modal .evo-stage canvas:active { cursor: grabbing; }
+#evo-modal .evo-load { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; font-size: .9rem; pointer-events: none; transition: opacity .3s; }
+#evo-modal .evo-load i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(var(--evo-acc-rgb), .2); border-top-color: var(--evo-acc); animation: evo-spin .9s linear infinite; }
+@keyframes evo-spin { to { transform: rotate(360deg); } }
+#evo-modal .evo-drag { position: absolute; inset-inline: 0; bottom: 12px; text-align: center; font-size: .76rem; pointer-events: none; padding: 0 12px; }
+#evo-modal .evo-info { padding: 30px 28px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; border-inline-start-width: 1px; border-inline-start-style: solid; }
+#evo-modal .evo-myr { font-weight: 700; letter-spacing: .05em; }
+#evo-modal h2 { font-size: clamp(1.3rem, 2.6vw, 1.85rem); margin: -6px 0 0; line-height: 1.15; }
+#evo-modal .evo-mtag { align-self: flex-start; font-size: .72rem; font-weight: 600; border-radius: 999px; padding: 1px 10px; }
+#evo-modal .evo-mnote { margin: 0; font-size: .98rem; }
+#evo-modal .evo-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+#evo-modal .evo-stat { border-radius: 14px; padding: 10px 12px; }
+#evo-modal .evo-stat.wide { grid-column: 1 / -1; }
+#evo-modal .evo-stat b { display: block; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+html[dir="rtl"] #evo-modal .evo-stat b { text-transform: none; letter-spacing: 0; }
+#evo-modal .evo-stat span { display: block; font-size: 1.04rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+#evo-modal .evo-stat small { display: block; font-size: .76rem; margin-top: 1px; }
+#evo-modal .evo-nav { display: flex; gap: 10px; margin-top: auto; padding-top: 6px; }
+#evo-modal .evo-nav button, #evo-modal .evo-x { appearance: none; font: inherit; cursor: pointer; border-radius: 999px; border-width: 1px; border-style: solid; }
+#evo-modal .evo-nav button { flex: 1; padding: 9px 12px; font-weight: 600; font-size: .88rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
+#evo-modal .evo-nav button:hover, #evo-modal .evo-x:hover { border-color: var(--evo-acc) !important; }
+#evo-modal .evo-nav button:disabled { visibility: hidden; }
+#evo-modal .evo-x { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 2; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; line-height: 1; }
+@media (max-width: 760px) {
+  #evo-modal { padding: 0; }
+  #evo-modal .evo-box { grid-template-columns: 1fr; grid-template-rows: 56% 44%; height: 100%; border-radius: 0; }
+  #evo-modal .evo-info { border-inline-start-width: 0; border-top-width: 1px; border-top-style: solid; padding: 18px 18px calc(16px + env(safe-area-inset-bottom)); gap: 10px; }
+  #evo-modal .evo-x { top: max(10px, env(safe-area-inset-top)); }
+  #evo-modal .evo-stats { gap: 8px; } #evo-modal .evo-stat { padding: 8px 10px; }
+}

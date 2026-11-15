@@ -14432,6 +14432,7 @@
             } catch (e) { /* ignore */ }
             applyLaunchLabelTranslations(currentLang);
             applyMilestonesTranslations(currentLang);
+            if (window.applyEvolutionLang) window.applyEvolutionLang(currentLang);
             applyNiceToKnowTranslations(currentLang);
             applyCommunitySupportTranslations(currentLang);
             applyStarshipDocSubtitleTranslation(currentLang);
@@ -14758,6 +14759,10 @@
         });
 
     </script>
+    <!-- "SpaceX - From history to present" (the info tab, after the milestones): its styles, and three.js for its 3D
+         viewer, loaded only when a rocket is opened -->
+    <link rel="stylesheet" href="evolution/section.css">
+    <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 
 <body
@@ -16034,6 +16039,20 @@
                 </div>
             </div>
             </div>
+        </div>
+
+        <div id="evo-sec" class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
+            <div class="mb-4">
+                <h3
+                    class="font-orbitron font-semibold text-lg sm:text-xl flex items-center gap-x-3 text-white transition-colors duration-500">
+                    <i class="fa-solid fa-rocket text-emerald-400 shrink-0"></i>
+                    <span id="i18n-evo-title" class="notranslate section-title-fit" translate="no" lang="en">SpaceX - From history to present</span>
+                </h3>
+                <p id="i18n-evo-hint" class="text-sm text-zinc-400 transition-colors duration-500 notranslate" translate="no" lang="en">Tap a rocket to see it in 3D</p>
+            </div>
+            <!-- every SpaceX rocket to scale; built by evolution/section.js -->
+            <div id="evo-chart" class="bg-zinc-900 border border-zinc-800/80 rounded-2xl info-shadow transition-colors duration-500 notranslate" translate="no" lang="en"></div>
+            <p id="evo-note" class="evo-note text-zinc-400 notranslate" translate="no" lang="en"></p>
         </div>
 
         <div class="mt-10 pt-10 border-t border-zinc-900 transition-colors duration-500">
@@ -33394,6 +33413,7 @@ if (heroNameEl) {
         // the Android app's Back button: an open pop-up first (the hero's "watch live" box, the share menu, the
         // Starlink business list), then the top window
         window.appHandleBack = function () {
+            if (window.evoCloseViewer && window.evoCloseViewer()) return true;
             if (document.getElementById('hero-live-popover') && typeof closeHeroLivePopover === 'function') {
                 closeHeroLivePopover();
                 return true;
@@ -34164,7 +34184,11 @@ if (heroNameEl) {
             tr: { facts: 'Bilmekte fayda var', milestones: 'Kilometre taşları', patches: 'Görev armaları', boosters: 'Güçlendiriciler', sites: 'Fırlatma alanları', fleet: 'Filo' },
         };
         APP_INFO_NAMES.iw = APP_INFO_NAMES.he;
-        const APP_INFO_KEYS = ['starship', 'numbers', 'facts', 'patches', 'boosters', 'milestones', 'sites', 'fleet'];
+        // the bar's name for "SpaceX - From history to present"
+        Object.entries({ en: 'Then & now', he: 'אז והיום', es: 'Antes y ahora', fr: 'Hier et aujourd’hui', de: 'Damals & heute', ru: 'Тогда и сейчас',
+            zh: '今昔', it: 'Ieri e oggi', cs: 'Tehdy a dnes', sv: 'Då och nu', nl: 'Toen en nu', da: 'Før og nu', pt: 'Antes e agora', pl: 'Dawniej i dziś',
+            hi: 'तब और अब', ar: 'الأمس واليوم', tr: 'Dün ve bugün' }).forEach(([k, v]) => { if (APP_INFO_NAMES[k]) APP_INFO_NAMES[k].evolution = v; });
+        const APP_INFO_KEYS = ['starship', 'numbers', 'facts', 'patches', 'boosters', 'milestones', 'evolution', 'sites', 'fleet'];
         let appInfoItems = [];
         let appPatchShown = 8;
         let appMilestonesShown = 5;
@@ -34197,7 +34221,7 @@ if (heroNameEl) {
 
         // the headings' icons - the site's own for each section (the numbers: a chart)
         const APP_INFO_ICONS = {
-            starship: 'fa-film', numbers: 'fa-chart-simple', facts: 'fa-circle-info', patches: 'fa-shield-halved',
+            starship: 'fa-film', numbers: 'fa-chart-simple', facts: 'fa-circle-info', patches: 'fa-shield-halved', evolution: 'fa-rocket',
             boosters: 'fa-trophy', milestones: 'fa-timeline', sites: 'fa-map-location-dot', fleet: 'fa-anchor',
         };
         function appInfoBlock(key) {
@@ -34412,6 +34436,16 @@ if (heroNameEl) {
             };
         }
 
+        // "SpaceX - From history to present": the site's own chart moved into the block (its rockets open the same 3D
+        // viewer), the hint and the note with it
+        function renderAppEvolution(block, body) {
+            appInfoHead(block, appText(document.getElementById('i18n-evo-title')), '');
+            ['i18n-evo-hint', 'evo-chart', 'evo-note'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.parentElement !== body) body.appendChild(el);
+            });
+        }
+
         function renderAppSites(block, body) {
             appInfoHead(block, appText(document.getElementById('i18n-launch-sites-title')), '');
             const cards = [...document.querySelectorAll('#launch-sites-grid .launch-site-card')];
@@ -34455,6 +34489,7 @@ if (heroNameEl) {
             try { renderAppPatches(get('patches'), b('patches')); } catch (e) { }
             try { renderAppBoosters(get('boosters'), b('boosters')); } catch (e) { }
             try { renderAppMilestones(get('milestones'), b('milestones')); } catch (e) { }
+            try { renderAppEvolution(get('evolution'), b('evolution')); } catch (e) { }
             try { renderAppSites(get('sites'), b('sites')); } catch (e) { }
             try { renderAppFleet(get('fleet'), b('fleet')); } catch (e) { }
             relabelAppInfoNav();
@@ -34576,7 +34611,7 @@ if (heroNameEl) {
             if (!panel || document.getElementById('app-info')) return;
             // the originals: marked (hidden by CSS), their headings marked for the detail screens
             ['.starship-term', '#starlink-section-title', '#i18n-nice-to-know-title', '#i18n-milestones-title', '#i18n-patches-title',
-                '#i18n-booster-title', '#i18n-launch-sites-title', '#i18n-recovery-fleet-title', '#i18n-ai-compute-title'].forEach(sel => {
+                '#i18n-booster-title', '#i18n-launch-sites-title', '#i18n-recovery-fleet-title', '#i18n-ai-compute-title', '#i18n-evo-title'].forEach(sel => {
                 const t = panel.querySelector(sel);
                 const section = t && t.closest('#tab-panel-more > div');
                 if (!section) return;
@@ -34815,6 +34850,8 @@ if (heroNameEl) {
 
         window.onload = init;
     </script>
+    <script src="evolution/i18n.js"></script>
+    <script type="module" src="evolution/section.js"></script>
 
     <script>
 // פונקציה שרצה מיידית ותופסת שינויים בעמוד ברמת המילי-שניה
