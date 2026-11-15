@@ -4,6 +4,8 @@ name: Build Android app
 # are needed on any computer. Runs when the app's code changes, or by hand from the Actions tab (Run workflow).
 # The finished APK is attached to the "android-latest" release, so it always has the same download link:
 #   https://github.com/Yuval-sap/SpaceX-Tracker/releases/download/android-latest/spacex-tracker.apk
+# and beside it the App Bundle for Google Play (upload it in the Play Console):
+#   https://github.com/Yuval-sap/SpaceX-Tracker/releases/download/android-latest/spacex-tracker.aab
 #
 # Signed with the release key from the repository's secrets (Settings -> Secrets and variables -> Actions):
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
@@ -31,7 +33,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.7"
+          gradle-version: "8.13"
 
       - name: Release key
         id: key
@@ -55,9 +57,10 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -o pipefail
-          gradle -p android-app assembleRelease --no-daemon --stacktrace \
+          gradle -p android-app assembleRelease bundleRelease --no-daemon --stacktrace \
             -PversionCode=$((100 + ${{ github.run_number }})) -PversionName="2.${{ github.run_number }}" 2>&1 | tee "$RUNNER_TEMP/build.log"
           cp android-app/app/build/outputs/apk/release/app-release.apk spacex-tracker.apk
+          cp android-app/app/build/outputs/bundle/release/app-release.aab spacex-tracker.aab
 
       # A failed build's errors as annotations on the run, so they can be read without opening the log
       - name: Report build errors
@@ -70,7 +73,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: spacex-tracker-apk
-          path: spacex-tracker.apk
+          path: |
+            spacex-tracker.apk
+            spacex-tracker.aab
 
       - name: Publish to the release
         env:
@@ -81,4 +86,4 @@ jobs:
           [ "$SIGNED" = "test" ] && TAG=android-test
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Android app ($TAG)" \
             --notes "The SpaceX Tracker Android app. Download spacex-tracker.apk below and open it on the phone." --prerelease
-          gh release upload "$TAG" spacex-tracker.apk --clobber
+          gh release upload "$TAG" spacex-tracker.apk spacex-tracker.aab --clobber

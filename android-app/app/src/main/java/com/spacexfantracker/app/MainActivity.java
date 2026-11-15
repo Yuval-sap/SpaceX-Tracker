@@ -27,6 +27,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.window.OnBackInvokedDispatcher;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -126,6 +127,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ReminderReceiver.ensureChannel(this);
+
+        // Back (handleBack): Android 13+ through the system's back callback - targeting Android 16, onBackPressed is no
+        // longer called there
+        if (Build.VERSION.SDK_INT >= 33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
 
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#09090B"));
@@ -372,6 +377,11 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        handleBack();
+    }
+
+    private void handleBack() {
+        if (webView == null) { moveTaskToBack(true); return; }
         if (fullscreenView != null) {
             if (fullscreenCallback != null) fullscreenCallback.onCustomViewHidden();
             hideFullscreen();
@@ -678,6 +688,30 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ------------------------------------------------------------------ exact alarms
+    // Android 12+ lets an app set alarms on the minute only once the user allows it ("Alarms & reminders" in the app's
+    // settings; Android 14 starts a new install without it). Without it a reminder may come a few minutes late. Asked
+    // once, when the first reminder is set; allowed, the reminders are set again as exact ones (BootReceiver).
+
+    private void askExactAlarms() {
+        if (Build.VERSION.SDK_INT < 31 || isFinishing()) return;
+        android.app.AlarmManager am = (android.app.AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (am == null || am.canScheduleExactAlarms()) return;
+        android.content.SharedPreferences prefs = getSharedPreferences("app", MODE_PRIVATE);
+        if (prefs.getBoolean("exactAlarmsAsked", false)) return;
+        prefs.edit().putBoolean("exactAlarmsAsked", true).apply();
+        new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.exact_alarm_title)
+                .setMessage(R.string.exact_alarm_text)
+                .setPositiveButton(R.string.exact_alarm_allow, (d, w) -> {
+                    try {
+                        startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + getPackageName())));
+                    } catch (ActivityNotFoundException ignored) { }
+                })
+                .setNegativeButton(R.string.exact_alarm_later, null)
+                .show();
+    }
+
     // ------------------------------------------------------------------ window.AndroidApp
 
     private class AppBridge {
@@ -688,6 +722,7 @@ public class MainActivity extends Activity {
             try {
                 ReminderStore.schedule(MainActivity.this, missionId, new JSONArray(itemsJson));
             } catch (Exception ignored) { }
+            runOnUiThread(MainActivity.this::askExactAlarms);
         }
 
         @JavascriptInterface

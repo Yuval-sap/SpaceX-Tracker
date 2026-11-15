@@ -5,11 +5,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- launch reminders: shown by the system even when the app is closed -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- exact alarms: the reminders, and the widget's redraws on the minute / at each flight event. Android 14 denies
-         SCHEDULE_EXACT_ALARM to a new install until it is allowed in the settings, and the alarms came up to a minute
-         late; USE_EXACT_ALARM is granted with the app (Android 13+), SCHEDULE_EXACT_ALARM covers 12 and 12L -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- exact alarms: the reminders, and the widget's redraws on the minute / at each flight event. Android 14+ denies
+         it to a new install until the user allows it in the settings (the app asks once, when the first reminder is set
+         - MainActivity.askExactAlarms); until then the alarms are inexact and may come a few minutes late.
+         (Not USE_EXACT_ALARM: Google Play allows it only for alarm-clock and calendar apps.) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- reminders are set again after the phone restarts (the system clears all alarms on a restart) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -28,6 +28,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/AppTheme">
 
         <activity
@@ -91,6 +92,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <!-- exact alarms just allowed in the settings: the reminders set again, on the minute -->
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 
