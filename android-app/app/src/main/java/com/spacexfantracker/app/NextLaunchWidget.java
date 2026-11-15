@@ -117,11 +117,17 @@ public class NextLaunchWidget extends AppWidgetProvider {
     @Override
     public void onEnabled(Context context) {
         LaunchWatchJob.schedule(context);
-        // the first widget on the screen: the next launch now, not in up to half an hour
+        // the first widget on the screen: the next launch now, not in up to half an hour (kept alive until it's done:
+        // without goAsync the system may end the app's process as soon as this returns)
+        final PendingResult result = goAsync();
+        final Context app = context.getApplicationContext();
         new Thread(() -> {
             try {
-                LaunchWatchJob.refreshNextLaunch(context.getApplicationContext());
-            } catch (Exception ignored) { }
+                LaunchWatchJob.refreshNextLaunch(app);
+            } catch (Exception ignored) {
+            } finally {
+                result.finish();
+            }
         }).start();
     }
 

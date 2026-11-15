@@ -24,8 +24,11 @@ jobs:
         with:
           python-version: "3.x"
 
+      # When Launch Library turns a list away (it rate-limits GitHub's shared addresses), the script leaves m/ and the
+      # sitemap as they are and exits with an error - that must not stop the steps below from updating their own data
       - name: Generate mission cards
         run: python generate_mission_cards.py
+        continue-on-error: true
 
       # Mission-purpose text for every site language in the launch modal. The key stays in
       # GitHub Secrets (GEMINI_API_KEY) and is never written into index.html. If the secret

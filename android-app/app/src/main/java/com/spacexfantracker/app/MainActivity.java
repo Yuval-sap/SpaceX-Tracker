@@ -778,6 +778,9 @@ public class MainActivity extends Activity {
         /** a poster (image/png) goes to the phone's pictures, a calendar file opens in the calendar app */
         @JavascriptInterface
         public void saveFile(String base64, String fileName, String mimeType) {
+            // the name only - never a path: "../" in it must not write outside the app's shared folder
+            String name = fileName == null ? "" : new File(fileName).getName().replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+            final String safeName = name.isEmpty() || name.equals(".") || name.equals("..") ? "file" : name;
             runOnUiThread(() -> {
                 try {
                     byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
@@ -785,7 +788,7 @@ public class MainActivity extends Activity {
                     boolean isImage = mimeType != null && mimeType.startsWith("image/");
                     if (isImage && Build.VERSION.SDK_INT >= 29) {
                         ContentValues values = new ContentValues();
-                        values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+                        values.put(MediaStore.Images.Media.DISPLAY_NAME, safeName);
                         values.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
                         values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Space Launch Tracker");
                         uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
@@ -799,7 +802,7 @@ public class MainActivity extends Activity {
                     if (uri == null) {
                         File dir = new File(getCacheDir(), "shared");
                         if (!dir.exists() && !dir.mkdirs()) return;
-                        File file = new File(dir, fileName);
+                        File file = new File(dir, safeName);
                         try (FileOutputStream out = new FileOutputStream(file)) {
                             out.write(bytes);
                         }

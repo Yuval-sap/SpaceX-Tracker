@@ -39,10 +39,16 @@ public class SmallLaunchWidget extends AppWidgetProvider {
     @Override
     public void onEnabled(Context context) {
         LaunchWatchJob.schedule(context);
+        // kept alive until it's done (goAsync): without it the system may end the app's process as soon as this returns
+        final PendingResult result = goAsync();
+        final Context app = context.getApplicationContext();
         new Thread(() -> {
             try {
-                LaunchWatchJob.refreshNextLaunch(context.getApplicationContext());
-            } catch (Exception ignored) { }
+                LaunchWatchJob.refreshNextLaunch(app);
+            } catch (Exception ignored) {
+            } finally {
+                result.finish();
+            }
         }).start();
     }
 

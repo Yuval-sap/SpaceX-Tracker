@@ -290,7 +290,7 @@
            experiment made Orbitron the site-wide default before being scaled back to just those
            specific spots, which is why it's still loaded here even though body/.font-space no
            longer reference it directly. */
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&family=Audiowide&family=Zen+Dots&display=swap');
+        @import "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@300;400;500;600;700&family=Audiowide&family=Zen+Dots&display=swap";
 
         /* Font weight LABELS aren't visually equivalent across typefaces - Rubik's "600" is a
            notably rounder/heavier cut than Space Grotesk's "600", so in a mixed-script line
@@ -4093,21 +4093,35 @@
                 #121826 0%, #121826 58%, rgba(18, 24, 38, 0.72) 80%, transparent 100%);
         }
         /* The launch cards' scrim on the dark modes (night, Mars, Moon), as the documentary cards': solid behind the text
-           and a short fade just above the launch's name, so the rest of the photo shows clearly - in px from the card's
-           bottom, where its text stack sits (upcoming cards: 174px of text, past ones: 129px; the fade starts 48px above,
-           like .doc-card-fade's -top-12). Day mode keeps its own lighter scrim. */
+           and the fade starting one pixel above the launch's name, so the rest of the photo shows clearly - in px from
+           the card's bottom, where the name sits (upcoming cards: its top 197px up, past ones: 130px); an eased ramp over
+           34px (soft at its start, so it reads as no line; solid by the name's bottom, so the name stays clear). Day mode keeps its own lighter scrim. */
         html:not(.in-app) body:not(.light-theme) { --card-fade: 24, 24, 27; }
         html:not(.in-app) body.mars-theme { --card-fade: 39, 21, 16; }
         html:not(.in-app) body.moon-theme { --card-fade: 18, 24, 38; }
         html:not(.in-app) body:not(.light-theme) #missions-grid .mission-card-fade {
             background: linear-gradient(to top,
-                rgb(var(--card-fade)) 0, rgb(var(--card-fade)) 129px,
-                rgba(var(--card-fade), 0.72) 178px, transparent 222px);
+                rgb(var(--card-fade)) 0,
+                rgb(var(--card-fade)) 164px,
+                rgba(var(--card-fade), 0.96) 170px,
+                rgba(var(--card-fade), 0.88) 177px,
+                rgba(var(--card-fade), 0.75) 183px,
+                rgba(var(--card-fade), 0.55) 188px,
+                rgba(var(--card-fade), 0.30) 192px,
+                rgba(var(--card-fade), 0.12) 195px,
+                transparent 198px);
         }
         html:not(.in-app) body:not(.light-theme) #past-launches-grid .mission-card-fade {
             background: linear-gradient(to top,
-                rgb(var(--card-fade)) 0, rgb(var(--card-fade)) 103px,
-                rgba(var(--card-fade), 0.72) 142px, transparent 177px);
+                rgb(var(--card-fade)) 0,
+                rgb(var(--card-fade)) 97px,
+                rgba(var(--card-fade), 0.96) 103px,
+                rgba(var(--card-fade), 0.88) 110px,
+                rgba(var(--card-fade), 0.75) 116px,
+                rgba(var(--card-fade), 0.55) 121px,
+                rgba(var(--card-fade), 0.30) 125px,
+                rgba(var(--card-fade), 0.12) 128px,
+                transparent 131px);
         }
         body.moon-theme .skel { background: rgba(63, 169, 245, 0.08); }
         body.moon-theme .skel::after {
@@ -11886,8 +11900,8 @@
             es: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Cañaveral", kennedySpaceCenter: "Centro Espacial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Plataforma de Lanzamiento Orbital" },
             fr: { vandenberg: "Vandenberg", capeCanaveral: "Cap Canaveral", kennedySpaceCenter: "Centre Spatial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Pas de Tir Orbital" },
             de: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbitale Startrampe" },
-            ru: { vandenberg: "Ванденберг", capeCanaveral: "Мыс Канаверал", kennedySpaceCenter: "Космический центр Кеннеди", starbase: "Старбейз", orbitalLaunchPad: "Орбитальная Стартовая Площадка" },
-            zh: { vandenberg: "范登堡", capeCanaveral: "卡纳维拉尔角", kennedySpaceCenter: "肯尼迪航天中心", starbase: "星际基地", orbitalLaunchPad: "轨道发射台" },
+            ru: { vandenberg: "Ванденберг", capeCanaveral: "Мыс Канаверал", kennedySpaceCenter: "Космический центр Кеннеди", starbase: "Старбейз", orbitalLaunchPad: "Орбитальная Стартовая Площадка", pecanIsland: "Пекан-Айленд" },
+            zh: { vandenberg: "范登堡", capeCanaveral: "卡纳维拉尔角", kennedySpaceCenter: "肯尼迪航天中心", starbase: "星际基地", orbitalLaunchPad: "轨道发射台", pecanIsland: "佩肯岛" },
             it: { vandenberg: "Vandenberg", capeCanaveral: "Capo Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Rampa di Lancio Orbitale" },
             cs: { vandenberg: "Vandenberg", capeCanaveral: "Mys Canaveral", kennedySpaceCenter: "Kennedyho vesmírné středisko", starbase: "Starbase", orbitalLaunchPad: "Orbitální Odpalovací Rampa" },
             sv: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbital Startramp" },
@@ -11895,8 +11909,8 @@
             da: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Space Center", starbase: "Starbase", orbitalLaunchPad: "Orbital Affyringsrampe" },
             pt: { vandenberg: "Vandenberg", capeCanaveral: "Cabo Canaveral", kennedySpaceCenter: "Centro Espacial Kennedy", starbase: "Starbase", orbitalLaunchPad: "Plataforma de Lançamento Orbital" },
             pl: { vandenberg: "Vandenberg", capeCanaveral: "Przylądek Canaveral", kennedySpaceCenter: "Centrum Kosmiczne Kennedy'ego", starbase: "Starbase", orbitalLaunchPad: "Orbitalna Wyrzutnia Startowa" },
-            hi: { vandenberg: "वैंडेनबर्ग", capeCanaveral: "केप कैनावेरल", kennedySpaceCenter: "कैनेडी स्पेस सेंटर", starbase: "स्टारबेस", orbitalLaunchPad: "ऑर्बिटल लॉन्च पैड" },
-            ar: { vandenberg: "فاندنبرغ", capeCanaveral: "كيب كانافيرال", kennedySpaceCenter: "مركز كينيدي للفضاء", starbase: "ستاربيس", orbitalLaunchPad: "منصة الإطلاق المدارية" },
+            hi: { vandenberg: "वैंडेनबर्ग", capeCanaveral: "केप कैनावेरल", kennedySpaceCenter: "कैनेडी स्पेस सेंटर", starbase: "स्टारबेस", orbitalLaunchPad: "ऑर्बिटल लॉन्च पैड", pecanIsland: "पेकन आइलैंड" },
+            ar: { vandenberg: "فاندنبرغ", capeCanaveral: "كيب كانافيرال", kennedySpaceCenter: "مركز كينيدي للفضاء", starbase: "ستاربيس", orbitalLaunchPad: "منصة الإطلاق المدارية", pecanIsland: "جزيرة بيكان" },
             tr: { vandenberg: "Vandenberg", capeCanaveral: "Cape Canaveral", kennedySpaceCenter: "Kennedy Uzay Merkezi", starbase: "Starbase", orbitalLaunchPad: "Orbital Fırlatma Rampası" },
         };
 
@@ -12485,7 +12499,7 @@
         // Interactive 3D Starship (starship-3d.html) in a full-screen same-origin iframe. The viewer
         // reads this page's <html lang> and currentUnitSystem itself, so it follows the site's
         // language/unit switches live. The iframe is unloaded on close so it stops rendering.
-        const STARSHIP_SIM_VERSION = '73';
+        const STARSHIP_SIM_VERSION = '74';
         function openStarshipSim() {
             const modal = document.getElementById('starship-sim-modal');
             const frame = document.getElementById('starship-sim-frame');
@@ -12528,7 +12542,7 @@
         // 3D simulation of the hero's launch (launch-sim.html) in a full-screen same-origin iframe, loaded only on
         // the button's click. The sim pulls everything from here: the launch (getLaunchSimConfig), SpaceX's own
         // timeline for it, the event texts in the site language (launchSimLocalizeEvent), the language and units.
-        const LAUNCH_SIM_VERSION = '47';   // bump on every launch-sim.html change so browsers don't show a cached old copy
+        const LAUNCH_SIM_VERSION = '48';   // bump on every launch-sim.html change so browsers don't show a cached old copy
         const LAUNCH_SIM_LABEL_I18N = { en: 'Launch Sim', he: 'סימולציית שיגור', es: 'Simulación', fr: 'Simulation', de: 'Simulation', ru: 'Симуляция', zh: '发射模拟', it: 'Simulazione', cs: 'Simulace', sv: 'Simulering', nl: 'Simulatie', da: 'Simulering', pt: 'Simulação', pl: 'Symulacja', hi: 'सिमुलेशन', ar: 'محاكاة الإطلاق', tr: 'Simülasyon' };
         const LAUNCH_SIM_SUB_NEXT_I18N = { en: '3D preview', he: 'תצוגה מקדימה בתלת-ממד', es: 'Vista previa 3D', fr: 'Aperçu 3D', de: '3D-Vorschau', ru: '3D-превью', zh: '3D 预览', it: 'Anteprima 3D', cs: '3D náhled', sv: '3D-förhandsvisning', nl: '3D-voorvertoning', da: '3D-forhåndsvisning', pt: 'Prévia 3D', pl: 'Podgląd 3D', hi: '3D पूर्वावलोकन', ar: 'معاينة ثلاثية الأبعاد', tr: '3D önizleme' };
         function applyLaunchSimLabel() {
@@ -16488,7 +16502,7 @@
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[110]">
         <div class="relative max-w-3xl w-full">
             <button onclick="closeMilestoneImageModal()"
-                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                class="absolute -top-10 right-0 min-[860px]:top-2 min-[860px]:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
                 title="Close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -16532,7 +16546,7 @@
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[210]">
         <div class="relative max-w-3xl w-full">
             <button onclick="closeStarlinkGenLightbox()"
-                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                class="absolute -top-10 right-0 min-[860px]:top-2 min-[860px]:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
                 title="Close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -16551,11 +16565,13 @@
 
     <!-- Photo gallery for the vehicle dossier (#rocket-modal's "Photo Gallery" button) - photos per vehicle in
          VEHICLE_GALLERY. z-[260]: above the dossier (z-200). -->
-    <div id="vehicle-gallery-modal" onclick="if (event.target.id === 'vehicle-gallery-modal') closeVehicleGallery()"
+    <!-- a click beside the photo closes the gallery on a phone only: on a computer the arrows sit on the photo's edges and a
+         click just past them closed it by mistake - there the X (or Escape) closes it -->
+    <div id="vehicle-gallery-modal" onclick="if (event.target.id === 'vehicle-gallery-modal' && document.documentElement.classList.contains('in-app')) closeVehicleGallery()"
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[260]">
         <div id="vehicle-gallery-box" class="relative max-w-3xl w-full">
             <button onclick="closeVehicleGallery()"
-                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                class="absolute -top-10 right-0 min-[860px]:top-2 min-[860px]:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
                 title="Close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -16865,7 +16881,7 @@
         class="hidden fixed inset-0 bg-black/90 backdrop-blur-md items-center justify-center p-3 sm:p-4 animate-fade-in z-[110]">
         <div class="relative max-w-4xl w-full">
             <button onclick="closeDocVideoModal()"
-                class="absolute -top-10 right-0 sm:top-2 sm:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
+                class="absolute -top-10 right-0 min-[990px]:top-2 min-[990px]:-right-10 w-9 h-9 flex items-center justify-center bg-zinc-900 hover:bg-emerald-500 hover:text-black border border-zinc-700 rounded-full text-zinc-300 transition-colors"
                 title="Close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -30336,21 +30352,21 @@ setTimeout(() => {
             en: { mail: "Email", copy: "Copy link", copied: "Copied!", igHint: "Copies the link, then opens Instagram", ttHint: "Copies the link, then opens TikTok" },
             he: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הקישור ואז פותח את Instagram", ttHint: "מעתיק את הקישור ואז פותח את TikTok" },
             iw: { mail: "דוא״ל", copy: "העתק קישור", copied: "הועתק!", igHint: "מעתיק את הקישור ואז פותח את Instagram", ttHint: "מעתיק את הקישור ואז פותח את TikTok" },
-            es: { mail: "Correo", copy: "Copiar enlace", copied: "¡Copiado!" },
-            fr: { mail: "E-mail", copy: "Copier le lien", copied: "Copié !" },
-            de: { mail: "E-Mail", copy: "Link kopieren", copied: "Kopiert!" },
-            ru: { mail: "Почта", copy: "Копировать ссылку", copied: "Скопировано!" },
-            zh: { mail: "邮件", copy: "复制链接", copied: "已复制！" },
-            it: { mail: "Email", copy: "Copia link", copied: "Copiato!" },
-            cs: { mail: "E-mail", copy: "Kopírovat odkaz", copied: "Zkopírováno!" },
-            sv: { mail: "E-post", copy: "Kopiera länk", copied: "Kopierad!" },
-            nl: { mail: "E-mail", copy: "Link kopiëren", copied: "Gekopieerd!" },
-            da: { mail: "E-mail", copy: "Kopiér link", copied: "Kopieret!" },
-            pt: { mail: "E-mail", copy: "Copiar link", copied: "Copiado!" },
-            pl: { mail: "E-mail", copy: "Kopiuj link", copied: "Skopiowano!" },
-            hi: { mail: "ईमेल", copy: "लिंक कॉपी करें", copied: "कॉपी हो गया!" },
-            ar: { mail: "بريد", copy: "نسخ الرابط", copied: "تم النسخ!" },
-            tr: { mail: "E-posta", copy: "Bağlantıyı kopyala", copied: "Kopyalandı!" }
+            es: { mail: "Correo", copy: "Copiar enlace", copied: "¡Copiado!", igHint: "Copia el enlace y abre Instagram", ttHint: "Copia el enlace y abre TikTok" },
+            fr: { mail: "E-mail", copy: "Copier le lien", copied: "Copié !", igHint: "Copie le lien, puis ouvre Instagram", ttHint: "Copie le lien, puis ouvre TikTok" },
+            de: { mail: "E-Mail", copy: "Link kopieren", copied: "Kopiert!", igHint: "Kopiert den Link und öffnet dann Instagram", ttHint: "Kopiert den Link und öffnet dann TikTok" },
+            ru: { mail: "Почта", copy: "Копировать ссылку", copied: "Скопировано!", igHint: "Копирует ссылку и открывает Instagram", ttHint: "Копирует ссылку и открывает TikTok" },
+            zh: { mail: "邮件", copy: "复制链接", copied: "已复制！", igHint: "复制链接，然后打开 Instagram", ttHint: "复制链接，然后打开 TikTok" },
+            it: { mail: "Email", copy: "Copia link", copied: "Copiato!", igHint: "Copia il link e poi apre Instagram", ttHint: "Copia il link e poi apre TikTok" },
+            cs: { mail: "E-mail", copy: "Kopírovat odkaz", copied: "Zkopírováno!", igHint: "Zkopíruje odkaz a otevře Instagram", ttHint: "Zkopíruje odkaz a otevře TikTok" },
+            sv: { mail: "E-post", copy: "Kopiera länk", copied: "Kopierad!", igHint: "Kopierar länken och öppnar sedan Instagram", ttHint: "Kopierar länken och öppnar sedan TikTok" },
+            nl: { mail: "E-mail", copy: "Link kopiëren", copied: "Gekopieerd!", igHint: "Kopieert de link en opent dan Instagram", ttHint: "Kopieert de link en opent dan TikTok" },
+            da: { mail: "E-mail", copy: "Kopiér link", copied: "Kopieret!", igHint: "Kopierer linket og åbner derefter Instagram", ttHint: "Kopierer linket og åbner derefter TikTok" },
+            pt: { mail: "E-mail", copy: "Copiar link", copied: "Copiado!", igHint: "Copia o link e depois abre o Instagram", ttHint: "Copia o link e depois abre o TikTok" },
+            pl: { mail: "E-mail", copy: "Kopiuj link", copied: "Skopiowano!", igHint: "Kopiuje link, a potem otwiera Instagram", ttHint: "Kopiuje link, a potem otwiera TikTok" },
+            hi: { mail: "ईमेल", copy: "लिंक कॉपी करें", copied: "कॉपी हो गया!", igHint: "लिंक कॉपी करता है, फिर Instagram खोलता है", ttHint: "लिंक कॉपी करता है, फिर TikTok खोलता है" },
+            ar: { mail: "بريد", copy: "نسخ الرابط", copied: "تم النسخ!", igHint: "ينسخ الرابط ثم يفتح Instagram", ttHint: "ينسخ الرابط ثم يفتح TikTok" },
+            tr: { mail: "E-posta", copy: "Bağlantıyı kopyala", copied: "Kopyalandı!", igHint: "Bağlantıyı kopyalar, ardından Instagram'ı açar", ttHint: "Bağlantıyı kopyalar, ardından TikTok'u açar" }
         };
 
         let desktopSharePayload = null;
