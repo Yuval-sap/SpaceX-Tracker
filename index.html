@@ -7968,6 +7968,22 @@
         // flip once JS caught up. Moving the whole decision to the earliest point body.classList
         // is actually usable avoids that flash entirely instead of working around it.
 
+        // Back to the site from another of its pages (the download page's "Back" goes back in history, so the page
+        // comes back as it was, from the browser's memory): Google Translate doesn't survive that - its language menu
+        // is gone, and a translated page comes back in English. A page that comes back without the menu (or without its
+        // translation) loads again, which brings both back as on any visit (the language from its cookie).
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            setTimeout(function () {
+                const h = document.documentElement;
+                const m = document.cookie.match(/(?:^|;\s*)googtrans=\/[^/]*\/([^;]+)/);
+                const translated = !!m && !/^en/i.test(decodeURIComponent(m[1]));
+                const lostLang = translated && !h.classList.contains('translated-rtl') && !h.classList.contains('translated-ltr');
+                const lostMenu = !document.querySelector('#google_translate_element .goog-te-combo');
+                if (lostLang || lostMenu) location.reload();
+            }, 300);
+        });
+
         // Google Translate stores the chosen language in a "googtrans" cookie and
         // re-applies it automatically on the next visit — but that only works if
         // Google's script finishes initializing before the user starts interacting.
