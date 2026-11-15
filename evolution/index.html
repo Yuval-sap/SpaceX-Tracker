@@ -203,6 +203,7 @@
         <div class="stat"><b id="m-ll">Successful launches</b><span id="m-l"></span><small id="m-ls"></small></div>
         <div class="stat"><b id="m-sl">Status</b><span id="m-s"></span><small id="m-ss"></small></div>
         <div class="stat wide"><b data-i18n="payload">Payload to low Earth orbit</b><span id="m-p"></span><small id="m-ps"></small></div>
+        <div class="stat wide"><b id="m-cl">Cost per kg to orbit</b><span id="m-c"></span><small id="m-cs"></small></div>
       </div>
       <div class="nav"><button type="button" id="m-prev" aria-label="Previous"></button><button type="button" id="m-next" aria-label="Next"></button></div>
     </div>
@@ -301,6 +302,20 @@ function fillInfo(i) {
   document.getElementById('m-s').textContent = v.retired ? new Date(v.retired + 'T12:00:00Z').toLocaleDateString(LOCALES[lang] || 'en-US', { month: 'long', year: 'numeric' }) : tr('inService');
   document.getElementById('m-ss').textContent = v.retired ? tr('lastFlight') : '';
   document.getElementById('m-p').textContent = v.pay ? mass(v.pay) : tr('payNone');
+  {
+    const usd = n => '\u2066$' + nf.format(n) + '\u2069';   // "$1,234" in every language, in one piece in RTL text
+    document.getElementById('m-cl').textContent = tr(IMPERIAL ? 'costLb' : 'costKg');
+    if (v.pay && v.price) {
+      const mid = v.priceHi ? (v.price + v.priceHi) / 2 : v.price, perKg = mid * 1e6 / v.pay, per = IMPERIAL ? perKg / 2.20462 : perKg, round = per >= 10000 ? 100 : 10;
+      document.getElementById('m-c').textContent = tr(IMPERIAL ? 'perLb' : 'perKg').replace('{v}', (v.priceHi ? '~' : '') + usd(Math.round(per / round) * round));
+      const m = x => '\u2066$' + nf.format(x) + 'M\u2069';
+      document.getElementById('m-cs').textContent = tr('listPrice').replace('{p}', v.priceHi ? '\u2066' + m(v.price) + '–' + m(v.priceHi) + '\u2069' : m(v.price)).replace('{y}', '\u2066' + v.priceYear + '\u2069');
+    } else if (v.estKg) {   // not on sale: Elon Musk's estimate, marked as one
+    const e = IMPERIAL ? v.estKg / 2.20462 : v.estKg;
+    document.getElementById('m-c').textContent = tr(IMPERIAL ? 'perLb' : 'perKg').replace('{v}', '~' + usd(Math.round(e * 10) / 10)) + '*';
+    document.getElementById('m-cs').textContent = tr('estNote');
+  } else { document.getElementById('m-c').textContent = v.pay ? tr('notForSale') : tr('payNone'); document.getElementById('m-cs').textContent = ''; }
+  }
   document.getElementById('m-ps').textContent = v.payReuse ? tr('payReuse').replace('{v}', mass(v.payReuse)) : v.payTarget ? tr('payTarget') : '';
   const p = VEHICLES[i - 1], n = VEHICLES[i + 1], arrowPrev = rtlNow() ? '→' : '←', arrowNext = rtlNow() ? '←' : '→';
   prevB.disabled = !p; nextB.disabled = !n;

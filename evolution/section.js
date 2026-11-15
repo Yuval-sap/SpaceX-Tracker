@@ -101,6 +101,7 @@ function buildModal() {
         <div class="evo-stat bg-zinc-950 border border-zinc-800"><b class="text-zinc-400" data-f="ll"></b><span class="text-white" data-f="l"></span><small class="text-zinc-400" data-f="ls"></small></div>
         <div class="evo-stat bg-zinc-950 border border-zinc-800"><b class="text-zinc-400" data-f="sl"></b><span class="text-white" data-f="s"></span><small class="text-zinc-400" data-f="ss"></small></div>
         <div class="evo-stat wide bg-zinc-950 border border-zinc-800"><b class="text-zinc-400" data-t="payload"></b><span class="text-white" data-f="p"></span><small class="text-zinc-400" data-f="ps"></small></div>
+        <div class="evo-stat wide bg-zinc-950 border border-zinc-800"><b class="text-zinc-400" data-f="cl"></b><span class="text-white" data-f="c"></span><small class="text-zinc-400" data-f="cs"></small></div>
       </div>
       <div class="evo-nav"><button type="button" class="bg-zinc-950 border-zinc-800 text-white" data-nav="-1"></button><button type="button" class="bg-zinc-950 border-zinc-800 text-white" data-nav="1"></button></div>
     </div></div>`;
@@ -139,6 +140,20 @@ function fillInfo(i) {
   F('s').textContent = v.retired ? new Date(v.retired + 'T12:00:00Z').toLocaleDateString(LOCALES[lang] || 'en-US', { month: 'long', year: 'numeric' }) : tr('inService');
   F('ss').textContent = v.retired ? tr('lastFlight') : '';
   F('p').textContent = v.pay ? mass(v.pay) : tr('payNone');
+  // the cost of a kilogram (a pound, in English) to low orbit: the launch's list price over its payload
+  const usd = n => '\u2066$' + nf.format(n) + '\u2069';   // "$1,234" in every language, in one piece in RTL text
+  F('cl').textContent = tr(IMPERIAL ? 'costLb' : 'costKg');
+  if (v.pay && v.price) {
+    const mid = v.priceHi ? (v.price + v.priceHi) / 2 : v.price, perKg = mid * 1e6 / v.pay, per = IMPERIAL ? perKg / 2.20462 : perKg;
+    const round = per >= 10000 ? 100 : 10;
+    F('c').textContent = tr(IMPERIAL ? 'perLb' : 'perKg').replace('{v}', (v.priceHi ? '~' : '') + usd(Math.round(per / round) * round));
+    const m = x => '\u2066$' + nf.format(x) + 'M\u2069';
+    F('cs').textContent = tr('listPrice').replace('{p}', v.priceHi ? '\u2066' + m(v.price) + '–' + m(v.priceHi) + '\u2069' : m(v.price)).replace('{y}', '\u2066' + v.priceYear + '\u2069');
+  } else if (v.estKg) {   // not on sale: Elon Musk's estimate, marked as one
+    const e = IMPERIAL ? v.estKg / 2.20462 : v.estKg;
+    F('c').textContent = tr(IMPERIAL ? 'perLb' : 'perKg').replace('{v}', '~' + usd(Math.round(e * 10) / 10)) + '*';
+    F('cs').textContent = tr('estNote');
+  } else { F('c').textContent = v.pay ? tr('notForSale') : tr('payNone'); F('cs').textContent = ''; }
   F('ps').textContent = v.payReuse ? tr('payReuse').replace('{v}', mass(v.payReuse)) : v.payTarget ? tr('payTarget') : '';
   const p = VEHICLES[i - 1], n = VEHICLES[i + 1], back = rtlNow() ? '→' : '←', fwd = rtlNow() ? '←' : '→';
   prevB.disabled = !p; nextB.disabled = !n;
