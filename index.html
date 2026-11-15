@@ -648,12 +648,13 @@
         html:not(.in-app) body > footer {
             z-index: auto;
         }
-        html:not(.in-app) body > footer :is(#community-donate-link, a[href="https://x.com/SpaceXFanTrack"]) {
+        html.in-app:not(.web-phone) #android-app-link { display: none !important; }   /* (inside the installed app only - a phone's browser has the app's look too, and is who it's for) */
+        html:not(.in-app) body > footer :is(#community-donate-link, a[href="https://x.com/SpaceXFanTrack"], #android-app-link) {
             position: relative;
             z-index: 51;
         }
         /* the X button is see-through: the scanlines under it would show through - blurred away behind it */
-        html:not(.in-app) body > footer a[href="https://x.com/SpaceXFanTrack"] {
+        html:not(.in-app) body > footer :is(a[href="https://x.com/SpaceXFanTrack"], #android-app-link) {
             -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
         }
@@ -8120,6 +8121,25 @@
             pt: "ATUALIZANDO STATUS…", pl: "AKTUALIZACJA STATUSU…", hi: "स्थिति अपडेट हो रही है…", ar: "جارٍ تحديث الحالة…", tr: "DURUM GÜNCELLENİYOR…",
         };
         for (const [k, v] of Object.entries(CHECKING_STATUS_I18N)) if (LAUNCH_LABEL_I18N[k]) LAUNCH_LABEL_I18N[k].checkingStatus = v;
+        // the footer's button to the Android app's download page (app/)
+        Object.assign(LAUNCH_LABEL_I18N.en, { androidApp: "Get the Android app" });
+        Object.assign(LAUNCH_LABEL_I18N.he, { androidApp: "לאפליקציה לאנדרואיד" });
+        Object.assign(LAUNCH_LABEL_I18N.iw, { androidApp: "לאפליקציה לאנדרואיד" });
+        Object.assign(LAUNCH_LABEL_I18N.es, { androidApp: "Descarga la app para Android" });
+        Object.assign(LAUNCH_LABEL_I18N.fr, { androidApp: "L'appli Android" });
+        Object.assign(LAUNCH_LABEL_I18N.de, { androidApp: "Die Android-App" });
+        Object.assign(LAUNCH_LABEL_I18N.ru, { androidApp: "Приложение для Android" });
+        Object.assign(LAUNCH_LABEL_I18N.zh, { androidApp: "下载安卓应用" });
+        Object.assign(LAUNCH_LABEL_I18N.it, { androidApp: "L'app per Android" });
+        Object.assign(LAUNCH_LABEL_I18N.cs, { androidApp: "Aplikace pro Android" });
+        Object.assign(LAUNCH_LABEL_I18N.sv, { androidApp: "Appen för Android" });
+        Object.assign(LAUNCH_LABEL_I18N.nl, { androidApp: "De Android-app" });
+        Object.assign(LAUNCH_LABEL_I18N.da, { androidApp: "Appen til Android" });
+        Object.assign(LAUNCH_LABEL_I18N.pt, { androidApp: "O app para Android" });
+        Object.assign(LAUNCH_LABEL_I18N.pl, { androidApp: "Aplikacja na Androida" });
+        Object.assign(LAUNCH_LABEL_I18N.hi, { androidApp: "Android ऐप पाएं" });
+        Object.assign(LAUNCH_LABEL_I18N.ar, { androidApp: "تطبيق أندرويد" });
+        Object.assign(LAUNCH_LABEL_I18N.tr, { androidApp: "Android uygulaması" });
         Object.assign(LAUNCH_LABEL_I18N.en, { preflightStatus: "Launch Updates" });
         Object.assign(LAUNCH_LABEL_I18N.he, { preflightStatus: "עדכוני שיגור" });
         Object.assign(LAUNCH_LABEL_I18N.iw, { preflightStatus: "עדכוני שיגור" });
@@ -10608,6 +10628,7 @@
                     // Dragon's label in the rockets comparison: the site's Hebrew name for it (the Dragon filter tab's),
                     // the proper noun elsewhere - never Google, which renders it as the animal
                     'i18n-scale-dragon': vehicleName('dragon', key),
+                    'i18n-android-app': dict.androidApp || LAUNCH_LABEL_I18N.en.androidApp,
                     'i18n-open-youtube': window._replayOnX
                         ? (key === 'tr' ? "X'te aç" : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube).replace('YouTube', 'X'))
                         : (dict.openOnYoutube || LAUNCH_LABEL_I18N.en.openOnYoutube),
@@ -16364,6 +16385,11 @@
                         class="mt-3 text-base text-[#1da1f2] md:hover:text-white transition-colors duration-300 inline-flex items-center gap-2 bg-[#1da1f2]/10 md:hover:bg-[#1da1f2] px-5 py-2.5 rounded-full border border-[#1da1f2]/30 notranslate"
                         translate="no">
                         <i class="fa-brands fa-x-twitter text-lg"></i> @SpaceXFanTrack
+                    </a>
+                    <!-- the Android app's download page (app/) - not shown inside the app itself -->
+                    <a id="android-app-link" href="app/"
+                        class="mt-3 text-base text-emerald-400 md:hover:text-black transition-colors duration-300 inline-flex items-center gap-2 bg-emerald-500/10 md:hover:bg-emerald-400 px-5 py-2.5 rounded-full border border-emerald-500/30">
+                        <i class="fa-brands fa-android text-lg"></i> <span id="i18n-android-app" class="notranslate" translate="no">Get the Android app</span>
                     </a>
                 </div>
             </div>

@@ -6,6 +6,8 @@ name: Build Android app
 #   https://github.com/Yuval-sap/SpaceX-Tracker/releases/download/android-latest/spacex-tracker.apk
 # and beside it the App Bundle for Google Play (upload it in the Play Console):
 #   https://github.com/Yuval-sap/SpaceX-Tracker/releases/download/android-latest/spacex-tracker.aab
+# A release-signed build is also put on the site itself, for its download page (spacexfantracker.com/app/):
+#   app/space-launch-tracker.apk and app/version.json (version, size, the file's and the signing certificate's SHA-256)
 #
 # Signed with the release key from the repository's secrets (Settings -> Secrets and variables -> Actions):
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
@@ -19,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 jobs:
   build:
@@ -87,3 +90,41 @@ jobs:
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Android app ($TAG)" \
             --notes "The Space Launch Tracker Android app. Download spacex-tracker.apk below and open it on the phone." --prerelease
           gh release upload "$TAG" spacex-tracker.apk spacex-tracker.aab --clobber
+
+      - name: Publish on the site's download page
+        if: steps.key.outputs.signed == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.run_number }}
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          CERT=$("$APKSIGNER" verify --print-certs spacex-tracker.apk | grep -m1 'SHA-256 digest' | sed 's/.*: //')
+          SHA=$(sha256sum spacex-tracker.apk | cut -d' ' -f1)
+          SIZE=$(stat -c %s spacex-tracker.apk)
+          mkdir -p app
+          cp spacex-tracker.apk app/space-launch-tracker.apk
+          printf '{"versionName":"2.%s","versionCode":%s,"sha256":"%s","certSha256":"%s","size":%s,"date":"%s","minAndroid":"7.0"}\n' \
+            "$RUN" "$((100 + RUN))" "$SHA" "$CERT" "$SIZE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > app/version.json
+          cat app/version.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/space-launch-tracker.apk app/version.json
+          git commit -q -m "Android app 2.$RUN on the site's download page" || exit 0
+          git pull --rebase -q && git push -q
+          # (a push by this workflow's own token starts no Pages build by itself)
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" >/dev/null || echo "::warning::Pages build not requested"
+
+      # The released APK sent to VirusTotal, so the download page's "Check this file on VirusTotal" finds its scan
+      # (the key is the repository's secret VIRUSTOTAL_API_KEY; without it this step does nothing)
+      - name: Scan on VirusTotal
+        if: steps.key.outputs.signed == 'release'
+        env:
+          VT_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          if [ -z "$VT_KEY" ]; then echo "::notice::No VIRUSTOTAL_API_KEY secret - not sent to VirusTotal"; exit 0; fi
+          SHA=$(sha256sum spacex-tracker.apk | cut -d' ' -f1)
+          if curl -sS --fail -X POST "https://www.virustotal.com/api/v3/files" -H "x-apikey: $VT_KEY" -F "file=@spacex-tracker.apk" -o /dev/null; then
+            echo "::notice::Sent to VirusTotal: https://www.virustotal.com/gui/file/$SHA"
+          else
+            echo "::warning::VirusTotal upload failed"
+          fi
