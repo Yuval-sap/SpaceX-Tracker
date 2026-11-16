@@ -16285,8 +16285,6 @@
                     <span id="i18n-booster-title" class="notranslate section-title-fit" translate="no" lang="en">Booster Flight
                         Leaderboard</span>
                 </h3>
-                <p id="i18n-booster-subtitle" class="text-sm text-zinc-400 transition-colors duration-500 notranslate"
-                    translate="no" lang="en">Most-flown Falcon 9 &amp; Super Heavy boosters from live mission data</p>
             </div>
             <div id="booster-leaderboard"
                 class="info-shadow bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 space-y-3.5 transition-colors duration-500 notranslate"
@@ -33262,9 +33260,58 @@ if (heroNameEl) {
         subtree: true
     });
 }
-            // The site always opens on the Launches tab (no remembered-tab restore) - the
-            // page's own initial HTML/JS state already defaults there (tab-btn-launches is
-            // is-active, tab-panel-more starts hidden), so there's nothing to do here at all.
+            // A new visit opens at the top of the Launches tab (the page's own first state). A refresh - or coming
+            // back in history - opens where the page was left: the same tab, the same place (restoreViewAfterReload).
+            restoreViewAfterReload();
+        }
+
+        // ---- Where the page was, kept across a refresh ----
+        // On leaving the page (pagehide) the tab and the place in it are kept for this browser tab only (sessionStorage):
+        // the scroll position, and - since what's above may load at a different height the next time - the element at the
+        // top of the screen and how far into it the screen was. A refresh (or the Back button) puts the view there again,
+        // a few times over the first seconds while the page's content loads in above it, until the visitor moves it.
+        // A new visit (typing the address, a link, a new tab) isn't a refresh: it opens at the top of the Launches tab.
+        const VIEW_KEY = 'spx_view_v1';
+        function viewAnchorNow() {
+            const panel = document.getElementById(window.currentMainTab === 'more' ? 'tab-panel-more' : 'tab-panel-launches');
+            if (!panel) return null;
+            let best = null, bestTop = -Infinity;
+            panel.querySelectorAll('[id]').forEach(el => {
+                if (el.offsetHeight < 60) return;
+                const t = el.getBoundingClientRect().top;
+                if (t <= 1 && t > bestTop) { best = el; bestTop = t; }
+            });
+            return best ? { id: best.id, off: -bestTop } : null;
+        }
+        window.addEventListener('pagehide', () => {
+            try {
+                const a = viewAnchorNow();
+                sessionStorage.setItem(VIEW_KEY, JSON.stringify({ tab: window.currentMainTab, y: window.scrollY, a, at: Date.now() }));
+            } catch (e) { }
+        });
+        function restoreViewAfterReload() {
+            let nav = null;
+            try { nav = performance.getEntriesByType('navigation')[0]; } catch (e) { }
+            if (!nav || (nav.type !== 'reload' && nav.type !== 'back_forward')) return;
+            let v = null;
+            try { v = JSON.parse(sessionStorage.getItem(VIEW_KEY) || 'null'); } catch (e) { }
+            if (!v || !(Date.now() - v.at < 6 * 3600 * 1000)) return;
+            if (v.tab === 'more') switchMainTab('more', { instant: true });
+            const target = () => {
+                const el = v.a && document.getElementById(v.a.id);
+                if (el && el.offsetHeight) return el.getBoundingClientRect().top + window.scrollY + v.a.off;
+                return v.y;
+            };
+            let stopped = false;
+            const stop = () => { stopped = true; };
+            ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(t => window.addEventListener(t, stop, { once: true, passive: true }));
+            const put = () => {
+                if (stopped) return;
+                const y = Math.max(0, Math.round(target()));
+                if (Math.abs(window.scrollY - y) > 2) (document.scrollingElement || document.documentElement).scrollTop = y;
+            };
+            put();
+            [80, 250, 600, 1100, 1800, 2800, 4200].forEach(ms => setTimeout(put, ms));
         }
 
 
