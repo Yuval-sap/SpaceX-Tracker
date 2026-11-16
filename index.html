@@ -3877,10 +3877,9 @@
         body.moon-theme #bl-app { --bl-surface: #0e1420; --bl-border: rgba(80, 100, 140, 0.4); --bl-dim: #6b7f99; --bl-accent: #6abffb; --bl-accent-rgb: 63, 169, 245; --bl-font: 'Audiowide', 'Rubik', system-ui, sans-serif; --bl-weight: 400; }
         #bl-app .bl-podium { display: flex; align-items: flex-end; gap: 0.7rem; padding: 0.35rem 0.35rem 0; }
         #bl-app .bl-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-        #bl-app .bl-col .sn { font-family: var(--bl-font); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.45rem; }
+        #bl-app .bl-col .sn { font-family: var(--bl-font); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.45rem; transition: transform 0.3s ease, filter 0.3s ease; }
         #bl-app .bl-col .crown { font-size: 1.35rem; margin-bottom: 0.2rem; color: #fbbf24; }
         #bl-app .bl-col .step { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 1.35rem 1.35rem 0 0; color: #fff; transition: filter .25s ease; }
-        #bl-app .bl-col:hover .step, #bl-app .bl-col:focus-visible .step { filter: brightness(1.1); }
         #bl-app .bl-col .step b { font-family: var(--bl-font); font-size: 2rem; }
         #bl-app .bl-col .step small { font-size: 0.84rem; opacity: 0.85; }
         #bl-app .bl-col.is-1 .sn { color: #fbbf24; } #bl-app .bl-col.is-2 .sn { color: #cbd5e1; } #bl-app .bl-col.is-3 .sn { color: #fdba74; }
@@ -3892,11 +3891,19 @@
         #bl-app .bl-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 0; border-top: 1px solid var(--bl-border); font-size: 1.08rem; cursor: pointer; }
         #bl-app .bl-row:first-child { border-top: 0; }
         #bl-app .bl-row .r { width: 1.6rem; color: var(--bl-dim); text-align: center; }
-        #bl-app .bl-row .s { width: 4.9rem; font-family: var(--bl-font); font-size: 1rem; color: var(--bl-text); }
+        #bl-app .bl-row .s { width: 4.9rem; font-family: var(--bl-font); font-size: 1rem; color: var(--bl-text); transform-origin: left center; transition: transform 0.3s ease, filter 0.3s ease; }
+        html[dir="rtl"] #bl-app .bl-row .s { transform-origin: right center; }
         #bl-app .bl-row .b { flex: 1; height: 0.47rem; border-radius: 999px; background: rgba(var(--bl-accent-rgb), 0.15); overflow: hidden; }
         #bl-app .bl-row .b i { display: block; height: 100%; border-radius: 999px; background: var(--bl-accent); }
         #bl-app .bl-row .c { width: 2.2rem; text-align: end; font-family: var(--bl-font); font-size: 1.05rem; color: var(--bl-text); }
-        #bl-app .bl-row:hover .s, #bl-app .bl-row:focus-visible .s { color: var(--bl-accent); }
+        /* the pointer on a booster (its podium column or its row): its serial grows a little and glows softly in the
+           mode's colour, as the table's rows did before (.group:hover .booster-sn) */
+        @media (hover: hover) {
+            #bl-app .bl-col:hover .sn, #bl-app .bl-row:hover .s { transform: scale(1.1); filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9)); }
+            body.mars-theme #bl-app .bl-col:hover .sn, body.mars-theme #bl-app .bl-row:hover .s { filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.9)); }
+            body.moon-theme #bl-app .bl-col:hover .sn, body.moon-theme #bl-app .bl-row:hover .s { filter: drop-shadow(0 0 8px rgba(63, 169, 245, 0.9)); }
+        }
+        #bl-app .bl-col:focus-visible .sn, #bl-app .bl-row:focus-visible .s { transform: scale(1.1); }
 
         /* Mars — Booster Flight Leaderboard chrome */
         body.mars-theme #booster-leaderboard {
