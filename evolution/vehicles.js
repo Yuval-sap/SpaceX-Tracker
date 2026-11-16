@@ -427,6 +427,12 @@ async function starshipModel(renderer, version) {
     const swap = (a, b) => { if (code.split(a).length !== 2) throw new Error('starship-3d.html changed: ' + a); code = code.replace(a, b); };
     swap('for (let i = 0; i < 3; i++) { const a = (i + 0.5) / 3 * TAU; sEngPos.push({ vac: true', 'for (let i = 0; i < 6; i++) { const a = (i + 0.5) / 6 * TAU; sEngPos.push({ vac: true');
     swap('if (sh > 0 && SHIP_NAMES[sh]) decal(', 'if (NO_SERIAL) {} else if (sh > 0 && SHIP_NAMES[sh]) decal(');
+    // the flaps longer in step with the ship (70 / 52.1): the aft ones up the hull from the same base, the forward ones
+    // up the nose from just above the tiled boxes beside the logo (their bottom edge stays square to the ship's axis)
+    const K = (70 / 52.1).toFixed(4), FFB = 3.0;
+    for (const side of ["FA1", "FA2"]) swap(`flap(sAft, ${side}, S0 + 0.1, 13.6, 7.4, 3.9,`, `flap(sAft, ${side}, S0 + 0.1, 13.6 * ${K}, 7.4 * ${K}, 3.9,`);
+    swap('const FF_Y = NOSE0 + 3.55, FF_TILT = Math.atan((noseR(3.55) - noseR(9.15)) / 5.6);', `const FF_Y = NOSE0 + ${FFB}, FF_TILT = Math.atan((noseR(${FFB}) - noseR(${FFB} + 5.6 * ${K})) / (5.6 * ${K}));`);
+    for (const side of ["FA1 + 0.3", "FA2 - 0.3"]) swap(`flap(sNose, ${side}, FF_Y, 5.6, 1.9, 2.6, FF_DROP, noseR(3.55) + 0.02,`, `flap(sNose, ${side}, FF_Y, 5.6 * ${K}, 1.9 * ${K}, 2.6, FF_DROP, noseR(${FFB}) + 0.02,`);
   }
   const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location', 'NO_SERIAL',
     code + '\nreturn { groups, parts, fluids, engines, deployer, R };');
