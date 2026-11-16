@@ -37,7 +37,7 @@ function init(stage) {
   camera = new THREE.PerspectiveCamera(30, 1, 0.1, 3000);
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.zoomToCursor = true; controls.screenSpacePanning = true;
-  controls.maxPolarAngle = Math.PI * 0.56; controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
+  controls.maxPolarAngle = Math.PI * 0.97;   // all the way round underneath, to see the engines (the floor and its shadow show only from above) controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
   controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(idle); camT = 1; });   // a touch stops the camera's own ease
   // zoom toward the pointer with a mouse only: on a touch screen a pinch zoomed toward the floor under the fingers and
   // threw the rocket out of view - a pinch zooms toward the rocket itself (two fingers still move it, to see its ends)
