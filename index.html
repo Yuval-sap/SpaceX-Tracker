@@ -3892,24 +3892,30 @@
         #bl-app .bl-row:first-child { border-top: 0; padding-top: 1.05rem; }
         /* the columns' names over the first row's place and flights: small, in its top padding (the row grows by ~5px) */
         #bl-app .bl-row [data-l] { position: relative; }
+        #bl-app .bl-row .sl { display: inline-block; }
+        /* one line height for the place, the serial and the flights, so the three boxes the names hang from share their top
+           edge (their fonts differ - Orbitron, the mode's own - and so did their heights, and the names sat at different heights) */
+        #bl-app .bl-row .r, #bl-app .bl-row .s, #bl-app .bl-row .sl, #bl-app .bl-row .s b, #bl-app .bl-row .c { line-height: 1.5rem; }
         #bl-app .bl-row [data-l]::before { content: attr(data-l); position: absolute; bottom: 100%; margin-bottom: 0.3rem; font-family: 'Rubik', system-ui, sans-serif; font-size: 0.6rem; font-weight: 700;
             letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; color: var(--bl-dim); white-space: nowrap; pointer-events: none; }
-        #bl-app .bl-row .r[data-l]::before { left: 50%; transform: translateX(-50%); }
+        #bl-app .bl-row .r[data-l]::before, #bl-app .bl-row .sl[data-l]::before { left: 50%; transform: translateX(-50%); }
         #bl-app .bl-row .c[data-l]::before { inset-inline-end: 0; }
         #bl-app .bl-row .r { width: 1.6rem; color: var(--bl-dim); text-align: center; }
-        #bl-app .bl-row .s { width: 4.9rem; font-family: var(--bl-font); font-size: 1rem; color: var(--bl-text); transform-origin: left center; transition: transform 0.3s ease, filter 0.3s ease; }
-        html[dir="rtl"] #bl-app .bl-row .s { transform-origin: right center; }
+        #bl-app .bl-row .s { width: 4.9rem; font-family: var(--bl-font); font-size: 1rem; color: var(--bl-text); }
+        /* the serial itself (what grows on hover - not the column's name over it) */
+        #bl-app .bl-row .s b { display: inline-block; font-weight: inherit; transform-origin: left center; transition: transform 0.3s ease, filter 0.3s ease; }
+        html[dir="rtl"] #bl-app .bl-row .s b { transform-origin: right center; }
         #bl-app .bl-row .b { flex: 1; height: 0.47rem; border-radius: 999px; background: rgba(var(--bl-accent-rgb), 0.15); overflow: hidden; }
         #bl-app .bl-row .b i { display: block; height: 100%; border-radius: 999px; background: var(--bl-accent); }
         #bl-app .bl-row .c { width: 2.2rem; text-align: end; font-family: var(--bl-font); font-size: 1.05rem; color: var(--bl-text); }
         /* the pointer on a booster (its podium column or its row): its serial grows a little and glows softly in the
            mode's colour, as the table's rows did before (.group:hover .booster-sn) */
         @media (hover: hover) {
-            #bl-app .bl-col:hover .sn, #bl-app .bl-row:hover .s { transform: scale(1.1); filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9)); }
-            body.mars-theme #bl-app .bl-col:hover .sn, body.mars-theme #bl-app .bl-row:hover .s { filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.9)); }
-            body.moon-theme #bl-app .bl-col:hover .sn, body.moon-theme #bl-app .bl-row:hover .s { filter: drop-shadow(0 0 8px rgba(63, 169, 245, 0.9)); }
+            #bl-app .bl-col:hover .sn, #bl-app .bl-row:hover .s b { transform: scale(1.1); filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9)); }
+            body.mars-theme #bl-app .bl-col:hover .sn, body.mars-theme #bl-app .bl-row:hover .s b { filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.9)); }
+            body.moon-theme #bl-app .bl-col:hover .sn, body.moon-theme #bl-app .bl-row:hover .s b { filter: drop-shadow(0 0 8px rgba(63, 169, 245, 0.9)); }
         }
-        #bl-app .bl-col:focus-visible .sn, #bl-app .bl-row:focus-visible .s { transform: scale(1.1); }
+        #bl-app .bl-col:focus-visible .sn, #bl-app .bl-row:focus-visible .s b { transform: scale(1.1); }
 
         /* Mars — Booster Flight Leaderboard chrome */
         body.mars-theme #booster-leaderboard {
@@ -23075,7 +23081,7 @@
             const podCol = (b, place) => `<div class="bl-col is-${place}" ${open(b)}>${place === 1 ? '<i class="fa-solid fa-crown crown"></i>' : ''}<div class="sn" dir="ltr">${b.sn}</div>`
                 + `<div class="step"><b>${b.flights}</b><small>${flightsColLabel}</small></div></div>`;
             // the first row carries the two columns' names, small, above its place and its flights (data-l, see .bl-row)
-            const listRows = top.slice(3).map((b, k) => `<div class="bl-row" ${open(b)}><span class="r"${k ? '' : ` data-l="${escapeHtml(rankLabel)}"`}>${k + 4}</span><span class="s" dir="ltr">${b.sn}</span>`
+            const listRows = top.slice(3).map((b, k) => `<div class="bl-row" ${open(b)}><span class="r"${k ? '' : ` data-l="${escapeHtml(rankLabel)}"`}>${k + 4}</span><span class="s" dir="ltr">${k ? `<b>${b.sn}</b>` : `<span class="sl" data-l="${escapeHtml(boosterColLabel)}"><b>${b.sn}</b></span>`}</span>`
                 + `<span class="b"><i style="width:${(b.flights / maxFlights * 100).toFixed(1)}%"></i></span><span class="c"${k ? '' : ` data-l="${escapeHtml(flightsColLabel)}"`}>${b.flights}</span></div>`).join('');
             const app = top.length >= 3 ? `<div id="bl-app" class="notranslate" translate="no"><div class="bl-podium">${podCol(top[1], 2)}${podCol(top[0], 1)}${podCol(top[2], 3)}</div>`
                 + (listRows ? `<div class="bl-list">${listRows}</div>` : '') + `</div>` : '';
