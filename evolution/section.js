@@ -67,6 +67,7 @@ function applyLang(l) {
   });
   modal.querySelectorAll('[data-t]').forEach(el => { el.textContent = tr(el.dataset.t); });
   modal.querySelector('.evo-x').setAttribute('aria-label', tr('close'));
+  sepLabel();
   layout();
   if (cur >= 0) fillInfo(cur);
 }
@@ -93,13 +94,14 @@ function layout() {
 }
 
 // ---- the 3D viewer
-let modal, stage, loadEl, prevB, nextB, V = null, cur = -1;
+let modal, stage, loadEl, prevB, nextB, V = null, cur = -1, sepB = null, sepOn = false;
+const sepLabel = () => { if (sepB) { sepB.lastElementChild.textContent = tr(sepOn ? 'stack' : 'separate'); sepB.classList.toggle('on', sepOn); } };
 function buildModal() {
   modal = document.createElement('div'); modal.id = 'evo-modal'; modal.hidden = true;
   modal.className = 'notranslate'; modal.setAttribute('translate', 'no'); modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');
   modal.innerHTML = `<div class="evo-box bg-zinc-950 border border-zinc-800">
     <button class="evo-x bg-zinc-900 border-zinc-800 text-white" type="button">×</button>
-    <div class="evo-stage"><button type="button" class="evo-reset bg-zinc-900 border-zinc-800 text-white"><i class="fa-solid fa-rotate-left"></i><span data-t="reset"></span></button><div class="evo-load text-zinc-400"><i></i><span data-t="loading"></span></div><div class="evo-drag text-zinc-400" data-t="drag"></div></div>
+    <div class="evo-stage"><button type="button" class="evo-reset bg-zinc-900 border-zinc-800 text-white"><i class="fa-solid fa-rotate-left"></i><span data-t="reset"></span></button><button type="button" class="evo-sep bg-zinc-900 border-zinc-800 text-white" hidden><i class="fa-solid fa-arrows-up-down"></i><span></span></button><div class="evo-load text-zinc-400"><i></i><span data-t="loading"></span></div><div class="evo-drag text-zinc-400" data-t="drag"></div></div>
     <div class="evo-info bg-zinc-900 border-zinc-800">
       <div class="evo-myr font-orbitron text-emerald-400" data-f="year"></div>
       <h2 class="font-orbitron text-white" data-f="name"></h2>
@@ -123,6 +125,9 @@ function buildModal() {
   modal.querySelector('.evo-x').addEventListener('click', closeViewer);
   // back to the rocket's first view (after turning, zooming, panning)
   modal.querySelector('.evo-reset').addEventListener('click', () => { if (V && V.reset) V.reset(); });
+  // a Starship's stages apart and together again, as on the 3D Starship page
+  sepB = modal.querySelector('.evo-sep');
+  sepB.addEventListener('click', () => { if (V && V.separate && V.separate(!sepOn)) { sepOn = !sepOn; sepLabel(); } });
   modal.addEventListener('click', e => {
     if (e.target === modal) return closeViewer();
     const n = e.target.closest('[data-nav]'); if (n && cur >= 0 && VEHICLES[cur + +n.dataset.nav]) openViewer(cur + +n.dataset.nav);
@@ -182,10 +187,11 @@ async function openViewer(i) {
     modal.querySelector('.evo-x').focus({ preventScroll: true });
   }
   loadEl.style.opacity = 1;
+  sepOn = false; sepB.hidden = true; sepLabel();   // each rocket opens stacked; the button only for a Starship, once it's built
   try {
     if (!V) V = await import('./viewer.js');
     await V.show(stage, VEHICLES[i], () => cur === i);
-    if (cur === i) loadEl.style.opacity = 0;
+    if (cur === i) { loadEl.style.opacity = 0; sepB.hidden = !(V.hasStages && V.hasStages()); }
   } catch (e) { console.error(e); }
 }
 function closeViewer() {

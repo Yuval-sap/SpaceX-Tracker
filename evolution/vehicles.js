@@ -566,7 +566,9 @@ export async function buildVehicle(id, renderer, envMap) {
   const g = await buildRaw(id, renderer, envMap), v = VEHICLES.find(x => x.id === id);
   // the published height, engine bells to tip, standing on y = 0
   g.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(g, true), k = v.h / (b.max.y - b.min.y);
-  const out = new THREE.Group(); g.position.y = -b.min.y; out.add(g); out.scale.y = k; return out;
+  const out = new THREE.Group(); g.position.y = -b.min.y; out.add(g); out.scale.y = k;
+  out.userData.ship = g.userData.ship || null;   // Starship: the ship's group, which the viewer lifts off the booster (stage separation)
+  return out;
 }
 async function buildRaw(id, renderer, envMap) {
   await loadLogos();
@@ -579,7 +581,7 @@ async function buildRaw(id, renderer, envMap) {
     case 'f9b5': return f9b5(M);
     case 'fh': return falconHeavy(M);
     case 'starhopper': return starhopper(M);
-    case 'ssv1': case 'ssv2': case 'ssv3': case 'ssv4': { const r = await starship(renderer, M, +id.slice(3)); return r.g; }
+    case 'ssv1': case 'ssv2': case 'ssv3': case 'ssv4': { const r = await starship(renderer, M, +id.slice(3)); r.g.userData.ship = r.ship; return r.g; }
   }
   throw new Error('no vehicle ' + id);
 }

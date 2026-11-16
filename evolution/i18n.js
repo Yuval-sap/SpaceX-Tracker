@@ -14,7 +14,7 @@ window.EVO_I18N = {
     n_starhopper: 'A test rig of welded stainless steel with one Raptor. In 2019 it hopped 150 m (490 ft) up and landed beside its pad.',
     n_ssv1: 'The first full Starship. Six test flights from 2023; in October 2024 the tower’s arms caught the booster for the first time.',
     n_ssv2: 'A longer ship carrying more propellant, with redesigned flaps. It flew from January 2025.',
-    n_ssv3: 'Raptor 3 engines, three larger grid fins and a hot-stage truss built into the booster. The largest rocket ever flown.', n_ssv4: 'Elon Musk’s plan for the next version: a ship about 70 m long (some 40% longer) that holds over 60% more propellant, with 9 engines (three more Raptor Vacuums), all higher-thrust Raptor 4s.', expected: 'Expected {y}', inDev: 'In development',
+    n_ssv3: 'Raptor 3 engines, three larger grid fins and a hot-stage truss built into the booster. The largest rocket ever flown.', n_ssv4: 'Elon Musk’s plan for the next version: a ship about 70 m long (some 40% longer) that holds over 60% more propellant, with 9 engines (three more Raptor Vacuums), all higher-thrust Raptor 4s.', expected: 'Expected {y}', inDev: 'In development', separate: 'Separate', stack: 'Stack',
   },
   he: {
     secTitle: 'SpaceX - עבר, הווה ועתיד', title: 'מפלקון 1 עד סטארשיפ', sub: 'כל הטילים של SpaceX, בקנה מידה אמיתי', hint: 'הקישו על טיל כדי לראות אותו בתלת־ממד',
@@ -30,7 +30,7 @@ window.EVO_I18N = {
     n_starhopper: 'מתקן ניסוי מפלדת אל־חלד מרותכת עם מנוע ראפטור אחד. ב־2019 הוא קפץ לגובה 150 מ׳ ונחת ליד כן השיגור.',
     n_ssv1: 'הסטארשיפ המלא הראשון. שש טיסות ניסוי מ־2023; באוקטובר 2024 זרועות המגדל תפסו את המאיץ לראשונה.',
     n_ssv2: 'חללית ארוכה יותר שנושאת יותר דלק, עם כנפונים בעיצוב חדש. טסה מינואר 2025.',
-    n_ssv3: 'מנועי ראפטור 3, שלושה כנפוני סריג גדולים יותר ומסבך הפרדה חמה שבנוי לתוך המאיץ. הטיל הגדול ביותר שטס אי פעם.', n_ssv4: 'התוכנית של אילון מאסק לגרסה הבאה: חללית באורך של כ־70 מטר (ארוכה בכ־40%) שמכילה יותר מ־60% דלק נוסף, עם 9 מנועים (שלושה ראפטור ואקום נוספים), כולם ראפטור 4 בעלי דחף גבוה יותר.', expected: 'צפי {y}', inDev: 'בפיתוח',
+    n_ssv3: 'מנועי ראפטור 3, שלושה כנפוני סריג גדולים יותר ומסבך הפרדה חמה שבנוי לתוך המאיץ. הטיל הגדול ביותר שטס אי פעם.', n_ssv4: 'התוכנית של אילון מאסק לגרסה הבאה: חללית באורך של כ־70 מטר (ארוכה בכ־40%) שמכילה יותר מ־60% דלק נוסף, עם 9 מנועים (שלושה ראפטור ואקום נוספים), כולם ראפטור 4 בעלי דחף גבוה יותר.', expected: 'צפי {y}', inDev: 'בפיתוח', separate: 'הפרדת שלבים', stack: 'חיבור שלבים',
   },
   ar: {
     secTitle: 'SpaceX - الماضي والحاضر والمستقبل', title: 'من فالكون 1 إلى ستارشيب', sub: 'كل صواريخ SpaceX بمقياس حقيقي', hint: 'اضغط على صاروخ لرؤيته بالأبعاد الثلاثية',
@@ -46,7 +46,7 @@ window.EVO_I18N = {
     n_starhopper: 'منصة اختبار من الفولاذ المقاوم للصدأ الملحوم بمحرك رابتور واحد. في 2019 قفزت 150 م وهبطت قرب منصتها.',
     n_ssv1: 'أول ستارشيب كامل. ست رحلات اختبار منذ 2023؛ وفي أكتوبر 2024 التقطت أذرع البرج المعزز لأول مرة.',
     n_ssv2: 'سفينة أطول تحمل وقودًا أكثر، بزعانف معاد تصميمها. حلّقت منذ يناير 2025.',
-    n_ssv3: 'محركات رابتور 3 وثلاث زعانف شبكية أكبر وهيكل فصل ساخن مدمج في المعزز. أكبر صاروخ طار على الإطلاق.', n_ssv4: 'خطة إيلون ماسك للإصدار التالي: سفينة بطول نحو 70 مترًا (أطول بنحو 40%) تحمل وقودًا أكثر بنسبة تزيد عن 60%، مع 9 محركات (ثلاثة محركات رابتور فاكيوم إضافية)، كلها من طراز رابتور 4 الأعلى دفعًا.', expected: 'متوقع {y}', inDev: 'قيد التطوير',
+    n_ssv3: 'محركات رابتور 3 وثلاث زعانف شبكية أكبر وهيكل فصل ساخن مدمج في المعزز. أكبر صاروخ طار على الإطلاق.', n_ssv4: 'خطة إيلون ماسك للإصدار التالي: سفينة بطول نحو 70 مترًا (أطول بنحو 40%) تحمل وقودًا أكثر بنسبة تزيد عن 60%، مع 9 محركات (ثلاثة محركات رابتور فاكيوم إضافية)، كلها من طراز رابتور 4 الأعلى دفعًا.', expected: 'متوقع {y}', inDev: 'قيد التطوير', separate: 'فصل المرحلتين', stack: 'وصل المرحلتين',
   },
   es: {
     secTitle: 'SpaceX - Pasado, presente y futuro', title: 'Del Falcon 1 a Starship', sub: 'Todos los cohetes de SpaceX, a escala', hint: 'Toca un cohete para verlo en 3D',
@@ -62,7 +62,7 @@ window.EVO_I18N = {
     n_starhopper: 'Un banco de pruebas de acero inoxidable soldado con un Raptor. En 2019 saltó 150 m y aterrizó junto a su plataforma.',
     n_ssv1: 'El primer Starship completo. Seis vuelos de prueba desde 2023; en octubre de 2024 los brazos de la torre atraparon el propulsor por primera vez.',
     n_ssv2: 'Una nave más larga con más propelente y alerones rediseñados. Voló desde enero de 2025.',
-    n_ssv3: 'Motores Raptor 3, tres aletas de rejilla más grandes y una estructura de separación en caliente integrada en el propulsor. El cohete más grande que ha volado.', n_ssv4: 'El plan de Elon Musk para la próxima versión: una nave de unos 70 m (cerca de un 40% más larga) con más de un 60% más de propelente y 9 motores (tres Raptor Vacuum más), todos Raptor 4 de mayor empuje.', expected: 'Previsto {y}', inDev: 'En desarrollo',
+    n_ssv3: 'Motores Raptor 3, tres aletas de rejilla más grandes y una estructura de separación en caliente integrada en el propulsor. El cohete más grande que ha volado.', n_ssv4: 'El plan de Elon Musk para la próxima versión: una nave de unos 70 m (cerca de un 40% más larga) con más de un 60% más de propelente y 9 motores (tres Raptor Vacuum más), todos Raptor 4 de mayor empuje.', expected: 'Previsto {y}', inDev: 'En desarrollo', separate: 'Separar', stack: 'Unir',
   },
   fr: {
     secTitle: 'SpaceX - Passé, présent et avenir', title: 'De Falcon 1 à Starship', sub: 'Toutes les fusées de SpaceX, à l’échelle', hint: 'Touchez une fusée pour la voir en 3D',
@@ -78,7 +78,7 @@ window.EVO_I18N = {
     n_starhopper: 'Un banc d’essai en acier inoxydable soudé avec un Raptor. En 2019, il a sauté à 150 m et s’est posé près de son pas de tir.',
     n_ssv1: 'Le premier Starship complet. Six vols d’essai depuis 2023 ; en octobre 2024, les bras de la tour ont rattrapé le booster pour la première fois.',
     n_ssv2: 'Un vaisseau plus long, avec plus d’ergols et des volets redessinés. Il a volé à partir de janvier 2025.',
-    n_ssv3: 'Moteurs Raptor 3, trois ailerons à grille plus grands et une structure de séparation à chaud intégrée au booster. La plus grande fusée jamais lancée.', n_ssv4: 'Le plan d’Elon Musk pour la prochaine version : un vaisseau d’environ 70 m (près de 40 % plus long) emportant plus de 60 % d’ergols en plus, avec 9 moteurs (trois Raptor Vacuum de plus), tous des Raptor 4 plus puissants.', expected: 'Prévu en {y}', inDev: 'En développement',
+    n_ssv3: 'Moteurs Raptor 3, trois ailerons à grille plus grands et une structure de séparation à chaud intégrée au booster. La plus grande fusée jamais lancée.', n_ssv4: 'Le plan d’Elon Musk pour la prochaine version : un vaisseau d’environ 70 m (près de 40 % plus long) emportant plus de 60 % d’ergols en plus, avec 9 moteurs (trois Raptor Vacuum de plus), tous des Raptor 4 plus puissants.', expected: 'Prévu en {y}', inDev: 'En développement', separate: 'Séparer', stack: 'Réunir',
   },
   de: {
     secTitle: 'SpaceX - Vergangenheit, Gegenwart und Zukunft', title: 'Von Falcon 1 bis Starship', sub: 'Alle Raketen von SpaceX, maßstabsgetreu', hint: 'Tippe auf eine Rakete, um sie in 3D zu sehen',
@@ -94,7 +94,7 @@ window.EVO_I18N = {
     n_starhopper: 'Ein Teststand aus geschweißtem Edelstahl mit einem Raptor. 2019 hüpfte er 150 m hoch und landete neben seiner Startrampe.',
     n_ssv1: 'Das erste vollständige Starship. Sechs Testflüge ab 2023; im Oktober 2024 fingen die Arme des Turms erstmals den Booster.',
     n_ssv2: 'Ein längeres Schiff mit mehr Treibstoff und neu gestalteten Klappen. Es flog ab Januar 2025.',
-    n_ssv3: 'Raptor-3-Triebwerke, drei größere Gitterflossen und ein in den Booster integriertes Hot-Staging-Gerüst. Die größte Rakete, die je geflogen ist.', n_ssv4: 'Elon Musks Plan für die nächste Version: ein etwa 70 m langes Schiff (rund 40 % länger) mit über 60 % mehr Treibstoff und 9 Triebwerken (drei zusätzliche Raptor Vacuum), alle schubstärkere Raptor 4.', expected: 'Erwartet {y}', inDev: 'In Entwicklung',
+    n_ssv3: 'Raptor-3-Triebwerke, drei größere Gitterflossen und ein in den Booster integriertes Hot-Staging-Gerüst. Die größte Rakete, die je geflogen ist.', n_ssv4: 'Elon Musks Plan für die nächste Version: ein etwa 70 m langes Schiff (rund 40 % länger) mit über 60 % mehr Treibstoff und 9 Triebwerken (drei zusätzliche Raptor Vacuum), alle schubstärkere Raptor 4.', expected: 'Erwartet {y}', inDev: 'In Entwicklung', separate: 'Trennen', stack: 'Verbinden',
   },
   ru: {
     secTitle: 'SpaceX - прошлое, настоящее и будущее', title: 'От Falcon 1 до Starship', sub: 'Все ракеты SpaceX в масштабе', hint: 'Нажмите на ракету, чтобы увидеть её в 3D',
@@ -110,7 +110,7 @@ window.EVO_I18N = {
     n_starhopper: 'Испытательный стенд из сварной нержавеющей стали с одним Raptor. В 2019 году он подпрыгнул на 150 м и сел рядом с площадкой.',
     n_ssv1: 'Первый полный Starship. Шесть испытательных полётов с 2023 года; в октябре 2024-го манипуляторы башни впервые поймали ускоритель.',
     n_ssv2: 'Более длинный корабль с бо́льшим запасом топлива и новыми закрылками. Летал с января 2025 года.',
-    n_ssv3: 'Двигатели Raptor 3, три увеличенные решётчатые рули и встроенная в ускоритель ферма горячего разделения. Самая большая ракета из когда-либо летавших.', n_ssv4: 'План Илона Маска для следующей версии: корабль длиной около 70 м (примерно на 40% длиннее), вмещающий более чем на 60% больше топлива, с 9 двигателями (на три Raptor Vacuum больше,), все более мощные Raptor 4.', expected: 'Ожидается в {y}', inDev: 'В разработке',
+    n_ssv3: 'Двигатели Raptor 3, три увеличенные решётчатые рули и встроенная в ускоритель ферма горячего разделения. Самая большая ракета из когда-либо летавших.', n_ssv4: 'План Илона Маска для следующей версии: корабль длиной около 70 м (примерно на 40% длиннее), вмещающий более чем на 60% больше топлива, с 9 двигателями (на три Raptor Vacuum больше,), все более мощные Raptor 4.', expected: 'Ожидается в {y}', inDev: 'В разработке', separate: 'Разделить', stack: 'Соединить',
   },
   zh: {
     secTitle: 'SpaceX - 过去、现在与未来', title: '从猎鹰1号到星舰', sub: 'SpaceX 的每一枚火箭，按真实比例', hint: '点击火箭查看 3D 模型',
@@ -126,7 +126,7 @@ window.EVO_I18N = {
     n_starhopper: '焊接不锈钢试验平台，装有一台猛禽发动机。2019 年它跳升 150 米后降落在发射台旁。',
     n_ssv1: '第一艘完整的星舰。自 2023 年起六次试飞；2024 年 10 月发射塔机械臂首次捕获助推器。',
     n_ssv2: '更长的飞船，携带更多推进剂，襟翼重新设计。自 2025 年 1 月起飞行。',
-    n_ssv3: '猛禽 3 发动机、三片更大的栅格翼和集成在助推器上的热分离桁架。迄今飞行过的最大火箭。', n_ssv4: '埃隆·马斯克对下一版本的规划：飞船长约 70 米（加长约 40%），推进剂多 60% 以上，配备 9 台发动机（增加三台真空猛禽），全部为推力更大的猛禽 4。', expected: '预计 {y}', inDev: '研发中',
+    n_ssv3: '猛禽 3 发动机、三片更大的栅格翼和集成在助推器上的热分离桁架。迄今飞行过的最大火箭。', n_ssv4: '埃隆·马斯克对下一版本的规划：飞船长约 70 米（加长约 40%），推进剂多 60% 以上，配备 9 台发动机（增加三台真空猛禽），全部为推力更大的猛禽 4。', expected: '预计 {y}', inDev: '研发中', separate: '级间分离', stack: '合并',
   },
   it: {
     secTitle: 'SpaceX - Passato, presente e futuro', title: 'Dal Falcon 1 a Starship', sub: 'Tutti i razzi di SpaceX, in scala', hint: 'Tocca un razzo per vederlo in 3D',
@@ -142,7 +142,7 @@ window.EVO_I18N = {
     n_starhopper: 'Un banco di prova in acciaio inox saldato con un Raptor. Nel 2019 ha saltato a 150 m ed è atterrato accanto alla sua rampa.',
     n_ssv1: 'Il primo Starship completo. Sei voli di prova dal 2023; a ottobre 2024 i bracci della torre hanno afferrato il booster per la prima volta.',
     n_ssv2: 'Una nave più lunga con più propellente e alette riprogettate. Ha volato da gennaio 2025.',
-    n_ssv3: 'Motori Raptor 3, tre alette a griglia più grandi e un traliccio di separazione a caldo integrato nel booster. Il razzo più grande mai volato.', n_ssv4: 'Il piano di Elon Musk per la prossima versione: una nave lunga circa 70 m (circa il 40% in più) con oltre il 60% di propellente in più e 9 motori (tre Raptor Vacuum in più), tutti Raptor 4 più potenti.', expected: 'Previsto {y}', inDev: 'In sviluppo',
+    n_ssv3: 'Motori Raptor 3, tre alette a griglia più grandi e un traliccio di separazione a caldo integrato nel booster. Il razzo più grande mai volato.', n_ssv4: 'Il piano di Elon Musk per la prossima versione: una nave lunga circa 70 m (circa il 40% in più) con oltre il 60% di propellente in più e 9 motori (tre Raptor Vacuum in più), tutti Raptor 4 più potenti.', expected: 'Previsto {y}', inDev: 'In sviluppo', separate: 'Separa', stack: 'Riunisci',
   },
   cs: {
     secTitle: 'SpaceX - Minulost, současnost a budoucnost', title: 'Od Falconu 1 ke Starshipu', sub: 'Všechny rakety SpaceX ve skutečném měřítku', hint: 'Klepněte na raketu a uvidíte ji ve 3D',
@@ -158,7 +158,7 @@ window.EVO_I18N = {
     n_starhopper: 'Testovací stroj ze svařované nerezové oceli s jedním motorem Raptor. V roce 2019 vyskočil do 150 m a přistál vedle rampy.',
     n_ssv1: 'První kompletní Starship. Šest testovacích letů od roku 2023; v říjnu 2024 ramena věže poprvé zachytila booster.',
     n_ssv2: 'Delší loď s větší zásobou paliva a přepracovanými klapkami. Létala od ledna 2025.',
-    n_ssv3: 'Motory Raptor 3, tři větší mřížková kormidla a příhradová konstrukce pro horké dělení zabudovaná do boosteru. Největší raketa, jaká kdy letěla.', n_ssv4: 'Plán Elona Muska pro další verzi: loď dlouhá asi 70 m (zhruba o 40 % delší) s o více než 60 % větší zásobou paliva a 9 motory (o tři Raptor Vacuum více), všechny výkonnější Raptor 4.', expected: 'Očekáváno {y}', inDev: 'Ve vývoji',
+    n_ssv3: 'Motory Raptor 3, tři větší mřížková kormidla a příhradová konstrukce pro horké dělení zabudovaná do boosteru. Největší raketa, jaká kdy letěla.', n_ssv4: 'Plán Elona Muska pro další verzi: loď dlouhá asi 70 m (zhruba o 40 % delší) s o více než 60 % větší zásobou paliva a 9 motory (o tři Raptor Vacuum více), všechny výkonnější Raptor 4.', expected: 'Očekáváno {y}', inDev: 'Ve vývoji', separate: 'Oddělit', stack: 'Spojit',
   },
   sv: {
     secTitle: 'SpaceX - Dåtid, nutid och framtid', title: 'Från Falcon 1 till Starship', sub: 'Alla SpaceX raketer, i skala', hint: 'Tryck på en raket för att se den i 3D',
@@ -174,7 +174,7 @@ window.EVO_I18N = {
     n_starhopper: 'En testrigg av svetsat rostfritt stål med en Raptor. 2019 hoppade den 150 m upp och landade bredvid sin ramp.',
     n_ssv1: 'Det första kompletta Starship. Sex testflygningar från 2023; i oktober 2024 fångade tornets armar boostern för första gången.',
     n_ssv2: 'Ett längre skepp med mer drivmedel och omgjorda klaffar. Det flög från januari 2025.',
-    n_ssv3: 'Raptor 3-motorer, tre större gallerfenor och en hot staging-ram inbyggd i boostern. Den största raket som någonsin flugit.', n_ssv4: 'Elon Musks plan för nästa version: ett skepp på cirka 70 m (omkring 40 % längre) som rymmer över 60 % mer drivmedel, med 9 motorer (tre fler Raptor Vacuum), alla starkare Raptor 4.', expected: 'Väntas {y}', inDev: 'Under utveckling',
+    n_ssv3: 'Raptor 3-motorer, tre större gallerfenor och en hot staging-ram inbyggd i boostern. Den största raket som någonsin flugit.', n_ssv4: 'Elon Musks plan för nästa version: ett skepp på cirka 70 m (omkring 40 % längre) som rymmer över 60 % mer drivmedel, med 9 motorer (tre fler Raptor Vacuum), alla starkare Raptor 4.', expected: 'Väntas {y}', inDev: 'Under utveckling', separate: 'Separera', stack: 'Koppla ihop',
   },
   nl: {
     secTitle: 'SpaceX - Verleden, heden en toekomst', title: 'Van Falcon 1 tot Starship', sub: 'Alle raketten van SpaceX, op schaal', hint: 'Tik op een raket om hem in 3D te zien',
@@ -190,7 +190,7 @@ window.EVO_I18N = {
     n_starhopper: 'Een testopstelling van gelast roestvrij staal met één Raptor. In 2019 sprong hij 150 m omhoog en landde naast zijn platform.',
     n_ssv1: 'Het eerste complete Starship. Zes testvluchten vanaf 2023; in oktober 2024 vingen de armen van de toren de booster voor het eerst.',
     n_ssv2: 'Een langer schip met meer brandstof en opnieuw ontworpen flaps. Het vloog vanaf januari 2025.',
-    n_ssv3: 'Raptor 3-motoren, drie grotere roostervinnen en een in de booster ingebouwd hot-stagingframe. De grootste raket die ooit heeft gevlogen.', n_ssv4: 'Het plan van Elon Musk voor de volgende versie: een schip van zo’n 70 m (ongeveer 40% langer) met ruim 60% meer stuwstof en 9 motoren (drie extra Raptor Vacuums), allemaal krachtigere Raptor 4’s.', expected: 'Verwacht in {y}', inDev: 'In ontwikkeling',
+    n_ssv3: 'Raptor 3-motoren, drie grotere roostervinnen en een in de booster ingebouwd hot-stagingframe. De grootste raket die ooit heeft gevlogen.', n_ssv4: 'Het plan van Elon Musk voor de volgende versie: een schip van zo’n 70 m (ongeveer 40% langer) met ruim 60% meer stuwstof en 9 motoren (drie extra Raptor Vacuums), allemaal krachtigere Raptor 4’s.', expected: 'Verwacht in {y}', inDev: 'In ontwikkeling', separate: 'Scheiden', stack: 'Koppelen',
   },
   da: {
     secTitle: 'SpaceX - Fortid, nutid og fremtid', title: 'Fra Falcon 1 til Starship', sub: 'Alle SpaceX’ raketter, i skala', hint: 'Tryk på en raket for at se den i 3D',
@@ -206,7 +206,7 @@ window.EVO_I18N = {
     n_starhopper: 'En testrig af svejset rustfrit stål med én Raptor. I 2019 hoppede den 150 m op og landede ved siden af sin rampe.',
     n_ssv1: 'Det første komplette Starship. Seks testflyvninger fra 2023; i oktober 2024 greb tårnets arme boosteren for første gang.',
     n_ssv2: 'Et længere skib med mere brændstof og nydesignede klapper. Det fløj fra januar 2025.',
-    n_ssv3: 'Raptor 3-motorer, tre større gitterfinner og en hot staging-ramme bygget ind i boosteren. Den største raket, der nogensinde har fløjet.', n_ssv4: 'Elon Musks plan for den næste version: et skib på omkring 70 m (cirka 40 % længere), der rummer over 60 % mere drivmiddel, med 9 motorer (tre flere Raptor Vacuum), alle kraftigere Raptor 4.', expected: 'Ventes {y}', inDev: 'Under udvikling',
+    n_ssv3: 'Raptor 3-motorer, tre større gitterfinner og en hot staging-ramme bygget ind i boosteren. Den største raket, der nogensinde har fløjet.', n_ssv4: 'Elon Musks plan for den næste version: et skib på omkring 70 m (cirka 40 % længere), der rummer over 60 % mere drivmiddel, med 9 motorer (tre flere Raptor Vacuum), alle kraftigere Raptor 4.', expected: 'Ventes {y}', inDev: 'Under udvikling', separate: 'Separér', stack: 'Forbind',
   },
   pt: {
     secTitle: 'SpaceX - Passado, presente e futuro', title: 'Do Falcon 1 ao Starship', sub: 'Todos os foguetes da SpaceX, em escala', hint: 'Toque num foguete para vê-lo em 3D',
@@ -222,7 +222,7 @@ window.EVO_I18N = {
     n_starhopper: 'Uma plataforma de testes de aço inoxidável soldado com um Raptor. Em 2019 saltou 150 m e pousou ao lado da sua plataforma.',
     n_ssv1: 'O primeiro Starship completo. Seis voos de teste desde 2023; em outubro de 2024 os braços da torre agarraram o propulsor pela primeira vez.',
     n_ssv2: 'Uma nave mais longa, com mais propelente e flaps redesenhados. Voou a partir de janeiro de 2025.',
-    n_ssv3: 'Motores Raptor 3, três aletas de grade maiores e uma treliça de separação a quente integrada ao propulsor. O maior foguete que já voou.', n_ssv4: 'O plano de Elon Musk para a próxima versão: uma nave de cerca de 70 m (uns 40% mais longa) com mais de 60% de propelente a mais e 9 motores (três Raptor Vacuum a mais), todos Raptor 4 de maior empuxo.', expected: 'Previsto para {y}', inDev: 'Em desenvolvimento',
+    n_ssv3: 'Motores Raptor 3, três aletas de grade maiores e uma treliça de separação a quente integrada ao propulsor. O maior foguete que já voou.', n_ssv4: 'O plano de Elon Musk para a próxima versão: uma nave de cerca de 70 m (uns 40% mais longa) com mais de 60% de propelente a mais e 9 motores (três Raptor Vacuum a mais), todos Raptor 4 de maior empuxo.', expected: 'Previsto para {y}', inDev: 'Em desenvolvimento', separate: 'Separar', stack: 'Unir',
   },
   pl: {
     secTitle: 'SpaceX - Przeszłość, teraźniejszość i przyszłość', title: 'Od Falcona 1 do Starshipa', sub: 'Wszystkie rakiety SpaceX w skali', hint: 'Dotknij rakiety, aby zobaczyć ją w 3D',
@@ -238,7 +238,7 @@ window.EVO_I18N = {
     n_starhopper: 'Stanowisko testowe ze spawanej stali nierdzewnej z jednym Raptorem. W 2019 roku podskoczył na 150 m i wylądował obok wyrzutni.',
     n_ssv1: 'Pierwszy kompletny Starship. Sześć lotów testowych od 2023 roku; w październiku 2024 ramiona wieży po raz pierwszy złapały booster.',
     n_ssv2: 'Dłuższy statek z większym zapasem paliwa i przeprojektowanymi klapami. Latał od stycznia 2025.',
-    n_ssv3: 'Silniki Raptor 3, trzy większe stery kratowe i kratownica gorącej separacji wbudowana w booster. Największa rakieta, jaka kiedykolwiek leciała.', n_ssv4: 'Plan Elona Muska na następną wersję: statek o długości około 70 m (o mniej więcej 40% dłuższy), mieszczący ponad 60% więcej paliwa, z 9 silnikami (trzema dodatkowymi Raptor Vacuum), wszystkie to mocniejsze Raptory 4.', expected: 'Planowany na {y}', inDev: 'W fazie rozwoju',
+    n_ssv3: 'Silniki Raptor 3, trzy większe stery kratowe i kratownica gorącej separacji wbudowana w booster. Największa rakieta, jaka kiedykolwiek leciała.', n_ssv4: 'Plan Elona Muska na następną wersję: statek o długości około 70 m (o mniej więcej 40% dłuższy), mieszczący ponad 60% więcej paliwa, z 9 silnikami (trzema dodatkowymi Raptor Vacuum), wszystkie to mocniejsze Raptory 4.', expected: 'Planowany na {y}', inDev: 'W fazie rozwoju', separate: 'Rozdziel', stack: 'Połącz',
   },
   hi: {
     secTitle: 'SpaceX - अतीत, वर्तमान और भविष्य', title: 'फाल्कन 1 से स्टारशिप तक', sub: 'SpaceX का हर रॉकेट, असली अनुपात में', hint: 'किसी रॉकेट पर टैप करें और उसे 3D में देखें',
@@ -254,7 +254,7 @@ window.EVO_I18N = {
     n_starhopper: 'वेल्ड किए गए स्टेनलेस स्टील का परीक्षण यान, एक रैप्टर इंजन के साथ। 2019 में यह 150 मी उछला और अपने पैड के पास उतरा।',
     n_ssv1: 'पहली पूरी स्टारशिप। 2023 से छह परीक्षण उड़ानें; अक्टूबर 2024 में टावर की भुजाओं ने पहली बार बूस्टर को पकड़ा।',
     n_ssv2: 'ज़्यादा ईंधन वाला लंबा यान, नए डिज़ाइन के फ़्लैप के साथ। जनवरी 2025 से उड़ा।',
-    n_ssv3: 'रैप्टर 3 इंजन, तीन बड़े ग्रिड फ़िन और बूस्टर में बना हॉट-स्टेजिंग ढाँचा। अब तक उड़ा सबसे बड़ा रॉकेट।', n_ssv4: 'अगले संस्करण के लिए एलन मस्क की योजना: लगभग 70 मीटर लंबा यान (करीब 40% लंबा), जिसमें 60% से अधिक ज़्यादा ईंधन आता है, और 9 इंजन (तीन और रैप्टर वैक्यूम), सभी अधिक थ्रस्ट वाले रैप्टर 4।', expected: 'अपेक्षित {y}', inDev: 'विकासाधीन',
+    n_ssv3: 'रैप्टर 3 इंजन, तीन बड़े ग्रिड फ़िन और बूस्टर में बना हॉट-स्टेजिंग ढाँचा। अब तक उड़ा सबसे बड़ा रॉकेट।', n_ssv4: 'अगले संस्करण के लिए एलन मस्क की योजना: लगभग 70 मीटर लंबा यान (करीब 40% लंबा), जिसमें 60% से अधिक ज़्यादा ईंधन आता है, और 9 इंजन (तीन और रैप्टर वैक्यूम), सभी अधिक थ्रस्ट वाले रैप्टर 4।', expected: 'अपेक्षित {y}', inDev: 'विकासाधीन', separate: 'चरण अलग करें', stack: 'चरण जोड़ें',
   },
   tr: {
     secTitle: 'SpaceX - Geçmiş, bugün ve gelecek', title: 'Falcon 1’den Starship’e', sub: 'SpaceX’in tüm roketleri, gerçek ölçekte', hint: 'Bir rokete dokunun, 3D olarak görün',
@@ -270,6 +270,6 @@ window.EVO_I18N = {
     n_starhopper: 'Tek Raptor’lu, kaynaklı paslanmaz çelikten bir test düzeneği. 2019’da 150 m yükselip rampasının yanına indi.',
     n_ssv1: 'İlk tam Starship. 2023’ten itibaren altı test uçuşu; Ekim 2024’te kulenin kolları iticiyi ilk kez yakaladı.',
     n_ssv2: 'Daha fazla yakıt taşıyan, kanatçıkları yeniden tasarlanmış daha uzun bir gemi. Ocak 2025’ten itibaren uçtu.',
-    n_ssv3: 'Raptor 3 motorları, üç büyük ızgara kanatçık ve iticiye entegre sıcak ayrılma kafesi. Şimdiye kadar uçan en büyük roket.', n_ssv4: 'Elon Musk’ın bir sonraki sürüm için planı: yaklaşık 70 m uzunluğunda (yaklaşık %40 daha uzun), %60’tan fazla daha çok yakıt taşıyan, 9 motorlu (üç Raptor Vacuum daha), hepsi daha yüksek itkili Raptor 4 olan bir gemi.', expected: 'Beklenen: {y}', inDev: 'Geliştiriliyor',
+    n_ssv3: 'Raptor 3 motorları, üç büyük ızgara kanatçık ve iticiye entegre sıcak ayrılma kafesi. Şimdiye kadar uçan en büyük roket.', n_ssv4: 'Elon Musk’ın bir sonraki sürüm için planı: yaklaşık 70 m uzunluğunda (yaklaşık %40 daha uzun), %60’tan fazla daha çok yakıt taşıyan, 9 motorlu (üç Raptor Vacuum daha), hepsi daha yüksek itkili Raptor 4 olan bir gemi.', expected: 'Beklenen: {y}', inDev: 'Geliştiriliyor', separate: 'Ayır', stack: 'Bağla',
   },
 };

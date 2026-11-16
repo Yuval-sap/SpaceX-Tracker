@@ -7,6 +7,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildVehicle, studioEnv } from './vehicles.js';
 
 let renderer, scene, camera, controls, env, key, rim, hemi, ground, shadowMat, floor, floorMat, holder, raf = 0, ro = null, stageEl = null, idle = 0, lastV = null, rollPending = 0;
+// stage separation (Starship): the ship lifts SEP metres off the booster and back, eased, as on the 3D Starship page;
+// the camera eases back at the same time so both stages stay in view
+const SEP = 28;
+let ship = null, sep = 0, sepT = 0, camFrom = null, camTo = null, camT = 1, lastT = 0;
+const sstep = x => x * x * (3 - 2 * x);
+const tallNow = () => lastV ? lastV.h + SEP * sstep(sep) : 0;
 const cache = new Map();
 const small = matchMedia('(max-width: 760px)').matches;
 
@@ -32,7 +38,7 @@ function init(stage) {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.zoomToCursor = true; controls.screenSpacePanning = true;
   controls.maxPolarAngle = Math.PI * 0.56; controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
-  controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(idle); });
+  controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(idle); camT = 1; });   // a touch stops the camera's own ease
   // zoom toward the pointer with a mouse only: on a touch screen a pinch zoomed toward the floor under the fingers and
   // threw the rocket out of view - a pinch zooms toward the rocket itself (two fingers still move it, to see its ends)
   renderer.domElement.addEventListener('pointerdown', e => { controls.zoomToCursor = e.pointerType === 'mouse'; }, { capture: true });
@@ -48,7 +54,7 @@ function init(stage) {
   // and whatever the gesture, the point the view turns around stays on the rocket, so it can't be lost off the screen
   controls.addEventListener('change', () => {
     if (!lastV) return;
-    const t = controls.target, H = lastV.h, r = Math.max(lastV.d, 4) * 1.5;
+    const t = controls.target, H = tallNow(), r = Math.max(lastV.d, 4) * 1.5;
     const y = Math.min(Math.max(t.y, 0), H), x = Math.min(Math.max(t.x, -r), r), z = Math.min(Math.max(t.z, -r), r);
     if (x !== t.x || y !== t.y || z !== t.z) { const d = new THREE.Vector3(x - t.x, y - t.y, z - t.z); t.add(d); camera.position.add(d); }
   });
@@ -69,12 +75,21 @@ function resize() {
   const w = stageEl.clientWidth, h = stageEl.clientHeight; if (!w || !h) return;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
-function loop() {
+function loop(now = performance.now()) {
   raf = requestAnimationFrame(loop);
+  const dt = Math.min(0.25, Math.max(0, (now - (lastT || now)) / 1000)); lastT = now;   // seconds since the last frame
   if (Math.abs(rollPending) > 1e-4) { const step = rollPending * 0.18; holder.rotation.y += step; rollPending -= step; }   // the sideways wheel's turn, eased
+  if (ship && sep !== sepT) {   // the separation, 1.4 s each way whatever the frame rate
+    sep = sepT > sep ? Math.min(sepT, sep + dt / 1.4) : Math.max(sepT, sep - dt / 1.4);
+    ship.position.y = ship.userData.baseY + SEP * sstep(sep);
+  }
+  if (camT < 1) {   // the camera's own ease to the new framing, kept in step with the ship
+    camT = Math.min(1, camT + dt / 1.4); const e = sstep(camT);
+    controls.target.lerpVectors(camFrom.t, camTo.t, e); camera.position.lerpVectors(camFrom.p, camTo.p, e);
+  }
   controls.update(); renderer.render(scene, camera);
 }
-export function pause() { cancelAnimationFrame(raf); raf = 0; }
+export function pause() { cancelAnimationFrame(raf); raf = 0; lastT = 0; }
 
 // the floor and the light in the mode's colours (read each time a rocket is shown - the mode may have changed)
 function applyMode() {
@@ -87,8 +102,8 @@ function applyMode() {
 }
 
 // the first view of a rocket: all of it in view from its picture's side, a little from below its middle
-function frame(v) {
-  const H = v.h, W = Math.max(v.d, 4), az = (v.az != null ? v.az : -24) * Math.PI / 180;
+function frame(v, H = v.h) {
+  const W = Math.max(v.d, 4), az = (v.az != null ? v.az : -24) * Math.PI / 180;
   const fov = camera.fov * Math.PI / 180, aspect = camera.aspect || 1;
   const distH = (H * 0.56) / Math.tan(fov / 2), distW = (W * 1.4) / (Math.tan(fov / 2) * aspect);
   const dist = Math.max(distH, distW, 12);
@@ -108,6 +123,9 @@ export async function show(stage, v, stillCurrent) {
   if (!model) { model = await buildVehicle(v.id, renderer, env); cache.set(v.id, model); }
   if (!stillCurrent()) return;
   holder.clear(); holder.add(model); lastV = v;
+  // a Starship stands stacked when shown (its ship back on the booster, if it was left apart)
+  ship = model.userData.ship || null; sep = sepT = 0; camT = 1;
+  if (ship) { if (ship.userData.baseY == null) ship.userData.baseY = ship.position.y; ship.position.y = ship.userData.baseY; }
   applyMode();
   const { H, W, az } = frame(v);
   // the light follows the rocket's size
@@ -120,5 +138,24 @@ export async function show(stage, v, stillCurrent) {
   floor.scale.setScalar(r);
 }
 
-// back to the first view of the rocket on show
-export function reset() { if (lastV && camera) frame(lastV); }
+// back to the first view of the rocket on show (taller by the gap while its stages are apart)
+export function reset() { if (lastV && camera) { camT = 1; frame(lastV, lastV.h + SEP * sepT); } }
+
+// separate the stages (on: the ship lifts off the booster) or stack them again; the view keeps the side it's seen from
+// and eases back (or in again) so the whole vehicle stays on the screen
+export function separate(on) {
+  if (!ship || !lastV) return false;
+  sepT = on ? 1 : 0;
+  const H = lastV.h + SEP * sepT, W = Math.max(lastV.d, 4);
+  const fov = camera.fov * Math.PI / 180, aspect = camera.aspect || 1;
+  const need = Math.max((H * 0.56) / Math.tan(fov / 2), (W * 1.4) / (Math.tan(fov / 2) * aspect), 12);
+  const dir = camera.position.clone().sub(controls.target), cur = dir.length();
+  const dist = on ? Math.max(cur, need) : Math.min(cur, need);
+  const t = new THREE.Vector3(0, H * 0.48, 0);
+  camFrom = { t: controls.target.clone(), p: camera.position.clone() };
+  camTo = { t, p: t.clone().add(dir.normalize().multiplyScalar(dist)) };
+  controls.maxDistance = Math.max(controls.maxDistance, dist * 2.2); camera.far = Math.max(camera.far, dist * 20); camera.updateProjectionMatrix();
+  camT = 0;
+  return true;
+}
+export const hasStages = () => !!ship;
