@@ -3889,7 +3889,13 @@
         #bl-app .bl-col.is-3 .step { height: 7.1rem; background: linear-gradient(#fdba74, #9a3412); }
         #bl-app .bl-list { border-radius: 0 0 1.7rem 1.7rem; background: var(--bl-surface); border: 1px solid var(--bl-border); padding: 0.27rem 1.15rem; }
         #bl-app .bl-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 0; border-top: 1px solid var(--bl-border); font-size: 1.08rem; cursor: pointer; }
-        #bl-app .bl-row:first-child { border-top: 0; }
+        #bl-app .bl-row:first-child { border-top: 0; padding-top: 1.05rem; }
+        /* the columns' names over the first row's place and flights: small, in its top padding (the row grows by ~5px) */
+        #bl-app .bl-row [data-l] { position: relative; }
+        #bl-app .bl-row [data-l]::before { content: attr(data-l); position: absolute; bottom: 100%; margin-bottom: 0.3rem; font-family: 'Rubik', system-ui, sans-serif; font-size: 0.6rem; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; color: var(--bl-dim); white-space: nowrap; pointer-events: none; }
+        #bl-app .bl-row .r[data-l]::before { left: 50%; transform: translateX(-50%); }
+        #bl-app .bl-row .c[data-l]::before { inset-inline-end: 0; }
         #bl-app .bl-row .r { width: 1.6rem; color: var(--bl-dim); text-align: center; }
         #bl-app .bl-row .s { width: 4.9rem; font-family: var(--bl-font); font-size: 1rem; color: var(--bl-text); transform-origin: left center; transition: transform 0.3s ease, filter 0.3s ease; }
         html[dir="rtl"] #bl-app .bl-row .s { transform-origin: right center; }
@@ -23068,8 +23074,9 @@
             const open = b => `role="button" tabindex="0" onkeydown="activateOnEnterOrSpace(event)" onclick="openFlightHistoryModal('${b.sn}', ${b.flights})" title="View flight history"`;
             const podCol = (b, place) => `<div class="bl-col is-${place}" ${open(b)}>${place === 1 ? '<i class="fa-solid fa-crown crown"></i>' : ''}<div class="sn" dir="ltr">${b.sn}</div>`
                 + `<div class="step"><b>${b.flights}</b><small>${flightsColLabel}</small></div></div>`;
-            const listRows = top.slice(3).map((b, k) => `<div class="bl-row" ${open(b)}><span class="r">${k + 4}</span><span class="s" dir="ltr">${b.sn}</span>`
-                + `<span class="b"><i style="width:${(b.flights / maxFlights * 100).toFixed(1)}%"></i></span><span class="c">${b.flights}</span></div>`).join('');
+            // the first row carries the two columns' names, small, above its place and its flights (data-l, see .bl-row)
+            const listRows = top.slice(3).map((b, k) => `<div class="bl-row" ${open(b)}><span class="r"${k ? '' : ` data-l="${escapeHtml(rankLabel)}"`}>${k + 4}</span><span class="s" dir="ltr">${b.sn}</span>`
+                + `<span class="b"><i style="width:${(b.flights / maxFlights * 100).toFixed(1)}%"></i></span><span class="c"${k ? '' : ` data-l="${escapeHtml(flightsColLabel)}"`}>${b.flights}</span></div>`).join('');
             const app = top.length >= 3 ? `<div id="bl-app" class="notranslate" translate="no"><div class="bl-podium">${podCol(top[1], 2)}${podCol(top[0], 1)}${podCol(top[2], 3)}</div>`
                 + (listRows ? `<div class="bl-list">${listRows}</div>` : '') + `</div>` : '';
             container.classList.toggle('has-podium', !!app);
