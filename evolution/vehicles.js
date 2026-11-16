@@ -23,6 +23,17 @@ function ogive(r, y0, L, tip = 0.04, n = 28) {
 }
 
 // ---------------------------------------------------------------- materials and textures
+// the two logos painted from pictures rather than drawn: the X with its swoosh (in the letters' blue) and Falcon Heavy's
+// emblem, both cut out of their backgrounds; loaded once before the first model is built (buildRaw waits for them).
+// Where in each picture the part that lines up with the lettering sits, in its pixels:
+const LOGO_X_BODY = { cx: 33, cy: 43, h: 38 };          // logo-x.png: the X itself (the swoosh runs up to its right)
+const LOGO_FH_TEXT = { cx: 137, bottom: 167, h: 51 };   // logo-fh.png: the "FH" letters (the eagle rises above them)
+const LOGOS = {};
+let logosReady = null;
+function loadLogos() {
+  const one = (key, file) => new Promise(res => { const im = new Image(); im.onload = () => { LOGOS[key] = im; res(); }; im.onerror = () => res(); im.src = new URL('img/' + file, import.meta.url).href; });
+  return logosReady || (logosReady = Promise.all([one('x', 'logo-x.png'), one('fh', 'logo-fh.png')]));
+}
 function canvasTex(w, h, draw, srgb = true) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
@@ -47,9 +58,14 @@ function stageTex(opts = {}) {
     if (label && stack) {   // the 2010-2017 livery: blue letters one under another, the X with its swoosh
       const px = Math.round(H * stackSize), gap = px * 1.08, n = label.length, y0 = H * labelPos - gap * (n - 1) / 2;
       g.font = `700 ${px}px 'Helvetica Neue', Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = stackColor;
-      for (let k = 0; k < n; k++) { g.save(); g.translate(cx, y0 + k * gap); g.scale(0.62, 1); g.fillText(label[k], 0, 0); g.restore(); }
-      const yx = y0 + (n - 1) * gap; g.strokeStyle = stackColor; g.lineWidth = px * 0.07; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(cx - px * 0.5, yx + px * 0.42); g.quadraticCurveTo(cx - px * 0.06, yx - px * 0.05, cx + px * 0.45, yx - px * 0.5); g.stroke();
+      const swoosh = label[n - 1] === 'X' && !!LOGOS.x;   // without the picture (failed to load) the font's X stays
+      for (let k = 0; k < n - (swoosh ? 1 : 0); k++) { g.save(); g.translate(cx, y0 + k * gap); g.scale(0.62, 1); g.fillText(label[k], 0, 0); g.restore(); }
+      if (swoosh) {   // the logo's own X with its swoosh (img/logo-x.png, in the letters' blue): the X itself
+        // as tall as the letters' capitals and on their line, the swoosh running up to the right from it
+        const im = LOGOS.x, k = px * 0.72 / LOGO_X_BODY.h, w = im.width * k * 0.62, h = im.height * k, yx = y0 + (n - 1) * gap;
+        const left = cx - LOGO_X_BODY.cx * k * 0.62, top = yx - LOGO_X_BODY.cy * k;
+        for (const dx of [0, -W]) g.drawImage(im, left + dx, top, w, h);
+      }
     } else if (label) {   // the Block 5 livery: one black word read bottom-to-top
       for (const x of [cx, cx - W]) {
         g.save(); g.translate(x, H * labelPos); g.rotate(-Math.PI / 2);
@@ -60,7 +76,12 @@ function stageTex(opts = {}) {
     }
     if (flag) {   // near the top of the stage: the vehicle's name, and the US flag under it (stripes across)
       const fy = H * flagPos;
-      if (logo) { g.font = `700 ${Math.round(H * logoSize)}px 'Helvetica Neue', Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#2a2e36'; for (const x of [cx, cx - W]) { g.save(); g.translate(x, fy); g.scale(0.62, 1); g.fillText(logo, 0, 0); if (logo === 'FH') { const u = H * logoSize; g.strokeStyle = '#c8202f'; g.lineWidth = u * 0.16; g.lineCap = 'round'; g.beginPath(); g.moveTo(-u * 1.1, -u * 0.55); g.quadraticCurveTo(0, -u * 1.25, u * 1.2, -u * 0.95); g.stroke(); } g.restore(); } }
+      if (logo === 'FH' && LOGOS.fh) {   // Falcon Heavy's own emblem (img/logo-fh.png): its "FH" where the text was,
+        // as tall as those capitals, the red eagle rising above and to the left of it
+        const im = LOGOS.fh, u = H * logoSize, k = u * 1.0 / LOGO_FH_TEXT.h, sx = 0.46, w = im.width * k * sx, h = im.height * k;   // sx: this band's texels are about twice as wide round the stage as they are tall
+        const left = cx - LOGO_FH_TEXT.cx * k * sx, top = fy + u * 0.5 - LOGO_FH_TEXT.bottom * k;
+        for (const dx of [0, -W]) g.drawImage(im, left + dx, top, w, h);
+      } else if (logo) { g.font = `700 ${Math.round(H * logoSize)}px 'Helvetica Neue', Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#2a2e36'; for (const x of [cx, cx - W]) { g.save(); g.translate(x, fy); g.scale(0.62, 1); g.fillText(logo, 0, 0); g.restore(); } }
       const fw = 104 * flagScale, fh = 64 * flagScale, fx = cx - fw / 2, fy2 = fy + H * logoSize * 1.1;
       for (let k = 0; k < 13; k++) { g.fillStyle = k % 2 ? '#ffffff' : '#b22234'; g.fillRect(fx, fy2 + k * fh / 13, fw, fh / 13 + 0.5); }
       g.fillStyle = '#3c3b6e'; g.fillRect(fx, fy2, fw * 0.42, fh * 7 / 13);
@@ -401,11 +422,51 @@ let ssSrc = null;
 async function starshipModel(renderer, version) {
   if (!ssSrc) ssSrc = await (await fetch(new URL('../starship-3d.html', import.meta.url), { cache: 'no-cache' })).text();
   const cut = (a, b) => { const i = ssSrc.indexOf(a), j = i < 0 ? -1 : ssSrc.indexOf(b, i + a.length); if (i < 0 || j < 0) throw new Error('starship-3d.html: no ' + a); return ssSrc.slice(i, j); };
-  const code = [cut('const V2 = THREE.Vector2', '// ----------------'), cut('const FINITE_GLSL', 'const clampPass'), cut('// @model-begin', '// @model-end')].join('\n');
-  const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location',
+  let code = [cut('const V2 = THREE.Vector2', '// ----------------'), cut('const FINITE_GLSL', 'const clampPass'), cut('// @model-begin', '// @model-end')].join('\n');
+  if (version === 4) {   // V4 (Elon Musk, Nov 2026): V3's ship with six Raptor Vacuums round the three sea-level engines, no serial
+    const swap = (a, b) => { if (code.split(a).length !== 2) throw new Error('starship-3d.html changed: ' + a); code = code.replace(a, b); };
+    swap('for (let i = 0; i < 3; i++) { const a = (i + 0.5) / 3 * TAU; sEngPos.push({ vac: true', 'for (let i = 0; i < 6; i++) { const a = (i + 0.5) / 6 * TAU; sEngPos.push({ vac: true');
+    swap('if (sh > 0 && SHIP_NAMES[sh]) decal(', 'if (NO_SERIAL) {} else if (sh > 0 && SHIP_NAMES[sh]) decal(');
+  }
+  const run = new Function('THREE', 'mergeGeometries', 'renderer', 'scene', 'isMobile', 'maxAniso', 'location', 'NO_SERIAL',
     code + '\nreturn { groups, parts, fluids, engines, deployer, R };');
-  const q = new URLSearchParams(); q.set('s', version === 3 ? '42' : version === 2 ? '35' : '28'); q.set('b', version === 3 ? '20' : version === 2 ? '14' : '10');
-  return run(THREE, mergeGeometries, renderer, new THREE.Scene(), false, renderer.capabilities.getMaxAnisotropy(), { search: '?' + q.toString() });
+  const q = new URLSearchParams(); q.set('s', version >= 3 ? '42' : version === 2 ? '35' : '28'); q.set('b', version >= 3 ? '20' : version === 2 ? '14' : '10');
+  return run(THREE, mergeGeometries, renderer, new THREE.Scene(), false, renderer.capabilities.getMaxAnisotropy(), { search: '?' + q.toString() }, version === 4);
+}
+// V4's ship: ~70 m in place of V3's 52.1 m, all of it added in the tanks - everything above a cut through the methane
+// tank moves up, so the nose, flaps, payload bay and engines keep their own shape; only what runs through the cut (the
+// tank's skin, its tiles, the raceways) gets longer, its texture repeated on at the same scale rather than stretched
+const V4_CUT = 72.3 + 24, V4_ADD = 70 - 52.1;
+function stretchShip(ship, yc, dy) {
+  ship.updateMatrixWorld(true);
+  const toParent = new THREE.Matrix4(), inv = new THREE.Matrix4(), p = new THREE.Vector3(), up = new THREE.Vector3();
+  const meshes = [], moved = new Set(); ship.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const underMoved = o => { for (let a = o.parent; a; a = a.parent) if (moved.has(a)) return true; return false; };
+  for (const o of meshes) {
+    if (underMoved(o)) continue;   // goes along with a mesh it hangs from
+    const box = new THREE.Box3().setFromObject(o, true);
+    if (box.max.y <= yc) continue;
+    if (box.min.y >= yc) {   // wholly above: moved up (through its parent's frame, which may be turned)
+      o.getWorldPosition(up); up.y += dy; o.parent.worldToLocal(up); o.position.copy(up); moved.add(o); continue;
+    }
+    const geo = o.geometry = o.geometry.clone(), P = geo.attributes.position, UV = geo.attributes.uv;
+    toParent.copy(o.matrixWorld); inv.copy(toParent).invert();
+    // how the texture runs along the height here (v per metre), from the mesh's own lowest and highest points
+    let rate = 0;
+    if (UV) {
+      let lo = Infinity, hi = -Infinity, vlo = 0, vhi = 0;
+      for (let i = 0; i < P.count; i++) { p.fromBufferAttribute(P, i).applyMatrix4(toParent); if (p.y < lo) { lo = p.y; vlo = UV.getY(i); } if (p.y > hi) { hi = p.y; vhi = UV.getY(i); } }
+      if (hi - lo > 0.5) rate = (vhi - vlo) / (hi - lo);
+    }
+    for (let i = 0; i < P.count; i++) {
+      p.fromBufferAttribute(P, i).applyMatrix4(toParent);
+      if (p.y <= yc) continue;
+      p.y += dy; p.applyMatrix4(inv); P.setXYZ(i, p.x, p.y, p.z);
+      if (rate) UV.setY(i, UV.getY(i) + rate * dy);
+    }
+    P.needsUpdate = true; if (UV) UV.needsUpdate = true; geo.computeBoundingBox(); geo.computeBoundingSphere();
+    for (const mt of (Array.isArray(o.material) ? o.material : [o.material])) if (mt.map) { mt.map.wrapT = THREE.RepeatWrapping; mt.map.needsUpdate = true; }
+  }
 }
 async function starship(renderer, M, version) {
   const ss = await starshipModel(renderer, version), g = new THREE.Group();
@@ -429,6 +490,7 @@ async function starship(renderer, M, version) {
   });
   kill.forEach(o => { if (o.parent) o.parent.remove(o); });
   if (version < 3) blockOne(g, ship, version);
+  if (version === 4) stretchShip(ship, V4_CUT, V4_ADD);
   return { g, ship, booster, ss };
 }
 // V1 and V2 (Block 1 boosters, 71 m): four smaller grid fins in place of V3's three big ones, and the separate vented
@@ -507,6 +569,7 @@ export async function buildVehicle(id, renderer, envMap) {
   const out = new THREE.Group(); g.position.y = -b.min.y; out.add(g); out.scale.y = k; return out;
 }
 async function buildRaw(id, renderer, envMap) {
+  await loadLogos();
   const M = materials(envMap);
   switch (id) {
     case 'falcon1': return falcon1(M);
@@ -516,7 +579,7 @@ async function buildRaw(id, renderer, envMap) {
     case 'f9b5': return f9b5(M);
     case 'fh': return falconHeavy(M);
     case 'starhopper': return starhopper(M);
-    case 'ssv1': case 'ssv2': case 'ssv3': { const r = await starship(renderer, M, id === 'ssv1' ? 1 : id === 'ssv2' ? 2 : 3); return r.g; }
+    case 'ssv1': case 'ssv2': case 'ssv3': case 'ssv4': { const r = await starship(renderer, M, +id.slice(3)); return r.g; }
   }
   throw new Error('no vehicle ' + id);
 }

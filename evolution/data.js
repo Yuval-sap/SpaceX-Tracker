@@ -17,4 +17,7 @@ export const VEHICLES = [
   { id: 'ssv1', price: null, estKg: 10, ok: 4, total: 6, retired: '2024-11-19', pay: 15000, payTarget: true, px: 1461, eng: '33 + 6 Raptor 2', year: '2023', h: 121.3, d: 9, name: 'Starship V1', az: 30 },
   { id: 'ssv2', price: null, estKg: 10, ok: 2, total: 5, retired: '2025-10-13', pay: 35000, payTarget: true, px: 1483, eng: '33 + 6 Raptor 2', year: '2025', h: 123.1, d: 9, name: 'Starship V2', az: 30 },
   { id: 'ssv3', price: null, estKg: 10, ok: 4, total: 4, pay: 100000, payTarget: true, px: 1498, eng: '33 + 6 Raptor 3', year: '2026', h: 124.4, d: 9, name: 'Starship V3', az: 30 },
+  // future: not flown yet - its year shown as expected, in development, no launches (Elon Musk on X, Nov 2026: a ~70 m
+  // ship, 9 engines - three more Raptor Vacuums - all higher-thrust Raptor 4s; reports: the booster's 33 Raptor 4s too, ~300 t each, ~10,000 t at liftoff, 200+ t to orbit)
+  { id: 'ssv4', future: true, price: null, estKg: 10, ok: 0, total: 0, pay: 200000, payTarget: true, px: 1713, eng: '33 + 9 Raptor 4', year: '2027', h: 142.3, d: 9, name: 'Starship V4', az: 30 },
 ];

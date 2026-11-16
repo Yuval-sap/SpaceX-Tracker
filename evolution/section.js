@@ -1,4 +1,4 @@
-// "SpaceX - From history to present", the info tab's section after the milestones: every SpaceX rocket to scale in one
+// "SpaceX - Past, present and future", the info tab's section after the milestones: every SpaceX rocket to scale in one
 // chart (pictures from img/, made by render.html), and each one in live 3D in a viewer over the page (viewer.js and
 // vehicles.js, loaded the first time a rocket is opened). Its words follow the site's language - the site's own timer
 // calls window.applyEvolutionLang - and its units the site's (feet and pounds in English, metres elsewhere); its
@@ -14,13 +14,15 @@ const asset = p => new URL(p, import.meta.url).href;
 // by an invisible joiner - in its text and its label alike
 const shown = s => s.replace(/Block 5/, 'Block‌ 5');
 const rtlNow = () => document.documentElement.dir === 'rtl';
-const MAXM = 130;   // the scale's top, in metres
+const MAXM = Math.ceil(Math.max(...VEHICLES.map(v => v.px / 12)) + 5);   // the scale's top, in metres: the tallest picture and a little room (148 with V4)
 
 let lang = null, tr = k => '', nf = null, IMPERIAL = false, STATS = {};
 const metres = v => IMPERIAL ? `${nf.format(Math.round(v * 3.28084))} ${tr('ft')}` : `${nf.format(v)} ${tr('m')}`;
 const mass = kg => IMPERIAL ? `${nf.format(Math.round(kg * 2.20462 / (kg < 1000 ? 10 : 100)) * (kg < 1000 ? 10 : 100))} ${tr('lb')}`
   : kg < 1000 ? `${nf.format(kg)} ${tr('kg')}` : `${nf.format(Math.round(kg / 100) / 10)} ${tr('t')}`;
 
+// a vehicle that hasn't flown yet (future): its year as the one expected ("Expected 2027")
+const yearOf = v => v.future ? tr('expected').replace('{y}', v.year) : v.year;
 const chart = document.getElementById('evo-chart');
 const sec = document.getElementById('evo-sec');
 function init() {
@@ -57,7 +59,8 @@ function applyLang(l) {
   set('i18n-evo-title', tr('secTitle')); set('i18n-evo-hint', tr('hint'));
   chart.querySelectorAll('.evo-veh').forEach(b => {
     const v = VEHICLES[+b.dataset.i];
-    b.setAttribute('aria-label', `${shown(v.name)}, ${v.year}, ${metres(v.h)}. ${tr('view3d')}`);
+    b.setAttribute('aria-label', `${shown(v.name)}, ${yearOf(v)}, ${metres(v.h)}. ${tr('view3d')}`);
+    b.querySelector('.evo-yr').textContent = yearOf(v);
     b.querySelector('.evo-pic').dataset.h = metres(v.h);
     b.querySelector('.evo-ht').textContent = metres(v.h);
     const tag = b.querySelector('.evo-tag'); if (tag) tag.textContent = tr('test');
@@ -135,7 +138,7 @@ function buildModal() {
 const F = f => modal.querySelector(`[data-f="${f}"]`);
 function fillInfo(i) {
   const v = VEHICLES[i], st = STATS[v.id] || v;
-  F('year').textContent = v.year;
+  F('year').textContent = yearOf(v);
   F('name').textContent = shown(v.name);
   F('test').hidden = !v.test;
   F('note').textContent = tr('n_' + v.id);
@@ -143,12 +146,12 @@ function fillInfo(i) {
   F('dl').textContent = tr(v.id === 'fh' ? 'width' : 'diameter');
   F('d').textContent = metres(v.d);
   F('e').textContent = v.eng;
-  F('y').textContent = v.year;
+  F('y').textContent = yearOf(v);
   F('ll').textContent = tr(v.hops ? 'hops' : 'launches');
-  F('l').textContent = nf.format(v.hops || st.ok);
-  F('ls').textContent = v.hops ? '' : tr('ofLaunches').replace('{n}', nf.format(st.total));
+  F('l').textContent = v.future ? '—' : nf.format(v.hops || st.ok);
+  F('ls').textContent = v.hops || v.future ? '' : tr('ofLaunches').replace('{n}', nf.format(st.total));
   F('sl').textContent = tr(v.retired ? 'retired' : 'status');
-  F('s').textContent = v.retired ? new Date(v.retired + 'T12:00:00Z').toLocaleDateString(LOCALES[lang] || 'en-US', { month: 'long', year: 'numeric' }) : tr('inService');
+  F('s').textContent = v.retired ? new Date(v.retired + 'T12:00:00Z').toLocaleDateString(LOCALES[lang] || 'en-US', { month: 'long', year: 'numeric' }) : tr(v.future ? 'inDev' : 'inService');
   F('ss').textContent = v.retired ? tr('lastFlight') : '';
   F('p').textContent = v.pay ? mass(v.pay) : tr('payNone');
   // the cost of a kilogram (a pound, in English) to low orbit: the launch's list price over its payload
