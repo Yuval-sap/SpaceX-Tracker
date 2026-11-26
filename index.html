@@ -9091,6 +9091,17 @@
             const titleCore = a.replace(/ mission$/, '').trim();
             if (titleCore.length >= 4 && !GENERIC_CMS_TITLE_CORES.test(titleCore) &&
                 (b.includes(titleCore) || titleCore.includes(b))) return true;
+            // SpaceX often prepends the customer name in the CMS title ("MDA Space – MDA CHORUS
+            // Mission") while Launch Library only lists "Falcon 9 | CHORUS". Compare the mission
+            // part after "|" as whole words against titleCore, requiring identical numeric tokens
+            // so an unnumbered name can never match a numbered follow-up flight (e.g. CHORUS 2).
+            const payloadCore = String(missionName).includes('|')
+                ? normalizeForMatch(String(missionName).split('|').pop())
+                : '';
+            if (payloadCore.length >= 5 && !GENERIC_CMS_TITLE_CORES.test(payloadCore) &&
+                !GENERIC_SLUG_WORDS.test(payloadCore) && titleCore &&
+                (titleCore.match(/\d+/g) || []).join(',') === (payloadCore.match(/\d+/g) || []).join(',') &&
+                (' ' + titleCore + ' ').includes(' ' + payloadCore + ' ')) return true;
             // Opaque family slugs ("mpower-f") share no substring with "O3b mPOWER 11-13".
             if (/\bmpower\b/.test(slugN) && /\bmpower\b/.test(b)) return true;
             // SDA's flights: an abbreviated slug ("sda-t1tl-a" = Tranche 1 Transport Layer A) and a title that names
